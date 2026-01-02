@@ -23,7 +23,8 @@ import {
   TrendingUp,
   Target,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Filter
 } from "lucide-react";
 
 interface DropdownOption {
@@ -102,6 +103,9 @@ export default function DropdownSettings() {
     blocker_impact: [],
   });
   
+  // Filter state
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  
   // Dialog state
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
@@ -113,6 +117,13 @@ export default function DropdownSettings() {
   const [formCode, setFormCode] = useState('');
   const [formSortOrder, setFormSortOrder] = useState('0');
   const [formActive, setFormActive] = useState(true);
+
+  // Filtered options based on status filter
+  const getFilteredOptions = (optionsList: DropdownOption[]) => {
+    if (statusFilter === 'all') return optionsList;
+    if (statusFilter === 'active') return optionsList.filter(o => o.is_active);
+    return optionsList.filter(o => !o.is_active);
+  };
 
   useEffect(() => {
     if (profile?.factory_id) {
@@ -432,10 +443,38 @@ export default function DropdownSettings() {
                   </CardTitle>
                   <CardDescription>{cfg.description}</CardDescription>
                 </div>
-                <Button size="sm" onClick={openCreateDialog}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Option
-                </Button>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+                    <Button
+                      variant={statusFilter === 'all' ? 'secondary' : 'ghost'}
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => setStatusFilter('all')}
+                    >
+                      All
+                    </Button>
+                    <Button
+                      variant={statusFilter === 'active' ? 'secondary' : 'ghost'}
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => setStatusFilter('active')}
+                    >
+                      Active
+                    </Button>
+                    <Button
+                      variant={statusFilter === 'inactive' ? 'secondary' : 'ghost'}
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => setStatusFilter('inactive')}
+                    >
+                      Inactive
+                    </Button>
+                  </div>
+                  <Button size="sm" onClick={openCreateDialog}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Option
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -449,15 +488,32 @@ export default function DropdownSettings() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {options[key as OptionType].length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={cfg.hasCode ? 5 : 4} className="text-center text-muted-foreground">
-                          No options found. Add your first option.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      options[key as OptionType].map((opt, idx) => (
-                        <TableRow key={opt.id}>
+                    {(() => {
+                      const filteredOpts = getFilteredOptions(options[key as OptionType]);
+                      const allOpts = options[key as OptionType];
+                      
+                      if (allOpts.length === 0) {
+                        return (
+                          <TableRow>
+                            <TableCell colSpan={cfg.hasCode ? 5 : 4} className="text-center text-muted-foreground">
+                              No options found. Add your first option.
+                            </TableCell>
+                          </TableRow>
+                        );
+                      }
+                      
+                      if (filteredOpts.length === 0) {
+                        return (
+                          <TableRow>
+                            <TableCell colSpan={cfg.hasCode ? 5 : 4} className="text-center text-muted-foreground">
+                              No {statusFilter} options found.
+                            </TableCell>
+                          </TableRow>
+                        );
+                      }
+                      
+                      return filteredOpts.map((opt, idx) => (
+                        <TableRow key={opt.id} className={!opt.is_active ? 'opacity-60' : ''}>
                           <TableCell>
                             <div className="flex items-center gap-1">
                               <Button
@@ -474,7 +530,7 @@ export default function DropdownSettings() {
                                 size="icon"
                                 className="h-6 w-6"
                                 onClick={() => moveItem(opt.id, 'down')}
-                                disabled={idx === options[key as OptionType].length - 1}
+                                disabled={idx === filteredOpts.length - 1}
                               >
                                 <ArrowDown className="h-3 w-3" />
                               </Button>
@@ -499,8 +555,8 @@ export default function DropdownSettings() {
                             </Button>
                           </TableCell>
                         </TableRow>
-                      ))
-                    )}
+                      ));
+                    })()}
                   </TableBody>
                 </Table>
               </CardContent>
