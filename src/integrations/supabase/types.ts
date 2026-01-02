@@ -1020,6 +1020,45 @@ export type Database = {
           },
         ]
       }
+      user_line_assignments: {
+        Row: {
+          created_at: string
+          factory_id: string
+          id: string
+          line_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          factory_id: string
+          id?: string
+          line_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          factory_id?: string
+          id?: string
+          line_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_line_assignments_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_line_assignments_line_id_fkey"
+            columns: ["line_id"]
+            isOneToOne: false
+            referencedRelation: "lines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string | null

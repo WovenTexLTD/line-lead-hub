@@ -19,7 +19,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, UserPlus, Mail, User, Shield, Building2, Layers } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Loader2, UserPlus, Mail, User, Shield, GitBranch } from "lucide-react";
 import { toast } from "sonner";
 import { ROLE_LABELS, type AppRole } from "@/lib/constants";
 
@@ -29,17 +31,10 @@ interface InviteUserDialogProps {
   onSuccess: () => void;
 }
 
-interface Unit {
+interface Line {
   id: string;
-  name: string;
-  code: string;
-}
-
-interface Floor {
-  id: string;
-  name: string;
-  code: string;
-  unit_id: string;
+  line_id: string;
+  name: string | null;
 }
 
 const ASSIGNABLE_ROLES: AppRole[] = ['worker', 'supervisor', 'admin'];
@@ -47,15 +42,13 @@ const ASSIGNABLE_ROLES: AppRole[] = ['worker', 'supervisor', 'admin'];
 export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDialogProps) {
   const { profile, hasRole } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [units, setUnits] = useState<Unit[]>([]);
-  const [floors, setFloors] = useState<Floor[]>([]);
+  const [lines, setLines] = useState<Line[]>([]);
+  const [selectedLineIds, setSelectedLineIds] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     email: "",
     fullName: "",
     role: "worker" as AppRole,
     password: "",
-    unitId: "__none__",
-    floorId: "__none__",
   });
 
   // Owners can assign admin roles, admins can only assign worker/supervisor
@@ -63,37 +56,31 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
     ? ASSIGNABLE_ROLES 
     : ASSIGNABLE_ROLES.filter(r => r !== 'admin');
 
-  // Filter floors based on selected unit
-  const filteredFloors = formData.unitId && formData.unitId !== "__none__"
-    ? floors.filter(f => f.unit_id === formData.unitId)
-    : floors;
-
   useEffect(() => {
     if (open && profile?.factory_id) {
-      fetchUnitsAndFloors();
+      fetchLines();
     }
   }, [open, profile?.factory_id]);
 
-  async function fetchUnitsAndFloors() {
+  async function fetchLines() {
     if (!profile?.factory_id) return;
 
-    const [unitsRes, floorsRes] = await Promise.all([
-      supabase
-        .from('units')
-        .select('id, name, code')
-        .eq('factory_id', profile.factory_id)
-        .eq('is_active', true)
-        .order('name'),
-      supabase
-        .from('floors')
-        .select('id, name, code, unit_id')
-        .eq('factory_id', profile.factory_id)
-        .eq('is_active', true)
-        .order('name'),
-    ]);
+    const { data } = await supabase
+      .from('lines')
+      .select('id, line_id, name')
+      .eq('factory_id', profile.factory_id)
+      .eq('is_active', true)
+      .order('line_id');
 
-    if (unitsRes.data) setUnits(unitsRes.data);
-    if (floorsRes.data) setFloors(floorsRes.data);
+    if (data) setLines(data);
+  }
+
+  function toggleLine(lineId: string) {
+    setSelectedLineIds(prev => 
+      prev.includes(lineId) 
+        ? prev.filter(id => id !== lineId)
+        : [...prev, lineId]
+    );
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -129,14 +116,10 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
         return;
       }
 
-      // Update the profile with factory_id and unit/floor assignments
+      // Update the profile with factory_id
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({ 
-          factory_id: profile.factory_id,
-          assigned_unit_id: formData.unitId && formData.unitId !== "__none__" ? formData.unitId : null,
-          assigned_floor_id: formData.floorId && formData.floorId !== "__none__" ? formData.floorId : null,
-        })
+        .update({ factory_id: profile.factory_id })
         .eq('id', authData.user.id);
 
       if (profileError) {
@@ -158,10 +141,28 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
         return;
       }
 
+      // Assign lines to the user
+      if (selectedLineIds.length > 0) {
+        const lineAssignments = selectedLineIds.map(lineId => ({
+          user_id: authData.user!.id,
+          line_id: lineId,
+          factory_id: profile.factory_id,
+        }));
+
+        const { error: lineError } = await supabase
+          .from('user_line_assignments')
+          .insert(lineAssignments);
+
+        if (lineError) {
+          console.error("Line assignment error:", lineError);
+        }
+      }
+
       toast.success(`User ${formData.fullName} invited successfully`);
       onSuccess();
       onOpenChange(false);
-      setFormData({ email: "", fullName: "", role: "worker", password: "", unitId: "__none__", floorId: "__none__" });
+      setFormData({ email: "", fullName: "", role: "worker", password: "" });
+      setSelectedLineIds([]);
     } catch (error) {
       console.error("Error inviting user:", error);
       toast.error("Failed to invite user");
@@ -251,53 +252,41 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="unit" className="flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-muted-foreground" />
-                Unit
-              </Label>
-              <Select
-                value={formData.unitId}
-                onValueChange={(value) => setFormData({ ...formData, unitId: value, floorId: "__none__" })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select unit" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">No assignment</SelectItem>
-                  {units.map((unit) => (
-                    <SelectItem key={unit.id} value={unit.id}>
-                      {unit.name}
-                    </SelectItem>
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <GitBranch className="h-4 w-4 text-muted-foreground" />
+              Assigned Lines
+              {selectedLineIds.length > 0 && (
+                <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                  {selectedLineIds.length} selected
+                </span>
+              )}
+            </Label>
+            <ScrollArea className="h-32 border rounded-md p-2">
+              {lines.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No lines available
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {lines.map((line) => (
+                    <div key={line.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`line-${line.id}`}
+                        checked={selectedLineIds.includes(line.id)}
+                        onCheckedChange={() => toggleLine(line.id)}
+                      />
+                      <label
+                        htmlFor={`line-${line.id}`}
+                        className="text-sm cursor-pointer flex-1"
+                      >
+                        {line.name || line.line_id}
+                      </label>
+                    </div>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="floor" className="flex items-center gap-2">
-                <Layers className="h-4 w-4 text-muted-foreground" />
-                Floor
-              </Label>
-              <Select
-                value={formData.floorId}
-                onValueChange={(value) => setFormData({ ...formData, floorId: value })}
-                disabled={!formData.unitId || formData.unitId === "__none__"}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select floor" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">No assignment</SelectItem>
-                  {filteredFloors.map((floor) => (
-                    <SelectItem key={floor.id} value={floor.id}>
-                      {floor.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                </div>
+              )}
+            </ScrollArea>
           </div>
 
           <DialogFooter>

@@ -33,10 +33,8 @@ interface User {
   avatar_url: string | null;
   is_active: boolean;
   role: string | null;
-  unit_name: string | null;
-  floor_name: string | null;
-  assigned_unit_id: string | null;
-  assigned_floor_id: string | null;
+  assigned_line_ids: string[];
+  assigned_line_names: string[];
   created_at: string;
 }
 
@@ -60,8 +58,8 @@ export default function UsersPage() {
     setLoading(true);
 
     try {
-      // Fetch profiles, roles, units, and floors in parallel
-      const [profilesRes, rolesRes, unitsRes, floorsRes] = await Promise.all([
+      // Fetch profiles, roles, lines, and line assignments in parallel
+      const [profilesRes, rolesRes, linesRes, lineAssignmentsRes] = await Promise.all([
         supabase
           .from('profiles')
           .select('*')
@@ -72,12 +70,12 @@ export default function UsersPage() {
           .select('user_id, role')
           .eq('factory_id', profile.factory_id),
         supabase
-          .from('units')
-          .select('id, name')
+          .from('lines')
+          .select('id, line_id, name')
           .eq('factory_id', profile.factory_id),
         supabase
-          .from('floors')
-          .select('id, name')
+          .from('user_line_assignments')
+          .select('user_id, line_id')
           .eq('factory_id', profile.factory_id),
       ]);
 
@@ -90,26 +88,37 @@ export default function UsersPage() {
         }
       });
 
-      const unitMap = new Map<string, string>();
-      unitsRes.data?.forEach(u => unitMap.set(u.id, u.name));
+      const lineMap = new Map<string, { line_id: string; name: string | null }>();
+      linesRes.data?.forEach(l => lineMap.set(l.id, { line_id: l.line_id, name: l.name }));
 
-      const floorMap = new Map<string, string>();
-      floorsRes.data?.forEach(f => floorMap.set(f.id, f.name));
+      // Group line assignments by user
+      const userLineAssignments = new Map<string, string[]>();
+      lineAssignmentsRes.data?.forEach(la => {
+        const existing = userLineAssignments.get(la.user_id) || [];
+        existing.push(la.line_id);
+        userLineAssignments.set(la.user_id, existing);
+      });
 
-      const formattedUsers: User[] = (profilesRes.data || []).map(p => ({
-        id: p.id,
-        full_name: p.full_name,
-        email: p.email,
-        phone: p.phone,
-        avatar_url: p.avatar_url,
-        is_active: p.is_active,
-        role: roleMap.get(p.id) || 'worker',
-        unit_name: p.assigned_unit_id ? unitMap.get(p.assigned_unit_id) || null : null,
-        floor_name: p.assigned_floor_id ? floorMap.get(p.assigned_floor_id) || null : null,
-        assigned_unit_id: p.assigned_unit_id,
-        assigned_floor_id: p.assigned_floor_id,
-        created_at: p.created_at,
-      }));
+      const formattedUsers: User[] = (profilesRes.data || []).map(p => {
+        const lineIds = userLineAssignments.get(p.id) || [];
+        const lineNames = lineIds.map(id => {
+          const line = lineMap.get(id);
+          return line?.name || line?.line_id || id;
+        });
+
+        return {
+          id: p.id,
+          full_name: p.full_name,
+          email: p.email,
+          phone: p.phone,
+          avatar_url: p.avatar_url,
+          is_active: p.is_active,
+          role: roleMap.get(p.id) || 'worker',
+          assigned_line_ids: lineIds,
+          assigned_line_names: lineNames,
+          created_at: p.created_at,
+        };
+      });
 
       setUsers(formattedUsers);
     } catch (error) {
@@ -226,7 +235,7 @@ export default function UsersPage() {
                   <TableHead>User</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Contact</TableHead>
-                  <TableHead>Unit / Floor</TableHead>
+                  <TableHead>Assigned Lines</TableHead>
                   <TableHead className="text-center">Status</TableHead>
                   {isAdminOrHigher() && <TableHead className="w-[50px]"></TableHead>}
                 </TableRow>
@@ -274,14 +283,24 @@ export default function UsersPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {user.unit_name || user.floor_name ? (
-                        <div className="text-sm">
-                          {user.unit_name && <span>{user.unit_name}</span>}
-                          {user.unit_name && user.floor_name && <span> / </span>}
-                          {user.floor_name && <span>{user.floor_name}</span>}
+                      {user.assigned_line_names.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {user.assigned_line_names.slice(0, 3).map((name, i) => (
+                            <span 
+                              key={i} 
+                              className="text-xs bg-muted px-2 py-0.5 rounded"
+                            >
+                              {name}
+                            </span>
+                          ))}
+                          {user.assigned_line_names.length > 3 && (
+                            <span className="text-xs text-muted-foreground">
+                              +{user.assigned_line_names.length - 3} more
+                            </span>
+                          )}
                         </div>
                       ) : (
-                        <span className="text-muted-foreground">-</span>
+                        <span className="text-muted-foreground text-sm">No lines assigned</span>
                       )}
                     </TableCell>
                     <TableCell className="text-center">

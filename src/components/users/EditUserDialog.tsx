@@ -29,7 +29,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, UserCog, Shield, Trash2, Building2, Layers } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Loader2, UserCog, Shield, Trash2, GitBranch } from "lucide-react";
 import { toast } from "sonner";
 import { ROLE_LABELS, type AppRole } from "@/lib/constants";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -41,8 +43,7 @@ interface User {
   avatar_url: string | null;
   is_active: boolean;
   role: string | null;
-  assigned_unit_id: string | null;
-  assigned_floor_id: string | null;
+  assigned_line_ids: string[];
 }
 
 interface EditUserDialogProps {
@@ -52,17 +53,10 @@ interface EditUserDialogProps {
   onSuccess: () => void;
 }
 
-interface Unit {
+interface Line {
   id: string;
-  name: string;
-  code: string;
-}
-
-interface Floor {
-  id: string;
-  name: string;
-  code: string;
-  unit_id: string;
+  line_id: string;
+  name: string | null;
 }
 
 const ASSIGNABLE_ROLES: AppRole[] = ['worker', 'supervisor', 'admin'];
@@ -71,13 +65,11 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
   const { profile, hasRole, user: currentUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [units, setUnits] = useState<Unit[]>([]);
-  const [floors, setFloors] = useState<Floor[]>([]);
+  const [lines, setLines] = useState<Line[]>([]);
+  const [selectedLineIds, setSelectedLineIds] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     role: "worker" as AppRole,
     isActive: true,
-    unitId: "__none__",
-    floorId: "__none__",
   });
 
   // Owners can assign admin roles, admins can only assign worker/supervisor
@@ -88,14 +80,9 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
   const isCurrentUser = currentUser?.id === user?.id;
   const isOwnerOrHigher = user?.role === 'owner' || user?.role === 'superadmin';
 
-  // Filter floors based on selected unit
-  const filteredFloors = formData.unitId && formData.unitId !== "__none__"
-    ? floors.filter(f => f.unit_id === formData.unitId)
-    : floors;
-
   useEffect(() => {
     if (open && profile?.factory_id) {
-      fetchUnitsAndFloors();
+      fetchLines();
     }
   }, [open, profile?.factory_id]);
 
@@ -104,32 +91,30 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
       setFormData({
         role: (user.role as AppRole) || 'worker',
         isActive: user.is_active,
-        unitId: user.assigned_unit_id || "__none__",
-        floorId: user.assigned_floor_id || "__none__",
       });
+      setSelectedLineIds(user.assigned_line_ids || []);
     }
   }, [user]);
 
-  async function fetchUnitsAndFloors() {
+  async function fetchLines() {
     if (!profile?.factory_id) return;
 
-    const [unitsRes, floorsRes] = await Promise.all([
-      supabase
-        .from('units')
-        .select('id, name, code')
-        .eq('factory_id', profile.factory_id)
-        .eq('is_active', true)
-        .order('name'),
-      supabase
-        .from('floors')
-        .select('id, name, code, unit_id')
-        .eq('factory_id', profile.factory_id)
-        .eq('is_active', true)
-        .order('name'),
-    ]);
+    const { data } = await supabase
+      .from('lines')
+      .select('id, line_id, name')
+      .eq('factory_id', profile.factory_id)
+      .eq('is_active', true)
+      .order('line_id');
 
-    if (unitsRes.data) setUnits(unitsRes.data);
-    if (floorsRes.data) setFloors(floorsRes.data);
+    if (data) setLines(data);
+  }
+
+  function toggleLine(lineId: string) {
+    setSelectedLineIds(prev => 
+      prev.includes(lineId) 
+        ? prev.filter(id => id !== lineId)
+        : [...prev, lineId]
+    );
   }
 
   async function handleSave() {
@@ -162,19 +147,42 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
         return;
       }
 
-      // Update profile with active status and unit/floor assignments
+      // Update profile with active status
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({ 
-          is_active: formData.isActive,
-          assigned_unit_id: formData.unitId && formData.unitId !== "__none__" ? formData.unitId : null,
-          assigned_floor_id: formData.floorId && formData.floorId !== "__none__" ? formData.floorId : null,
-        })
+        .update({ is_active: formData.isActive })
         .eq('id', user.id);
 
       if (profileError) {
         toast.error("Failed to update profile");
         return;
+      }
+
+      // Update line assignments - delete all existing, then insert new
+      const { error: deleteLineError } = await supabase
+        .from('user_line_assignments')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('factory_id', profile.factory_id);
+
+      if (deleteLineError) {
+        console.error("Delete line assignments error:", deleteLineError);
+      }
+
+      if (selectedLineIds.length > 0) {
+        const lineAssignments = selectedLineIds.map(lineId => ({
+          user_id: user.id,
+          line_id: lineId,
+          factory_id: profile.factory_id,
+        }));
+
+        const { error: insertLineError } = await supabase
+          .from('user_line_assignments')
+          .insert(lineAssignments);
+
+        if (insertLineError) {
+          console.error("Insert line assignments error:", insertLineError);
+        }
       }
 
       toast.success("User updated successfully");
@@ -216,6 +224,17 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
         console.error("Role deletion error:", roleError);
       }
 
+      // Delete their line assignments
+      const { error: lineError } = await supabase
+        .from('user_line_assignments')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('factory_id', profile.factory_id);
+
+      if (lineError) {
+        console.error("Line assignment deletion error:", lineError);
+      }
+
       toast.success("User access removed");
       onSuccess();
       onOpenChange(false);
@@ -249,7 +268,7 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
               Edit User
             </DialogTitle>
             <DialogDescription>
-              Update user role, assignments, and access settings.
+              Update user role, line assignments, and access settings.
             </DialogDescription>
           </DialogHeader>
 
@@ -298,54 +317,42 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
               )}
             </div>
 
-            {/* Unit/Floor Assignment */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="unit" className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
-                  Unit
-                </Label>
-                <Select
-                  value={formData.unitId}
-                  onValueChange={(value) => setFormData({ ...formData, unitId: value, floorId: "__none__" })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select unit" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">No assignment</SelectItem>
-                    {units.map((unit) => (
-                      <SelectItem key={unit.id} value={unit.id}>
-                        {unit.name}
-                      </SelectItem>
+            {/* Line Assignment */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <GitBranch className="h-4 w-4 text-muted-foreground" />
+                Assigned Lines
+                {selectedLineIds.length > 0 && (
+                  <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                    {selectedLineIds.length} selected
+                  </span>
+                )}
+              </Label>
+              <ScrollArea className="h-32 border rounded-md p-2">
+                {lines.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No lines available
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {lines.map((line) => (
+                      <div key={line.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`edit-line-${line.id}`}
+                          checked={selectedLineIds.includes(line.id)}
+                          onCheckedChange={() => toggleLine(line.id)}
+                        />
+                        <label
+                          htmlFor={`edit-line-${line.id}`}
+                          className="text-sm cursor-pointer flex-1"
+                        >
+                          {line.name || line.line_id}
+                        </label>
+                      </div>
                     ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="floor" className="flex items-center gap-2">
-                  <Layers className="h-4 w-4 text-muted-foreground" />
-                  Floor
-                </Label>
-                <Select
-                  value={formData.floorId}
-                  onValueChange={(value) => setFormData({ ...formData, floorId: value })}
-                  disabled={!formData.unitId || formData.unitId === "__none__"}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select floor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">No assignment</SelectItem>
-                    {filteredFloors.map((floor) => (
-                      <SelectItem key={floor.id} value={floor.id}>
-                        {floor.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                  </div>
+                )}
+              </ScrollArea>
             </div>
 
             {/* Active Status */}
