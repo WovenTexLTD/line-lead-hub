@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, UserCog, Shield, Trash2 } from "lucide-react";
+import { Loader2, UserCog, Shield, Trash2, Building2, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { ROLE_LABELS, type AppRole } from "@/lib/constants";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -41,6 +41,8 @@ interface User {
   avatar_url: string | null;
   is_active: boolean;
   role: string | null;
+  assigned_unit_id: string | null;
+  assigned_floor_id: string | null;
 }
 
 interface EditUserDialogProps {
@@ -50,15 +52,32 @@ interface EditUserDialogProps {
   onSuccess: () => void;
 }
 
+interface Unit {
+  id: string;
+  name: string;
+  code: string;
+}
+
+interface Floor {
+  id: string;
+  name: string;
+  code: string;
+  unit_id: string;
+}
+
 const ASSIGNABLE_ROLES: AppRole[] = ['worker', 'supervisor', 'admin'];
 
 export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUserDialogProps) {
   const { profile, hasRole, user: currentUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [units, setUnits] = useState<Unit[]>([]);
+  const [floors, setFloors] = useState<Floor[]>([]);
   const [formData, setFormData] = useState({
     role: "worker" as AppRole,
     isActive: true,
+    unitId: "",
+    floorId: "",
   });
 
   // Owners can assign admin roles, admins can only assign worker/supervisor
@@ -69,14 +88,49 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
   const isCurrentUser = currentUser?.id === user?.id;
   const isOwnerOrHigher = user?.role === 'owner' || user?.role === 'superadmin';
 
+  // Filter floors based on selected unit
+  const filteredFloors = formData.unitId 
+    ? floors.filter(f => f.unit_id === formData.unitId)
+    : floors;
+
+  useEffect(() => {
+    if (open && profile?.factory_id) {
+      fetchUnitsAndFloors();
+    }
+  }, [open, profile?.factory_id]);
+
   useEffect(() => {
     if (user) {
       setFormData({
         role: (user.role as AppRole) || 'worker',
         isActive: user.is_active,
+        unitId: user.assigned_unit_id || "",
+        floorId: user.assigned_floor_id || "",
       });
     }
   }, [user]);
+
+  async function fetchUnitsAndFloors() {
+    if (!profile?.factory_id) return;
+
+    const [unitsRes, floorsRes] = await Promise.all([
+      supabase
+        .from('units')
+        .select('id, name, code')
+        .eq('factory_id', profile.factory_id)
+        .eq('is_active', true)
+        .order('name'),
+      supabase
+        .from('floors')
+        .select('id, name, code, unit_id')
+        .eq('factory_id', profile.factory_id)
+        .eq('is_active', true)
+        .order('name'),
+    ]);
+
+    if (unitsRes.data) setUnits(unitsRes.data);
+    if (floorsRes.data) setFloors(floorsRes.data);
+  }
 
   async function handleSave() {
     if (!user || !profile?.factory_id) return;
@@ -108,14 +162,18 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
         return;
       }
 
-      // Update active status in profiles
+      // Update profile with active status and unit/floor assignments
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({ is_active: formData.isActive })
+        .update({ 
+          is_active: formData.isActive,
+          assigned_unit_id: formData.unitId || null,
+          assigned_floor_id: formData.floorId || null,
+        })
         .eq('id', user.id);
 
       if (profileError) {
-        toast.error("Failed to update status");
+        toast.error("Failed to update profile");
         return;
       }
 
@@ -191,7 +249,7 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
               Edit User
             </DialogTitle>
             <DialogDescription>
-              Update user role and access settings.
+              Update user role, assignments, and access settings.
             </DialogDescription>
           </DialogHeader>
 
@@ -238,6 +296,56 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
               {isOwnerOrHigher && !isCurrentUser && (
                 <p className="text-xs text-muted-foreground">Owner/Admin roles cannot be changed here</p>
               )}
+            </div>
+
+            {/* Unit/Floor Assignment */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="unit" className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                  Unit
+                </Label>
+                <Select
+                  value={formData.unitId}
+                  onValueChange={(value) => setFormData({ ...formData, unitId: value, floorId: "" })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select unit" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">No assignment</SelectItem>
+                    {units.map((unit) => (
+                      <SelectItem key={unit.id} value={unit.id}>
+                        {unit.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="floor" className="flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-muted-foreground" />
+                  Floor
+                </Label>
+                <Select
+                  value={formData.floorId}
+                  onValueChange={(value) => setFormData({ ...formData, floorId: value })}
+                  disabled={!formData.unitId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select floor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">No assignment</SelectItem>
+                    {filteredFloors.map((floor) => (
+                      <SelectItem key={floor.id} value={floor.id}>
+                        {floor.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {/* Active Status */}

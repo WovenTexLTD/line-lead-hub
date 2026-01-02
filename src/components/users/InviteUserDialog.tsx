@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, UserPlus, Mail, User, Shield } from "lucide-react";
+import { Loader2, UserPlus, Mail, User, Shield, Building2, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { ROLE_LABELS, type AppRole } from "@/lib/constants";
 
@@ -29,22 +29,72 @@ interface InviteUserDialogProps {
   onSuccess: () => void;
 }
 
+interface Unit {
+  id: string;
+  name: string;
+  code: string;
+}
+
+interface Floor {
+  id: string;
+  name: string;
+  code: string;
+  unit_id: string;
+}
+
 const ASSIGNABLE_ROLES: AppRole[] = ['worker', 'supervisor', 'admin'];
 
 export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDialogProps) {
   const { profile, hasRole } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [units, setUnits] = useState<Unit[]>([]);
+  const [floors, setFloors] = useState<Floor[]>([]);
   const [formData, setFormData] = useState({
     email: "",
     fullName: "",
     role: "worker" as AppRole,
     password: "",
+    unitId: "",
+    floorId: "",
   });
 
   // Owners can assign admin roles, admins can only assign worker/supervisor
   const availableRoles = hasRole('owner') || hasRole('superadmin') 
     ? ASSIGNABLE_ROLES 
     : ASSIGNABLE_ROLES.filter(r => r !== 'admin');
+
+  // Filter floors based on selected unit
+  const filteredFloors = formData.unitId 
+    ? floors.filter(f => f.unit_id === formData.unitId)
+    : floors;
+
+  useEffect(() => {
+    if (open && profile?.factory_id) {
+      fetchUnitsAndFloors();
+    }
+  }, [open, profile?.factory_id]);
+
+  async function fetchUnitsAndFloors() {
+    if (!profile?.factory_id) return;
+
+    const [unitsRes, floorsRes] = await Promise.all([
+      supabase
+        .from('units')
+        .select('id, name, code')
+        .eq('factory_id', profile.factory_id)
+        .eq('is_active', true)
+        .order('name'),
+      supabase
+        .from('floors')
+        .select('id, name, code, unit_id')
+        .eq('factory_id', profile.factory_id)
+        .eq('is_active', true)
+        .order('name'),
+    ]);
+
+    if (unitsRes.data) setUnits(unitsRes.data);
+    if (floorsRes.data) setFloors(floorsRes.data);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -79,10 +129,14 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
         return;
       }
 
-      // Update the profile with factory_id
+      // Update the profile with factory_id and unit/floor assignments
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({ factory_id: profile.factory_id })
+        .update({ 
+          factory_id: profile.factory_id,
+          assigned_unit_id: formData.unitId || null,
+          assigned_floor_id: formData.floorId || null,
+        })
         .eq('id', authData.user.id);
 
       if (profileError) {
@@ -107,7 +161,7 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
       toast.success(`User ${formData.fullName} invited successfully`);
       onSuccess();
       onOpenChange(false);
-      setFormData({ email: "", fullName: "", role: "worker", password: "" });
+      setFormData({ email: "", fullName: "", role: "worker", password: "", unitId: "", floorId: "" });
     } catch (error) {
       console.error("Error inviting user:", error);
       toast.error("Failed to invite user");
@@ -195,6 +249,55 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="unit" className="flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-muted-foreground" />
+                Unit
+              </Label>
+              <Select
+                value={formData.unitId}
+                onValueChange={(value) => setFormData({ ...formData, unitId: value, floorId: "" })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select unit" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">No assignment</SelectItem>
+                  {units.map((unit) => (
+                    <SelectItem key={unit.id} value={unit.id}>
+                      {unit.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="floor" className="flex items-center gap-2">
+                <Layers className="h-4 w-4 text-muted-foreground" />
+                Floor
+              </Label>
+              <Select
+                value={formData.floorId}
+                onValueChange={(value) => setFormData({ ...formData, floorId: value })}
+                disabled={!formData.unitId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select floor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">No assignment</SelectItem>
+                  {filteredFloors.map((floor) => (
+                    <SelectItem key={floor.id} value={floor.id}>
+                      {floor.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <DialogFooter>

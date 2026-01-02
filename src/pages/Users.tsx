@@ -35,6 +35,8 @@ interface User {
   role: string | null;
   unit_name: string | null;
   floor_name: string | null;
+  assigned_unit_id: string | null;
+  assigned_floor_id: string | null;
   created_at: string;
 }
 
@@ -58,30 +60,43 @@ export default function UsersPage() {
     setLoading(true);
 
     try {
-      // Fetch profiles
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('factory_id', profile.factory_id)
-        .order('full_name');
-
-      // Fetch user roles
-      const { data: roles } = await supabase
-        .from('user_roles')
-        .select('user_id, role')
-        .eq('factory_id', profile.factory_id);
+      // Fetch profiles, roles, units, and floors in parallel
+      const [profilesRes, rolesRes, unitsRes, floorsRes] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('factory_id', profile.factory_id)
+          .order('full_name'),
+        supabase
+          .from('user_roles')
+          .select('user_id, role')
+          .eq('factory_id', profile.factory_id),
+        supabase
+          .from('units')
+          .select('id, name')
+          .eq('factory_id', profile.factory_id),
+        supabase
+          .from('floors')
+          .select('id, name')
+          .eq('factory_id', profile.factory_id),
+      ]);
 
       const roleMap = new Map<string, string>();
-      roles?.forEach(r => {
+      rolesRes.data?.forEach(r => {
         const existingRole = roleMap.get(r.user_id);
-        // Keep highest role
         const roleOrder = ['superadmin', 'owner', 'admin', 'supervisor', 'worker'];
         if (!existingRole || roleOrder.indexOf(r.role) < roleOrder.indexOf(existingRole)) {
           roleMap.set(r.user_id, r.role);
         }
       });
 
-      const formattedUsers: User[] = (profiles || []).map(p => ({
+      const unitMap = new Map<string, string>();
+      unitsRes.data?.forEach(u => unitMap.set(u.id, u.name));
+
+      const floorMap = new Map<string, string>();
+      floorsRes.data?.forEach(f => floorMap.set(f.id, f.name));
+
+      const formattedUsers: User[] = (profilesRes.data || []).map(p => ({
         id: p.id,
         full_name: p.full_name,
         email: p.email,
@@ -89,8 +104,10 @@ export default function UsersPage() {
         avatar_url: p.avatar_url,
         is_active: p.is_active,
         role: roleMap.get(p.id) || 'worker',
-        unit_name: null,
-        floor_name: null,
+        unit_name: p.assigned_unit_id ? unitMap.get(p.assigned_unit_id) || null : null,
+        floor_name: p.assigned_floor_id ? floorMap.get(p.assigned_floor_id) || null : null,
+        assigned_unit_id: p.assigned_unit_id,
+        assigned_floor_id: p.assigned_floor_id,
         created_at: p.created_at,
       }));
 
