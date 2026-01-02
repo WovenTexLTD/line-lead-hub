@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Bell, Mail, AlertTriangle, TrendingDown, Info, Loader2 } from "lucide-react";
+import { Bell, Mail, AlertTriangle, TrendingDown, Info, Loader2, CheckCircle, FileText, Target, Calendar, Clock } from "lucide-react";
 import { toast } from "sonner";
 
 interface NotificationPreference {
@@ -27,6 +27,36 @@ const NOTIFICATION_TYPES = [
     label: "Critical Blockers",
     description: "Get notified when critical blockers are reported",
     icon: AlertTriangle,
+  },
+  {
+    type: "blocker_resolved",
+    label: "Blocker Resolved",
+    description: "Get notified when blockers are marked as resolved",
+    icon: CheckCircle,
+  },
+  {
+    type: "work_order_updates",
+    label: "Work Order Updates",
+    description: "Get notified about work order status changes",
+    icon: FileText,
+  },
+  {
+    type: "target_achieved",
+    label: "Target Achieved",
+    description: "Get notified when production targets are met",
+    icon: Target,
+  },
+  {
+    type: "daily_summary",
+    label: "Daily Summary",
+    description: "Receive daily production summary reports",
+    icon: Calendar,
+  },
+  {
+    type: "shift_reminder",
+    label: "Shift Reminders",
+    description: "Get reminders before shift starts",
+    icon: Clock,
   },
   {
     type: "general",
