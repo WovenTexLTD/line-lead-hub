@@ -244,11 +244,17 @@ export type Database = {
           logo_url: string | null
           max_lines: number | null
           name: string
+          payment_failed_at: string | null
           slug: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          subscription_status: string | null
           subscription_tier:
             | Database["public"]["Enums"]["subscription_tier"]
             | null
           timezone: string | null
+          trial_end_date: string | null
+          trial_start_date: string | null
           updated_at: string | null
         }
         Insert: {
@@ -259,11 +265,17 @@ export type Database = {
           logo_url?: string | null
           max_lines?: number | null
           name: string
+          payment_failed_at?: string | null
           slug: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_status?: string | null
           subscription_tier?:
             | Database["public"]["Enums"]["subscription_tier"]
             | null
           timezone?: string | null
+          trial_end_date?: string | null
+          trial_start_date?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -274,11 +286,17 @@ export type Database = {
           logo_url?: string | null
           max_lines?: number | null
           name?: string
+          payment_failed_at?: string | null
           slug?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_status?: string | null
           subscription_tier?:
             | Database["public"]["Enums"]["subscription_tier"]
             | null
           timezone?: string | null
+          trial_end_date?: string | null
+          trial_start_date?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -1177,6 +1195,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      factory_has_active_access: {
+        Args: { _factory_id: string }
+        Returns: boolean
+      }
       get_user_factory_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
