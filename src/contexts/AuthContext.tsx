@@ -110,7 +110,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .eq('user_id', userId);
 
         if (rolesData) {
-          setRoles(rolesData as UserRole[]);
+          // Only consider roles for the user's current factory.
+          // Also allow global superadmin (factory_id null) but ignore accidental global admin.
+          const filtered = (rolesData as UserRole[]).filter((r) => {
+            if (r.role === 'superadmin') return true;
+            if (profileData.factory_id) return r.factory_id === profileData.factory_id;
+            // No factory assigned yet: keep only non-scoped roles
+            return r.factory_id === null;
+          });
+          setRoles(filtered);
         }
 
         // Fetch factory if user has one
