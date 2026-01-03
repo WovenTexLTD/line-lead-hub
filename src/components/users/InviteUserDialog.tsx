@@ -100,7 +100,12 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
     setLoading(true);
 
     try {
-      // Create user via Supabase Auth
+      // Preserve current session (inviter). supabase.auth.signUp will otherwise switch session to the new user.
+      const {
+        data: { session: inviterSession },
+      } = await supabase.auth.getSession();
+
+      // Create user via Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -108,9 +113,21 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
           emailRedirectTo: `${window.location.origin}/`,
           data: {
             full_name: formData.fullName,
+            invited_by_admin: "true",
           },
         },
       });
+
+      // Restore inviter session (if we were switched to the new user)
+      if (inviterSession) {
+        const { error: restoreError } = await supabase.auth.setSession({
+          access_token: inviterSession.access_token,
+          refresh_token: inviterSession.refresh_token,
+        });
+        if (restoreError) {
+          console.warn("Failed to restore inviter session after invite:", restoreError.message);
+        }
+      }
 
       let userId: string | null = null;
 
@@ -170,11 +187,22 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
         }
       }
 
-      // Assign role to the new user - delete existing then insert
+      // Assign role to the new user
+      // IMPORTANT: do not delete all roles globally; keep scopes safe.
+      // 1) Remove any existing role for this factory
       await supabase
         .from('user_roles')
         .delete()
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .eq('factory_id', profile.factory_id);
+
+      // 2) Remove accidental global admin role (from older trigger behavior)
+      await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', userId)
+        .is('factory_id', null)
+        .eq('role', 'admin');
 
       const { error: roleError } = await supabase
         .from('user_roles')

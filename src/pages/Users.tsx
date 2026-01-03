@@ -62,27 +62,34 @@ export default function UsersPage() {
 
     try {
       // Fetch profiles, roles, lines, and line assignments in parallel
-      const [profilesRes, rolesRes, linesRes, lineAssignmentsRes] = await Promise.all([
-        supabase
-          .from('profiles')
-          .select('*')
-          .eq('factory_id', profile.factory_id)
-          .order('full_name'),
-        supabase
-          .from('user_roles')
-          .select('user_id, role'),
-        supabase
-          .from('lines')
-          .select('id, line_id, name')
-          .eq('factory_id', profile.factory_id),
-        supabase
-          .from('user_line_assignments')
-          .select('user_id, line_id')
-          .eq('factory_id', profile.factory_id),
-      ]);
+        const [profilesRes, rolesRes, linesRes, lineAssignmentsRes] = await Promise.all([
+          supabase
+            .from('profiles')
+            .select('*')
+            .eq('factory_id', profile.factory_id)
+            .order('full_name'),
+          supabase
+            .from('user_roles')
+            .select('user_id, role, factory_id')
+            .or(`factory_id.eq.${profile.factory_id},factory_id.is.null`),
+          supabase
+            .from('lines')
+            .select('id, line_id, name')
+            .eq('factory_id', profile.factory_id),
+          supabase
+            .from('user_line_assignments')
+            .select('user_id, line_id')
+            .eq('factory_id', profile.factory_id),
+        ]);
 
       const roleMap = new Map<string, string>();
-      rolesRes.data?.forEach(r => {
+      rolesRes.data?.forEach((r: any) => {
+        const isFactoryScoped = r.factory_id === profile.factory_id;
+        const isGlobalSuperadmin = r.factory_id == null && r.role === 'superadmin';
+
+        // Ignore accidental global roles (like global admin) for display
+        if (!isFactoryScoped && !isGlobalSuperadmin) return;
+
         const existingRole = roleMap.get(r.user_id);
         const roleOrder = ['superadmin', 'owner', 'admin', 'supervisor', 'worker'];
         if (!existingRole || roleOrder.indexOf(r.role) < roleOrder.indexOf(existingRole)) {
