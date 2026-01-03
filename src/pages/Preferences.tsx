@@ -3,11 +3,12 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "next-themes";
 import { NotificationPreferences } from "@/components/NotificationPreferences";
+import { TerminateAccountDialog } from "@/components/TerminateAccountDialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Settings2, Bell, Palette, Globe, Sun, Moon, Monitor } from "lucide-react";
+import { Loader2, Settings2, Bell, Palette, Globe, Sun, Moon, Monitor, AlertTriangle } from "lucide-react";
 
 type Language = 'en' | 'bn';
 
@@ -176,6 +177,32 @@ export default function Preferences() {
         </CardHeader>
         <CardContent>
           <NotificationPreferences />
+        </CardContent>
+      </Card>
+
+      {/* Danger Zone - Terminate Account */}
+      <Card className="border-destructive/50">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-destructive" />
+            <CardTitle className="text-destructive">Danger Zone</CardTitle>
+          </div>
+          <CardDescription>
+            Irreversible actions that will permanently affect your account.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 rounded-lg border border-destructive/30 bg-destructive/5">
+              <div className="space-y-1">
+                <p className="font-medium">Terminate Account</p>
+                <p className="text-sm text-muted-foreground">
+                  Permanently delete your account and all associated data. This cannot be undone.
+                </p>
+              </div>
+              <TerminateAccountDialog />
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
