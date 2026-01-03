@@ -210,37 +210,18 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
     setLoading(true);
 
     try {
-      // Remove from factory by clearing factory_id
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ factory_id: null, is_active: false })
-        .eq('id', user.id);
+      const { data, error } = await supabase.functions.invoke("remove-user-access", {
+        body: { userId: user.id },
+      });
 
-      if (profileError) {
-        toast.error("Failed to remove user access");
+      if (error) {
+        toast.error(error.message || "Failed to remove user access");
         return;
       }
 
-      // Delete their role in this factory
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('factory_id', profile.factory_id);
-
-      if (roleError) {
-        console.error("Role deletion error:", roleError);
-      }
-
-      // Delete their line assignments
-      const { error: lineError } = await supabase
-        .from('user_line_assignments')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('factory_id', profile.factory_id);
-
-      if (lineError) {
-        console.error("Line assignment deletion error:", lineError);
+      if (data?.error) {
+        toast.error(data.error);
+        return;
       }
 
       toast.success("User access removed");
