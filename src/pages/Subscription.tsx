@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, CreditCard, Clock, CheckCircle2, AlertCircle, Sparkles, ArrowRight, Crown } from "lucide-react";
+import { Loader2, CreditCard, Clock, CheckCircle2, AlertCircle, Sparkles, ArrowRight, Crown, LogOut } from "lucide-react";
 import { SUBSCRIPTION_TIERS, formatPrice, type SubscriptionTier } from "@/lib/subscription-tiers";
 
 interface SubscriptionStatus {
@@ -22,7 +22,7 @@ interface SubscriptionStatus {
 }
 
 export default function Subscription() {
-  const { user, profile, isAdminOrHigher } = useAuth();
+  const { user, profile, isAdminOrHigher, signOut } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
@@ -182,11 +182,17 @@ export default function Subscription() {
 
   return (
     <div className="container max-w-6xl py-8 px-4">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Subscription</h1>
-        <p className="text-muted-foreground mt-1">
-          Choose the plan that fits your factory's needs
-        </p>
+      <div className="mb-8 flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Subscription</h1>
+          <p className="text-muted-foreground mt-1">
+            Choose the plan that fits your factory's needs
+          </p>
+        </div>
+        <Button variant="outline" onClick={signOut}>
+          <LogOut className="h-4 w-4 mr-2" />
+          Sign Out
+        </Button>
       </div>
 
       {/* Current Status Card */}
