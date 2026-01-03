@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.remove-user-access]
 verify_jwt = false
+
+[functions.terminate-account]
+verify_jwt = false
