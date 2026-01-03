@@ -255,6 +255,15 @@ export default function Subscription() {
           )}
 
           <div className="flex flex-wrap gap-3">
+            {status?.hasAccess && (
+              <Button 
+                onClick={() => navigate('/dashboard')} 
+              >
+                <ArrowRight className="h-4 w-4 mr-2" />
+                Go to Dashboard
+              </Button>
+            )}
+            
             {status?.subscribed && (
               <Button 
                 onClick={handleManageSubscription} 
