@@ -83,6 +83,13 @@ serve(async (req) => {
         });
         
         if (subscription.metadata?.factory_id) {
+          // Get factory info for notification
+          const { data: factory } = await supabaseAdmin
+            .from('factory_accounts')
+            .select('name')
+            .eq('id', subscription.metadata.factory_id)
+            .single();
+          
           await supabaseAdmin
             .from('factory_accounts')
             .update({ 
@@ -92,6 +99,34 @@ serve(async (req) => {
             .eq('id', subscription.metadata.factory_id);
           
           logStep("Factory subscription canceled");
+          
+          // Send cancellation notification
+          try {
+            const { data: admins } = await supabaseAdmin
+              .from('profiles')
+              .select('email')
+              .eq('factory_id', subscription.metadata.factory_id);
+            
+            if (admins && admins.length > 0) {
+              const notificationUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-billing-notification`;
+              await fetch(notificationUrl, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
+                },
+                body: JSON.stringify({
+                  type: 'subscription_canceled',
+                  factoryId: subscription.metadata.factory_id,
+                  email: admins[0].email,
+                  factoryName: factory?.name,
+                }),
+              });
+              logStep("Cancellation notification sent");
+            }
+          } catch (notifError) {
+            logStep("Failed to send notification", { error: String(notifError) });
+          }
         }
         break;
       }
@@ -106,7 +141,7 @@ serve(async (req) => {
         // Find factory by customer ID
         const { data: factory } = await supabaseAdmin
           .from('factory_accounts')
-          .select('id')
+          .select('id, name')
           .eq('stripe_customer_id', invoice.customer as string)
           .single();
         
@@ -120,6 +155,36 @@ serve(async (req) => {
             .eq('id', factory.id);
           
           logStep("Factory marked as past due");
+          
+          // Send payment failed notification
+          try {
+            // Get admin emails
+            const { data: admins } = await supabaseAdmin
+              .from('profiles')
+              .select('email')
+              .eq('factory_id', factory.id);
+            
+            if (admins && admins.length > 0) {
+              // Call the notification function
+              const notificationUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-billing-notification`;
+              await fetch(notificationUrl, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
+                },
+                body: JSON.stringify({
+                  type: 'payment_failed',
+                  factoryId: factory.id,
+                  email: admins[0].email,
+                  factoryName: factory.name,
+                }),
+              });
+              logStep("Payment failed notification sent");
+            }
+          } catch (notifError) {
+            logStep("Failed to send notification", { error: String(notifError) });
+          }
         }
         break;
       }
