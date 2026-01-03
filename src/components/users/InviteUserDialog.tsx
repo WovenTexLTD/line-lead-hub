@@ -109,38 +109,68 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
         },
       });
 
+      let userId: string | null = null;
+
       if (authError) {
         if (authError.message.includes('already registered')) {
-          toast.error("This email is already registered");
+          // User exists - reset their password via admin function
+          console.log("User already exists, resetting password...");
+          const { data: resetData, error: resetError } = await supabase.functions.invoke('admin-reset-password', {
+            body: {
+              email: formData.email,
+              newPassword: formData.password,
+            },
+          });
+
+          if (resetError || !resetData?.success) {
+            toast.error("Failed to reset password for existing user");
+            return;
+          }
+
+          userId = resetData.userId;
+          
+          // Update the profile with factory_id and name
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .update({ 
+              factory_id: profile.factory_id,
+              full_name: formData.fullName 
+            })
+            .eq('id', userId);
+
+          if (profileError) {
+            console.error("Profile update error:", profileError);
+          }
         } else {
           toast.error(authError.message);
+          return;
         }
-        return;
+      } else {
+        if (!authData.user) {
+          toast.error("Failed to create user");
+          return;
+        }
+        userId = authData.user.id;
+
+        // Update the profile with factory_id
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ factory_id: profile.factory_id })
+          .eq('id', userId);
+
+        if (profileError) {
+          console.error("Profile update error:", profileError);
+        }
       }
 
-      if (!authData.user) {
-        toast.error("Failed to create user");
-        return;
-      }
-
-      // Update the profile with factory_id
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ factory_id: profile.factory_id })
-        .eq('id', authData.user.id);
-
-      if (profileError) {
-        console.error("Profile update error:", profileError);
-      }
-
-      // Assign role to the new user
+      // Assign role to the new user - use upsert to handle existing roles
       const { error: roleError } = await supabase
         .from('user_roles')
-        .insert({
-          user_id: authData.user.id,
+        .upsert({
+          user_id: userId,
           role: formData.role,
           factory_id: profile.factory_id,
-        });
+        }, { onConflict: 'user_id,role' });
 
       if (roleError) {
         console.error("Role assignment error:", roleError);
@@ -148,20 +178,28 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
         return;
       }
 
-      // Assign lines to the user
-      if (selectedLineIds.length > 0) {
-        const lineAssignments = selectedLineIds.map(lineId => ({
-          user_id: authData.user!.id,
-          line_id: lineId,
-          factory_id: profile.factory_id,
-        }));
-
-        const { error: lineError } = await supabase
+      // Assign lines to the user - first delete existing, then insert new
+      if (userId) {
+        // Delete existing line assignments for this user
+        await supabase
           .from('user_line_assignments')
-          .insert(lineAssignments);
+          .delete()
+          .eq('user_id', userId);
 
-        if (lineError) {
-          console.error("Line assignment error:", lineError);
+        if (selectedLineIds.length > 0) {
+          const lineAssignments = selectedLineIds.map(lineId => ({
+            user_id: userId,
+            line_id: lineId,
+            factory_id: profile.factory_id,
+          }));
+
+          const { error: lineError } = await supabase
+            .from('user_line_assignments')
+            .insert(lineAssignments);
+
+          if (lineError) {
+            console.error("Line assignment error:", lineError);
+          }
         }
       }
 
