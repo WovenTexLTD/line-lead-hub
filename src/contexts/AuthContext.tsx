@@ -24,6 +24,8 @@ interface Factory {
   name: string;
   slug: string;
   subscription_tier: string;
+  subscription_status: string | null;
+  trial_end_date: string | null;
   cutoff_time: string;
   timezone: string;
   logo_url: string | null;

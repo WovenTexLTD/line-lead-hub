@@ -14,10 +14,64 @@ interface SubscriptionStatus {
 }
 
 export function useSubscription() {
-  const { user, profile } = useAuth();
+  const { user, profile, factory } = useAuth();
   const [status, setStatus] = useState<SubscriptionStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Fallback: check subscription status directly from factory data
+  const checkFromFactory = useCallback(() => {
+    if (!profile?.factory_id || !factory) {
+      return {
+        subscribed: false,
+        hasAccess: false,
+        needsFactory: !profile?.factory_id,
+        needsPayment: false
+      };
+    }
+
+    const now = new Date();
+    
+    // Check trial status
+    if (factory.subscription_status === 'trial' && factory.trial_end_date) {
+      const trialEnd = new Date(factory.trial_end_date);
+      if (trialEnd > now) {
+        const daysRemaining = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        return {
+          subscribed: false,
+          hasAccess: true,
+          isTrial: true,
+          trialEndDate: factory.trial_end_date,
+          daysRemaining,
+        };
+      }
+    }
+
+    // Check active subscription
+    if (factory.subscription_status === 'active') {
+      return {
+        subscribed: true,
+        hasAccess: true,
+        isTrial: false,
+      };
+    }
+
+    // Check trialing status (Stripe trial)
+    if (factory.subscription_status === 'trialing') {
+      return {
+        subscribed: true,
+        hasAccess: true,
+        isTrial: true,
+      };
+    }
+
+    // No valid subscription
+    return {
+      subscribed: false,
+      hasAccess: false,
+      needsPayment: true
+    };
+  }, [profile?.factory_id, factory]);
 
   const checkSubscription = useCallback(async () => {
     if (!user) {
@@ -38,16 +92,13 @@ export function useSubscription() {
     } catch (err) {
       console.error('Error checking subscription:', err);
       setError('Failed to check subscription status');
-      // Default to no access on error
-      setStatus({
-        subscribed: false,
-        hasAccess: false,
-        needsPayment: true
-      });
+      // Fallback to checking factory data directly
+      const fallbackStatus = checkFromFactory();
+      setStatus(fallbackStatus);
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, checkFromFactory]);
 
   useEffect(() => {
     checkSubscription();
