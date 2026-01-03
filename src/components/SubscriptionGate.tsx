@@ -1,8 +1,7 @@
-import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/hooks/useSubscription';
-import { Loader2, AlertCircle, Lock } from 'lucide-react';
+import { Loader2, AlertCircle, Lock, LogOut } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
@@ -11,9 +10,14 @@ interface SubscriptionGateProps {
 }
 
 export function SubscriptionGate({ children }: SubscriptionGateProps) {
-  const { user, profile, loading: authLoading, isAdminOrHigher } = useAuth();
+  const { user, profile, loading: authLoading, isAdminOrHigher, signOut } = useAuth();
   const { hasAccess, needsFactory, needsPayment, loading: subLoading, isTrial, status } = useSubscription();
   const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/auth');
+  };
 
   // If user was invited to an existing factory (has factory_id but is not admin), 
   // they don't need to pay - the factory owner pays
@@ -51,6 +55,12 @@ export function SubscriptionGate({ children }: SubscriptionGateProps) {
                 to reactivate the subscription.
               </CardDescription>
             </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              <Button onClick={handleSignOut} variant="outline" className="w-full">
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+              </Button>
+            </CardContent>
           </Card>
         </div>
       );
@@ -74,6 +84,10 @@ export function SubscriptionGate({ children }: SubscriptionGateProps) {
             <Button onClick={() => navigate('/subscription')} className="w-full">
               Get Started
             </Button>
+            <Button onClick={handleSignOut} variant="outline" className="w-full">
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -96,6 +110,10 @@ export function SubscriptionGate({ children }: SubscriptionGateProps) {
           <CardContent className="flex flex-col gap-3">
             <Button onClick={() => navigate('/subscription')} className="w-full">
               Manage Subscription
+            </Button>
+            <Button onClick={handleSignOut} variant="outline" className="w-full">
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
             </Button>
           </CardContent>
         </Card>

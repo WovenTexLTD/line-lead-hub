@@ -90,6 +90,11 @@ export function AppSidebar() {
   const { state, toggleSidebar } = useSidebar();
   const collapsed = state === "collapsed";
 
+  const handleSignOut = async () => {
+    await signOut();
+    // Navigation will happen automatically via AuthContext state change
+  };
+
   // Get highest role for navigation
   const roleHierarchy = ['superadmin', 'owner', 'admin', 'supervisor', 'worker'];
   const highestRole = roleHierarchy.find(r => 
@@ -212,16 +217,15 @@ export function AppSidebar() {
               </span>
             </div>
           )}
-          {!collapsed && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={signOut}
-              className="shrink-0 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
-          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleSignOut}
+            className="shrink-0 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+            title={t('common.signOut') || 'Sign Out'}
+          >
+            <LogOut className="h-4 w-4" />
+          </Button>
         </div>
         <Button
           variant="ghost"

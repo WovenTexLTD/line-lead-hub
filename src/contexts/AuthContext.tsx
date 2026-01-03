@@ -158,10 +158,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function signOut() {
-    await supabase.auth.signOut();
+    // Clear local state first to ensure UI updates immediately
+    setUser(null);
+    setSession(null);
     setProfile(null);
     setRoles([]);
     setFactory(null);
+    
+    // Then attempt to sign out from Supabase (may fail if session already expired)
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      // Ignore sign out errors - session may already be invalid
+      console.log('Sign out completed (session may have already expired)');
+    }
   }
 
   function hasRole(role: AppRole): boolean {
