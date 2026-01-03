@@ -63,7 +63,7 @@ serve(async (req) => {
     // Get factory subscription status
     const { data: factory } = await supabaseClient
       .from('factory_accounts')
-      .select('subscription_status, trial_end_date, stripe_customer_id, stripe_subscription_id')
+      .select('subscription_status, trial_end_date, stripe_customer_id, stripe_subscription_id, subscription_tier, name')
       .eq('id', profile.factory_id)
       .single();
 
@@ -82,6 +82,7 @@ serve(async (req) => {
     logStep("Factory found", { 
       factoryId: profile.factory_id, 
       status: factory.subscription_status,
+      tier: factory.subscription_tier,
       trialEnd: factory.trial_end_date 
     });
 
@@ -91,13 +92,16 @@ serve(async (req) => {
       const now = new Date();
       
       if (trialEnd > now) {
-        logStep("Active trial", { trialEndDate: factory.trial_end_date });
+        const daysRemaining = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        logStep("Active trial", { trialEndDate: factory.trial_end_date, daysRemaining });
         return new Response(JSON.stringify({
           subscribed: false,
           hasAccess: true,
           isTrial: true,
           trialEndDate: factory.trial_end_date,
-          daysRemaining: Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+          daysRemaining,
+          currentTier: factory.subscription_tier || 'professional',
+          factoryName: factory.name,
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 200,
@@ -131,7 +135,9 @@ serve(async (req) => {
               subscribed: true,
               hasAccess: true,
               isTrial: subscription.status === 'trialing',
-              subscriptionEnd: new Date(subscription.current_period_end * 1000).toISOString()
+              subscriptionEnd: new Date(subscription.current_period_end * 1000).toISOString(),
+              currentTier: factory.subscription_tier || 'professional',
+              factoryName: factory.name,
             }), {
               headers: { ...corsHeaders, "Content-Type": "application/json" },
               status: 200,

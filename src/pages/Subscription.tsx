@@ -3,10 +3,11 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, CreditCard, Clock, CheckCircle2, AlertCircle, Sparkles } from "lucide-react";
+import { Loader2, CreditCard, Clock, CheckCircle2, AlertCircle, Sparkles, ArrowRight, Crown } from "lucide-react";
+import { SUBSCRIPTION_TIERS, formatPrice, type SubscriptionTier } from "@/lib/subscription-tiers";
 
 interface SubscriptionStatus {
   subscribed: boolean;
@@ -17,6 +18,7 @@ interface SubscriptionStatus {
   subscriptionEnd?: string;
   needsPayment?: boolean;
   needsFactory?: boolean;
+  currentTier?: string;
 }
 
 export default function Subscription() {
@@ -26,13 +28,12 @@ export default function Subscription() {
   const { toast } = useToast();
   
   const [loading, setLoading] = useState(true);
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [trialLoading, setTrialLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
   const [status, setStatus] = useState<SubscriptionStatus | null>(null);
 
   useEffect(() => {
-    // Handle payment result from URL
     const payment = searchParams.get('payment');
     if (payment === 'success') {
       toast({
@@ -101,10 +102,12 @@ export default function Subscription() {
     }
   };
 
-  const handleSubscribe = async () => {
-    setCheckoutLoading(true);
+  const handleSubscribe = async (tier: SubscriptionTier) => {
+    setCheckoutLoading(tier.id);
     try {
-      const { data, error } = await supabase.functions.invoke('create-checkout');
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: { priceId: tier.priceId, tierId: tier.id }
+      });
       
       if (error) throw error;
       
@@ -119,7 +122,7 @@ export default function Subscription() {
         description: "Failed to create checkout session. Please try again.",
       });
     } finally {
-      setCheckoutLoading(false);
+      setCheckoutLoading(null);
     }
   };
 
@@ -158,7 +161,6 @@ export default function Subscription() {
     );
   }
 
-  // Only owners/admins can manage subscription
   if (!isAdminOrHigher()) {
     return (
       <div className="container max-w-2xl py-8 px-4">
@@ -175,12 +177,15 @@ export default function Subscription() {
     );
   }
 
+  const currentTier = status?.currentTier || 'professional';
+  const tiers = Object.values(SUBSCRIPTION_TIERS);
+
   return (
-    <div className="container max-w-4xl py-8 px-4">
+    <div className="container max-w-6xl py-8 px-4">
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Subscription</h1>
         <p className="text-muted-foreground mt-1">
-          Manage your Production Portal subscription
+          Choose the plan that fits your factory's needs
         </p>
       </div>
 
@@ -211,7 +216,7 @@ export default function Subscription() {
                 )}
               </CardTitle>
               <CardDescription className="mt-2">
-                {status?.subscribed && "You have an active subscription."}
+                {status?.subscribed && `You're on the ${SUBSCRIPTION_TIERS[currentTier]?.name || 'Professional'} plan.`}
                 {status?.isTrial && status.daysRemaining && `Trial ends in ${status.daysRemaining} days.`}
                 {status?.needsPayment && "Subscribe to access all features."}
                 {status?.needsFactory && "Create your factory to get started."}
@@ -221,8 +226,9 @@ export default function Subscription() {
         </CardHeader>
         <CardContent>
           {status?.isTrial && status.trialEndDate && (
-            <div className="bg-muted rounded-lg p-4 mb-4">
-              <p className="text-sm">
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 mb-4">
+              <p className="text-sm text-amber-700 dark:text-amber-400">
+                <Clock className="h-4 w-4 inline mr-2" />
                 <span className="font-medium">Trial expires:</span>{" "}
                 {new Date(status.trialEndDate).toLocaleDateString('en-US', {
                   weekday: 'long',
@@ -234,7 +240,7 @@ export default function Subscription() {
             </div>
           )}
           
-          {status?.subscriptionEnd && (
+          {status?.subscriptionEnd && !status?.isTrial && (
             <div className="bg-muted rounded-lg p-4 mb-4">
               <p className="text-sm">
                 <span className="font-medium">Next billing date:</span>{" "}
@@ -280,84 +286,161 @@ export default function Subscription() {
         </CardContent>
       </Card>
 
-      {/* Pricing Card - Only show if no active subscription */}
-      {!status?.hasAccess && (
-        <Card className="border-2 border-primary">
-          <CardHeader className="text-center pb-4">
-            <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-              <Sparkles className="h-6 w-6 text-primary" />
-            </div>
-            <CardTitle className="text-2xl">Production Portal</CardTitle>
-            <CardDescription>
-              Complete factory management solution
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="text-center">
-            <div className="mb-6">
-              <span className="text-4xl font-bold">$350</span>
-              <span className="text-muted-foreground">/month</span>
-            </div>
-            
-            <ul className="text-left space-y-3 mb-8">
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                <span>Unlimited production tracking</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                <span>Real-time insights & analytics</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                <span>Unlimited users</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                <span>Work order management</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                <span>Blocker tracking & alerts</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                <span>Email reports & notifications</span>
-              </li>
-            </ul>
+      {/* Pricing Tiers */}
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold mb-2">Choose Your Plan</h2>
+        <p className="text-muted-foreground">
+          All plans include a 14-day free trial. Upgrade or downgrade anytime with prorated billing.
+        </p>
+      </div>
 
-            <div className="space-y-3">
-              <Button 
-                onClick={handleStartTrial} 
-                disabled={trialLoading}
-                className="w-full"
-                size="lg"
-              >
-                {trialLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <Clock className="h-4 w-4 mr-2" />
-                )}
-                Start 14-Day Free Trial
-              </Button>
+      <div className="grid md:grid-cols-3 gap-6 mb-8">
+        {tiers.map((tier) => {
+          const isCurrentPlan = status?.subscribed && currentTier === tier.id;
+          const isUpgrade = status?.subscribed && tiers.indexOf(SUBSCRIPTION_TIERS[currentTier]) < tiers.indexOf(tier);
+          const isDowngrade = status?.subscribed && tiers.indexOf(SUBSCRIPTION_TIERS[currentTier]) > tiers.indexOf(tier);
+          
+          return (
+            <Card 
+              key={tier.id} 
+              className={`relative flex flex-col ${
+                tier.popular ? 'border-2 border-primary shadow-lg' : ''
+              } ${isCurrentPlan ? 'ring-2 ring-green-500' : ''}`}
+            >
+              {tier.popular && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <Badge className="bg-primary">
+                    <Sparkles className="h-3 w-3 mr-1" />
+                    Most Popular
+                  </Badge>
+                </div>
+              )}
               
-              <Button 
-                onClick={handleSubscribe} 
-                disabled={checkoutLoading}
-                variant="outline"
-                className="w-full"
-                size="lg"
-              >
-                {checkoutLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              {isCurrentPlan && (
+                <div className="absolute -top-3 right-4">
+                  <Badge className="bg-green-600">
+                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                    Current Plan
+                  </Badge>
+                </div>
+              )}
+
+              <CardHeader className="text-center pb-4">
+                <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                  {tier.id === 'enterprise' ? (
+                    <Crown className="h-6 w-6 text-primary" />
+                  ) : (
+                    <Sparkles className="h-6 w-6 text-primary" />
+                  )}
+                </div>
+                <CardTitle className="text-xl">{tier.name}</CardTitle>
+                <CardDescription>{tier.description}</CardDescription>
+              </CardHeader>
+
+              <CardContent className="flex-1">
+                <div className="text-center mb-6">
+                  <span className="text-4xl font-bold">{formatPrice(tier.price)}</span>
+                  <span className="text-muted-foreground">/month</span>
+                </div>
+                
+                <ul className="space-y-3">
+                  {tier.features.map((feature, idx) => (
+                    <li key={idx} className="flex items-start gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                      <span className="text-sm">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+
+              <CardFooter className="pt-4">
+                {!status?.hasAccess ? (
+                  <div className="w-full space-y-2">
+                    {tier.id === 'professional' && (
+                      <Button 
+                        onClick={handleStartTrial} 
+                        disabled={trialLoading}
+                        className="w-full"
+                        size="lg"
+                      >
+                        {trialLoading ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : (
+                          <Clock className="h-4 w-4 mr-2" />
+                        )}
+                        Start 14-Day Free Trial
+                      </Button>
+                    )}
+                    <Button 
+                      onClick={() => handleSubscribe(tier)} 
+                      disabled={checkoutLoading === tier.id}
+                      variant={tier.id === 'professional' && !status?.needsFactory ? 'outline' : 'default'}
+                      className="w-full"
+                      size="lg"
+                    >
+                      {checkoutLoading === tier.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <CreditCard className="h-4 w-4 mr-2" />
+                      )}
+                      Subscribe Now
+                    </Button>
+                  </div>
+                ) : isCurrentPlan ? (
+                  <Button disabled variant="outline" className="w-full">
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    Current Plan
+                  </Button>
                 ) : (
-                  <CreditCard className="h-4 w-4 mr-2" />
+                  <Button 
+                    onClick={handleManageSubscription}
+                    disabled={portalLoading}
+                    variant={isUpgrade ? 'default' : 'outline'}
+                    className="w-full"
+                  >
+                    {portalLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <ArrowRight className="h-4 w-4 mr-2" />
+                    )}
+                    {isUpgrade ? 'Upgrade' : 'Downgrade'}
+                  </Button>
                 )}
-                Subscribe Now
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+              </CardFooter>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* FAQ / Info */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Frequently Asked Questions</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <h4 className="font-medium mb-1">How does the free trial work?</h4>
+            <p className="text-sm text-muted-foreground">
+              Start with a 14-day free trial of the Professional plan. No credit card required. 
+              You'll have full access to all features during the trial.
+            </p>
+          </div>
+          <div>
+            <h4 className="font-medium mb-1">Can I upgrade or downgrade my plan?</h4>
+            <p className="text-sm text-muted-foreground">
+              Yes! You can change your plan anytime. Upgrades take effect immediately with prorated billing. 
+              Downgrades take effect at the end of your current billing period.
+            </p>
+          </div>
+          <div>
+            <h4 className="font-medium mb-1">What happens if I cancel?</h4>
+            <p className="text-sm text-muted-foreground">
+              You'll continue to have access until the end of your billing period. 
+              Your data will be preserved and you can resubscribe anytime.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
