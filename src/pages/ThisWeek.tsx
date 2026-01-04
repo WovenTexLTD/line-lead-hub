@@ -3,7 +3,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Calendar, TrendingUp, TrendingDown, Minus, Factory, Package } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, Calendar, TrendingUp, TrendingDown, Minus, Factory, Package, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface DailyStats {
   date: string;
@@ -18,6 +19,7 @@ interface DailyStats {
 export default function ThisWeek() {
   const { profile } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [weekOffset, setWeekOffset] = useState(0); // 0 = current week, -1 = last week, etc.
   const [weekStats, setWeekStats] = useState<DailyStats[]>([]);
   const [totals, setTotals] = useState({
     sewingOutput: 0,
@@ -30,7 +32,7 @@ export default function ThisWeek() {
     if (profile?.factory_id) {
       fetchWeekData();
     }
-  }, [profile?.factory_id]);
+  }, [profile?.factory_id, weekOffset]);
 
   async function fetchWeekData() {
     if (!profile?.factory_id) return;
@@ -38,9 +40,12 @@ export default function ThisWeek() {
 
     try {
       const today = new Date();
-      const weekStart = new Date(today);
-      weekStart.setDate(today.getDate() - today.getDay()); // Start of week (Sunday)
+      const currentWeekStart = new Date(today);
+      currentWeekStart.setDate(today.getDate() - today.getDay()); // Start of current week (Sunday)
       
+      // Apply week offset
+      const weekStart = new Date(currentWeekStart);
+      weekStart.setDate(currentWeekStart.getDate() + (weekOffset * 7));
       const days: DailyStats[] = [];
       let totalSewing = 0;
       let totalFinishing = 0;
@@ -136,15 +141,61 @@ export default function ThisWeek() {
 
   const today = new Date().toISOString().split('T')[0];
 
+  // Get week date range for display
+  const getWeekRange = () => {
+    const today = new Date();
+    const currentWeekStart = new Date(today);
+    currentWeekStart.setDate(today.getDate() - today.getDay());
+    
+    const weekStart = new Date(currentWeekStart);
+    weekStart.setDate(currentWeekStart.getDate() + (weekOffset * 7));
+    
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    
+    const formatDate = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return `${formatDate(weekStart)} - ${formatDate(weekEnd)}`;
+  };
+
+  const isCurrentWeek = weekOffset === 0;
+
   return (
     <div className="p-4 lg:p-6 space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Calendar className="h-6 w-6" />
-          This Week
-        </h1>
-        <p className="text-muted-foreground">Weekly production overview</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Calendar className="h-6 w-6" />
+            {isCurrentWeek ? 'This Week' : weekOffset === -1 ? 'Last Week' : `${Math.abs(weekOffset)} Weeks Ago`}
+          </h1>
+          <p className="text-muted-foreground">{getWeekRange()}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setWeekOffset(prev => prev - 1)}
+            disabled={loading}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setWeekOffset(0)}
+            disabled={loading || isCurrentWeek}
+          >
+            Today
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setWeekOffset(prev => prev + 1)}
+            disabled={loading || isCurrentWeek}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Week Summary Cards */}
