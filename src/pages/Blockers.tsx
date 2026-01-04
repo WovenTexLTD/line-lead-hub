@@ -8,7 +8,8 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Loader2, AlertTriangle, Search, Filter, Clock, CheckCircle, Factory, Package } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Loader2, AlertTriangle, Search, Filter, Clock, CheckCircle, Factory, Package, Trash2, X } from "lucide-react";
 import { BLOCKER_IMPACT_LABELS } from "@/lib/constants";
 import { toast } from "sonner";
 
@@ -49,6 +50,8 @@ export default function Blockers() {
   const [selectedBlocker, setSelectedBlocker] = useState<Blocker | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [resolving, setResolving] = useState(false);
+  const [dismissing, setDismissing] = useState(false);
+  const [bulkDismissing, setBulkDismissing] = useState(false);
 
   useEffect(() => {
     if (profile?.factory_id) {
@@ -155,6 +158,86 @@ export default function Blockers() {
     }
   }
 
+  async function handleDismiss(blocker: Blocker) {
+    if (!isAdminOrHigher()) {
+      toast.error("Only admins can dismiss blockers");
+      return;
+    }
+
+    setDismissing(true);
+    try {
+      const table = blocker.type === 'sewing' ? 'production_updates_sewing' : 'production_updates_finishing';
+      const { error } = await supabase
+        .from(table)
+        .update({ has_blocker: false })
+        .eq('id', blocker.id);
+
+      if (error) throw error;
+
+      toast.success("Blocker dismissed");
+      setDetailModalOpen(false);
+      setSelectedBlocker(null);
+      // Remove from local state immediately
+      setBlockers(prev => prev.filter(b => b.id !== blocker.id));
+    } catch (error) {
+      console.error('Error dismissing blocker:', error);
+      toast.error("Failed to dismiss blocker");
+    } finally {
+      setDismissing(false);
+    }
+  }
+
+  async function handleBulkDismiss() {
+    if (!isAdminOrHigher()) {
+      toast.error("Only admins can dismiss blockers");
+      return;
+    }
+
+    const resolvedBlockersList = blockers.filter(b => b.status === 'resolved');
+    if (resolvedBlockersList.length === 0) {
+      toast.info("No resolved blockers to dismiss");
+      return;
+    }
+
+    setBulkDismissing(true);
+    try {
+      const sewingIds = resolvedBlockersList.filter(b => b.type === 'sewing').map(b => b.id);
+      const finishingIds = resolvedBlockersList.filter(b => b.type === 'finishing').map(b => b.id);
+
+      const promises = [];
+      if (sewingIds.length > 0) {
+        promises.push(
+          supabase
+            .from('production_updates_sewing')
+            .update({ has_blocker: false })
+            .in('id', sewingIds)
+        );
+      }
+      if (finishingIds.length > 0) {
+        promises.push(
+          supabase
+            .from('production_updates_finishing')
+            .update({ has_blocker: false })
+            .in('id', finishingIds)
+        );
+      }
+
+      const results = await Promise.all(promises);
+      const hasError = results.some(r => r.error);
+
+      if (hasError) throw new Error("Some blockers failed to dismiss");
+
+      toast.success(`${resolvedBlockersList.length} resolved blockers dismissed`);
+      // Remove all resolved blockers from local state
+      setBlockers(prev => prev.filter(b => b.status !== 'resolved'));
+    } catch (error) {
+      console.error('Error bulk dismissing blockers:', error);
+      toast.error("Failed to dismiss some blockers");
+    } finally {
+      setBulkDismissing(false);
+    }
+  }
+
   const filteredBlockers = blockers.filter(b => {
     const matchesSearch = b.line_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (b.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -256,11 +339,48 @@ export default function Blockers() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="open">Open ({openBlockers.length})</TabsTrigger>
-          <TabsTrigger value="resolved">Resolved ({resolvedBlockers.length})</TabsTrigger>
-          <TabsTrigger value="all">All ({blockers.length})</TabsTrigger>
-        </TabsList>
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <TabsList>
+            <TabsTrigger value="open">Open ({openBlockers.length})</TabsTrigger>
+            <TabsTrigger value="resolved">Resolved ({resolvedBlockers.length})</TabsTrigger>
+            <TabsTrigger value="all">All ({blockers.length})</TabsTrigger>
+          </TabsList>
+          
+          {/* Bulk dismiss button - only show on resolved tab with resolved blockers */}
+          {activeTab === 'resolved' && resolvedBlockers.length > 0 && isAdminOrHigher() && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/10">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Clear All Resolved
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Clear all resolved blockers?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will dismiss {resolvedBlockers.length} resolved blocker{resolvedBlockers.length !== 1 ? 's' : ''} from your view. The production records will remain but blockers won't show here anymore.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleBulkDismiss}
+                    disabled={bulkDismissing}
+                    className="bg-destructive hover:bg-destructive/90"
+                  >
+                    {bulkDismissing ? (
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4 mr-1" />
+                    )}
+                    Clear All
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+        </div>
 
         <TabsContent value={activeTab} className="mt-4">
           {filteredBlockers.length > 0 ? (
@@ -314,20 +434,36 @@ export default function Blockers() {
                           </span>
                         </div>
                       </div>
-                      {blocker.status !== 'resolved' && isAdminOrHigher() && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="shrink-0 text-success border-success/30 hover:bg-success/10"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleResolve(blocker);
-                          }}
-                        >
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          Resolve
-                        </Button>
-                      )}
+                      <div className="flex items-center gap-2 shrink-0">
+                        {blocker.status !== 'resolved' && isAdminOrHigher() && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-success border-success/30 hover:bg-success/10"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleResolve(blocker);
+                            }}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Resolve
+                          </Button>
+                        )}
+                        {blocker.status === 'resolved' && isAdminOrHigher() && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDismiss(blocker);
+                            }}
+                            title="Dismiss blocker"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -436,10 +572,24 @@ export default function Blockers() {
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={() => setDetailModalOpen(false)}>
               Close
             </Button>
+            {selectedBlocker && selectedBlocker.status === 'resolved' && isAdminOrHigher() && (
+              <Button
+                variant="destructive"
+                onClick={() => selectedBlocker && handleDismiss(selectedBlocker)}
+                disabled={dismissing}
+              >
+                {dismissing ? (
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4 mr-1" />
+                )}
+                Dismiss
+              </Button>
+            )}
             {selectedBlocker && selectedBlocker.status !== 'resolved' && isAdminOrHigher() && (
               <Button
                 onClick={() => selectedBlocker && handleResolve(selectedBlocker)}
