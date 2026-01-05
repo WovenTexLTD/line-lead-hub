@@ -275,51 +275,57 @@ export default function ThisWeek() {
               <CardTitle className="text-base">Daily Sewing Output</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-7 gap-2">
-                {weekStats.map((day, index) => {
+              <div className="grid grid-cols-7 gap-4">
+                {weekStats.map((day) => {
                   const isToday = day.date === today;
                   const isFuture = new Date(day.date) > new Date();
                   const outputBarHeight = isFuture ? 0 : (day.sewingOutput / maxSewing) * 100;
                   const targetBarHeight = isFuture ? 0 : (day.sewingTarget / maxSewing) * 100;
-                  const previousDay = weekStats[index - 1];
-                  const trend = previousDay && !isFuture ? getTrend(day.sewingOutput, previousDay.sewingOutput) : null;
-                  const TrendIcon = trend?.icon;
+                  const achievement = day.sewingTarget > 0 ? Math.round((day.sewingOutput / day.sewingTarget) * 100) : 0;
+                  const achievementColor = achievement >= 100 ? 'text-success' : achievement >= 80 ? 'text-warning' : 'text-destructive';
                   
                   return (
-                    <div key={day.date} className={`text-center ${isToday ? 'bg-primary/5 rounded-lg p-2 -m-2' : ''}`}>
-                      <p className={`text-xs font-medium mb-2 ${isToday ? 'text-primary' : 'text-muted-foreground'}`}>
+                    <div key={day.date} className={`text-center p-3 rounded-xl transition-all ${isToday ? 'bg-primary/10 ring-2 ring-primary/30' : 'bg-muted/30'}`}>
+                      <p className={`text-sm font-semibold mb-3 ${isToday ? 'text-primary' : 'text-foreground'}`}>
                         {day.dayName}
                       </p>
-                      <div className="h-24 flex items-end justify-center gap-1 mb-2">
-                        <div
-                          className={`w-3 rounded-t transition-all ${isFuture ? 'bg-muted' : 'bg-muted-foreground/30'}`}
-                          style={{ height: `${Math.max(targetBarHeight, 4)}%` }}
-                          title={`Target: ${day.sewingTarget.toLocaleString()}`}
-                        />
-                        <div
-                          className={`w-5 rounded-t transition-all ${isFuture ? 'bg-muted' : isToday ? 'bg-primary' : 'bg-primary/60'}`}
-                          style={{ height: `${Math.max(outputBarHeight, 4)}%` }}
-                          title={`Output: ${day.sewingOutput.toLocaleString()}`}
-                        />
+                      <div className="h-32 flex items-end justify-center gap-2 mb-3">
+                        <div className="flex flex-col items-center">
+                          <div
+                            className={`w-6 rounded-t-lg transition-all shadow-sm ${isFuture ? 'bg-muted' : 'bg-muted-foreground/40'}`}
+                            style={{ height: `${Math.max(targetBarHeight, 8)}%` }}
+                          />
+                        </div>
+                        <div className="flex flex-col items-center">
+                          <div
+                            className={`w-8 rounded-t-lg transition-all shadow-md ${isFuture ? 'bg-muted' : isToday ? 'bg-primary' : 'bg-primary/70'}`}
+                            style={{ height: `${Math.max(outputBarHeight, 8)}%` }}
+                          />
+                        </div>
                       </div>
-                      <p className={`text-sm font-mono font-bold ${isFuture ? 'text-muted-foreground' : ''}`}>
+                      <p className={`text-base font-mono font-bold ${isFuture ? 'text-muted-foreground' : 'text-foreground'}`}>
                         {isFuture ? '-' : day.sewingOutput.toLocaleString()}
                       </p>
-                      {TrendIcon && !isFuture && index > 0 && (
-                        <TrendIcon className={`h-3 w-3 mx-auto mt-1 ${trend?.color}`} />
+                      {!isFuture && day.sewingTarget > 0 && (
+                        <p className={`text-xs font-medium mt-1 ${achievementColor}`}>
+                          {achievement}% of target
+                        </p>
+                      )}
+                      {!isFuture && day.sewingTarget === 0 && (
+                        <p className="text-xs text-muted-foreground mt-1">No target</p>
                       )}
                     </div>
                   );
                 })}
               </div>
-              <div className="flex items-center justify-center gap-4 mt-4 text-xs text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded bg-muted-foreground/30" />
-                  <span>Target</span>
+              <div className="flex items-center justify-center gap-6 mt-6 pt-4 border-t">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded bg-muted-foreground/40" />
+                  <span className="text-sm text-muted-foreground">Target</span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded bg-primary/60" />
-                  <span>Output</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded bg-primary/70" />
+                  <span className="text-sm text-muted-foreground">Output</span>
                 </div>
               </div>
             </CardContent>
@@ -332,51 +338,57 @@ export default function ThisWeek() {
               <CardTitle className="text-base">Daily Finishing QC Pass</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-7 gap-2">
-                {weekStats.map((day, index) => {
+              <div className="grid grid-cols-7 gap-4">
+                {weekStats.map((day) => {
                   const isToday = day.date === today;
                   const isFuture = new Date(day.date) > new Date();
                   const outputBarHeight = isFuture ? 0 : (day.finishingQcPass / maxFinishing) * 100;
                   const targetBarHeight = isFuture ? 0 : (day.finishingTarget / maxFinishing) * 100;
-                  const previousDay = weekStats[index - 1];
-                  const trend = previousDay && !isFuture ? getTrend(day.finishingQcPass, previousDay.finishingQcPass) : null;
-                  const TrendIcon = trend?.icon;
+                  const achievement = day.finishingTarget > 0 ? Math.round((day.finishingQcPass / day.finishingTarget) * 100) : 0;
+                  const achievementColor = achievement >= 100 ? 'text-success' : achievement >= 80 ? 'text-warning' : 'text-destructive';
                   
                   return (
-                    <div key={day.date} className={`text-center ${isToday ? 'bg-info/5 rounded-lg p-2 -m-2' : ''}`}>
-                      <p className={`text-xs font-medium mb-2 ${isToday ? 'text-info' : 'text-muted-foreground'}`}>
+                    <div key={day.date} className={`text-center p-3 rounded-xl transition-all ${isToday ? 'bg-info/10 ring-2 ring-info/30' : 'bg-muted/30'}`}>
+                      <p className={`text-sm font-semibold mb-3 ${isToday ? 'text-info' : 'text-foreground'}`}>
                         {day.dayName}
                       </p>
-                      <div className="h-24 flex items-end justify-center gap-1 mb-2">
-                        <div
-                          className={`w-3 rounded-t transition-all ${isFuture ? 'bg-muted' : 'bg-muted-foreground/30'}`}
-                          style={{ height: `${Math.max(targetBarHeight, 4)}%` }}
-                          title={`Target: ${day.finishingTarget.toLocaleString()}`}
-                        />
-                        <div
-                          className={`w-5 rounded-t transition-all ${isFuture ? 'bg-muted' : isToday ? 'bg-info' : 'bg-info/60'}`}
-                          style={{ height: `${Math.max(outputBarHeight, 4)}%` }}
-                          title={`QC Pass: ${day.finishingQcPass.toLocaleString()}`}
-                        />
+                      <div className="h-32 flex items-end justify-center gap-2 mb-3">
+                        <div className="flex flex-col items-center">
+                          <div
+                            className={`w-6 rounded-t-lg transition-all shadow-sm ${isFuture ? 'bg-muted' : 'bg-muted-foreground/40'}`}
+                            style={{ height: `${Math.max(targetBarHeight, 8)}%` }}
+                          />
+                        </div>
+                        <div className="flex flex-col items-center">
+                          <div
+                            className={`w-8 rounded-t-lg transition-all shadow-md ${isFuture ? 'bg-muted' : isToday ? 'bg-info' : 'bg-info/70'}`}
+                            style={{ height: `${Math.max(outputBarHeight, 8)}%` }}
+                          />
+                        </div>
                       </div>
-                      <p className={`text-sm font-mono font-bold ${isFuture ? 'text-muted-foreground' : ''}`}>
+                      <p className={`text-base font-mono font-bold ${isFuture ? 'text-muted-foreground' : 'text-foreground'}`}>
                         {isFuture ? '-' : day.finishingQcPass.toLocaleString()}
                       </p>
-                      {TrendIcon && !isFuture && index > 0 && (
-                        <TrendIcon className={`h-3 w-3 mx-auto mt-1 ${trend?.color}`} />
+                      {!isFuture && day.finishingTarget > 0 && (
+                        <p className={`text-xs font-medium mt-1 ${achievementColor}`}>
+                          {achievement}% of target
+                        </p>
+                      )}
+                      {!isFuture && day.finishingTarget === 0 && (
+                        <p className="text-xs text-muted-foreground mt-1">No target</p>
                       )}
                     </div>
                   );
                 })}
               </div>
-              <div className="flex items-center justify-center gap-4 mt-4 text-xs text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded bg-muted-foreground/30" />
-                  <span>Target</span>
+              <div className="flex items-center justify-center gap-6 mt-6 pt-4 border-t">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded bg-muted-foreground/40" />
+                  <span className="text-sm text-muted-foreground">Target</span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded bg-info/60" />
-                  <span>QC Pass</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded bg-info/70" />
+                  <span className="text-sm text-muted-foreground">QC Pass</span>
                 </div>
               </div>
             </CardContent>
