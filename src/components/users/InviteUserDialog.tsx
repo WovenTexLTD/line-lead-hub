@@ -392,42 +392,48 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label className="flex items-center gap-2">
-              <GitBranch className="h-4 w-4 text-muted-foreground" />
-              Assigned Lines
-              {selectedLineIds.length > 0 && (
-                <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                  {selectedLineIds.length} selected
-                </span>
-              )}
-            </Label>
-            <ScrollArea className="h-32 border rounded-md p-2">
-              {lines.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No lines available
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {lines.map((line) => (
-                    <div key={line.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`line-${line.id}`}
-                        checked={selectedLineIds.includes(line.id)}
-                        onCheckedChange={() => toggleLine(line.id)}
-                      />
-                      <label
-                        htmlFor={`line-${line.id}`}
-                        className="text-sm cursor-pointer flex-1"
-                      >
-                        {line.name || line.line_id}
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
-          </div>
+          {/* Line assignments - only for workers */}
+          {formData.role === 'worker' && (
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <GitBranch className="h-4 w-4 text-muted-foreground" />
+                Assigned Lines
+                {selectedLineIds.length > 0 && (
+                  <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                    {selectedLineIds.length} selected
+                  </span>
+                )}
+              </Label>
+              <ScrollArea className="h-32 border rounded-md p-2">
+                {lines.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No lines available
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {lines.map((line) => (
+                      <div key={line.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`line-${line.id}`}
+                          checked={selectedLineIds.includes(line.id)}
+                          onCheckedChange={() => toggleLine(line.id)}
+                        />
+                        <label
+                          htmlFor={`line-${line.id}`}
+                          className="text-sm cursor-pointer flex-1"
+                        >
+                          {line.name || line.line_id}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+              <p className="text-xs text-muted-foreground">
+                Select which lines this worker can submit updates for.
+              </p>
+            </div>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
