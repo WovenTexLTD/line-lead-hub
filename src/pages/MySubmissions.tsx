@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { Loader2, FileText, TrendingUp, AlertCircle, Calendar, Clock, CheckCircle2, XCircle, Filter, CalendarIcon } from "lucide-react";
+import { Loader2, FileText, AlertCircle, Calendar, CheckCircle2, XCircle, Filter, CalendarIcon, Target, Package } from "lucide-react";
 import { format, subDays, startOfDay, isWithinInterval, parseISO } from "date-fns";
 import { SubmissionDetailModal } from "@/components/SubmissionDetailModal";
 import { cn } from "@/lib/utils";
@@ -57,7 +57,7 @@ interface DateRange {
 }
 
 export default function MySubmissions() {
-  const { profile, user } = useAuth();
+  const { profile, user, hasRole, isAdminOrHigher } = useAuth();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"sewing" | "finishing">("sewing");
   
@@ -76,9 +76,16 @@ export default function MySubmissions() {
   const [missedDays, setMissedDays] = useState<MissedDay[]>([]);
   const [assignedLines, setAssignedLines] = useState<{id: string; name: string}[]>([]);
   
+  // Today's data for workers
+  const [todaysTargetHourly, setTodaysTargetHourly] = useState(0);
+  const [todaysOutput, setTodaysOutput] = useState(0);
+  
   // Modal state
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  
+  // Check if user is a worker
+  const isWorker = (profile?.department != null) || (hasRole('worker') && !hasRole('supervisor') && !isAdminOrHigher());
 
   useEffect(() => {
     if (profile?.factory_id && user?.id) {
@@ -92,6 +99,7 @@ export default function MySubmissions() {
 
     try {
       const thirtyDaysAgo = format(subDays(new Date(), 30), 'yyyy-MM-dd');
+      const today = format(new Date(), 'yyyy-MM-dd');
       
       // Fetch all data in parallel
       const [
@@ -100,7 +108,11 @@ export default function MySubmissions() {
         sewingCountRes,
         finishingCountRes,
         lineAssignmentsRes,
-        allLinesRes
+        allLinesRes,
+        todaySewingTargetsRes,
+        todayFinishingTargetsRes,
+        todaySewingActualsRes,
+        todayFinishingActualsRes
       ] = await Promise.all([
         // Last 30 days sewing submissions
         supabase
@@ -137,13 +149,47 @@ export default function MySubmissions() {
           .from('lines')
           .select('id, line_id, name')
           .eq('factory_id', profile.factory_id)
-          .eq('is_active', true)
+          .eq('is_active', true),
+        // Today's sewing targets
+        supabase
+          .from('sewing_targets')
+          .select('per_hour_target')
+          .eq('submitted_by', user.id)
+          .eq('production_date', today),
+        // Today's finishing targets
+        supabase
+          .from('finishing_targets')
+          .select('per_hour_target')
+          .eq('submitted_by', user.id)
+          .eq('production_date', today),
+        // Today's sewing actuals (output)
+        supabase
+          .from('production_updates_sewing')
+          .select('output_qty')
+          .eq('submitted_by', user.id)
+          .eq('production_date', today),
+        // Today's finishing actuals (output)
+        supabase
+          .from('production_updates_finishing')
+          .select('qc_pass_qty')
+          .eq('submitted_by', user.id)
+          .eq('production_date', today)
       ]);
 
       setSewingSubmissions(sewingRes.data || []);
       setFinishingSubmissions(finishingRes.data || []);
       setTotalSewingAllTime(sewingCountRes.count || 0);
       setTotalFinishingAllTime(finishingCountRes.count || 0);
+      
+      // Calculate today's target hourly (sum of all per_hour_target)
+      const sewingTargetSum = (todaySewingTargetsRes.data || []).reduce((acc, t) => acc + (t.per_hour_target || 0), 0);
+      const finishingTargetSum = (todayFinishingTargetsRes.data || []).reduce((acc, t) => acc + (t.per_hour_target || 0), 0);
+      setTodaysTargetHourly(profile.department === 'finishing' ? finishingTargetSum : sewingTargetSum);
+      
+      // Calculate today's output
+      const sewingOutputSum = (todaySewingActualsRes.data || []).reduce((acc, s) => acc + (s.output_qty || 0), 0);
+      const finishingOutputSum = (todayFinishingActualsRes.data || []).reduce((acc, s) => acc + (s.qc_pass_qty || 0), 0);
+      setTodaysOutput(profile.department === 'finishing' ? finishingOutputSum : sewingOutputSum);
 
       // Calculate assigned lines
       const assignedLineIds = (lineAssignmentsRes.data || []).map(a => a.line_id);
@@ -159,10 +205,10 @@ export default function MySubmissions() {
       const submittedDates = new Set(allSubmissions.map(s => `${s.production_date}-${s.line_id}`));
       
       const missed: MissedDay[] = [];
-      const today = startOfDay(new Date());
+      const todayDate = startOfDay(new Date());
       
       for (let i = 1; i <= 30; i++) {
-        const date = format(subDays(today, i), 'yyyy-MM-dd');
+        const date = format(subDays(todayDate, i), 'yyyy-MM-dd');
         for (const line of userLines) {
           const key = `${date}-${line.id}`;
           if (!submittedDates.has(key)) {
@@ -333,31 +379,63 @@ export default function MySubmissions() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-l-4 border-l-primary">
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">Filtered</p>
-                <p className="text-2xl font-bold">{stats[activeTab].last30Days}</p>
-                <p className="text-xs text-muted-foreground">Submissions</p>
-              </div>
-              <FileText className="h-8 w-8 text-primary/30" />
-            </div>
-          </CardContent>
-        </Card>
+        {isWorker ? (
+          <>
+            <Card className="border-l-4 border-l-primary">
+              <CardContent className="pt-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Today's Target</p>
+                    <p className="text-2xl font-bold">{todaysTargetHourly.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">Hourly output</p>
+                  </div>
+                  <Target className="h-8 w-8 text-primary/30" />
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card className="border-l-4 border-l-success">
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">All Time</p>
-                <p className="text-2xl font-bold">{stats[activeTab].allTime}</p>
-                <p className="text-xs text-muted-foreground">Total submissions</p>
-              </div>
-              <TrendingUp className="h-8 w-8 text-success/30" />
-            </div>
-          </CardContent>
-        </Card>
+            <Card className="border-l-4 border-l-success">
+              <CardContent className="pt-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Today's Output</p>
+                    <p className="text-2xl font-bold">{todaysOutput.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">Pieces produced</p>
+                  </div>
+                  <Package className="h-8 w-8 text-success/30" />
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          <>
+            <Card className="border-l-4 border-l-primary">
+              <CardContent className="pt-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Filtered</p>
+                    <p className="text-2xl font-bold">{stats[activeTab].last30Days}</p>
+                    <p className="text-xs text-muted-foreground">Submissions</p>
+                  </div>
+                  <FileText className="h-8 w-8 text-primary/30" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-success">
+              <CardContent className="pt-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider">All Time</p>
+                    <p className="text-2xl font-bold">{stats[activeTab].allTime}</p>
+                    <p className="text-xs text-muted-foreground">Total submissions</p>
+                  </div>
+                  <CheckCircle2 className="h-8 w-8 text-success/30" />
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
 
         <Card className="border-l-4 border-l-warning">
           <CardContent className="pt-4">
