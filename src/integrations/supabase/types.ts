@@ -239,10 +239,12 @@ export type Database = {
         Row: {
           created_at: string | null
           cutoff_time: string | null
+          evening_actual_cutoff: string | null
           id: string
           is_active: boolean | null
           logo_url: string | null
           max_lines: number | null
+          morning_target_cutoff: string | null
           name: string
           payment_failed_at: string | null
           slug: string
@@ -260,10 +262,12 @@ export type Database = {
         Insert: {
           created_at?: string | null
           cutoff_time?: string | null
+          evening_actual_cutoff?: string | null
           id?: string
           is_active?: boolean | null
           logo_url?: string | null
           max_lines?: number | null
+          morning_target_cutoff?: string | null
           name: string
           payment_failed_at?: string | null
           slug: string
@@ -281,10 +285,12 @@ export type Database = {
         Update: {
           created_at?: string | null
           cutoff_time?: string | null
+          evening_actual_cutoff?: string | null
           id?: string
           is_active?: boolean | null
           logo_url?: string | null
           max_lines?: number | null
+          morning_target_cutoff?: string | null
           name?: string
           payment_failed_at?: string | null
           slug?: string
@@ -300,6 +306,237 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      finishing_actuals: {
+        Row: {
+          action_taken_today: string | null
+          average_production: number | null
+          blocker_description: string | null
+          blocker_impact: Database["public"]["Enums"]["blocker_impact"] | null
+          blocker_owner: string | null
+          blocker_resolution_date: string | null
+          blocker_type_id: string | null
+          buyer_name: string | null
+          created_at: string | null
+          day_carton: number
+          day_hour_actual: number
+          day_over_time_actual: number
+          day_poly: number
+          day_qc_pass: number
+          factory_id: string
+          floor_name: string | null
+          has_blocker: boolean | null
+          id: string
+          item_name: string | null
+          line_id: string
+          m_power_actual: number
+          order_qty: number | null
+          photo_urls: string[] | null
+          production_date: string
+          remarks: string | null
+          style_no: string | null
+          submitted_at: string | null
+          submitted_by: string | null
+          total_carton: number
+          total_hour: number | null
+          total_over_time: number | null
+          total_poly: number
+          total_qc_pass: number
+          unit_name: string | null
+          work_order_id: string
+        }
+        Insert: {
+          action_taken_today?: string | null
+          average_production?: number | null
+          blocker_description?: string | null
+          blocker_impact?: Database["public"]["Enums"]["blocker_impact"] | null
+          blocker_owner?: string | null
+          blocker_resolution_date?: string | null
+          blocker_type_id?: string | null
+          buyer_name?: string | null
+          created_at?: string | null
+          day_carton?: number
+          day_hour_actual?: number
+          day_over_time_actual?: number
+          day_poly?: number
+          day_qc_pass?: number
+          factory_id: string
+          floor_name?: string | null
+          has_blocker?: boolean | null
+          id?: string
+          item_name?: string | null
+          line_id: string
+          m_power_actual?: number
+          order_qty?: number | null
+          photo_urls?: string[] | null
+          production_date?: string
+          remarks?: string | null
+          style_no?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          total_carton?: number
+          total_hour?: number | null
+          total_over_time?: number | null
+          total_poly?: number
+          total_qc_pass?: number
+          unit_name?: string | null
+          work_order_id: string
+        }
+        Update: {
+          action_taken_today?: string | null
+          average_production?: number | null
+          blocker_description?: string | null
+          blocker_impact?: Database["public"]["Enums"]["blocker_impact"] | null
+          blocker_owner?: string | null
+          blocker_resolution_date?: string | null
+          blocker_type_id?: string | null
+          buyer_name?: string | null
+          created_at?: string | null
+          day_carton?: number
+          day_hour_actual?: number
+          day_over_time_actual?: number
+          day_poly?: number
+          day_qc_pass?: number
+          factory_id?: string
+          floor_name?: string | null
+          has_blocker?: boolean | null
+          id?: string
+          item_name?: string | null
+          line_id?: string
+          m_power_actual?: number
+          order_qty?: number | null
+          photo_urls?: string[] | null
+          production_date?: string
+          remarks?: string | null
+          style_no?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          total_carton?: number
+          total_hour?: number | null
+          total_over_time?: number | null
+          total_poly?: number
+          total_qc_pass?: number
+          unit_name?: string | null
+          work_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finishing_actuals_blocker_type_id_fkey"
+            columns: ["blocker_type_id"]
+            isOneToOne: false
+            referencedRelation: "blocker_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finishing_actuals_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finishing_actuals_line_id_fkey"
+            columns: ["line_id"]
+            isOneToOne: false
+            referencedRelation: "lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finishing_actuals_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finishing_targets: {
+        Row: {
+          buyer_name: string | null
+          created_at: string | null
+          day_hour_planned: number
+          day_over_time_planned: number
+          factory_id: string
+          floor_name: string | null
+          id: string
+          item_name: string | null
+          line_id: string
+          m_power_planned: number
+          order_qty: number | null
+          per_hour_target: number
+          production_date: string
+          remarks: string | null
+          style_no: string | null
+          submitted_at: string | null
+          submitted_by: string | null
+          unit_name: string | null
+          work_order_id: string
+        }
+        Insert: {
+          buyer_name?: string | null
+          created_at?: string | null
+          day_hour_planned?: number
+          day_over_time_planned?: number
+          factory_id: string
+          floor_name?: string | null
+          id?: string
+          item_name?: string | null
+          line_id: string
+          m_power_planned: number
+          order_qty?: number | null
+          per_hour_target: number
+          production_date?: string
+          remarks?: string | null
+          style_no?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          unit_name?: string | null
+          work_order_id: string
+        }
+        Update: {
+          buyer_name?: string | null
+          created_at?: string | null
+          day_hour_planned?: number
+          day_over_time_planned?: number
+          factory_id?: string
+          floor_name?: string | null
+          id?: string
+          item_name?: string | null
+          line_id?: string
+          m_power_planned?: number
+          order_qty?: number | null
+          per_hour_target?: number
+          production_date?: string
+          remarks?: string | null
+          style_no?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          unit_name?: string | null
+          work_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finishing_targets_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finishing_targets_line_id_fkey"
+            columns: ["line_id"]
+            isOneToOne: false
+            referencedRelation: "lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finishing_targets_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       floors: {
         Row: {
@@ -934,6 +1171,248 @@ export type Database = {
             columns: ["factory_id"]
             isOneToOne: false
             referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sewing_actuals: {
+        Row: {
+          action_taken_today: string | null
+          actual_stage_id: string | null
+          actual_stage_progress: number
+          blocker_description: string | null
+          blocker_impact: Database["public"]["Enums"]["blocker_impact"] | null
+          blocker_owner: string | null
+          blocker_resolution_date: string | null
+          blocker_type_id: string | null
+          buyer_name: string | null
+          created_at: string | null
+          cumulative_good_total: number
+          factory_id: string
+          floor_name: string | null
+          good_today: number
+          has_blocker: boolean | null
+          id: string
+          item_name: string | null
+          line_id: string
+          manpower_actual: number
+          order_qty: number | null
+          ot_hours_actual: number
+          photo_urls: string[] | null
+          production_date: string
+          reject_today: number
+          remarks: string | null
+          rework_today: number
+          style_code: string | null
+          submitted_at: string | null
+          submitted_by: string | null
+          unit_name: string | null
+          work_order_id: string
+        }
+        Insert: {
+          action_taken_today?: string | null
+          actual_stage_id?: string | null
+          actual_stage_progress?: number
+          blocker_description?: string | null
+          blocker_impact?: Database["public"]["Enums"]["blocker_impact"] | null
+          blocker_owner?: string | null
+          blocker_resolution_date?: string | null
+          blocker_type_id?: string | null
+          buyer_name?: string | null
+          created_at?: string | null
+          cumulative_good_total?: number
+          factory_id: string
+          floor_name?: string | null
+          good_today?: number
+          has_blocker?: boolean | null
+          id?: string
+          item_name?: string | null
+          line_id: string
+          manpower_actual?: number
+          order_qty?: number | null
+          ot_hours_actual?: number
+          photo_urls?: string[] | null
+          production_date?: string
+          reject_today?: number
+          remarks?: string | null
+          rework_today?: number
+          style_code?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          unit_name?: string | null
+          work_order_id: string
+        }
+        Update: {
+          action_taken_today?: string | null
+          actual_stage_id?: string | null
+          actual_stage_progress?: number
+          blocker_description?: string | null
+          blocker_impact?: Database["public"]["Enums"]["blocker_impact"] | null
+          blocker_owner?: string | null
+          blocker_resolution_date?: string | null
+          blocker_type_id?: string | null
+          buyer_name?: string | null
+          created_at?: string | null
+          cumulative_good_total?: number
+          factory_id?: string
+          floor_name?: string | null
+          good_today?: number
+          has_blocker?: boolean | null
+          id?: string
+          item_name?: string | null
+          line_id?: string
+          manpower_actual?: number
+          order_qty?: number | null
+          ot_hours_actual?: number
+          photo_urls?: string[] | null
+          production_date?: string
+          reject_today?: number
+          remarks?: string | null
+          rework_today?: number
+          style_code?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          unit_name?: string | null
+          work_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sewing_actuals_actual_stage_id_fkey"
+            columns: ["actual_stage_id"]
+            isOneToOne: false
+            referencedRelation: "stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sewing_actuals_blocker_type_id_fkey"
+            columns: ["blocker_type_id"]
+            isOneToOne: false
+            referencedRelation: "blocker_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sewing_actuals_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sewing_actuals_line_id_fkey"
+            columns: ["line_id"]
+            isOneToOne: false
+            referencedRelation: "lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sewing_actuals_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sewing_targets: {
+        Row: {
+          buyer_name: string | null
+          created_at: string | null
+          estimated_ex_factory: string | null
+          factory_id: string
+          floor_name: string | null
+          id: string
+          item_name: string | null
+          line_id: string
+          manpower_planned: number
+          next_milestone: string | null
+          order_qty: number | null
+          ot_hours_planned: number
+          per_hour_target: number
+          planned_stage_id: string | null
+          planned_stage_progress: number
+          production_date: string
+          remarks: string | null
+          style_code: string | null
+          submitted_at: string | null
+          submitted_by: string | null
+          unit_name: string | null
+          work_order_id: string
+        }
+        Insert: {
+          buyer_name?: string | null
+          created_at?: string | null
+          estimated_ex_factory?: string | null
+          factory_id: string
+          floor_name?: string | null
+          id?: string
+          item_name?: string | null
+          line_id: string
+          manpower_planned: number
+          next_milestone?: string | null
+          order_qty?: number | null
+          ot_hours_planned?: number
+          per_hour_target: number
+          planned_stage_id?: string | null
+          planned_stage_progress?: number
+          production_date?: string
+          remarks?: string | null
+          style_code?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          unit_name?: string | null
+          work_order_id: string
+        }
+        Update: {
+          buyer_name?: string | null
+          created_at?: string | null
+          estimated_ex_factory?: string | null
+          factory_id?: string
+          floor_name?: string | null
+          id?: string
+          item_name?: string | null
+          line_id?: string
+          manpower_planned?: number
+          next_milestone?: string | null
+          order_qty?: number | null
+          ot_hours_planned?: number
+          per_hour_target?: number
+          planned_stage_id?: string | null
+          planned_stage_progress?: number
+          production_date?: string
+          remarks?: string | null
+          style_code?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          unit_name?: string | null
+          work_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sewing_targets_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sewing_targets_line_id_fkey"
+            columns: ["line_id"]
+            isOneToOne: false
+            referencedRelation: "lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sewing_targets_planned_stage_id_fkey"
+            columns: ["planned_stage_id"]
+            isOneToOne: false
+            referencedRelation: "stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sewing_targets_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
             referencedColumns: ["id"]
           },
         ]
