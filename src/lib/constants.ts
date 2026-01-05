@@ -136,8 +136,10 @@ export const DEFAULT_BLOCKER_TYPES = [
 // Navigation items per role
 export const NAV_ITEMS = {
   worker: [
-    { path: '/update/sewing', label: 'Sewing Update', icon: 'Factory' },
-    { path: '/update/finishing', label: 'Finishing Update', icon: 'Package' },
+    { path: '/sewing/morning-targets', label: 'Sewing Morning Targets', icon: 'Sunrise' },
+    { path: '/sewing/end-of-day', label: 'Sewing End of Day', icon: 'Sunset' },
+    { path: '/finishing/morning-targets', label: 'Finishing Morning Targets', icon: 'Sunrise' },
+    { path: '/finishing/end-of-day', label: 'Finishing End of Day', icon: 'Sunset' },
     { path: '/report-blocker', label: 'Report Blocker', icon: 'AlertTriangle' },
     { path: '/my-submissions', label: 'My Submissions', icon: 'FileText' },
     { path: '/preferences', label: 'My Preferences', icon: 'UserCog' },
