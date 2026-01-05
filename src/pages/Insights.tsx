@@ -1120,8 +1120,8 @@ export default function Insights() {
         </CardContent>
       </Card>
 
-      {/* Settings Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Settings Section - Full width stacked layout */}
+      <div className="space-y-6">
         <LineEfficiencyTargets 
           linePerformance={linePerformance.map(l => ({
             lineId: l.lineId,
@@ -1129,11 +1129,11 @@ export default function Insights() {
             efficiency: l.efficiency,
           }))}
         />
-        <EmailScheduleSettings />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <EmailScheduleSettings />
+          <NotificationPreferences />
+        </div>
       </div>
-
-      {/* Notification Preferences */}
-      <NotificationPreferences />
     </div>
   );
 }
