@@ -181,10 +181,7 @@ export const NAV_ITEMS = {
     { path: '/lines', label: 'Lines', icon: 'Rows3' },
     { path: '/work-orders', label: 'Work Orders', icon: 'ClipboardList' },
     { path: '/insights', label: 'Insights', icon: 'TrendingUp' },
-    { path: '/setup', label: 'Factory Profile', icon: 'Settings', children: [
-      { path: '/subscription', label: 'Subscription', icon: 'CreditCard' },
-      { path: '/billing', label: 'Billing', icon: 'Receipt' },
-    ]},
+    { path: '/setup', label: 'Factory Profile', icon: 'Settings' },
     { path: '/users', label: 'Users', icon: 'Users' },
     { path: '/preferences', label: 'My Preferences', icon: 'UserCog' },
   ],
@@ -197,10 +194,7 @@ export const NAV_ITEMS = {
     { path: '/lines', label: 'Lines', icon: 'Rows3' },
     { path: '/work-orders', label: 'Work Orders', icon: 'ClipboardList' },
     { path: '/insights', label: 'Insights', icon: 'TrendingUp' },
-    { path: '/setup', label: 'Factory Profile', icon: 'Settings', children: [
-      { path: '/subscription', label: 'Subscription', icon: 'CreditCard' },
-      { path: '/billing', label: 'Billing', icon: 'Receipt' },
-    ]},
+    { path: '/setup', label: 'Factory Profile', icon: 'Settings' },
     { path: '/users', label: 'Users', icon: 'Users' },
     { path: '/preferences', label: 'My Preferences', icon: 'UserCog' },
   ],
