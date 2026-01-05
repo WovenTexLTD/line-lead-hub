@@ -25,9 +25,7 @@ import {
   Trash2,
   Check,
   X,
-  Factory,
-  CreditCard,
-  Receipt
+  Factory
 } from "lucide-react";
 import { BLOCKER_IMPACTS, BLOCKER_IMPACT_LABELS, DEFAULT_STAGES, DEFAULT_BLOCKER_TYPES } from "@/lib/constants";
 
@@ -414,9 +412,9 @@ export default function FactorySetup() {
           <Settings className="h-5 w-5 text-primary" />
         </div>
         <div>
-          <h1 className="text-xl font-bold">Factory Profile</h1>
+          <h1 className="text-xl font-bold">Lines, Units & Floors</h1>
           <p className="text-sm text-muted-foreground">
-            Manage factory settings, subscription, and billing
+            Manage production lines and factory structure
           </p>
         </div>
       </div>
@@ -752,18 +750,6 @@ export default function FactorySetup() {
         </TabsContent>
 
       </Tabs>
-
-      {/* Subscription & Billing Buttons */}
-      <div className="flex gap-4 mt-6">
-        <Button variant="outline" onClick={() => navigate('/subscription')} className="flex-1">
-          <CreditCard className="h-4 w-4 mr-2" />
-          Subscription
-        </Button>
-        <Button variant="outline" onClick={() => navigate('/billing')} className="flex-1">
-          <Receipt className="h-4 w-4 mr-2" />
-          Billing
-        </Button>
-      </div>
 
       {/* Create/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
