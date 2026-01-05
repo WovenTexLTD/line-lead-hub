@@ -511,6 +511,20 @@
     "dayCartonRequired": "Day Carton is required",
     "totalCartonRequired": "Total Carton is required",
     "mPowerRequired": "M Power is required",
-    "dayHoursRequired": "Day hours is required"
+    "dayHoursRequired": "Day hours is required",
+    "otHoursMinZero": "OT hours must be 0 or more",
+    "finishingEndOfDayTitle": "Finishing — End of Day Output",
+    "orderDetails": "Order Details (Auto-filled)",
+    "dayOtHours": "Day OT Hours",
+    "totalHours": "Total Hours",
+    "totalOtHours": "Total OT Hours",
+    "remarksPlaceholder": "Any additional notes...",
+    "submitEndOfDayActuals": "Submit End of Day Actuals",
+    "loadError": "Failed to load form data",
+    "fillRequired": "Please fill in all required fields",
+    "missingUserFactory": "Missing user or factory information",
+    "duplicateActualsError": "Actuals already submitted for this line and PO today",
+    "actualsSubmitSuccess": "End of day actuals submitted successfully!",
+    "actualsSubmitError": "Failed to submit actuals"
   }
 }

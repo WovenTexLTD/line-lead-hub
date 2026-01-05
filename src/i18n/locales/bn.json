@@ -511,6 +511,20 @@
     "dayCartonRequired": "দৈনিক কার্টন আবশ্যক",
     "totalCartonRequired": "মোট কার্টন আবশ্যক",
     "mPowerRequired": "এম পাওয়ার আবশ্যক",
-    "dayHoursRequired": "দৈনিক ঘণ্টা আবশ্যক"
+    "dayHoursRequired": "দৈনিক ঘণ্টা আবশ্যক",
+    "otHoursMinZero": "ওভারটাইম ঘণ্টা ০ বা তার বেশি হতে হবে",
+    "finishingEndOfDayTitle": "ফিনিশিং — দিনের শেষ আউটপুট",
+    "orderDetails": "অর্ডার বিবরণ (স্বয়ংক্রিয়)",
+    "dayOtHours": "দৈনিক ওটি ঘণ্টা",
+    "totalHours": "মোট ঘণ্টা",
+    "totalOtHours": "মোট ওটি ঘণ্টা",
+    "remarksPlaceholder": "অতিরিক্ত মন্তব্য...",
+    "submitEndOfDayActuals": "দিনের শেষ অ্যাক্চুয়াল সাবমিট করুন",
+    "loadError": "ফর্ম ডেটা লোড করতে ব্যর্থ",
+    "fillRequired": "সকল প্রয়োজনীয় ফিল্ড পূরণ করুন",
+    "missingUserFactory": "ব্যবহারকারী বা ফ্যাক্টরি তথ্য অনুপস্থিত",
+    "duplicateActualsError": "এই লাইন এবং PO-এর জন্য আজকের অ্যাক্চুয়াল ইতিমধ্যে সাবমিট করা হয়েছে",
+    "actualsSubmitSuccess": "দিনের শেষ অ্যাক্চুয়াল সফলভাবে সাবমিট হয়েছে!",
+    "actualsSubmitError": "অ্যাক্চুয়াল সাবমিট করতে ব্যর্থ"
   }
 }
