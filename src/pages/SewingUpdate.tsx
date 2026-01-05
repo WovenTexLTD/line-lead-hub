@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -67,6 +68,7 @@ interface FactoryType {
 }
 
 export default function SewingUpdate() {
+  const { t, i18n } = useTranslation();
   const { profile, user, factory, hasRole, isAdminOrHigher } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -358,13 +360,12 @@ export default function SewingUpdate() {
         <Card className="max-w-md">
           <CardContent className="pt-6 text-center">
             <Factory className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h2 className="text-lg font-semibold mb-2">No Factory Assigned</h2>
+            <h2 className="text-lg font-semibold mb-2">{t('common.noFactoryAssigned')}</h2>
             <p className="text-muted-foreground text-sm">
-              You need to be assigned to a factory before you can submit production updates.
-              Please contact your administrator.
+              {t('common.needFactoryAssigned')}
             </p>
             <Button variant="outline" className="mt-4" onClick={() => navigate('/dashboard')}>
-              Go to Dashboard
+              {t('common.goToDashboard')}
             </Button>
           </CardContent>
         </Card>
@@ -384,9 +385,9 @@ export default function SewingUpdate() {
             <Factory className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-xl font-bold">Daily Production Update</h1>
+            <h1 className="text-xl font-bold">{t('sewing.title')}</h1>
             <p className="text-sm text-muted-foreground">
-              {new Date().toLocaleDateString('en-US', { dateStyle: 'full' })}
+              {new Date().toLocaleDateString(i18n.language === 'bn' ? 'bn-BD' : 'en-US', { dateStyle: 'full' })}
             </p>
           </div>
         </div>
@@ -396,15 +397,15 @@ export default function SewingUpdate() {
         {/* SECTION A - Select References */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Select References</CardTitle>
+            <CardTitle className="text-base">{t('sewing.selectReferences')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Line No */}
             <div className="space-y-2">
-              <Label htmlFor="line">Line No *</Label>
+              <Label htmlFor="line">{t('sewing.lineNo')} *</Label>
               <Select value={selectedLine} onValueChange={setSelectedLine}>
                 <SelectTrigger className={`h-12 ${errors.line ? 'border-destructive' : ''}`}>
-                  <SelectValue placeholder="Select Line" />
+                  <SelectValue placeholder={t('common.selectLine')} />
                 </SelectTrigger>
                 <SelectContent>
                   {lines.map((line) => (
@@ -419,14 +420,14 @@ export default function SewingUpdate() {
 
             {/* PO ID */}
             <div className="space-y-2">
-              <Label htmlFor="po">PO ID *</Label>
+              <Label htmlFor="po">{t('sewing.poId')} *</Label>
               <Select 
                 value={selectedPO} 
                 onValueChange={setSelectedPO}
                 disabled={!selectedLine || filteredWorkOrders.length === 0}
               >
                 <SelectTrigger className={`h-12 ${errors.po ? 'border-destructive' : ''}`}>
-                  <SelectValue placeholder={!selectedLine ? "Select a line first" : filteredWorkOrders.length === 0 ? "No POs for this line" : "Select PO"} />
+                  <SelectValue placeholder={!selectedLine ? t('common.selectLineFirst') : filteredWorkOrders.length === 0 ? t('common.noPOsForLine') : t('common.selectPO')} />
                 </SelectTrigger>
                 <SelectContent>
                   {filteredWorkOrders.map((wo) => (
@@ -445,36 +446,36 @@ export default function SewingUpdate() {
         {selectedPO && (
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Order Details</CardTitle>
+              <CardTitle className="text-base">{t('sewing.autoFilledDetails')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Buyer</Label>
+                  <Label className="text-xs text-muted-foreground">{t('sewing.buyer')}</Label>
                   <p className="font-medium text-sm">{buyerName || "-"}</p>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Style No</Label>
+                  <Label className="text-xs text-muted-foreground">{t('sewing.style')}</Label>
                   <p className="font-medium text-sm">{styleCode || "-"}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Item</Label>
+                  <Label className="text-xs text-muted-foreground">{t('sewing.item')}</Label>
                   <p className="font-medium text-sm">{itemName || "-"}</p>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Order Quantity</Label>
+                  <Label className="text-xs text-muted-foreground">{t('sewing.orderQty')}</Label>
                   <p className="font-medium text-sm">{orderQty.toLocaleString()}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Color</Label>
+                  <Label className="text-xs text-muted-foreground">{t('sewing.color')}</Label>
                   <p className="font-medium text-sm">{color || "-"}</p>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">SMV</Label>
+                  <Label className="text-xs text-muted-foreground">{t('sewing.smv')}</Label>
                   <p className="font-medium text-sm">{smv || "-"}</p>
                 </div>
               </div>
@@ -485,13 +486,13 @@ export default function SewingUpdate() {
         {/* SECTION C - Production Numbers */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Production Numbers</CardTitle>
+            <CardTitle className="text-base">{t('sewing.productionNumbers')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Row 1: Per Hour Target & Day Production */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Per Hour Target *</Label>
+                <Label>{t('sewing.perHourTarget')} *</Label>
                 <Input
                   type="number"
                   inputMode="numeric"
@@ -504,7 +505,7 @@ export default function SewingUpdate() {
                 {errors.perHourTarget && <p className="text-xs text-destructive">{errors.perHourTarget}</p>}
               </div>
               <div className="space-y-2">
-                <Label>Day Production *</Label>
+                <Label>{t('sewing.dayProduction')} *</Label>
                 <Input
                   type="number"
                   inputMode="numeric"
@@ -521,7 +522,7 @@ export default function SewingUpdate() {
             {/* Row 2: Reject Today & Rework Today */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Reject Today *</Label>
+                <Label>{t('sewing.rejectToday')} *</Label>
                 <Input
                   type="number"
                   inputMode="numeric"
@@ -534,7 +535,7 @@ export default function SewingUpdate() {
                 {errors.rejectToday && <p className="text-xs text-destructive">{errors.rejectToday}</p>}
               </div>
               <div className="space-y-2">
-                <Label>Rework Today *</Label>
+                <Label>{t('sewing.reworkToday')} *</Label>
                 <Input
                   type="number"
                   inputMode="numeric"
@@ -550,7 +551,7 @@ export default function SewingUpdate() {
 
             {/* Row 3: Total Production */}
             <div className="space-y-2">
-              <Label>Total Production *</Label>
+              <Label>{t('sewing.totalProduction')} *</Label>
               <Input
                 type="number"
                 inputMode="numeric"
@@ -566,7 +567,7 @@ export default function SewingUpdate() {
             {/* Row 4: Over Time & M Power */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Over Time *</Label>
+                <Label>{t('sewing.overTime')} *</Label>
                 <Input
                   type="number"
                   inputMode="decimal"
@@ -580,7 +581,7 @@ export default function SewingUpdate() {
                 {errors.overTime && <p className="text-xs text-destructive">{errors.overTime}</p>}
               </div>
               <div className="space-y-2">
-                <Label>M Power *</Label>
+                <Label>{t('sewing.mPower')} *</Label>
                 <Input
                   type="number"
                   inputMode="numeric"
@@ -599,15 +600,15 @@ export default function SewingUpdate() {
         {/* SECTION D - Tracking */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Tracking</CardTitle>
+            <CardTitle className="text-base">{t('sewing.trackingFields')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Current Stage */}
             <div className="space-y-2">
-              <Label>Current Stage *</Label>
+              <Label>{t('sewing.currentStage')} *</Label>
               <Select value={currentStage} onValueChange={setCurrentStage}>
                 <SelectTrigger className={`h-12 ${errors.currentStage ? 'border-destructive' : ''}`}>
-                  <SelectValue placeholder="Select Stage" />
+                  <SelectValue placeholder={t('sewing.currentStage')} />
                 </SelectTrigger>
                 <SelectContent>
                   {stages.map((stage) => (
@@ -622,10 +623,10 @@ export default function SewingUpdate() {
 
             {/* Stage Progress */}
             <div className="space-y-2">
-              <Label>Stage Progress *</Label>
+              <Label>{t('sewing.stageProgress')} *</Label>
               <Select value={stageProgress} onValueChange={setStageProgress}>
                 <SelectTrigger className={`h-12 ${errors.stageProgress ? 'border-destructive' : ''}`}>
-                  <SelectValue placeholder="Select Progress" />
+                  <SelectValue placeholder={t('sewing.stageProgress')} />
                 </SelectTrigger>
                 <SelectContent>
                   {stageProgressOptions.map((option) => (
@@ -640,7 +641,7 @@ export default function SewingUpdate() {
 
             {/* Estimated ExFactory */}
             <div className="space-y-2">
-              <Label>Estimated ExFactory</Label>
+              <Label>{t('sewing.estimatedExFactory')}</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -651,7 +652,7 @@ export default function SewingUpdate() {
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {estimatedExFactory ? format(estimatedExFactory, "PPP") : "Select date (optional)"}
+                    {estimatedExFactory ? format(estimatedExFactory, "PPP") : t('common.optional')}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -667,10 +668,10 @@ export default function SewingUpdate() {
 
             {/* Next Milestone */}
             <div className="space-y-2">
-              <Label>Next Milestone Tomc *</Label>
+              <Label>{t('sewing.nextMilestone')} *</Label>
               <Select value={nextMilestone} onValueChange={setNextMilestone}>
                 <SelectTrigger className={`h-12 ${errors.nextMilestone ? 'border-destructive' : ''}`}>
-                  <SelectValue placeholder="Select Milestone" />
+                  <SelectValue placeholder={t('sewing.nextMilestone')} />
                 </SelectTrigger>
                 <SelectContent>
                   {nextMilestoneOptions.map((option) => (
@@ -688,14 +689,14 @@ export default function SewingUpdate() {
         {/* SECTION E - Photos & Remarks */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Attachments & Notes</CardTitle>
+            <CardTitle className="text-base">{t('sewing.photosNotes')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Photos */}
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <ImageIcon className="h-4 w-4" />
-                Photos (Optional)
+                {t('sewing.uploadPhotos')} ({t('common.optional')})
               </Label>
               <input
                 type="file"
@@ -752,20 +753,20 @@ export default function SewingUpdate() {
                   onClick={() => fileInputRef.current?.click()}
                 >
                   <Upload className="h-4 w-4 mr-2" />
-                  {photos.length === 0 ? 'Add Photos' : 'Add Another Photo'}
+                  {photos.length === 0 ? t('sewing.uploadPhotos') : t('common.add')}
                 </Button>
               )}
               
               <p className="text-xs text-muted-foreground">
-                You can upload up to 2 photos (optional)
+                {t('sewing.uploadPhotos')} (2 max)
               </p>
             </div>
 
             {/* Remarks */}
             <div className="space-y-2">
-              <Label>Remarks (Optional)</Label>
+              <Label>{t('sewing.remarks')} ({t('common.optional')})</Label>
               <Textarea
-                placeholder="Add any additional notes..."
+                placeholder={t('sewing.remarks')}
                 value={remarks}
                 onChange={(e) => setRemarks(e.target.value)}
                 className="min-h-[80px]"
@@ -784,12 +785,12 @@ export default function SewingUpdate() {
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Submitting...
+                {t('common.loading')}
               </>
             ) : (
               <>
                 <CheckCircle className="h-5 w-5 mr-2" />
-                Submit Update
+                {t('common.submit')}
               </>
             )}
           </Button>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import type { AppRole } from "@/lib/constants";
 import { supabase } from "@/integrations/supabase/client";
@@ -49,6 +50,7 @@ interface Factory {
 }
 
 export default function FinishingUpdate() {
+  const { t, i18n } = useTranslation();
   const { profile, user, hasRole, isAdminOrHigher } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -371,13 +373,12 @@ export default function FinishingUpdate() {
         <Card className="max-w-md">
           <CardContent className="pt-6 text-center">
             <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h2 className="text-lg font-semibold mb-2">No Factory Assigned</h2>
+            <h2 className="text-lg font-semibold mb-2">{t('common.noFactoryAssigned')}</h2>
             <p className="text-muted-foreground text-sm">
-              You need to be assigned to a factory before you can submit production updates.
-              Please contact your administrator.
+              {t('common.needFactoryAssigned')}
             </p>
             <Button variant="outline" className="mt-4" onClick={() => navigate('/dashboard')}>
-              Go to Dashboard
+              {t('common.goToDashboard')}
             </Button>
           </CardContent>
         </Card>
@@ -397,9 +398,9 @@ export default function FinishingUpdate() {
             <Package className="h-5 w-5 text-info" />
           </div>
           <div>
-            <h1 className="text-xl font-bold">Finishing Daily Update</h1>
+            <h1 className="text-xl font-bold">{t('finishing.title')}</h1>
             <p className="text-sm text-muted-foreground">
-              {new Date().toLocaleDateString('en-US', { dateStyle: 'full' })}
+              {new Date().toLocaleDateString(i18n.language === 'bn' ? 'bn-BD' : 'en-US', { dateStyle: 'full' })}
             </p>
           </div>
         </div>
@@ -409,15 +410,15 @@ export default function FinishingUpdate() {
         {/* SECTION A - Select References */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Select References</CardTitle>
+            <CardTitle className="text-base">{t('sewing.selectReferences')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Line No. - First so PO can filter by it */}
             <div className="space-y-2">
-              <Label htmlFor="line">Line No. *</Label>
+              <Label htmlFor="line">{t('sewing.lineNo')} *</Label>
               <Select value={selectedLine} onValueChange={setSelectedLine}>
                 <SelectTrigger className={`h-12 ${errors.line ? 'border-destructive' : ''}`}>
-                  <SelectValue placeholder="Select Line" />
+                  <SelectValue placeholder={t('common.selectLine')} />
                 </SelectTrigger>
                 <SelectContent>
                   {lines.map((line) => (
@@ -432,14 +433,14 @@ export default function FinishingUpdate() {
 
             {/* PO ID */}
             <div className="space-y-2">
-              <Label htmlFor="po">PO ID *</Label>
+              <Label htmlFor="po">{t('sewing.poId')} *</Label>
               <Select 
                 value={selectedPO} 
                 onValueChange={setSelectedPO}
                 disabled={!selectedLine || filteredWorkOrders.length === 0}
               >
                 <SelectTrigger className={`h-12 ${errors.po ? 'border-destructive' : ''}`}>
-                  <SelectValue placeholder={!selectedLine ? "Select a line first" : filteredWorkOrders.length === 0 ? "No POs for this line" : "Select PO"} />
+                  <SelectValue placeholder={!selectedLine ? t('common.selectLineFirst') : filteredWorkOrders.length === 0 ? t('common.noPOsForLine') : t('common.selectPO')} />
                 </SelectTrigger>
                 <SelectContent>
                   {filteredWorkOrders.map((wo) => (
@@ -460,43 +461,43 @@ export default function FinishingUpdate() {
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-success" />
-                Auto-filled Details
+                {t('sewing.autoFilledDetails')}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Style No</Label>
+                  <Label className="text-xs text-muted-foreground">{t('finishing.styleNo')}</Label>
                   <div className="p-2 bg-background rounded border text-sm font-medium">
                     {styleNo || "-"}
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Buyer</Label>
+                  <Label className="text-xs text-muted-foreground">{t('sewing.buyer')}</Label>
                   <div className="p-2 bg-background rounded border text-sm font-medium">
                     {buyerName || "-"}
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Item</Label>
+                  <Label className="text-xs text-muted-foreground">{t('sewing.item')}</Label>
                   <div className="p-2 bg-background rounded border text-sm font-medium">
                     {itemName || "-"}
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Order Quantity</Label>
+                  <Label className="text-xs text-muted-foreground">{t('finishing.orderQuantity')}</Label>
                   <div className="p-2 bg-background rounded border text-sm font-medium font-mono">
                     {orderQuantity > 0 ? orderQuantity.toLocaleString() : "-"}
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Unit</Label>
+                  <Label className="text-xs text-muted-foreground">{t('sewing.unit')}</Label>
                   <div className="p-2 bg-background rounded border text-sm font-medium">
                     {unitName || "-"}
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Floor</Label>
+                  <Label className="text-xs text-muted-foreground">{t('sewing.floor')}</Label>
                   <div className="p-2 bg-background rounded border text-sm font-medium">
                     {floorName || "-"}
                   </div>
@@ -509,13 +510,13 @@ export default function FinishingUpdate() {
         {/* SECTION C - Finishing Metrics */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Finishing Metrics</CardTitle>
+            <CardTitle className="text-base">{t('finishing.finishingMetrics')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Row 1: M Power & Per Hour Target */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>M Power *</Label>
+                <Label>{t('finishing.mPower')} *</Label>
                 <Input
                   type="number"
                   inputMode="numeric"
@@ -528,7 +529,7 @@ export default function FinishingUpdate() {
                 {errors.mPower && <p className="text-xs text-destructive">{errors.mPower}</p>}
               </div>
               <div className="space-y-2">
-                <Label>Per Hour Target *</Label>
+                <Label>{t('finishing.perHourTarget')} *</Label>
                 <Input
                   type="number"
                   inputMode="numeric"
@@ -545,7 +546,7 @@ export default function FinishingUpdate() {
             {/* Row 2: Day QC Pass & Total QC Pass */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Day QC Pass *</Label>
+                <Label>{t('finishing.dayQcPass')} *</Label>
                 <Input
                   type="number"
                   inputMode="numeric"
@@ -558,7 +559,7 @@ export default function FinishingUpdate() {
                 {errors.dayQcPass && <p className="text-xs text-destructive">{errors.dayQcPass}</p>}
               </div>
               <div className="space-y-2">
-                <Label>Total QC Pass *</Label>
+                <Label>{t('finishing.totalQcPass')} *</Label>
                 <Input
                   type="number"
                   inputMode="numeric"
@@ -575,7 +576,7 @@ export default function FinishingUpdate() {
             {/* Row 3: Day Poly & Total Poly */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Day Poly *</Label>
+                <Label>{t('finishing.dayPoly')} *</Label>
                 <Input
                   type="number"
                   inputMode="numeric"
@@ -588,7 +589,7 @@ export default function FinishingUpdate() {
                 {errors.dayPoly && <p className="text-xs text-destructive">{errors.dayPoly}</p>}
               </div>
               <div className="space-y-2">
-                <Label>Total Poly *</Label>
+                <Label>{t('finishing.totalPoly')} *</Label>
                 <Input
                   type="number"
                   inputMode="numeric"
@@ -604,7 +605,7 @@ export default function FinishingUpdate() {
 
             {/* Row 4: Average Production */}
             <div className="space-y-2">
-              <Label>Average Production *</Label>
+              <Label>{t('finishing.averageProduction')} *</Label>
               <Input
                 type="number"
                 inputMode="numeric"
@@ -620,7 +621,7 @@ export default function FinishingUpdate() {
             {/* Row 5: Day Over Time & Total Over Time */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Day Over Time *</Label>
+                <Label>{t('finishing.dayOverTime')} *</Label>
                 <Input
                   type="number"
                   inputMode="decimal"
@@ -634,7 +635,7 @@ export default function FinishingUpdate() {
                 {errors.dayOverTime && <p className="text-xs text-destructive">{errors.dayOverTime}</p>}
               </div>
               <div className="space-y-2">
-                <Label>Total Over Time *</Label>
+                <Label>{t('finishing.totalOverTime')} *</Label>
                 <Input
                   type="number"
                   inputMode="decimal"
@@ -652,7 +653,7 @@ export default function FinishingUpdate() {
             {/* Row 6: Day Hour & Total Hour */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Day Hour *</Label>
+                <Label>{t('finishing.dayHour')} *</Label>
                 <Input
                   type="number"
                   inputMode="decimal"
@@ -666,7 +667,7 @@ export default function FinishingUpdate() {
                 {errors.dayHour && <p className="text-xs text-destructive">{errors.dayHour}</p>}
               </div>
               <div className="space-y-2">
-                <Label>Total Hour *</Label>
+                <Label>{t('finishing.totalHour')} *</Label>
                 <Input
                   type="number"
                   inputMode="decimal"
@@ -684,7 +685,7 @@ export default function FinishingUpdate() {
             {/* Row 7: Day Carton & Total Carton */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Day Carton *</Label>
+                <Label>{t('finishing.dayCarton')} *</Label>
                 <Input
                   type="number"
                   inputMode="numeric"
@@ -697,7 +698,7 @@ export default function FinishingUpdate() {
                 {errors.dayCarton && <p className="text-xs text-destructive">{errors.dayCarton}</p>}
               </div>
               <div className="space-y-2">
-                <Label>Total Carton *</Label>
+                <Label>{t('finishing.totalCarton')} *</Label>
                 <Input
                   type="number"
                   inputMode="numeric"
@@ -713,9 +714,9 @@ export default function FinishingUpdate() {
 
             {/* Remarks (Optional) */}
             <div className="space-y-2">
-              <Label>Remarks (Optional)</Label>
+              <Label>{t('sewing.remarks')} ({t('common.optional')})</Label>
               <Textarea
-                placeholder="Add any additional notes..."
+                placeholder={t('sewing.remarks')}
                 value={remarks}
                 onChange={(e) => setRemarks(e.target.value)}
                 className="min-h-[80px]"
@@ -734,10 +735,10 @@ export default function FinishingUpdate() {
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Submitting...
+                {t('common.loading')}
               </>
             ) : (
-              "Submit Update"
+              t('common.submit')
             )}
           </Button>
         </div>
