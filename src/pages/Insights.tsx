@@ -407,7 +407,7 @@ export default function Insights() {
   }
 
   return (
-    <div className="p-4 lg:p-6 space-y-6">
+    <div className="p-3 md:p-4 lg:p-6 space-y-4 md:space-y-6 overflow-x-hidden">
       {/* Line Drill-Down Modal */}
       {selectedLineId && profile?.factory_id && (
         <LineDrillDown
@@ -495,7 +495,7 @@ export default function Insights() {
       </div>
 
       {/* Key Metrics Overview */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <Card className="relative overflow-hidden">
           <div className="absolute top-0 right-0 w-20 h-20 bg-primary/5 rounded-bl-full" />
           <CardHeader className="pb-2">
@@ -506,7 +506,7 @@ export default function Insights() {
           </CardHeader>
           <CardContent>
             <div className="flex items-end gap-2">
-              <p className="text-3xl font-bold font-mono">{summary.totalSewingOutput.toLocaleString()}</p>
+              <p className="text-2xl md:text-3xl font-bold font-mono">{summary.totalSewingOutput.toLocaleString()}</p>
               <TrendIcon trend={summary.outputTrend} />
             </div>
             <p className="text-xs text-muted-foreground mt-1">
@@ -524,7 +524,7 @@ export default function Insights() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold font-mono">{summary.totalFinishingQcPass.toLocaleString()}</p>
+            <p className="text-2xl md:text-3xl font-bold font-mono">{summary.totalFinishingQcPass.toLocaleString()}</p>
             <p className="text-xs text-muted-foreground mt-1">
               {summary.avgDailyQcPass.toLocaleString()} avg/day
             </p>
@@ -541,7 +541,7 @@ export default function Insights() {
           </CardHeader>
           <CardContent>
             <div className="flex items-end gap-2">
-              <p className={`text-3xl font-bold ${summary.avgEfficiency >= 90 ? 'text-success' : summary.avgEfficiency >= 70 ? 'text-warning' : 'text-destructive'}`}>
+              <p className={`text-2xl md:text-3xl font-bold ${summary.avgEfficiency >= 90 ? 'text-success' : summary.avgEfficiency >= 70 ? 'text-warning' : 'text-destructive'}`}>
                 {summary.avgEfficiency}%
               </p>
               <TrendIcon trend={summary.efficiencyTrend} />
@@ -561,12 +561,12 @@ export default function Insights() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{summary.totalBlockers}</p>
-            <div className="flex items-center gap-2 mt-1">
-              <Badge variant="outline" className="text-xs bg-warning/10 text-warning border-warning/30">
+            <p className="text-2xl md:text-3xl font-bold">{summary.totalBlockers}</p>
+            <div className="flex flex-wrap items-center gap-1.5 mt-1">
+              <Badge variant="outline" className="text-[10px] md:text-xs bg-warning/10 text-warning border-warning/30">
                 {summary.openBlockers} open
               </Badge>
-              <Badge variant="outline" className="text-xs bg-success/10 text-success border-success/30">
+              <Badge variant="outline" className="text-[10px] md:text-xs bg-success/10 text-success border-success/30">
                 {summary.resolvedBlockers} resolved
               </Badge>
             </div>
@@ -821,18 +821,18 @@ export default function Insights() {
             <CardTitle className="text-base">Detailed Line Statistics</CardTitle>
             <CardDescription>Click on a row for daily breakdown</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+          <CardContent className="px-2 md:px-6">
+            <div className="overflow-x-auto -mx-2 md:mx-0">
+              <table className="w-full text-xs md:text-sm min-w-[500px]">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left py-3 px-2 font-medium">Line</th>
-                    <th className="text-right py-3 px-2 font-medium">Output</th>
-                    <th className="text-right py-3 px-2 font-medium">Target</th>
-                    <th className="text-right py-3 px-2 font-medium">Efficiency</th>
-                    <th className="text-right py-3 px-2 font-medium">Avg MP</th>
-                    <th className="text-right py-3 px-2 font-medium">Blockers</th>
-                    <th className="text-right py-3 px-2 font-medium"></th>
+                    <th className="text-left py-2 md:py-3 px-2 font-medium">Line</th>
+                    <th className="text-right py-2 md:py-3 px-2 font-medium">Output</th>
+                    <th className="text-right py-2 md:py-3 px-2 font-medium hidden sm:table-cell">Target</th>
+                    <th className="text-right py-2 md:py-3 px-2 font-medium">Eff.</th>
+                    <th className="text-right py-2 md:py-3 px-2 font-medium hidden md:table-cell">MP</th>
+                    <th className="text-right py-2 md:py-3 px-2 font-medium hidden sm:table-cell">Blockers</th>
+                    <th className="text-right py-2 md:py-3 px-2 font-medium w-8"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -842,23 +842,23 @@ export default function Insights() {
                       className="border-b last:border-0 hover:bg-muted/50 cursor-pointer transition-colors"
                       onClick={() => handleLineDrillDown(line.lineId, line.lineName)}
                     >
-                      <td className="py-3 px-2 font-medium">{line.lineName}</td>
-                      <td className="py-3 px-2 text-right font-mono">{line.totalOutput.toLocaleString()}</td>
-                      <td className="py-3 px-2 text-right font-mono text-muted-foreground">{line.totalTarget.toLocaleString()}</td>
-                      <td className="py-3 px-2 text-right">
-                        <Badge variant={line.efficiency >= 90 ? 'default' : line.efficiency >= 70 ? 'secondary' : 'destructive'}>
+                      <td className="py-2 md:py-3 px-2 font-medium">{line.lineName}</td>
+                      <td className="py-2 md:py-3 px-2 text-right font-mono">{line.totalOutput.toLocaleString()}</td>
+                      <td className="py-2 md:py-3 px-2 text-right font-mono text-muted-foreground hidden sm:table-cell">{line.totalTarget.toLocaleString()}</td>
+                      <td className="py-2 md:py-3 px-2 text-right">
+                        <Badge variant={line.efficiency >= 90 ? 'default' : line.efficiency >= 70 ? 'secondary' : 'destructive'} className="text-[10px] md:text-xs">
                           {line.efficiency}%
                         </Badge>
                       </td>
-                      <td className="py-3 px-2 text-right">{line.avgManpower}</td>
-                      <td className="py-3 px-2 text-right">
+                      <td className="py-2 md:py-3 px-2 text-right hidden md:table-cell">{line.avgManpower}</td>
+                      <td className="py-2 md:py-3 px-2 text-right hidden sm:table-cell">
                         {line.blockers > 0 ? (
-                          <Badge variant="destructive" className="text-xs">{line.blockers}</Badge>
+                          <Badge variant="destructive" className="text-[10px] md:text-xs">{line.blockers}</Badge>
                         ) : (
                           <span className="text-success">0</span>
                         )}
                       </td>
-                      <td className="py-3 px-2 text-right">
+                      <td className="py-2 md:py-3 px-2 text-right">
                         <ChevronRight className="h-4 w-4 text-muted-foreground inline" />
                       </td>
                     </tr>
@@ -1045,7 +1045,7 @@ export default function Insights() {
             Key Takeaways
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
           {summary.topPerformingLine && (
             <div className="flex items-start gap-3 p-3 rounded-lg bg-success/10">
               <div className="h-8 w-8 rounded-full bg-success/20 flex items-center justify-center shrink-0">
