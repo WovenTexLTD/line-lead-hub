@@ -94,10 +94,12 @@ export default function FinishingDailySheet() {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [selectedLineId, setSelectedLineId] = useState(searchParams.get("line") || "");
   const [selectedWorkOrderId, setSelectedWorkOrderId] = useState(searchParams.get("po") || "");
+  const sheetIdFromUrl = searchParams.get("sheet");
   
   const [currentSheet, setCurrentSheet] = useState<DailySheet | null>(null);
   const [hourlyLogs, setHourlyLogs] = useState<HourlyLog[]>([]);
   const [loadingSheet, setLoadingSheet] = useState(false);
+  const [loadingExistingSheet, setLoadingExistingSheet] = useState(!!sheetIdFromUrl);
   
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSlot, setEditingSlot] = useState<string | null>(null);
@@ -152,6 +154,13 @@ export default function FinishingDailySheet() {
     return null;
   }, []);
 
+  // Load existing sheet if sheet ID is in URL
+  useEffect(() => {
+    if (sheetIdFromUrl && profile?.factory_id) {
+      loadExistingSheet(sheetIdFromUrl);
+    }
+  }, [sheetIdFromUrl, profile?.factory_id]);
+
   useEffect(() => {
     if (profile?.factory_id) {
       fetchInitialData();
@@ -159,13 +168,42 @@ export default function FinishingDailySheet() {
   }, [profile?.factory_id]);
 
   useEffect(() => {
-    if (selectedLineId && selectedWorkOrderId && profile?.factory_id) {
+    // Only auto-load/create sheet if we don't have a sheet from URL
+    if (!sheetIdFromUrl && selectedLineId && selectedWorkOrderId && profile?.factory_id) {
       loadOrCreateSheet();
-    } else {
+    } else if (!sheetIdFromUrl && (!selectedLineId || !selectedWorkOrderId)) {
       setCurrentSheet(null);
       setHourlyLogs([]);
     }
-  }, [selectedLineId, selectedWorkOrderId, profile?.factory_id]);
+  }, [selectedLineId, selectedWorkOrderId, profile?.factory_id, sheetIdFromUrl]);
+
+  async function loadExistingSheet(sheetId: string) {
+    if (!profile?.factory_id) return;
+    
+    setLoadingExistingSheet(true);
+    try {
+      const { data: sheet, error } = await supabase
+        .from("finishing_daily_sheets")
+        .select("*")
+        .eq("id", sheetId)
+        .eq("factory_id", profile.factory_id)
+        .single();
+
+      if (error) throw error;
+      
+      if (sheet) {
+        setCurrentSheet(sheet);
+        setSelectedLineId(sheet.line_id);
+        setSelectedWorkOrderId(sheet.work_order_id);
+        await fetchHourlyLogs(sheet.id);
+      }
+    } catch (error) {
+      console.error("Error loading sheet:", error);
+      toast.error("Failed to load sheet");
+    } finally {
+      setLoadingExistingSheet(false);
+    }
+  }
 
   async function fetchInitialData() {
     if (!profile?.factory_id) return;
@@ -368,7 +406,7 @@ export default function FinishingDailySheet() {
     }
   }
 
-  if (loading) {
+  if (loading || loadingExistingSheet) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
