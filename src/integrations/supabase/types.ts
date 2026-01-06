@@ -715,6 +715,174 @@ export type Database = {
           },
         ]
       }
+      finishing_daily_sheets: {
+        Row: {
+          buyer: string | null
+          color: string | null
+          created_at: string | null
+          created_by: string | null
+          factory_id: string
+          finishing_no: string | null
+          id: string
+          item: string | null
+          line_id: string
+          po_no: string | null
+          production_date: string
+          style: string | null
+          updated_at: string | null
+          updated_by: string | null
+          work_order_id: string
+        }
+        Insert: {
+          buyer?: string | null
+          color?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          factory_id: string
+          finishing_no?: string | null
+          id?: string
+          item?: string | null
+          line_id: string
+          po_no?: string | null
+          production_date?: string
+          style?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          work_order_id: string
+        }
+        Update: {
+          buyer?: string | null
+          color?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          factory_id?: string
+          finishing_no?: string | null
+          id?: string
+          item?: string | null
+          line_id?: string
+          po_no?: string | null
+          production_date?: string
+          style?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          work_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finishing_daily_sheets_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finishing_daily_sheets_line_id_fkey"
+            columns: ["line_id"]
+            isOneToOne: false
+            referencedRelation: "lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finishing_daily_sheets_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finishing_hourly_logs: {
+        Row: {
+          buttoning_actual: number | null
+          buttoning_target: number | null
+          carton_actual: number | null
+          carton_target: number | null
+          get_up_actual: number | null
+          get_up_target: number | null
+          hour_slot: Database["public"]["Enums"]["finishing_hour_slot"]
+          id: string
+          inside_check_actual: number | null
+          inside_check_target: number | null
+          iron_actual: number | null
+          iron_target: number | null
+          is_locked: boolean | null
+          poly_actual: number | null
+          poly_target: number | null
+          remarks: string | null
+          sheet_id: string
+          submitted_at: string | null
+          submitted_by: string | null
+          thread_cutting_actual: number | null
+          thread_cutting_target: number | null
+          top_side_check_actual: number | null
+          top_side_check_target: number | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          buttoning_actual?: number | null
+          buttoning_target?: number | null
+          carton_actual?: number | null
+          carton_target?: number | null
+          get_up_actual?: number | null
+          get_up_target?: number | null
+          hour_slot: Database["public"]["Enums"]["finishing_hour_slot"]
+          id?: string
+          inside_check_actual?: number | null
+          inside_check_target?: number | null
+          iron_actual?: number | null
+          iron_target?: number | null
+          is_locked?: boolean | null
+          poly_actual?: number | null
+          poly_target?: number | null
+          remarks?: string | null
+          sheet_id: string
+          submitted_at?: string | null
+          submitted_by?: string | null
+          thread_cutting_actual?: number | null
+          thread_cutting_target?: number | null
+          top_side_check_actual?: number | null
+          top_side_check_target?: number | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          buttoning_actual?: number | null
+          buttoning_target?: number | null
+          carton_actual?: number | null
+          carton_target?: number | null
+          get_up_actual?: number | null
+          get_up_target?: number | null
+          hour_slot?: Database["public"]["Enums"]["finishing_hour_slot"]
+          id?: string
+          inside_check_actual?: number | null
+          inside_check_target?: number | null
+          iron_actual?: number | null
+          iron_target?: number | null
+          is_locked?: boolean | null
+          poly_actual?: number | null
+          poly_target?: number | null
+          remarks?: string | null
+          sheet_id?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
+          thread_cutting_actual?: number | null
+          thread_cutting_target?: number | null
+          top_side_check_actual?: number | null
+          top_side_check_target?: number | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finishing_hourly_logs_sheet_id_fkey"
+            columns: ["sheet_id"]
+            isOneToOne: false
+            referencedRelation: "finishing_daily_sheets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       finishing_targets: {
         Row: {
           buyer_name: string | null
@@ -2173,6 +2341,17 @@ export type Database = {
         | "cutting"
       blocker_impact: "low" | "medium" | "high" | "critical"
       blocker_status: "open" | "in_progress" | "resolved"
+      finishing_hour_slot:
+        | "08-09"
+        | "09-10"
+        | "10-11"
+        | "11-12"
+        | "12-01"
+        | "02-03"
+        | "03-04"
+        | "04-05"
+        | "05-06"
+        | "06-07"
       subscription_tier:
         | "starter"
         | "professional"
@@ -2320,6 +2499,18 @@ export const Constants = {
       ],
       blocker_impact: ["low", "medium", "high", "critical"],
       blocker_status: ["open", "in_progress", "resolved"],
+      finishing_hour_slot: [
+        "08-09",
+        "09-10",
+        "10-11",
+        "11-12",
+        "12-01",
+        "02-03",
+        "03-04",
+        "04-05",
+        "05-06",
+        "06-07",
+      ],
       subscription_tier: [
         "starter",
         "professional",
