@@ -313,12 +313,22 @@ export default function FactorySetup() {
     
     setIsCreatingFactory(true);
     try {
-      // Create the factory
+      // Calculate 14-day trial period
+      const trialStartDate = new Date();
+      const trialEndDate = new Date();
+      trialEndDate.setDate(trialEndDate.getDate() + 14);
+
+      // Create the factory with a 14-day free trial
       const { data: factory, error: factoryError } = await supabase
         .from('factory_accounts')
         .insert({
           name: newFactoryName.trim(),
           slug: newFactorySlug.trim().toLowerCase().replace(/\s+/g, '-'),
+          subscription_status: 'trial',
+          subscription_tier: 'starter',
+          max_lines: 30,
+          trial_start_date: trialStartDate.toISOString(),
+          trial_end_date: trialEndDate.toISOString(),
         })
         .select()
         .single();
@@ -332,6 +342,19 @@ export default function FactorySetup() {
         .eq('id', user.id);
 
       if (profileError) throw profileError;
+
+      // Assign owner role to the user who created the factory
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .insert({ 
+          user_id: user.id, 
+          role: 'owner',
+          factory_id: factory.id 
+        });
+
+      if (roleError) {
+        console.error('Error assigning owner role:', roleError);
+      }
 
       // Seed default stages
       const stagesData = DEFAULT_STAGES.map(stage => ({
@@ -350,7 +373,10 @@ export default function FactorySetup() {
       }));
       await supabase.from('blocker_types').insert(blockerTypesData);
 
-      toast({ title: "Factory created!", description: "Default stages and blocker types have been added." });
+      toast({ 
+        title: "Factory created!", 
+        description: "Your 14-day free trial has started. Default stages and blocker types have been added." 
+      });
       
       // Reload the page to refresh auth context
       window.location.reload();
