@@ -149,9 +149,7 @@ export const NAV_ITEMS = {
     { path: '/preferences', label: 'My Preferences', icon: 'UserCog' },
   ],
   worker_finishing: [
-    { path: '/finishing/morning-targets', label: 'Finishing Morning Targets', icon: 'Crosshair' },
-    { path: '/finishing/end-of-day', label: 'Finishing End of Day', icon: 'ClipboardCheck' },
-    { path: '/submissions', label: 'My Submissions', icon: 'FileText' },
+    { path: '/finishing/daily-sheet', label: 'Finishing Daily Sheet', icon: 'ClipboardList' },
     { path: '/report-blocker', label: 'Report Blocker', icon: 'AlertTriangle' },
     { path: '/preferences', label: 'My Preferences', icon: 'UserCog' },
   ],
