@@ -221,72 +221,74 @@ export function FinishingDashboard() {
         </CardHeader>
         <CardContent>
           {sheets.length > 0 ? (
-            <div className="space-y-3 max-h-[500px] overflow-y-auto">
-              {sheets.map((sheet) => (
-                <Link
-                  key={sheet.id}
-                  to={`/finishing/daily-sheet?sheet=${sheet.id}`}
-                  className="block"
-                >
-                  <div className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
-                    <div className="flex items-center gap-4">
-                      <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <Package className="h-6 w-6 text-primary" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold">{sheet.line_name}</span>
-                          {sheet.finishing_no && (
-                            <Badge variant="outline" className="text-xs">
-                              {sheet.finishing_no}
-                            </Badge>
-                          )}
-                          {sheet.hours_logged < minRequiredHours ? (
-                            <Badge variant="destructive" className="text-xs">
-                              Incomplete
-                            </Badge>
-                          ) : (
-                            <Badge variant="default" className="text-xs bg-success hover:bg-success/90">
-                              Complete
-                            </Badge>
-                          )}
+            <div className="w-full overflow-x-auto">
+              <div className="space-y-3 max-h-[500px] overflow-y-auto min-w-[480px]">
+                {sheets.map((sheet) => (
+                  <Link
+                    key={sheet.id}
+                    to={`/finishing/daily-sheet?sheet=${sheet.id}`}
+                    className="block"
+                  >
+                    <div className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center gap-4 shrink-0">
+                        <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                          <Package className="h-6 w-6 text-primary" />
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          {sheet.po_number || 'No PO'} • {sheet.style || 'No Style'}
-                        </p>
-                        <div className="flex items-center gap-3 mt-1">
-                          <span className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {sheet.hours_logged}/{minRequiredHours} hours
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            Started {formatTime(sheet.created_at)}
-                          </span>
+                        <div className="whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold">{sheet.line_name}</span>
+                            {sheet.finishing_no && (
+                              <Badge variant="outline" className="text-xs">
+                                {sheet.finishing_no}
+                              </Badge>
+                            )}
+                            {sheet.hours_logged < minRequiredHours ? (
+                              <Badge variant="destructive" className="text-xs">
+                                Incomplete
+                              </Badge>
+                            ) : (
+                              <Badge variant="default" className="text-xs bg-success hover:bg-success/90">
+                                Complete
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {sheet.po_number || 'No PO'} • {sheet.style || 'No Style'}
+                          </p>
+                          <div className="flex items-center gap-3 mt-1">
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {sheet.hours_logged}/{minRequiredHours} hours
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              Started {formatTime(sheet.created_at)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0 ml-4">
+                        <div className="flex gap-4">
+                          <div>
+                            <p className="font-mono font-bold text-lg text-success">{sheet.total_poly.toLocaleString()}</p>
+                            <p className="text-xs text-muted-foreground">poly</p>
+                          </div>
+                          <div>
+                            <p className="font-mono font-bold text-lg text-warning">{sheet.total_carton.toLocaleString()}</p>
+                            <p className="text-xs text-muted-foreground">carton</p>
+                          </div>
+                        </div>
+                        {/* Progress bar for hours */}
+                        <div className="mt-2 w-32">
+                          <Progress 
+                            value={(sheet.hours_logged / maxHoursPerSheet) * 100} 
+                            className="h-1.5"
+                          />
                         </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="flex gap-4">
-                        <div>
-                          <p className="font-mono font-bold text-lg text-success">{sheet.total_poly.toLocaleString()}</p>
-                          <p className="text-xs text-muted-foreground">poly</p>
-                        </div>
-                        <div>
-                          <p className="font-mono font-bold text-lg text-warning">{sheet.total_carton.toLocaleString()}</p>
-                          <p className="text-xs text-muted-foreground">carton</p>
-                        </div>
-                      </div>
-                      {/* Progress bar for hours */}
-                      <div className="mt-2 w-32">
-                        <Progress 
-                          value={(sheet.hours_logged / maxHoursPerSheet) * 100} 
-                          className="h-1.5"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                ))}
+              </div>
             </div>
           ) : (
             <div className="text-center py-12 text-muted-foreground">
