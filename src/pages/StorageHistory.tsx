@@ -21,13 +21,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -65,10 +58,6 @@ interface Transaction {
   created_at: string;
 }
 
-interface UserProfile {
-  id: string;
-  full_name: string;
-}
 
 export default function StorageHistory() {
   const { profile, isStorageUser, isAdminOrHigher } = useAuth();
@@ -83,35 +72,16 @@ export default function StorageHistory() {
   // Filter states
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
-  const [selectedUserId, setSelectedUserId] = useState<string>("all");
-  const [users, setUsers] = useState<UserProfile[]>([]);
 
   const canAccess = isStorageUser() || isAdminOrHigher();
 
   useEffect(() => {
     if (profile?.factory_id && canAccess) {
       fetchBinCards();
-      fetchUsers();
     } else {
       setLoading(false);
     }
   }, [profile?.factory_id, canAccess]);
-
-  async function fetchUsers() {
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, full_name")
-        .eq("factory_id", profile!.factory_id)
-        .eq("is_active", true)
-        .order("full_name");
-      
-      if (error) throw error;
-      setUsers(data || []);
-    } catch (error) {
-      console.error("Error fetching users:", error);
-    }
-  }
 
   async function fetchBinCards() {
     try {
@@ -179,22 +149,16 @@ export default function StorageHistory() {
       if (cardDate > toDate) return false;
     }
     
-    // User filter
-    if (selectedUserId && selectedUserId !== "all") {
-      if (card.prepared_by_user_id !== selectedUserId) return false;
-    }
-    
     return true;
   });
 
   function clearFilters() {
     setDateFrom(undefined);
     setDateTo(undefined);
-    setSelectedUserId("all");
     setSearchTerm("");
   }
 
-  const hasActiveFilters = dateFrom || dateTo || (selectedUserId && selectedUserId !== "all") || searchTerm;
+  const hasActiveFilters = dateFrom || dateTo || searchTerm;
 
   async function openCardDetail(card: BinCardWithWorkOrder) {
     setSelectedCard(card);
@@ -308,21 +272,6 @@ export default function StorageHistory() {
                   />
                 </PopoverContent>
               </Popover>
-
-              {/* User filter */}
-              <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Submitted by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Users</SelectItem>
-                  {users.map(user => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user.full_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
 
               {/* Clear filters */}
               {hasActiveFilters && (
