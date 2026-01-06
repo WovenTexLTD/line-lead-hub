@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, Factory, Package, Search, Download, RefreshCw } from "lucide-react";
+import { Loader2, Factory, Package, Search, Download, RefreshCw, Scissors, Archive } from "lucide-react";
 import { SubmissionDetailModal } from "@/components/SubmissionDetailModal";
 
 interface SewingUpdate {
@@ -64,6 +64,33 @@ interface FinishingDailySheet {
   }>;
 }
 
+interface CuttingActual {
+  id: string;
+  line_id: string;
+  day_cutting: number;
+  day_input: number;
+  total_cutting: number | null;
+  submitted_at: string | null;
+  production_date: string;
+  lines: { line_id: string; name: string | null } | null;
+  work_orders: { po_number: string; buyer: string; style: string } | null;
+}
+
+interface StorageTransaction {
+  id: string;
+  receive_qty: number;
+  issue_qty: number;
+  balance_qty: number;
+  transaction_date: string;
+  created_at: string | null;
+  storage_bin_cards: {
+    id: string;
+    buyer: string | null;
+    style: string | null;
+    work_orders: { po_number: string } | null;
+  } | null;
+}
+
 type ModalSubmission = {
   id: string;
   type: 'sewing' | 'finishing';
@@ -98,6 +125,8 @@ export default function TodayUpdates() {
   const [loading, setLoading] = useState(true);
   const [sewingUpdates, setSewingUpdates] = useState<SewingUpdate[]>([]);
   const [finishingSheets, setFinishingSheets] = useState<FinishingDailySheet[]>([]);
+  const [cuttingActuals, setCuttingActuals] = useState<CuttingActual[]>([]);
+  const [storageTransactions, setStorageTransactions] = useState<StorageTransaction[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [selectedSubmission, setSelectedSubmission] = useState<ModalSubmission | null>(null);
@@ -115,7 +144,7 @@ export default function TodayUpdates() {
     const today = new Date().toISOString().split('T')[0];
 
     try {
-      const [sewingRes, finishingRes] = await Promise.all([
+      const [sewingRes, finishingRes, cuttingRes, storageRes] = await Promise.all([
         supabase
           .from('production_updates_sewing')
           .select('*, lines(line_id, name), work_orders(po_number, buyer, style)')
@@ -128,6 +157,18 @@ export default function TodayUpdates() {
           .eq('factory_id', profile.factory_id)
           .eq('production_date', today)
           .order('created_at', { ascending: false }),
+        supabase
+          .from('cutting_actuals')
+          .select('*, lines!cutting_actuals_line_id_fkey(line_id, name), work_orders(po_number, buyer, style)')
+          .eq('factory_id', profile.factory_id)
+          .eq('production_date', today)
+          .order('submitted_at', { ascending: false }),
+        supabase
+          .from('storage_bin_card_transactions')
+          .select('*, storage_bin_cards(id, buyer, style, work_orders(po_number))')
+          .eq('factory_id', profile.factory_id)
+          .eq('transaction_date', today)
+          .order('created_at', { ascending: false }),
       ]);
 
       setSewingUpdates(sewingRes.data || []);
@@ -136,6 +177,8 @@ export default function TodayUpdates() {
         (sheet: any) => (sheet.finishing_hourly_logs || []).length > 0
       );
       setFinishingSheets(sheetsWithLogs);
+      setCuttingActuals(cuttingRes.data as any || []);
+      setStorageTransactions(storageRes.data as any || []);
     } catch (error) {
       console.error('Error fetching updates:', error);
     } finally {
@@ -160,10 +203,28 @@ export default function TodayUpdates() {
     (s.work_orders?.po_number || s.po_no || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const totalOutput = sewingUpdates.reduce((sum, u) => sum + (u.output_qty || 0), 0);
-  const totalPoly = finishingSheets.reduce((sum, s) => 
-    sum + (s.finishing_hourly_logs || []).reduce((logSum, l) => logSum + (l.poly_actual || 0), 0), 0
+  const filteredCutting = cuttingActuals.filter(c =>
+    (c.lines?.name || c.lines?.line_id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (c.work_orders?.po_number || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const filteredStorage = storageTransactions.filter(s =>
+    (s.storage_bin_cards?.work_orders?.po_number || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (s.storage_bin_cards?.style || '').toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const totalOutput = sewingUpdates.reduce((sum, u) => sum + (u.output_qty || 0), 0);
+  
+  // Total Finishing Output = Total Poly + Total Carton
+  const totalFinishingOutput = finishingSheets.reduce((sum, s) => {
+    const logs = s.finishing_hourly_logs || [];
+    const poly = logs.reduce((logSum, l) => logSum + (l.poly_actual || 0), 0);
+    const carton = logs.reduce((logSum, l) => logSum + (l.carton_actual || 0), 0);
+    return sum + poly + carton;
+  }, 0);
+
+  const totalCutting = cuttingActuals.reduce((sum, c) => sum + (c.day_cutting || 0), 0);
+  const totalStorageReceived = storageTransactions.reduce((sum, s) => sum + (s.receive_qty || 0), 0);
 
   const handleSewingClick = (update: SewingUpdate) => {
     setSelectedSubmission({
@@ -250,7 +311,7 @@ export default function TodayUpdates() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -259,7 +320,7 @@ export default function TodayUpdates() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{sewingUpdates.length}</p>
-                <p className="text-xs text-muted-foreground">Sewing Updates</p>
+                <p className="text-xs text-muted-foreground">Sewing</p>
               </div>
             </div>
           </CardContent>
@@ -272,7 +333,33 @@ export default function TodayUpdates() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{finishingSheets.length}</p>
-                <p className="text-xs text-muted-foreground">Finishing Sheets</p>
+                <p className="text-xs text-muted-foreground">Finishing</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-warning/10 flex items-center justify-center">
+                <Scissors className="h-5 w-5 text-warning" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{cuttingActuals.length}</p>
+                <p className="text-xs text-muted-foreground">Cutting</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-success/10 flex items-center justify-center">
+                <Archive className="h-5 w-5 text-success" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{storageTransactions.length}</p>
+                <p className="text-xs text-muted-foreground">Storage</p>
               </div>
             </div>
           </CardContent>
@@ -280,16 +367,16 @@ export default function TodayUpdates() {
         <Card>
           <CardContent className="p-4">
             <div>
-              <p className="text-2xl font-bold font-mono">{totalOutput.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground">Total Sewing Output</p>
+              <p className="text-2xl font-bold font-mono text-primary">{totalOutput.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">Sewing Output</p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <div>
-              <p className="text-2xl font-bold font-mono">{totalPoly.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground">Total Poly</p>
+              <p className="text-2xl font-bold font-mono text-success">{totalFinishingOutput.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">Finishing Output</p>
             </div>
           </CardContent>
         </Card>
@@ -309,9 +396,11 @@ export default function TodayUpdates() {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="all">All ({sewingUpdates.length + finishingSheets.length})</TabsTrigger>
+          <TabsTrigger value="all">All ({sewingUpdates.length + finishingSheets.length + cuttingActuals.length + storageTransactions.length})</TabsTrigger>
           <TabsTrigger value="sewing">Sewing ({sewingUpdates.length})</TabsTrigger>
           <TabsTrigger value="finishing">Finishing ({finishingSheets.length})</TabsTrigger>
+          <TabsTrigger value="cutting">Cutting ({cuttingActuals.length})</TabsTrigger>
+          <TabsTrigger value="storage">Storage ({storageTransactions.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="all" className="mt-4 space-y-4">
@@ -391,8 +480,8 @@ export default function TodayUpdates() {
                         <TableHead>Line</TableHead>
                         <TableHead>PO</TableHead>
                         <TableHead className="text-right">Hours Logged</TableHead>
-                        <TableHead className="text-right">Total Poly</TableHead>
-                        <TableHead className="text-right">Total Carton</TableHead>
+                        <TableHead className="text-right">Poly</TableHead>
+                        <TableHead className="text-right">Carton</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -422,7 +511,87 @@ export default function TodayUpdates() {
             </Card>
           )}
 
-          {filteredSewing.length === 0 && filteredFinishing.length === 0 && (
+          {/* Cutting Table */}
+          {filteredCutting.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Scissors className="h-4 w-4 text-warning" />
+                  Cutting Updates
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Time</TableHead>
+                        <TableHead>Line</TableHead>
+                        <TableHead>PO</TableHead>
+                        <TableHead className="text-right">Day Cutting</TableHead>
+                        <TableHead className="text-right">Day Input</TableHead>
+                        <TableHead className="text-right">Total Cutting</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredCutting.map((cutting) => (
+                        <TableRow key={cutting.id} className="hover:bg-muted/50">
+                          <TableCell className="font-mono text-sm">{cutting.submitted_at ? formatTime(cutting.submitted_at) : '-'}</TableCell>
+                          <TableCell className="font-medium">{cutting.lines?.name || cutting.lines?.line_id}</TableCell>
+                          <TableCell>{cutting.work_orders?.po_number || '-'}</TableCell>
+                          <TableCell className="text-right font-mono">{cutting.day_cutting.toLocaleString()}</TableCell>
+                          <TableCell className="text-right font-mono">{cutting.day_input.toLocaleString()}</TableCell>
+                          <TableCell className="text-right font-mono">{cutting.total_cutting?.toLocaleString() || '-'}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Storage Table */}
+          {filteredStorage.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Archive className="h-4 w-4 text-success" />
+                  Storage Transactions
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Time</TableHead>
+                        <TableHead>PO</TableHead>
+                        <TableHead>Style</TableHead>
+                        <TableHead className="text-right">Received</TableHead>
+                        <TableHead className="text-right">Issued</TableHead>
+                        <TableHead className="text-right">Balance</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredStorage.map((txn) => (
+                        <TableRow key={txn.id} className="hover:bg-muted/50">
+                          <TableCell className="font-mono text-sm">{txn.created_at ? formatTime(txn.created_at) : '-'}</TableCell>
+                          <TableCell>{txn.storage_bin_cards?.work_orders?.po_number || '-'}</TableCell>
+                          <TableCell>{txn.storage_bin_cards?.style || '-'}</TableCell>
+                          <TableCell className="text-right font-mono text-success">{txn.receive_qty > 0 ? `+${txn.receive_qty.toLocaleString()}` : '-'}</TableCell>
+                          <TableCell className="text-right font-mono text-destructive">{txn.issue_qty > 0 ? `-${txn.issue_qty.toLocaleString()}` : '-'}</TableCell>
+                          <TableCell className="text-right font-mono font-medium">{txn.balance_qty.toLocaleString()}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {filteredSewing.length === 0 && filteredFinishing.length === 0 && filteredCutting.length === 0 && filteredStorage.length === 0 && (
             <Card>
               <CardContent className="py-12 text-center text-muted-foreground">
                 <p>No updates found for today</p>
@@ -496,8 +665,8 @@ export default function TodayUpdates() {
                         <TableHead>Line</TableHead>
                         <TableHead>PO</TableHead>
                         <TableHead className="text-right">Hours Logged</TableHead>
-                        <TableHead className="text-right">Total Poly</TableHead>
-                        <TableHead className="text-right">Total Carton</TableHead>
+                        <TableHead className="text-right">Poly</TableHead>
+                        <TableHead className="text-right">Carton</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -528,6 +697,86 @@ export default function TodayUpdates() {
                         </TableRow>
                       )}
                     </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="cutting" className="mt-4">
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Time</TableHead>
+                      <TableHead>Line</TableHead>
+                      <TableHead>PO</TableHead>
+                      <TableHead className="text-right">Day Cutting</TableHead>
+                      <TableHead className="text-right">Day Input</TableHead>
+                      <TableHead className="text-right">Total Cutting</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredCutting.map((cutting) => (
+                      <TableRow key={cutting.id} className="hover:bg-muted/50">
+                        <TableCell className="font-mono text-sm">{cutting.submitted_at ? formatTime(cutting.submitted_at) : '-'}</TableCell>
+                        <TableCell className="font-medium">{cutting.lines?.name || cutting.lines?.line_id}</TableCell>
+                        <TableCell>{cutting.work_orders?.po_number || '-'}</TableCell>
+                        <TableCell className="text-right font-mono font-bold">{cutting.day_cutting.toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-mono">{cutting.day_input.toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-mono">{cutting.total_cutting?.toLocaleString() || '-'}</TableCell>
+                      </TableRow>
+                    ))}
+                    {filteredCutting.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                          No cutting updates today
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="storage" className="mt-4">
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Time</TableHead>
+                      <TableHead>PO</TableHead>
+                      <TableHead>Style</TableHead>
+                      <TableHead className="text-right">Received</TableHead>
+                      <TableHead className="text-right">Issued</TableHead>
+                      <TableHead className="text-right">Balance</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredStorage.map((txn) => (
+                      <TableRow key={txn.id} className="hover:bg-muted/50">
+                        <TableCell className="font-mono text-sm">{txn.created_at ? formatTime(txn.created_at) : '-'}</TableCell>
+                        <TableCell>{txn.storage_bin_cards?.work_orders?.po_number || '-'}</TableCell>
+                        <TableCell>{txn.storage_bin_cards?.style || '-'}</TableCell>
+                        <TableCell className="text-right font-mono text-success">{txn.receive_qty > 0 ? `+${txn.receive_qty.toLocaleString()}` : '-'}</TableCell>
+                        <TableCell className="text-right font-mono text-destructive">{txn.issue_qty > 0 ? `-${txn.issue_qty.toLocaleString()}` : '-'}</TableCell>
+                        <TableCell className="text-right font-mono font-medium">{txn.balance_qty.toLocaleString()}</TableCell>
+                      </TableRow>
+                    ))}
+                    {filteredStorage.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                          No storage transactions today
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
                 </Table>
               </div>
             </CardContent>
