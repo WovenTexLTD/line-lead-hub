@@ -109,7 +109,7 @@ export function PeriodComparison({ currentPeriod, previousPeriod, periodDays }: 
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
           {metrics.map((metric) => {
             const Icon = metric.icon;
             return (
