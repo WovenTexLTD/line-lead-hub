@@ -397,7 +397,7 @@ export default function StorageBinCard() {
   }
 
   return (
-    <div className="container mx-auto max-w-5xl space-y-4 md:space-y-6 px-3 pt-4 pb-24 md:p-6">
+    <div className="w-full max-w-5xl mx-auto space-y-4 md:space-y-6 px-2 sm:px-4 pt-4 pb-24 md:p-6 overflow-x-hidden">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Package className="h-7 w-7 md:h-8 md:w-8 text-primary shrink-0" />
@@ -408,11 +408,11 @@ export default function StorageBinCard() {
       </div>
 
       {/* Step 1: PO Selector */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">Step 1: Select PO / Work Order</CardTitle>
+      <Card className="overflow-hidden">
+        <CardHeader className="pb-3 px-3 sm:px-6">
+          <CardTitle className="text-base sm:text-lg">Step 1: Select PO / Work Order</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-3 sm:px-6">
           <Popover open={searchOpen} onOpenChange={setSearchOpen}>
             <PopoverTrigger asChild>
               <Button variant="outline" className="w-full justify-start min-w-0">
@@ -463,9 +463,9 @@ export default function StorageBinCard() {
 
       {/* Step 2: Header Fields - shown when bin card is loaded */}
       {binCard && !loading && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center justify-between">
+        <Card className="overflow-hidden">
+          <CardHeader className="pb-3 px-3 sm:px-6">
+            <CardTitle className="text-base sm:text-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <span>Step 2: Bin Card Header</span>
               <div className="flex items-center gap-2">
                 {binCard.is_header_locked && (
@@ -492,8 +492,8 @@ export default function StorageBinCard() {
               </div>
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+          <CardContent className="px-3 sm:px-6">
+            <div className="grid grid-cols-1 gap-3">
               <div>
                 <Label>BUYER</Label>
                 <Input value={selectedWorkOrder?.buyer || ""} disabled className="bg-muted" />
@@ -581,13 +581,13 @@ export default function StorageBinCard() {
 
       {/* Step 3: Transaction Grid */}
       {binCard && !loading && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Step 3: Daily Transaction Entry</CardTitle>
+        <Card className="overflow-hidden">
+          <CardHeader className="pb-3 px-3 sm:px-6">
+            <CardTitle className="text-base sm:text-lg">Step 3: Daily Transaction Entry</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 px-3 sm:px-6">
             {/* Existing transactions table */}
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-x-auto -mx-3 sm:mx-0">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -625,12 +625,12 @@ export default function StorageBinCard() {
             </div>
 
             {/* New entry row */}
-            <div className="border rounded-lg p-4 bg-muted/30">
-              <h4 className="font-medium mb-3 flex items-center gap-2">
+            <div className="border rounded-lg p-3 sm:p-4 bg-muted/30">
+              <h4 className="font-medium mb-3 flex items-center gap-2 text-sm sm:text-base">
                 <Plus className="h-4 w-4" />
                 Add Today's Entry ({format(new Date(), "dd/MM/yyyy")})
               </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+              <div className="grid grid-cols-1 gap-3">
                 <div>
                   <Label>Receive Qty</Label>
                   <Input
@@ -663,7 +663,7 @@ export default function StorageBinCard() {
                     className={`bg-muted ${wouldGoNegative ? 'text-destructive border-destructive' : ''}`}
                   />
                 </div>
-                <div className="md:col-span-1 sm:col-span-2">
+                <div>
                   <Label>Remarks</Label>
                   <Textarea
                     value={newTxn.remarks}
@@ -684,7 +684,7 @@ export default function StorageBinCard() {
               <Button 
                 onClick={submitTransaction} 
                 disabled={saving || (wouldGoNegative && !isAdminOrHigher())}
-                className="mt-4"
+                className="mt-4 w-full sm:w-auto"
               >
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                 Save Entry
