@@ -44,7 +44,7 @@ import StorageHistory from "./pages/StorageHistory";
 import StorageDashboard from "./pages/StorageDashboard";
 import CuttingForm from "./pages/CuttingForm";
 import CuttingSummary from "./pages/CuttingSummary";
-import CuttingMySubmissions from "./pages/CuttingMySubmissions";
+import CuttingAllSubmissions from "./pages/CuttingAllSubmissions";
 const queryClient = new QueryClient();
 
 function AppRoutes() {
@@ -95,7 +95,7 @@ function AppRoutes() {
         {/* Cutting module routes */}
         <Route path="/cutting/form" element={<SubscriptionGate><CuttingForm /></SubscriptionGate>} />
         <Route path="/cutting/summary" element={<SubscriptionGate><CuttingSummary /></SubscriptionGate>} />
-        <Route path="/cutting/my-submissions" element={<SubscriptionGate><CuttingMySubmissions /></SubscriptionGate>} />
+        <Route path="/cutting/submissions" element={<SubscriptionGate><CuttingAllSubmissions /></SubscriptionGate>} />
       </Route>
       
       <Route path="*" element={<NotFound />} />

@@ -17,7 +17,6 @@ interface CuttingTarget {
   id: string;
   production_date: string;
   submitted_at: string;
-  cutting_section_id: string;
   line_id: string;
   buyer: string | null;
   style: string | null;
@@ -30,14 +29,13 @@ interface CuttingTarget {
   cutting_capacity: number;
   under_qty: number | null;
   lines?: { line_id: string; name: string | null };
-  cutting_sections?: { cutting_no: string };
+  work_orders?: { po_number: string; buyer: string; style: string };
 }
 
 interface CuttingActual {
   id: string;
   production_date: string;
   submitted_at: string;
-  cutting_section_id: string;
   line_id: string;
   buyer: string | null;
   style: string | null;
@@ -50,7 +48,7 @@ interface CuttingActual {
   total_input: number | null;
   balance: number | null;
   lines?: { line_id: string; name: string | null };
-  cutting_sections?: { cutting_no: string };
+  work_orders?: { po_number: string; buyer: string; style: string };
 }
 
 interface DateRange {
@@ -58,9 +56,9 @@ interface DateRange {
   to: Date | undefined;
 }
 
-export default function CuttingMySubmissions() {
+export default function CuttingAllSubmissions() {
   const { t } = useTranslation();
-  const { profile, user } = useAuth();
+  const { profile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"targets" | "actuals">("targets");
   
@@ -81,13 +79,13 @@ export default function CuttingMySubmissions() {
   const [eveningActualCutoff, setEveningActualCutoff] = useState<string | null>(null);
 
   useEffect(() => {
-    if (profile?.factory_id && user?.id) {
+    if (profile?.factory_id) {
       fetchData();
     }
-  }, [profile?.factory_id, user?.id]);
+  }, [profile?.factory_id]);
 
   async function fetchData() {
-    if (!profile?.factory_id || !user?.id) return;
+    if (!profile?.factory_id) return;
     setLoading(true);
 
     try {
@@ -101,14 +99,14 @@ export default function CuttingMySubmissions() {
       ] = await Promise.all([
         supabase
           .from('cutting_targets')
-          .select('*, lines(line_id, name), cutting_sections(cutting_no)')
-          .eq('submitted_by', user.id)
+          .select('*, lines(line_id, name), work_orders(po_number, buyer, style)')
+          .eq('factory_id', profile.factory_id)
           .gte('production_date', thirtyDaysAgo)
           .order('production_date', { ascending: false }),
         supabase
           .from('cutting_actuals')
-          .select('*, lines(line_id, name), cutting_sections(cutting_no)')
-          .eq('submitted_by', user.id)
+          .select('*, lines(line_id, name), work_orders(po_number, buyer, style)')
+          .eq('factory_id', profile.factory_id)
           .gte('production_date', thirtyDaysAgo)
           .order('production_date', { ascending: false }),
         supabase
@@ -189,9 +187,9 @@ export default function CuttingMySubmissions() {
             <Scissors className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">My Cutting Submissions</h1>
+            <h1 className="text-2xl font-bold">All Cutting Submissions</h1>
             <p className="text-muted-foreground">
-              Track your cutting targets and daily reports
+              View all cutting targets and daily reports
             </p>
           </div>
         </div>
@@ -382,17 +380,14 @@ export default function CuttingMySubmissions() {
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-medium">
-                              {submission.lines?.name || 'Unknown Line'}
+                              {submission.lines?.name || submission.lines?.line_id || 'Unknown Line'}
                             </span>
-                            <Badge variant="outline" className="text-xs">
-                              Cutting {submission.cutting_sections?.cutting_no}
-                            </Badge>
                             <Badge variant="outline" className="text-xs">
                               {format(new Date(submission.production_date), 'MMM d, yyyy')}
                             </Badge>
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            {submission.po_no} • {submission.buyer} • {submission.style}
+                            {submission.work_orders?.po_number || submission.po_no} • {submission.work_orders?.buyer || submission.buyer} • {submission.work_orders?.style || submission.style}
                           </p>
                         </div>
                       </div>
@@ -435,17 +430,17 @@ export default function CuttingMySubmissions() {
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-medium">
-                              {submission.lines?.name || 'Unknown Line'}
+                              {submission.lines?.name || submission.lines?.line_id || 'Unknown Line'}
                             </span>
                             <Badge variant="outline" className="text-xs">
-                              Cutting {submission.cutting_sections?.cutting_no}
+                              {format(new Date(submission.production_date), 'MMM d, yyyy')}
                             </Badge>
                             <Badge variant="outline" className="text-xs">
                               {format(new Date(submission.production_date), 'MMM d, yyyy')}
                             </Badge>
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            {submission.po_no} • {submission.buyer} • {submission.style}
+                            {submission.work_orders?.po_number || submission.po_no} • {submission.work_orders?.buyer || submission.buyer} • {submission.work_orders?.style || submission.style}
                           </p>
                         </div>
                       </div>
