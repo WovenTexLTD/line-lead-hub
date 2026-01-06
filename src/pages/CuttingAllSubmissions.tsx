@@ -73,6 +73,7 @@ export default function CuttingAllSubmissions() {
   const [dateFrom, setDateFrom] = useState(format(subDays(new Date(), 30), "yyyy-MM-dd"));
   const [dateTo, setDateTo] = useState(format(new Date(), "yyyy-MM-dd"));
   const [selectedLine, setSelectedLine] = useState("all");
+  const [selectedPO, setSelectedPO] = useState("all");
 
   useEffect(() => {
     if (profile?.factory_id) {
@@ -152,12 +153,26 @@ export default function CuttingAllSubmissions() {
     }
   }
 
+  // Get unique PO numbers for filter
+  const uniquePOs = useMemo(() => {
+    const pos = new Set<string>();
+    submissions.forEach(s => {
+      const po = s.work_orders?.po_number || s.po_no;
+      if (po) pos.add(po);
+    });
+    return Array.from(pos).sort();
+  }, [submissions]);
+
   const filteredSubmissions = useMemo(() => {
     return submissions.filter(s => {
       if (selectedLine !== "all" && s.line_id !== selectedLine) return false;
+      if (selectedPO !== "all") {
+        const po = s.work_orders?.po_number || s.po_no;
+        if (po !== selectedPO) return false;
+      }
       return true;
     });
-  }, [submissions, selectedLine]);
+  }, [submissions, selectedLine, selectedPO]);
 
   const stats = useMemo(() => {
     const today = format(new Date(), "yyyy-MM-dd");
@@ -245,7 +260,7 @@ export default function CuttingAllSubmissions() {
       {/* Filters */}
       <Card>
         <CardContent className="pt-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="space-y-2">
               <Label>From Date</Label>
               <Input
@@ -272,6 +287,20 @@ export default function CuttingAllSubmissions() {
                   <SelectItem value="all">All Lines</SelectItem>
                   {lines.map(l => (
                     <SelectItem key={l.id} value={l.id}>{l.name || l.line_id}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>PO Number</Label>
+              <Select value={selectedPO} onValueChange={setSelectedPO}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All POs" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All POs</SelectItem>
+                  {uniquePOs.map(po => (
+                    <SelectItem key={po} value={po}>{po}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
