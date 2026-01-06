@@ -343,60 +343,55 @@ export default function AllSubmissions() {
         </div>
       </div>
 
-      {/* Category Selection - Big Buttons */}
+      {/* Department Selection - Primary Tabs */}
       <div className="grid grid-cols-2 gap-4">
         <Button
-          variant={category === 'targets' ? 'default' : 'outline'}
-          className="h-20 flex flex-col gap-2"
-          onClick={() => setCategory('targets')}
+          variant={department === 'sewing' ? 'default' : 'outline'}
+          className="h-16 flex flex-col gap-1"
+          onClick={() => setDepartment('sewing')}
         >
-          <Target className="h-6 w-6" />
-          <div className="flex flex-col items-center">
-            <span className="font-semibold">Morning Targets</span>
-            <span className="text-xs opacity-80">
-              {counts.sewingTargets + counts.finishingTargets} submissions
-            </span>
-          </div>
+          <Factory className="h-5 w-5" />
+          <span className="font-semibold">Sewing</span>
         </Button>
         <Button
-          variant={category === 'actuals' ? 'default' : 'outline'}
-          className="h-20 flex flex-col gap-2"
-          onClick={() => setCategory('actuals')}
+          variant={department === 'finishing' ? 'default' : 'outline'}
+          className="h-16 flex flex-col gap-1"
+          onClick={() => setDepartment('finishing')}
         >
-          <ClipboardCheck className="h-6 w-6" />
-          <div className="flex flex-col items-center">
-            <span className="font-semibold">End of Day</span>
-            <span className="text-xs opacity-80">
-              {counts.sewingActuals + counts.finishingActuals} submissions
-            </span>
-          </div>
+          <Package className="h-5 w-5" />
+          <span className="font-semibold">Finishing</span>
         </Button>
       </div>
 
-      {/* Department Selection */}
-      <div className="flex gap-2">
-        <Button
-          variant={department === 'sewing' ? 'secondary' : 'ghost'}
-          size="sm"
-          onClick={() => setDepartment('sewing')}
-          className="gap-2"
-        >
-          <Factory className="h-4 w-4" />
-          Sewing
-          <Badge variant="outline" className="ml-1">
-            {category === 'targets' ? counts.sewingTargets : counts.sewingActuals}
-          </Badge>
-        </Button>
-        <Button
-          variant={department === 'finishing' ? 'secondary' : 'ghost'}
-          size="sm"
-          onClick={() => setDepartment('finishing')}
-          className="gap-2"
-        >
-          <Package className="h-4 w-4" />
-          Finishing
-        </Button>
-      </div>
+      {/* Category Selection - Only for Sewing */}
+      {department === 'sewing' && (
+        <div className="flex gap-2">
+          <Button
+            variant={category === 'targets' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setCategory('targets')}
+            className="gap-2"
+          >
+            <Target className="h-4 w-4" />
+            Morning Targets
+            <Badge variant="outline" className="ml-1">
+              {counts.sewingTargets}
+            </Badge>
+          </Button>
+          <Button
+            variant={category === 'actuals' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setCategory('actuals')}
+            className="gap-2"
+          >
+            <ClipboardCheck className="h-4 w-4" />
+            End of Day
+            <Badge variant="outline" className="ml-1">
+              {counts.sewingActuals}
+            </Badge>
+          </Button>
+        </div>
+      )}
 
       {/* Finishing uses new Daily Sheets view */}
       {department === 'finishing' && profile?.factory_id && (
