@@ -291,6 +291,36 @@ export default function StorageDashboard() {
     URL.revokeObjectURL(url);
   }
 
+  function exportBinCardsToCSV() {
+    if (filteredCards.length === 0) return;
+    
+    const headers = ["PO Number", "Buyer", "Style", "Item", "Description", "Supplier", "Prepared By", "Created", "Last Updated"];
+    const rows = filteredCards.map(card => [
+      card.work_orders.po_number,
+      card.work_orders.buyer,
+      card.work_orders.style,
+      card.work_orders.item || "",
+      card.description || "",
+      card.supplier_name || "",
+      card.prepared_by || "",
+      format(new Date(card.created_at), "yyyy-MM-dd"),
+      format(new Date(card.updated_at), "yyyy-MM-dd"),
+    ].map(val => `"${String(val).replace(/"/g, '""')}"`));
+    
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.join(",")),
+    ].join("\n");
+    
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `bin-cards-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   if (!canAccess) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
@@ -442,8 +472,14 @@ export default function StorageDashboard() {
 
           {/* Cards list */}
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-lg">All Bin Cards ({filteredCards.length})</CardTitle>
+              {filteredCards.length > 0 && (
+                <Button variant="outline" size="sm" onClick={exportBinCardsToCSV}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Export CSV
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               {filteredCards.length === 0 ? (
