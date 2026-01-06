@@ -11,6 +11,7 @@ export const ROLES = {
   OWNER: 'owner',
   SUPERADMIN: 'superadmin',
   STORAGE: 'storage',
+  CUTTING: 'cutting',
 } as const;
 
 export type AppRole = typeof ROLES[keyof typeof ROLES];
@@ -23,6 +24,7 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   owner: 'Owner',
   superadmin: 'Super Admin',
   storage: 'Storage',
+  cutting: 'Cutting',
 };
 
 // Blocker impact levels
@@ -169,6 +171,7 @@ export const NAV_ITEMS = {
     { path: '/submissions', label: 'All Submissions', icon: 'FileText' },
     { path: '/lines', label: 'Lines', icon: 'Rows3' },
     { path: '/work-orders', label: 'Work Orders', icon: 'ClipboardList' },
+    { path: '/cutting/summary', label: 'Cutting', icon: 'Scissors' },
     { path: '/storage/dashboard', label: 'Storage', icon: 'Package' },
     { path: '/insights', label: 'Insights', icon: 'TrendingUp' },
     { path: '/setup', label: 'Factory Setup', icon: 'Settings' },
@@ -183,6 +186,7 @@ export const NAV_ITEMS = {
     { path: '/submissions', label: 'All Submissions', icon: 'FileText' },
     { path: '/lines', label: 'Lines', icon: 'Rows3' },
     { path: '/work-orders', label: 'Work Orders', icon: 'ClipboardList' },
+    { path: '/cutting/summary', label: 'Cutting', icon: 'Scissors' },
     { path: '/storage/dashboard', label: 'Storage', icon: 'Package' },
     { path: '/insights', label: 'Insights', icon: 'TrendingUp' },
     { path: '/setup', label: 'Factory Setup', icon: 'Settings' },
@@ -198,6 +202,7 @@ export const NAV_ITEMS = {
     { path: '/submissions', label: 'All Submissions', icon: 'FileText' },
     { path: '/lines', label: 'Lines', icon: 'Rows3' },
     { path: '/work-orders', label: 'Work Orders', icon: 'ClipboardList' },
+    { path: '/cutting/summary', label: 'Cutting', icon: 'Scissors' },
     { path: '/storage/dashboard', label: 'Storage', icon: 'Package' },
     { path: '/insights', label: 'Insights', icon: 'TrendingUp' },
     { path: '/setup', label: 'Factory Setup', icon: 'Settings' },
@@ -213,6 +218,12 @@ export const NAV_ITEMS = {
   storage: [
     { path: '/storage', label: 'Bin Card Entry', icon: 'Package' },
     { path: '/storage/history', label: 'All Bin Cards', icon: 'FileText' },
+    { path: '/preferences', label: 'My Preferences', icon: 'UserCog' },
+  ],
+  cutting: [
+    { path: '/cutting/morning-targets', label: 'Cutting Morning Targets', icon: 'Crosshair' },
+    { path: '/cutting/end-of-day', label: 'Cutting End of Day', icon: 'ClipboardCheck' },
+    { path: '/my-submissions', label: 'My Submissions', icon: 'FileText' },
     { path: '/preferences', label: 'My Preferences', icon: 'UserCog' },
   ],
 };

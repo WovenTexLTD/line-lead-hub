@@ -25,6 +25,7 @@ import {
   UserCog,
   Crosshair,
   ClipboardCheck,
+  Scissors,
 } from "lucide-react";
 import {
   Sidebar,
@@ -71,6 +72,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   UserCog,
   Crosshair,
   ClipboardCheck,
+  Scissors,
 };
 
 const navLabelKeys: Record<string, string> = {
@@ -81,6 +83,9 @@ const navLabelKeys: Record<string, string> = {
   'Sewing End of Day': 'nav.sewingEndOfDay',
   'Finishing Morning Targets': 'nav.finishingMorningTargets',
   'Finishing End of Day': 'nav.finishingEndOfDay',
+  'Cutting Morning Targets': 'nav.cuttingMorningTargets',
+  'Cutting End of Day': 'nav.cuttingEndOfDay',
+  'Cutting': 'nav.cutting',
   'My Submissions': 'nav.mySubmissions',
   'My Preferences': 'nav.myPreferences',
   'Today Updates': 'nav.todayUpdates',
