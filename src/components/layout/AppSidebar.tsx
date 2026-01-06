@@ -102,7 +102,7 @@ const navLabelKeys: Record<string, string> = {
   'Support': 'nav.support',
   'Storage': 'nav.storage',
   'Bin Card Entry': 'nav.binCardEntry',
-  'My Bin Cards': 'nav.myBinCards',
+  'All Bin Cards': 'nav.allBinCards',
 };
 
 interface NavItem {
