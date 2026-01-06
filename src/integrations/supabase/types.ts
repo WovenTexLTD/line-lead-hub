@@ -155,6 +155,9 @@ export type Database = {
       }
       cutting_actuals: {
         Row: {
+          acknowledged: boolean | null
+          acknowledged_at: string | null
+          acknowledged_by: string | null
           balance: number | null
           buyer: string | null
           colour: string | null
@@ -174,9 +177,13 @@ export type Database = {
           submitted_by: string | null
           total_cutting: number | null
           total_input: number | null
+          transfer_to_line_id: string | null
           work_order_id: string
         }
         Insert: {
+          acknowledged?: boolean | null
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
           balance?: number | null
           buyer?: string | null
           colour?: string | null
@@ -196,9 +203,13 @@ export type Database = {
           submitted_by?: string | null
           total_cutting?: number | null
           total_input?: number | null
+          transfer_to_line_id?: string | null
           work_order_id: string
         }
         Update: {
+          acknowledged?: boolean | null
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
           balance?: number | null
           buyer?: string | null
           colour?: string | null
@@ -218,6 +229,7 @@ export type Database = {
           submitted_by?: string | null
           total_cutting?: number | null
           total_input?: number | null
+          transfer_to_line_id?: string | null
           work_order_id?: string
         }
         Relationships: [
@@ -238,6 +250,13 @@ export type Database = {
           {
             foreignKeyName: "cutting_actuals_line_id_fkey"
             columns: ["line_id"]
+            isOneToOne: false
+            referencedRelation: "lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cutting_actuals_transfer_to_line_id_fkey"
+            columns: ["transfer_to_line_id"]
             isOneToOne: false
             referencedRelation: "lines"
             referencedColumns: ["id"]
