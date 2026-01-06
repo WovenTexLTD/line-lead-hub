@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/table";
 import { Loader2, Factory, Package, Search, Download, RefreshCw, Scissors, Archive } from "lucide-react";
 import { SubmissionDetailModal } from "@/components/SubmissionDetailModal";
+import { CuttingDetailModal } from "@/components/CuttingDetailModal";
 
 interface SewingUpdate {
   id: string;
@@ -68,13 +69,30 @@ interface FinishingDailySheet {
 interface CuttingActual {
   id: string;
   line_id: string;
+  work_order_id: string;
   day_cutting: number;
   day_input: number;
   total_cutting: number | null;
+  total_input: number | null;
+  balance: number | null;
   submitted_at: string | null;
   production_date: string;
+  colour: string | null;
+  order_qty: number | null;
   lines: { line_id: string; name: string | null } | null;
   work_orders: { po_number: string; buyer: string; style: string } | null;
+}
+
+interface CuttingTarget {
+  id: string;
+  line_id: string;
+  work_order_id: string;
+  production_date: string;
+  man_power: number;
+  marker_capacity: number;
+  lay_capacity: number;
+  cutting_capacity: number;
+  under_qty: number | null;
 }
 
 interface StorageTransaction {
@@ -128,11 +146,14 @@ export default function TodayUpdates() {
   const [sewingUpdates, setSewingUpdates] = useState<SewingUpdate[]>([]);
   const [finishingSheets, setFinishingSheets] = useState<FinishingDailySheet[]>([]);
   const [cuttingActuals, setCuttingActuals] = useState<CuttingActual[]>([]);
+  const [cuttingTargets, setCuttingTargets] = useState<CuttingTarget[]>([]);
   const [storageTransactions, setStorageTransactions] = useState<StorageTransaction[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [selectedSubmission, setSelectedSubmission] = useState<ModalSubmission | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [selectedCutting, setSelectedCutting] = useState<any>(null);
+  const [cuttingModalOpen, setCuttingModalOpen] = useState(false);
 
   useEffect(() => {
     if (profile?.factory_id) {
@@ -146,7 +167,7 @@ export default function TodayUpdates() {
     const today = new Date().toISOString().split('T')[0];
 
     try {
-      const [sewingRes, finishingRes, cuttingRes, storageRes] = await Promise.all([
+      const [sewingRes, finishingRes, cuttingRes, cuttingTargetsRes, storageRes] = await Promise.all([
         supabase
           .from('production_updates_sewing')
           .select('*, lines(line_id, name), work_orders(po_number, buyer, style)')
@@ -161,10 +182,15 @@ export default function TodayUpdates() {
           .order('created_at', { ascending: false }),
         supabase
           .from('cutting_actuals')
-          .select('*, lines!cutting_actuals_line_id_fkey(line_id, name), work_orders(po_number, buyer, style)')
+          .select('*, lines!cutting_actuals_line_id_fkey(line_id, name), work_orders(po_number, buyer, style, order_qty, color)')
           .eq('factory_id', profile.factory_id)
           .eq('production_date', today)
           .order('submitted_at', { ascending: false }),
+        supabase
+          .from('cutting_targets')
+          .select('id, line_id, work_order_id, production_date, man_power, marker_capacity, lay_capacity, cutting_capacity, under_qty')
+          .eq('factory_id', profile.factory_id)
+          .eq('production_date', today),
         supabase
           .from('storage_bin_card_transactions')
           .select('*, storage_bin_cards(id, buyer, style, work_orders(po_number))')
@@ -180,6 +206,7 @@ export default function TodayUpdates() {
       );
       setFinishingSheets(sheetsWithLogs);
       setCuttingActuals(cuttingRes.data as any || []);
+      setCuttingTargets(cuttingTargetsRes.data as any || []);
       setStorageTransactions(storageRes.data as any || []);
     } catch (error) {
       console.error('Error fetching updates:', error);
@@ -261,7 +288,33 @@ export default function TodayUpdates() {
   };
 
   const handleCuttingClick = (cutting: CuttingActual) => {
-    navigate('/cutting/submissions');
+    // Find matching target for capacity planning data
+    const target = cuttingTargets.find(
+      t => t.line_id === cutting.line_id && t.work_order_id === cutting.work_order_id
+    );
+    
+    setSelectedCutting({
+      id: cutting.id,
+      production_date: cutting.production_date,
+      line_name: cutting.lines?.name || cutting.lines?.line_id || 'Unknown',
+      buyer: (cutting.work_orders as any)?.buyer || null,
+      style: (cutting.work_orders as any)?.style || null,
+      po_number: (cutting.work_orders as any)?.po_number || null,
+      colour: cutting.colour || (cutting.work_orders as any)?.color || null,
+      order_qty: cutting.order_qty || (cutting.work_orders as any)?.order_qty || null,
+      man_power: target?.man_power || null,
+      marker_capacity: target?.marker_capacity || null,
+      lay_capacity: target?.lay_capacity || null,
+      cutting_capacity: target?.cutting_capacity || null,
+      under_qty: target?.under_qty || null,
+      day_cutting: cutting.day_cutting,
+      total_cutting: cutting.total_cutting,
+      day_input: cutting.day_input,
+      total_input: cutting.total_input,
+      balance: cutting.balance,
+      submitted_at: cutting.submitted_at,
+    });
+    setCuttingModalOpen(true);
   };
 
   const handleStorageClick = (txn: StorageTransaction) => {
@@ -796,6 +849,13 @@ export default function TodayUpdates() {
         onOpenChange={setDetailModalOpen}
         onDeleted={fetchTodayUpdates}
         onUpdated={fetchTodayUpdates}
+      />
+
+      {/* Cutting Detail Modal */}
+      <CuttingDetailModal
+        cutting={selectedCutting}
+        open={cuttingModalOpen}
+        onOpenChange={setCuttingModalOpen}
       />
     </div>
   );
