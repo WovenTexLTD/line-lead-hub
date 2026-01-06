@@ -91,7 +91,7 @@ export default function CuttingSummary() {
       const [actualsRes, linesRes] = await Promise.all([
         supabase
           .from("cutting_actuals")
-          .select("*, lines(line_id, name), work_orders(po_number, buyer, style)")
+          .select("*, lines!cutting_actuals_line_id_fkey(line_id, name), work_orders(po_number, buyer, style)")
           .eq("factory_id", profile.factory_id)
           .gte("production_date", dateFrom)
           .lte("production_date", dateTo)

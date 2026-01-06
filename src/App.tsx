@@ -45,6 +45,7 @@ import StorageDashboard from "./pages/StorageDashboard";
 import CuttingForm from "./pages/CuttingForm";
 import CuttingSummary from "./pages/CuttingSummary";
 import CuttingAllSubmissions from "./pages/CuttingAllSubmissions";
+import CuttingHandoffs from "./pages/CuttingHandoffs";
 const queryClient = new QueryClient();
 
 function AppRoutes() {
@@ -96,6 +97,8 @@ function AppRoutes() {
         <Route path="/cutting/form" element={<SubscriptionGate><CuttingForm /></SubscriptionGate>} />
         <Route path="/cutting/summary" element={<SubscriptionGate><CuttingSummary /></SubscriptionGate>} />
         <Route path="/cutting/submissions" element={<SubscriptionGate><CuttingAllSubmissions /></SubscriptionGate>} />
+        {/* Sewing module routes */}
+        <Route path="/sewing/cutting-handoffs" element={<SubscriptionGate><CuttingHandoffs /></SubscriptionGate>} />
       </Route>
       
       <Route path="*" element={<NotFound />} />
