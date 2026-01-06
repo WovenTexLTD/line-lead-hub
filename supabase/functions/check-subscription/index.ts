@@ -108,75 +108,125 @@ serve(async (req) => {
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
+    const deriveTierAndMaxLines = (subscription: Stripe.Subscription) => {
+      let tier = factory.subscription_tier || 'starter';
+      let maxLines = factory.max_lines || 30;
+
+      if (subscription.items.data.length > 0) {
+        const item = subscription.items.data[0];
+        const productId = typeof item.price.product === 'string'
+          ? item.price.product
+          : item.price.product.id;
+
+        if (PRODUCT_TO_TIER[productId]) {
+          tier = PRODUCT_TO_TIER[productId];
+          maxLines = TIER_MAX_LINES[tier] || 30;
+        } else if (item.price.unit_amount && PRICE_TO_TIER[item.price.unit_amount]) {
+          tier = PRICE_TO_TIER[item.price.unit_amount];
+          maxLines = TIER_MAX_LINES[tier] || 30;
+        }
+      }
+
+      return { tier, maxLines };
+    };
+
+    const respondWithActiveSubscription = async (subscription: Stripe.Subscription) => {
+      const { tier, maxLines } = deriveTierAndMaxLines(subscription);
+      const customerId = typeof subscription.customer === 'string'
+        ? subscription.customer
+        : subscription.customer.id;
+
+      // Keep factory in sync even if webhooks are not configured.
+      await supabaseClient
+        .from('factory_accounts')
+        .update({
+          stripe_customer_id: customerId,
+          stripe_subscription_id: subscription.id,
+          subscription_tier: tier,
+          max_lines: maxLines,
+          subscription_status: subscription.status,
+        })
+        .eq('id', profile.factory_id);
+
+      const isTrial = subscription.status === 'trialing';
+      const subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
+      const daysRemaining = isTrial && subscription.trial_end
+        ? Math.ceil((subscription.trial_end * 1000 - Date.now()) / (1000 * 60 * 60 * 24))
+        : null;
+
+      return new Response(JSON.stringify({
+        subscribed: !isTrial,
+        hasAccess: true,
+        isTrial,
+        subscriptionEnd,
+        currentTier: tier,
+        maxLines,
+        factoryName: factory.name,
+        daysRemaining,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    };
+
+    const tryFindSubscriptionByCustomerEmail = async () => {
+      // First use any saved customer id.
+      let customerId = factory.stripe_customer_id || null;
+
+      if (!customerId) {
+        const customers = await stripe.customers.list({ email: user.email!, limit: 1 });
+        if (customers.data.length > 0) {
+          customerId = customers.data[0].id;
+          logStep("Stripe customer found by email", { customerId });
+        }
+      }
+
+      if (!customerId) return null;
+
+      const subs = await stripe.subscriptions.list({ customer: customerId, status: 'all', limit: 10 });
+      const activeSub = subs.data.find((s: Stripe.Subscription) => s.status === 'active' || s.status === 'trialing') || null;
+
+      if (activeSub) {
+        logStep("Active subscription found by customer", { subscriptionId: activeSub.id, status: activeSub.status });
+      } else {
+        logStep("No active subscriptions for customer", { customerId, count: subs.data.length });
+      }
+
+      return activeSub;
+    };
+
     // Check for active Stripe subscription
     if (factory.stripe_subscription_id) {
       try {
         const subscription = await stripe.subscriptions.retrieve(factory.stripe_subscription_id);
-        logStep("Stripe subscription retrieved", { 
-          id: subscription.id, 
-          status: subscription.status 
+        logStep("Stripe subscription retrieved", {
+          id: subscription.id,
+          status: subscription.status,
         });
 
         if (subscription.status === 'active' || subscription.status === 'trialing') {
-          // Determine tier from subscription
-          let tier = factory.subscription_tier || 'starter';
-          let maxLines = factory.max_lines || 30;
-
-          if (subscription.items.data.length > 0) {
-            const item = subscription.items.data[0];
-            const productId = typeof item.price.product === 'string' 
-              ? item.price.product 
-              : item.price.product.id;
-            
-            // Map product to tier
-            if (PRODUCT_TO_TIER[productId]) {
-              tier = PRODUCT_TO_TIER[productId];
-              maxLines = TIER_MAX_LINES[tier] || 30;
-            } else if (item.price.unit_amount && PRICE_TO_TIER[item.price.unit_amount]) {
-              tier = PRICE_TO_TIER[item.price.unit_amount];
-              maxLines = TIER_MAX_LINES[tier] || 30;
-            }
-          }
-
-          // Update factory if tier changed
-          if (tier !== factory.subscription_tier || maxLines !== factory.max_lines) {
-            await supabaseClient
-              .from('factory_accounts')
-              .update({ 
-                subscription_tier: tier,
-                max_lines: maxLines,
-                subscription_status: subscription.status
-              })
-              .eq('id', profile.factory_id);
-            logStep("Factory tier updated", { tier, maxLines });
-          }
-
-          const isTrial = subscription.status === 'trialing';
-          const subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
-
-          return new Response(JSON.stringify({
-            subscribed: !isTrial,
-            hasAccess: true,
-            isTrial,
-            subscriptionEnd,
-            currentTier: tier,
-            maxLines,
-            factoryName: factory.name,
-            daysRemaining: isTrial ? Math.ceil((subscription.trial_end! * 1000 - Date.now()) / (1000 * 60 * 60 * 24)) : null,
-          }), {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 200,
-          });
-        } else {
-          // Subscription not active - update status
-          await supabaseClient
-            .from('factory_accounts')
-            .update({ subscription_status: subscription.status })
-            .eq('id', profile.factory_id);
-          logStep("Subscription not active", { status: subscription.status });
+          return await respondWithActiveSubscription(subscription);
         }
+
+        // Subscription not active - update status
+        await supabaseClient
+          .from('factory_accounts')
+          .update({ subscription_status: subscription.status })
+          .eq('id', profile.factory_id);
+        logStep("Subscription not active", { status: subscription.status });
       } catch (err) {
         logStep("Error checking Stripe subscription", { error: String(err) });
+      }
+    } else {
+      // If we don't have a subscription id saved yet (e.g. webhooks not configured),
+      // try to discover it from the customer's email.
+      try {
+        const subscription = await tryFindSubscriptionByCustomerEmail();
+        if (subscription) {
+          return await respondWithActiveSubscription(subscription);
+        }
+      } catch (err) {
+        logStep("Error discovering subscription by email", { error: String(err) });
       }
     }
 
