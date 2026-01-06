@@ -73,12 +73,17 @@ export default function ReportBlocker() {
   const [blockerImpactOptions, setBlockerImpactOptions] = useState<DropdownOption[]>([]);
 
   // Form fields
+  const [selectedLine, setSelectedLine] = useState("");
   const [selectedPO, setSelectedPO] = useState("");
   const [blockerType, setBlockerType] = useState("");
   const [blockerOwner, setBlockerOwner] = useState("");
   const [blockerImpact, setBlockerImpact] = useState("");
   const [blockerResolution, setBlockerResolution] = useState<Date | undefined>(new Date());
   const [blockerDescription, setBlockerDescription] = useState("");
+
+  // Check if user is Cutting or Storage role (no line selection needed)
+  const isCuttingOrStorage = hasRole("cutting") || hasRole("storage");
+  const showLineSelection = !isCuttingOrStorage;
   
   // Determine update type based on user's department
   const userDepartment = profile?.department || "sewing";
@@ -113,18 +118,21 @@ export default function ReportBlocker() {
     }
   }, [profile?.factory_id, profile]);
 
-  // Auto-fill Unit/Floor when PO is selected
+  // Auto-fill Unit/Floor when Line or PO is selected
   useEffect(() => {
-    if (selectedPO) {
-      const wo = workOrders.find((w) => w.id === selectedPO);
-      if (wo?.line_id) {
-        const line = lines.find((l) => l.id === wo.line_id);
-        if (line) {
-          const unit = units.find((u) => u.id === line.unit_id);
-          const floor = floors.find((f) => f.id === line.floor_id);
-          setUnitName(unit?.name || "");
-          setFloorName(floor?.name || "");
-        }
+    // For cutting/storage: use PO's line_id
+    // For workers: use selectedLine
+    const lineId = isCuttingOrStorage
+      ? workOrders.find((w) => w.id === selectedPO)?.line_id
+      : selectedLine;
+
+    if (lineId) {
+      const line = lines.find((l) => l.id === lineId);
+      if (line) {
+        const unit = units.find((u) => u.id === line.unit_id);
+        const floor = floors.find((f) => f.id === line.floor_id);
+        setUnitName(unit?.name || "");
+        setFloorName(floor?.name || "");
       } else {
         setUnitName("");
         setFloorName("");
@@ -133,7 +141,7 @@ export default function ReportBlocker() {
       setUnitName("");
       setFloorName("");
     }
-  }, [selectedPO, workOrders, lines, units, floors]);
+  }, [selectedLine, selectedPO, workOrders, lines, units, floors, isCuttingOrStorage]);
 
   // Auto-fill blocker owner/impact when blocker type is selected
   useEffect(() => {
@@ -250,6 +258,8 @@ export default function ReportBlocker() {
   function validateForm(): boolean {
     const newErrors: Record<string, string> = {};
 
+    // Line is required for workers (non-cutting/storage)
+    if (showLineSelection && !selectedLine) newErrors.line = "Line is required";
     if (!selectedPO) newErrors.po = "PO is required";
     if (!blockerType) newErrors.blockerType = "Blocker Type is required";
     if (!blockerOwner) newErrors.blockerOwner = "Blocker Owner is required";
@@ -284,7 +294,10 @@ export default function ReportBlocker() {
         : "low";
 
       const workOrder = workOrders.find((w) => w.id === selectedPO);
-      const lineId = workOrder?.line_id || lines[0]?.id;
+      // For cutting/storage use PO's line_id, for workers use selectedLine
+      const lineId = isCuttingOrStorage 
+        ? (workOrder?.line_id || lines[0]?.id)
+        : selectedLine;
 
       const insertData: Record<string, unknown> = {
         factory_id: profile?.factory_id,
@@ -419,12 +432,38 @@ export default function ReportBlocker() {
           </Card>
         ) : null}
 
-        {/* PO Selection */}
+        {/* Location Selection */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">{t('reportBlocker.location')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Line Selection - Only for Worker roles (not Cutting/Storage) */}
+            {showLineSelection && (
+              <div className="space-y-2">
+                <Label>{t('sewing.lineNo')} *</Label>
+                <Select value={selectedLine} onValueChange={setSelectedLine}>
+                  <SelectTrigger className={`h-12 ${errors.line ? "border-destructive" : ""}`}>
+                    <SelectValue
+                      placeholder={
+                        lines.length === 0
+                          ? t('common.noLinesAvailable')
+                          : t('common.selectLine')
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {lines.map((line) => (
+                      <SelectItem key={line.id} value={line.id}>
+                        {line.name || line.line_id}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.line && <p className="text-xs text-destructive">{errors.line}</p>}
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label>PO *</Label>
               <Select value={selectedPO} onValueChange={setSelectedPO}>
@@ -449,7 +488,7 @@ export default function ReportBlocker() {
             </div>
 
             {/* Auto-filled context */}
-            {selectedPO && (unitName || floorName) && (
+            {(showLineSelection ? selectedLine : selectedPO) && (unitName || floorName) && (
               <div className="grid grid-cols-2 gap-4 pt-2">
                 {unitName && (
                   <div className="space-y-1">
