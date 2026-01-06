@@ -382,12 +382,14 @@ export default function CuttingForm() {
               <PopoverTrigger asChild>
                 <Button 
                   variant="outline" 
-                  className={`w-full justify-start ${errors.workOrder ? 'border-destructive' : ''}`}
+                  className={`w-full justify-start min-w-0 ${errors.workOrder ? 'border-destructive' : ''}`}
                 >
-                  <Search className="mr-2 h-4 w-4" />
-                  {selectedWorkOrder 
-                    ? `${selectedWorkOrder.po_number} - ${selectedWorkOrder.buyer} / ${selectedWorkOrder.style}`
-                    : "Search by PO, Buyer, Style, Item..."}
+                  <Search className="mr-2 h-4 w-4 shrink-0" />
+                  <span className="truncate">
+                    {selectedWorkOrder 
+                      ? `${selectedWorkOrder.po_number} - ${selectedWorkOrder.buyer} / ${selectedWorkOrder.style}`
+                      : "Search by PO, Buyer, Style..."}
+                  </span>
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[350px] p-0" align="start">
