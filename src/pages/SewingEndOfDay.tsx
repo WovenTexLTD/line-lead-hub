@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -265,16 +265,11 @@ export default function SewingEndOfDay() {
 
   return (
     <div className="container max-w-2xl py-4 px-4 pb-24">
-      <div className="flex items-center gap-3 mb-6">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div>
-          <h1 className="text-xl font-bold">{t("forms.sewing")} — {t("forms.endOfDayOutput")}</h1>
-          <p className="text-sm text-muted-foreground">
-            {new Date().toLocaleDateString(dateLocale, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-          </p>
-        </div>
+      <div className="mb-6">
+        <h1 className="text-xl font-bold">{t("forms.sewing")} — {t("forms.endOfDayOutput")}</h1>
+        <p className="text-sm text-muted-foreground">
+          {new Date().toLocaleDateString(dateLocale, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+        </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
