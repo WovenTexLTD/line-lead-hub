@@ -66,8 +66,18 @@ export default function Auth() {
   useEffect(() => {
     if (user && !isPasswordResetMode) {
       if (profile?.factory_id) {
+        // Check for cutting role first
+        if (hasRole('cutting')) {
+          navigate("/cutting/submissions", { replace: true });
+          return;
+        }
+        // Check for storage role
+        if (hasRole('storage')) {
+          navigate("/storage", { replace: true });
+          return;
+        }
         const isWorker = (profile.department != null) || (hasRole('worker') && !hasRole('supervisor') && !isAdminOrHigher());
-        navigate(isWorker ? "/my-submissions" : "/dashboard", { replace: true });
+        navigate(isWorker ? "/sewing/morning-targets" : "/dashboard", { replace: true });
       } else if (profile) {
         navigate("/subscription", { replace: true });
       }
