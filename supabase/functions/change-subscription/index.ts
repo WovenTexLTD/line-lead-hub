@@ -10,17 +10,17 @@ const corsHeaders = {
 // Plan tier configuration - matches frontend plan-tiers.ts
 const PLAN_TIERS = {
   starter: {
-    priceId: 'price_starter_monthly', // TODO: Replace with actual Stripe price ID
+    priceId: 'price_1SmWhXHuCf2bKZx0zzCX9He2',
     productId: 'prod_Tk0Z6QU3HYNqmx',
     maxLines: 30,
   },
   growth: {
-    priceId: 'price_growth_monthly', // TODO: Replace with actual Stripe price ID
+    priceId: 'price_1SmWh2HuCf2bKZx05MmCPACn',
     productId: 'prod_Tk0Zyl3J739mGp',
     maxLines: 60,
   },
   scale: {
-    priceId: 'price_scale_monthly', // TODO: Replace with actual Stripe price ID
+    priceId: 'price_1SmWfuHuCf2bKZx0rdbia7dk',
     productId: 'prod_Tk0ZNeXFFFP9jz',
     maxLines: 100,
   },

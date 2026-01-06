@@ -37,8 +37,7 @@ export const PLAN_TIERS: Record<PlanTier, PlanTierConfig> = {
       'Unlimited users',
       'Email support',
     ],
-    // TODO: Replace with your Stripe price ID from Dashboard
-    stripePriceId: 'price_starter_monthly',
+    stripePriceId: 'price_1SmWhXHuCf2bKZx0zzCX9He2',
     stripeProductId: 'prod_Tk0Z6QU3HYNqmx',
   },
   growth: {
@@ -54,8 +53,7 @@ export const PLAN_TIERS: Record<PlanTier, PlanTierConfig> = {
       'Priority email support',
       'Monthly insights reports',
     ],
-    // TODO: Replace with your Stripe price ID from Dashboard
-    stripePriceId: 'price_growth_monthly',
+    stripePriceId: 'price_1SmWh2HuCf2bKZx05MmCPACn',
     stripeProductId: 'prod_Tk0Zyl3J739mGp',
   },
   scale: {
@@ -70,8 +68,7 @@ export const PLAN_TIERS: Record<PlanTier, PlanTierConfig> = {
       'Phone support',
       'Dedicated success manager',
     ],
-    // TODO: Replace with your Stripe price ID from Dashboard
-    stripePriceId: 'price_scale_monthly',
+    stripePriceId: 'price_1SmWfuHuCf2bKZx0rdbia7dk',
     stripeProductId: 'prod_Tk0ZNeXFFFP9jz',
   },
   enterprise: {
@@ -95,9 +92,9 @@ export const PLAN_TIERS: Record<PlanTier, PlanTierConfig> = {
 
 // Price ID to tier mapping for webhook/check-subscription use
 export const STRIPE_PRICE_TO_TIER: Record<string, PlanTier> = {
-  'price_starter_monthly': 'starter',
-  'price_growth_monthly': 'growth',
-  'price_scale_monthly': 'scale',
+  'price_1SmWhXHuCf2bKZx0zzCX9He2': 'starter',
+  'price_1SmWh2HuCf2bKZx05MmCPACn': 'growth',
+  'price_1SmWfuHuCf2bKZx0rdbia7dk': 'scale',
 };
 
 // Product ID to tier mapping
