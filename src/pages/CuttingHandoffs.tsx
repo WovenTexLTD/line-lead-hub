@@ -449,13 +449,11 @@ export default function CuttingHandoffs() {
                 <h4 className="font-medium mb-3">Transfer Info</h4>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <p className="text-muted-foreground">From Line</p>
-                    <p className="font-medium">
-                      {selectedHandoff.source_line?.name || selectedHandoff.source_line?.line_id || "-"}
-                    </p>
+                    <p className="text-muted-foreground">From</p>
+                    <p className="font-medium">Cutting</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">To Line</p>
+                    <p className="text-muted-foreground">To</p>
                     <p className="font-medium">
                       {selectedHandoff.transfer_line?.name || selectedHandoff.transfer_line?.line_id || "-"}
                     </p>
