@@ -2,6 +2,13 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
+// Plan tier configuration - matches frontend plan-tiers.ts
+const PLAN_TIERS: Record<string, { maxLines: number }> = {
+  starter: { maxLines: 30 },
+  growth: { maxLines: 60 },
+  scale: { maxLines: 100 },
+};
+
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[STRIPE-WEBHOOK] ${step}${detailsStr}`);
@@ -19,10 +26,28 @@ serve(async (req) => {
   try {
     const body = await req.text();
     const signature = req.headers.get("stripe-signature");
+    const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
     
-    // For now, we'll process without signature verification
-    // In production, you should set up STRIPE_WEBHOOK_SECRET and verify
-    const event = JSON.parse(body) as Stripe.Event;
+    let event: Stripe.Event;
+    
+    // Verify webhook signature if secret is configured
+    if (webhookSecret && signature) {
+      try {
+        event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
+        logStep("Webhook signature verified");
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        logStep("Signature verification failed", { error: errorMessage });
+        return new Response(JSON.stringify({ error: "Invalid signature" }), {
+          headers: { "Content-Type": "application/json" },
+          status: 400,
+        });
+      }
+    } else {
+      // Fallback for development/testing without signature verification
+      event = JSON.parse(body) as Stripe.Event;
+      logStep("Processing without signature verification (dev mode)");
+    }
     
     logStep("Webhook received", { type: event.type, id: event.id });
 
@@ -32,21 +57,27 @@ serve(async (req) => {
         logStep("Checkout completed", { 
           sessionId: session.id, 
           customerId: session.customer,
-          factoryId: session.metadata?.factory_id 
+          factoryId: session.metadata?.factory_id,
+          tier: session.metadata?.tier
         });
         
         if (session.metadata?.factory_id && session.subscription) {
+          const tier = session.metadata?.tier || 'starter';
+          const tierConfig = PLAN_TIERS[tier] || PLAN_TIERS.starter;
+          
           await supabaseAdmin
             .from('factory_accounts')
             .update({
               stripe_customer_id: session.customer as string,
               stripe_subscription_id: session.subscription as string,
               subscription_status: 'active',
+              subscription_tier: tier,
+              max_lines: tierConfig.maxLines,
               payment_failed_at: null,
             })
             .eq('id', session.metadata.factory_id);
           
-          logStep("Factory updated to active");
+          logStep("Factory updated to active", { tier, maxLines: tierConfig.maxLines });
         }
         break;
       }
@@ -56,21 +87,45 @@ serve(async (req) => {
         logStep("Subscription updated", { 
           subscriptionId: subscription.id, 
           status: subscription.status,
-          factoryId: subscription.metadata?.factory_id 
+          factoryId: subscription.metadata?.factory_id,
+          tier: subscription.metadata?.tier
         });
         
-        if (subscription.metadata?.factory_id) {
+        // Get factory by subscription ID or metadata
+        let factoryId = subscription.metadata?.factory_id;
+        
+        if (!factoryId) {
+          // Try to find factory by subscription ID
+          const { data: factory } = await supabaseAdmin
+            .from('factory_accounts')
+            .select('id')
+            .eq('stripe_subscription_id', subscription.id)
+            .single();
+          
+          factoryId = factory?.id;
+        }
+        
+        if (factoryId) {
           const status = subscription.status === 'active' ? 'active' : 
-                        subscription.status === 'trialing' ? 'trial' :
+                        subscription.status === 'trialing' ? 'trialing' :
                         subscription.status === 'past_due' ? 'past_due' :
-                        subscription.status === 'canceled' ? 'canceled' : 'inactive';
+                        subscription.status === 'canceled' ? 'canceled' : 
+                        subscription.status === 'unpaid' ? 'expired' : 'inactive';
+          
+          // Get tier from subscription metadata or items
+          const tier = subscription.metadata?.tier || 'starter';
+          const tierConfig = PLAN_TIERS[tier] || PLAN_TIERS.starter;
           
           await supabaseAdmin
             .from('factory_accounts')
-            .update({ subscription_status: status })
-            .eq('id', subscription.metadata.factory_id);
+            .update({ 
+              subscription_status: status,
+              subscription_tier: tier,
+              max_lines: tierConfig.maxLines,
+            })
+            .eq('id', factoryId);
           
-          logStep("Factory status updated", { status });
+          logStep("Factory status and tier updated", { status, tier, maxLines: tierConfig.maxLines });
         }
         break;
       }
@@ -82,12 +137,25 @@ serve(async (req) => {
           factoryId: subscription.metadata?.factory_id 
         });
         
-        if (subscription.metadata?.factory_id) {
+        // Get factory by subscription ID or metadata
+        let factoryId = subscription.metadata?.factory_id;
+        
+        if (!factoryId) {
+          const { data: factory } = await supabaseAdmin
+            .from('factory_accounts')
+            .select('id, name')
+            .eq('stripe_subscription_id', subscription.id)
+            .single();
+          
+          factoryId = factory?.id;
+        }
+        
+        if (factoryId) {
           // Get factory info for notification
           const { data: factory } = await supabaseAdmin
             .from('factory_accounts')
             .select('name')
-            .eq('id', subscription.metadata.factory_id)
+            .eq('id', factoryId)
             .single();
           
           await supabaseAdmin
@@ -96,7 +164,7 @@ serve(async (req) => {
               subscription_status: 'canceled',
               stripe_subscription_id: null 
             })
-            .eq('id', subscription.metadata.factory_id);
+            .eq('id', factoryId);
           
           logStep("Factory subscription canceled");
           
@@ -105,7 +173,7 @@ serve(async (req) => {
             const { data: admins } = await supabaseAdmin
               .from('profiles')
               .select('email')
-              .eq('factory_id', subscription.metadata.factory_id);
+              .eq('factory_id', factoryId);
             
             if (admins && admins.length > 0) {
               const notificationUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-billing-notification`;
@@ -117,7 +185,7 @@ serve(async (req) => {
                 },
                 body: JSON.stringify({
                   type: 'subscription_canceled',
-                  factoryId: subscription.metadata.factory_id,
+                  factoryId: factoryId,
                   email: admins[0].email,
                   factoryName: factory?.name,
                 }),
@@ -158,14 +226,12 @@ serve(async (req) => {
           
           // Send payment failed notification
           try {
-            // Get admin emails
             const { data: admins } = await supabaseAdmin
               .from('profiles')
               .select('email')
               .eq('factory_id', factory.id);
             
             if (admins && admins.length > 0) {
-              // Call the notification function
               const notificationUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-billing-notification`;
               await fetch(notificationUrl, {
                 method: 'POST',
