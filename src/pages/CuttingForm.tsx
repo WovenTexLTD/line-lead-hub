@@ -333,7 +333,7 @@ export default function CuttingForm() {
         {/* Step 1: Transfer To Line Selector */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Transfer To (Sewing Line)</CardTitle>
+            <CardTitle className="text-base">Line No.</CardTitle>
           </CardHeader>
           <CardContent>
             <Popover open={lineSearchOpen} onOpenChange={setLineSearchOpen}>
