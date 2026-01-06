@@ -239,7 +239,7 @@ export default function DropdownSettings() {
         supabase.from('stages').select('id, name, code, sequence, is_active').eq('factory_id', profile.factory_id).order('sequence'),
         supabase.from('stage_progress_options').select('id, label, sort_order, is_active').eq('factory_id', profile.factory_id).order('sort_order'),
         supabase.from('next_milestone_options').select('id, label, sort_order, is_active').eq('factory_id', profile.factory_id).order('sort_order'),
-        supabase.from('blocker_types').select('id, name, code, is_active').eq('factory_id', profile.factory_id).order('name'),
+        supabase.from('blocker_types').select('id, name, code, sort_order, is_active').eq('factory_id', profile.factory_id).order('sort_order'),
         supabase.from('blocker_owner_options').select('id, label, sort_order, is_active').eq('factory_id', profile.factory_id).order('sort_order'),
         supabase.from('blocker_impact_options').select('id, label, sort_order, is_active').eq('factory_id', profile.factory_id).order('sort_order'),
       ]);
@@ -248,7 +248,7 @@ export default function DropdownSettings() {
         stages: (stagesRes.data || []).map(s => ({ id: s.id, label: s.name, sort_order: s.sequence || 0, is_active: s.is_active, code: s.code })),
         stage_progress: (stageProgressRes.data || []).map(s => ({ id: s.id, label: s.label, sort_order: s.sort_order || 0, is_active: s.is_active })),
         next_milestone: (nextMilestoneRes.data || []).map(s => ({ id: s.id, label: s.label, sort_order: s.sort_order || 0, is_active: s.is_active })),
-        blocker_type: (blockerTypeRes.data || []).map(s => ({ id: s.id, label: s.name, sort_order: 0, is_active: s.is_active, code: s.code })),
+        blocker_type: (blockerTypeRes.data || []).map(s => ({ id: s.id, label: s.name, sort_order: s.sort_order || 0, is_active: s.is_active, code: s.code })),
         blocker_owner: (blockerOwnerRes.data || []).map(s => ({ id: s.id, label: s.label, sort_order: s.sort_order || 0, is_active: s.is_active })),
         blocker_impact: (blockerImpactRes.data || []).map(s => ({ id: s.id, label: s.label, sort_order: s.sort_order || 0, is_active: s.is_active })),
       });
@@ -419,9 +419,6 @@ export default function DropdownSettings() {
     
     if (!over || active.id === over.id) return;
     
-    // blocker_type doesn't have sort_order column - it's ordered alphabetically
-    if (activeTab === 'blocker_type') return;
-    
     const currentOptions = [...options[activeTab]];
     const oldIndex = currentOptions.findIndex(o => o.id === active.id);
     const newIndex = currentOptions.findIndex(o => o.id === over.id);
@@ -438,7 +435,9 @@ export default function DropdownSettings() {
     
     try {
       // Get table name and sort field
-      const tableName = activeTab === 'stages' ? 'stages' : OPTION_CONFIGS[activeTab].table;
+      const tableName = activeTab === 'stages' ? 'stages' : 
+                        activeTab === 'blocker_type' ? 'blocker_types' :
+                        OPTION_CONFIGS[activeTab].table;
       const sortField = activeTab === 'stages' ? 'sequence' : 'sort_order';
       
       // Update all items with new sequential sort order
@@ -625,7 +624,7 @@ export default function DropdownSettings() {
                                 key={opt.id}
                                 opt={opt}
                                 hasCode={cfg.hasCode}
-                                canReorder={key !== 'blocker_type'}
+                                canReorder={true}
                                 onEdit={openEditDialog}
                                 onDelete={handleDelete}
                                 onToggleActive={toggleActive}
