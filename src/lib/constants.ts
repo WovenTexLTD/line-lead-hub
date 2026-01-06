@@ -212,7 +212,7 @@ export const NAV_ITEMS = {
   ],
   storage: [
     { path: '/storage', label: 'Bin Card Entry', icon: 'Package' },
-    { path: '/storage/history', label: 'My Bin Cards', icon: 'FileText' },
+    { path: '/storage/history', label: 'All Bin Cards', icon: 'FileText' },
     { path: '/preferences', label: 'My Preferences', icon: 'UserCog' },
   ],
 };
