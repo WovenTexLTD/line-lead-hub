@@ -26,7 +26,8 @@ import {
   Check,
   X,
   Factory,
-  Package
+  Package,
+  Scissors
 } from "lucide-react";
 import { BLOCKER_IMPACTS, BLOCKER_IMPACT_LABELS, DEFAULT_STAGES, DEFAULT_BLOCKER_TYPES } from "@/lib/constants";
 import { ActiveLinesMeter } from "@/components/ActiveLinesMeter";
@@ -76,6 +77,12 @@ interface BlockerType {
   is_active: boolean;
 }
 
+interface CuttingSection {
+  id: string;
+  cutting_no: string;
+  is_active: boolean;
+}
+
 export default function FactorySetup() {
   const { profile, isAdminOrHigher, user, factory } = useAuth();
   const navigate = useNavigate();
@@ -97,6 +104,7 @@ export default function FactorySetup() {
   const [lines, setLines] = useState<Line[]>([]);
   const [stages, setStages] = useState<Stage[]>([]);
   const [blockerTypes, setBlockerTypes] = useState<BlockerType[]>([]);
+  const [cuttingSections, setCuttingSections] = useState<CuttingSection[]>([]);
 
   // Dialog states
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -132,12 +140,13 @@ export default function FactorySetup() {
     if (!profile?.factory_id) return;
 
     try {
-      const [unitsRes, floorsRes, linesRes, stagesRes, blockerTypesRes] = await Promise.all([
+      const [unitsRes, floorsRes, linesRes, stagesRes, blockerTypesRes, cuttingSectionsRes] = await Promise.all([
         supabase.from('units').select('*').eq('factory_id', profile.factory_id).order('code'),
         supabase.from('floors').select('*').eq('factory_id', profile.factory_id).order('code'),
         supabase.from('lines').select('*').eq('factory_id', profile.factory_id).order('line_id'),
         supabase.from('stages').select('*').eq('factory_id', profile.factory_id).order('sequence'),
         supabase.from('blocker_types').select('*').eq('factory_id', profile.factory_id).order('name'),
+        supabase.from('cutting_sections').select('*').eq('factory_id', profile.factory_id).order('cutting_no'),
       ]);
 
       setUnits(unitsRes.data || []);
@@ -151,6 +160,7 @@ export default function FactorySetup() {
       setLines(sortedLines);
       setStages(stagesRes.data || []);
       setBlockerTypes(blockerTypesRes.data || []);
+      setCuttingSections(cuttingSectionsRes.data || []);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -194,6 +204,9 @@ export default function FactorySetup() {
         } else if (activeTab === 'blockerTypes') {
           const res = await supabase.from('blocker_types').insert(data);
           error = res.error;
+        } else if (activeTab === 'cuttingSections') {
+          const res = await supabase.from('cutting_sections').insert(data);
+          error = res.error;
         }
         if (error) throw error;
         toast({ title: "Created successfully" });
@@ -213,6 +226,9 @@ export default function FactorySetup() {
           error = res.error;
         } else if (activeTab === 'blockerTypes') {
           const res = await supabase.from('blocker_types').update(data).eq('id', editingItem.id);
+          error = res.error;
+        } else if (activeTab === 'cuttingSections') {
+          const res = await supabase.from('cutting_sections').update(data).eq('id', editingItem.id);
           error = res.error;
         }
         if (error) throw error;
@@ -247,6 +263,9 @@ export default function FactorySetup() {
         error = res.error;
       } else if (activeTab === 'blockerTypes') {
         const res = await supabase.from('blocker_types').delete().eq('id', id);
+        error = res.error;
+      } else if (activeTab === 'cuttingSections') {
+        const res = await supabase.from('cutting_sections').delete().eq('id', id);
         error = res.error;
       }
       if (error) throw error;
@@ -284,6 +303,9 @@ export default function FactorySetup() {
         error = res.error;
       } else if (activeTab === 'blockerTypes') {
         const res = await supabase.from('blocker_types').update({ is_active: !currentValue }).eq('id', id);
+        error = res.error;
+      } else if (activeTab === 'cuttingSections') {
+        const res = await supabase.from('cutting_sections').update({ is_active: !currentValue }).eq('id', id);
         error = res.error;
       }
       if (error) throw error;
@@ -502,6 +524,10 @@ export default function FactorySetup() {
           <TabsTrigger value="blockerTypes" className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4" />
             <span className="hidden sm:inline">Blockers</span>
+          </TabsTrigger>
+          <TabsTrigger value="cuttingSections" className="flex items-center gap-2">
+            <Scissors className="h-4 w-4" />
+            <span className="hidden sm:inline">Cutting</span>
           </TabsTrigger>
         </TabsList>
 
@@ -823,6 +849,62 @@ export default function FactorySetup() {
           </Card>
         </TabsContent>
 
+        {/* Cutting Sections Tab */}
+        <TabsContent value="cuttingSections">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Cutting Sections</CardTitle>
+                <CardDescription>Manage cutting section numbers (e.g., 01, 02, 03)</CardDescription>
+              </div>
+              <Button onClick={openCreateDialog} size="sm">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Cutting Section
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Cutting No</TableHead>
+                    <TableHead>Active</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {cuttingSections.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center text-muted-foreground">
+                        No cutting sections found. Add your first cutting section.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    cuttingSections.map((cs) => (
+                      <TableRow key={cs.id}>
+                        <TableCell className="font-mono font-medium">{cs.cutting_no}</TableCell>
+                        <TableCell>
+                          <Switch
+                            checked={cs.is_active}
+                            onCheckedChange={() => toggleActive(cs.id, cs.is_active)}
+                          />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="icon" onClick={() => openEditDialog(cs)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(cs.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
       </Tabs>
 
       {/* Storage Settings Section */}
@@ -871,6 +953,7 @@ export default function FactorySetup() {
                 activeTab === 'floors' ? 'Floor' :
                 activeTab === 'lines' ? 'Line' :
                 activeTab === 'stages' ? 'Stage' :
+                activeTab === 'cuttingSections' ? 'Cutting Section' :
                 'Blocker Type'
               }
             </DialogTitle>
@@ -913,6 +996,14 @@ export default function FactorySetup() {
           )}
           {activeTab === 'blockerTypes' && (
             <BlockerTypeForm
+              initialData={editingItem}
+              onSave={handleSave}
+              onCancel={() => setIsDialogOpen(false)}
+              isSaving={isSaving}
+            />
+          )}
+          {activeTab === 'cuttingSections' && (
+            <CuttingSectionForm
               initialData={editingItem}
               onSave={handleSave}
               onCancel={() => setIsDialogOpen(false)}
@@ -1124,6 +1215,26 @@ function BlockerTypeForm({ initialData, onSave, onCancel, isSaving }: { initialD
       <DialogFooter>
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
         <Button onClick={() => onSave({ code, name, default_owner: defaultOwner || null, default_impact: defaultImpact })} disabled={!code || !name || isSaving}>
+          {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          Save
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+}
+
+function CuttingSectionForm({ initialData, onSave, onCancel, isSaving }: { initialData?: CuttingSection, onSave: (data: any) => void, onCancel: () => void, isSaving: boolean }) {
+  const [cuttingNo, setCuttingNo] = useState(initialData?.cutting_no || '');
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label>Cutting No *</Label>
+        <Input value={cuttingNo} onChange={(e) => setCuttingNo(e.target.value)} placeholder="e.g., 01, 02, 03" />
+      </div>
+      <DialogFooter>
+        <Button variant="outline" onClick={onCancel}>Cancel</Button>
+        <Button onClick={() => onSave({ cutting_no: cuttingNo })} disabled={!cuttingNo || isSaving}>
           {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
           Save
         </Button>

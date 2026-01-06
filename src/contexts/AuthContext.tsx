@@ -49,6 +49,7 @@ interface AuthContextType {
   isAdminOrHigher: () => boolean;
   isSuperAdmin: () => boolean;
   isStorageUser: () => boolean;
+  isCuttingUser: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -203,6 +204,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return roles.some(r => r.role === 'storage');
   }
 
+  function isCuttingUser(): boolean {
+    return roles.some(r => r.role === 'cutting');
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -219,6 +224,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAdminOrHigher,
         isSuperAdmin,
         isStorageUser,
+        isCuttingUser,
       }}
     >
       {children}

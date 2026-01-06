@@ -153,6 +153,237 @@ export type Database = {
           },
         ]
       }
+      cutting_actuals: {
+        Row: {
+          balance: number | null
+          buyer: string | null
+          colour: string | null
+          created_at: string | null
+          cutting_section_id: string
+          day_cutting: number
+          day_input: number
+          factory_id: string
+          id: string
+          is_late: boolean | null
+          line_id: string
+          order_qty: number | null
+          po_no: string | null
+          production_date: string
+          style: string | null
+          submitted_at: string | null
+          submitted_by: string | null
+          total_cutting: number | null
+          total_input: number | null
+          work_order_id: string
+        }
+        Insert: {
+          balance?: number | null
+          buyer?: string | null
+          colour?: string | null
+          created_at?: string | null
+          cutting_section_id: string
+          day_cutting?: number
+          day_input?: number
+          factory_id: string
+          id?: string
+          is_late?: boolean | null
+          line_id: string
+          order_qty?: number | null
+          po_no?: string | null
+          production_date?: string
+          style?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          total_cutting?: number | null
+          total_input?: number | null
+          work_order_id: string
+        }
+        Update: {
+          balance?: number | null
+          buyer?: string | null
+          colour?: string | null
+          created_at?: string | null
+          cutting_section_id?: string
+          day_cutting?: number
+          day_input?: number
+          factory_id?: string
+          id?: string
+          is_late?: boolean | null
+          line_id?: string
+          order_qty?: number | null
+          po_no?: string | null
+          production_date?: string
+          style?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          total_cutting?: number | null
+          total_input?: number | null
+          work_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cutting_actuals_cutting_section_id_fkey"
+            columns: ["cutting_section_id"]
+            isOneToOne: false
+            referencedRelation: "cutting_sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cutting_actuals_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cutting_actuals_line_id_fkey"
+            columns: ["line_id"]
+            isOneToOne: false
+            referencedRelation: "lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cutting_actuals_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cutting_sections: {
+        Row: {
+          created_at: string | null
+          cutting_no: string
+          factory_id: string
+          id: string
+          is_active: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          cutting_no: string
+          factory_id: string
+          id?: string
+          is_active?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          cutting_no?: string
+          factory_id?: string
+          id?: string
+          is_active?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cutting_sections_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cutting_targets: {
+        Row: {
+          buyer: string | null
+          colour: string | null
+          created_at: string | null
+          cutting_capacity: number
+          cutting_section_id: string
+          factory_id: string
+          id: string
+          is_late: boolean | null
+          lay_capacity: number
+          line_id: string
+          man_power: number
+          marker_capacity: number
+          order_qty: number | null
+          po_no: string | null
+          production_date: string
+          style: string | null
+          submitted_at: string | null
+          submitted_by: string | null
+          under_qty: number | null
+          work_order_id: string
+        }
+        Insert: {
+          buyer?: string | null
+          colour?: string | null
+          created_at?: string | null
+          cutting_capacity?: number
+          cutting_section_id: string
+          factory_id: string
+          id?: string
+          is_late?: boolean | null
+          lay_capacity?: number
+          line_id: string
+          man_power?: number
+          marker_capacity?: number
+          order_qty?: number | null
+          po_no?: string | null
+          production_date?: string
+          style?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          under_qty?: number | null
+          work_order_id: string
+        }
+        Update: {
+          buyer?: string | null
+          colour?: string | null
+          created_at?: string | null
+          cutting_capacity?: number
+          cutting_section_id?: string
+          factory_id?: string
+          id?: string
+          is_late?: boolean | null
+          lay_capacity?: number
+          line_id?: string
+          man_power?: number
+          marker_capacity?: number
+          order_qty?: number | null
+          po_no?: string | null
+          production_date?: string
+          style?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          under_qty?: number | null
+          work_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cutting_targets_cutting_section_id_fkey"
+            columns: ["cutting_section_id"]
+            isOneToOne: false
+            referencedRelation: "cutting_sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cutting_targets_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cutting_targets_line_id_fkey"
+            columns: ["line_id"]
+            isOneToOne: false
+            referencedRelation: "lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cutting_targets_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_insights: {
         Row: {
           created_at: string | null
@@ -1893,6 +2124,7 @@ export type Database = {
       }
       get_plan_max_lines: { Args: { _factory_id: string }; Returns: number }
       get_user_factory_id: { Args: { _user_id: string }; Returns: string }
+      has_cutting_role: { Args: { user_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1916,6 +2148,7 @@ export type Database = {
         | "owner"
         | "superadmin"
         | "storage"
+        | "cutting"
       blocker_impact: "low" | "medium" | "high" | "critical"
       blocker_status: "open" | "in_progress" | "resolved"
       subscription_tier:
@@ -2061,6 +2294,7 @@ export const Constants = {
         "owner",
         "superadmin",
         "storage",
+        "cutting",
       ],
       blocker_impact: ["low", "medium", "high", "critical"],
       blocker_status: ["open", "in_progress", "resolved"],
