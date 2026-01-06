@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, Package, Search, FileText, AlertTriangle, Download, Calendar } from "lucide-react";
+import { Loader2, Package, Search, FileText, AlertTriangle, Download, Calendar, CalendarIcon, X } from "lucide-react";
 import { format, startOfDay, endOfDay, subDays } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import {
@@ -24,6 +24,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
+import { cn } from "@/lib/utils";
 
 interface BinCardWithWorkOrder {
   id: string;
@@ -85,6 +86,10 @@ export default function StorageDashboard() {
     from: subDays(new Date(), 30),
     to: new Date(),
   });
+  
+  // List date filters
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
 
   const canAccess = isAdminOrHigher();
 
@@ -183,16 +188,47 @@ export default function StorageDashboard() {
   }
 
   const filteredCards = binCards.filter(card => {
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
-    return (
-      card.work_orders.po_number.toLowerCase().includes(term) ||
-      card.work_orders.buyer.toLowerCase().includes(term) ||
-      card.work_orders.style.toLowerCase().includes(term) ||
-      (card.work_orders.item?.toLowerCase().includes(term)) ||
-      (card.description?.toLowerCase().includes(term))
-    );
+    // Text search
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      const matchesSearch = (
+        card.work_orders.po_number.toLowerCase().includes(term) ||
+        card.work_orders.buyer.toLowerCase().includes(term) ||
+        card.work_orders.style.toLowerCase().includes(term) ||
+        (card.work_orders.item?.toLowerCase().includes(term)) ||
+        (card.description?.toLowerCase().includes(term))
+      );
+      if (!matchesSearch) return false;
+    }
+    
+    // Date from filter
+    if (dateFrom) {
+      const cardDate = new Date(card.created_at);
+      cardDate.setHours(0, 0, 0, 0);
+      const fromDate = new Date(dateFrom);
+      fromDate.setHours(0, 0, 0, 0);
+      if (cardDate < fromDate) return false;
+    }
+    
+    // Date to filter
+    if (dateTo) {
+      const cardDate = new Date(card.created_at);
+      cardDate.setHours(23, 59, 59, 999);
+      const toDate = new Date(dateTo);
+      toDate.setHours(23, 59, 59, 999);
+      if (cardDate > toDate) return false;
+    }
+    
+    return true;
   });
+
+  function clearFilters() {
+    setDateFrom(undefined);
+    setDateTo(undefined);
+    setSearchTerm("");
+  }
+
+  const hasActiveFilters = dateFrom || dateTo || searchTerm;
 
   async function openCardDetail(card: BinCardWithWorkOrder) {
     setSelectedCard(card);
@@ -327,16 +363,82 @@ export default function StorageDashboard() {
             </Card>
           </div>
 
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search by PO, buyer, style..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+          {/* Filters */}
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex flex-col gap-4">
+                {/* Search row */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by PO, buyer, style..."
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                
+                {/* Filter row */}
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* Date From */}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-[150px] justify-start text-left font-normal",
+                          !dateFrom && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {dateFrom ? format(dateFrom, "dd/MM/yyyy") : "From date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="single"
+                        selected={dateFrom}
+                        onSelect={setDateFrom}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+
+                  {/* Date To */}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-[150px] justify-start text-left font-normal",
+                          !dateTo && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {dateTo ? format(dateTo, "dd/MM/yyyy") : "To date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="single"
+                        selected={dateTo}
+                        onSelect={setDateTo}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+
+                  {/* Clear filters */}
+                  {hasActiveFilters && (
+                    <Button variant="ghost" size="sm" onClick={clearFilters}>
+                      <X className="mr-1 h-4 w-4" />
+                      Clear
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Cards list */}
           <Card>
