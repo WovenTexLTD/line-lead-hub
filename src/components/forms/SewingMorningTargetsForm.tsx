@@ -354,7 +354,7 @@ export default function SewingMorningTargetsForm() {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Per Hour Target *</Label>
+              <Label className="block h-10 leading-5">Per Hour Target *</Label>
               <Input
                 type="number"
                 value={perHourTarget}
@@ -366,7 +366,7 @@ export default function SewingMorningTargetsForm() {
             </div>
 
             <div className="space-y-2">
-              <Label>Manpower Planned *</Label>
+              <Label className="block h-10 leading-5">Manpower Planned *</Label>
               <Input
                 type="number"
                 value={manpowerPlanned}
