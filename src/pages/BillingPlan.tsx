@@ -13,10 +13,13 @@ import {
   CheckCircle2,
   AlertCircle,
   TrendingUp,
+  TrendingDown,
   Rows3,
   Mail,
   Star,
-  ExternalLink
+  ExternalLink,
+  RefreshCw,
+  XCircle
 } from "lucide-react";
 import { ActiveLinesMeter } from "@/components/ActiveLinesMeter";
 import { useActiveLines } from "@/hooks/useActiveLines";
@@ -166,7 +169,9 @@ export default function BillingPlan() {
       case 'past_due':
         return <Badge variant="destructive"><AlertCircle className="h-3 w-3 mr-1" />Past Due</Badge>;
       case 'canceled':
-        return <Badge variant="outline">Canceled</Badge>;
+        return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Canceled</Badge>;
+      case 'expired':
+        return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Expired</Badge>;
       case 'trial':
         return <Badge variant="secondary">Trial</Badge>;
       default:
@@ -174,6 +179,7 @@ export default function BillingPlan() {
     }
   };
 
+  const isExpired = ['expired', 'canceled', 'past_due'].includes(subscriptionStatus);
   const hasActiveSubscription = ['active', 'trialing', 'trial'].includes(subscriptionStatus);
 
   if (!user) {
@@ -224,29 +230,48 @@ export default function BillingPlan() {
               </div>
               {getStatusBadge(subscriptionStatus)}
             </div>
-            <div className="p-3 bg-muted rounded-lg">
-              <p className="text-2xl font-bold">{currentPlan.name}</p>
-              <p className="text-sm text-muted-foreground">
-                {currentPlan.priceMonthly > 0 
-                  ? `${formatPlanPrice(currentPlan.priceMonthly)} / month`
-                  : 'Custom pricing'}
-              </p>
-            </div>
-            {hasActiveSubscription && (
-              <Button 
-                onClick={handleManageBilling} 
-                disabled={portalLoading}
-                variant="outline"
-                className="w-full mt-4"
-              >
-                {portalLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <ExternalLink className="h-4 w-4 mr-2" />
+              <div className={`p-3 rounded-lg ${isExpired ? 'bg-destructive/10 border border-destructive/30' : 'bg-muted'}`}>
+                <p className="text-2xl font-bold">{currentPlan.name}</p>
+                <p className="text-sm text-muted-foreground">
+                  {currentPlan.priceMonthly > 0 
+                    ? `${formatPlanPrice(currentPlan.priceMonthly)} / month`
+                    : 'Custom pricing'}
+                </p>
+                {isExpired && (
+                  <p className="text-sm text-destructive font-medium mt-2">
+                    Your subscription has expired. Please renew to continue using all features.
+                  </p>
                 )}
-                Manage Billing
-              </Button>
-            )}
+              </div>
+              {hasActiveSubscription && (
+                <Button 
+                  onClick={handleManageBilling} 
+                  disabled={portalLoading}
+                  variant="outline"
+                  className="w-full mt-4"
+                >
+                  {portalLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                  )}
+                  Manage Billing
+                </Button>
+              )}
+              {isExpired && (
+                <Button 
+                  onClick={() => handleSubscribe(currentTier)}
+                  disabled={checkoutLoading === currentTier}
+                  className="w-full mt-4"
+                >
+                  {checkoutLoading === currentTier ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                  )}
+                  Renew Subscription
+                </Button>
+              )}
           </CardContent>
         </Card>
       </div>
@@ -328,14 +353,49 @@ export default function BillingPlan() {
                     onClick={handleContactSales}
                     variant={isCurrent ? "outline" : "default"}
                     className="w-full"
-                    disabled={isCurrent}
+                    disabled={isCurrent && !isExpired}
                   >
                     <Mail className="h-4 w-4 mr-2" />
-                    {isCurrent ? 'Current Plan' : 'Contact Sales'}
+                    {isCurrent && !isExpired ? 'Current Plan' : 'Contact Sales'}
+                  </Button>
+                ) : isCurrent && isExpired ? (
+                  <Button 
+                    onClick={() => handleSubscribe(plan.id)}
+                    variant="default"
+                    className="w-full"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                    )}
+                    Renew
                   </Button>
                 ) : isCurrent ? (
                   <Button variant="outline" className="w-full" disabled>
                     Current Plan
+                  </Button>
+                ) : isExpired ? (
+                  <Button 
+                    onClick={() => handleSubscribe(plan.id)}
+                    variant={isUpgrade ? "default" : "outline"}
+                    className="w-full"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : isUpgrade ? (
+                      <>
+                        <TrendingUp className="h-4 w-4 mr-2" />
+                        Upgrade
+                      </>
+                    ) : (
+                      <>
+                        <TrendingDown className="h-4 w-4 mr-2" />
+                        Downgrade
+                      </>
+                    )}
                   </Button>
                 ) : !hasActiveSubscription ? (
                   <Button 
@@ -366,7 +426,10 @@ export default function BillingPlan() {
                         Upgrade
                       </>
                     ) : (
-                      'Switch Plan'
+                      <>
+                        <TrendingDown className="h-4 w-4 mr-2" />
+                        Downgrade
+                      </>
                     )}
                   </Button>
                 )}
