@@ -222,7 +222,7 @@ export const NAV_ITEMS = {
   ],
   cutting: [
     { path: '/cutting/form', label: 'Daily Cutting Report', icon: 'Scissors' },
-    { path: '/cutting/my-submissions', label: 'My Submissions', icon: 'FileText' },
+    { path: '/cutting/submissions', label: 'All Submissions', icon: 'FileText' },
     { path: '/preferences', label: 'My Preferences', icon: 'UserCog' },
   ],
 };
