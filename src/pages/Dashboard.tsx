@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SubmissionDetailModal } from "@/components/SubmissionDetailModal";
 import { TargetDetailModal } from "@/components/TargetDetailModal";
 import { TargetVsActualComparison } from "@/components/insights/TargetVsActualComparison";
+import { FinishingDashboard } from "@/components/dashboard/FinishingDashboard";
 import {
   Factory,
   Package,
@@ -380,11 +381,6 @@ export default function Dashboard() {
         avgEfficiency: 0,
       });
 
-      console.log('Dashboard data:', {
-        finishingDailySheetsData,
-        formattedFinishingEOD,
-        allLinesData: linesData,
-      });
       
       setSewingTargets(formattedSewingTargets);
       setFinishingTargets(formattedFinishingTargets);
@@ -493,7 +489,8 @@ export default function Dashboard() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value={departmentTab} className="space-y-6">
+        {/* Sewing Tab Content */}
+        <TabsContent value="sewing" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Morning Targets Card */}
             <Card>
@@ -502,7 +499,7 @@ export default function Dashboard() {
                   <Crosshair className="h-5 w-5 text-primary" />
                   Morning Targets
                 </CardTitle>
-                <Link to={departmentTab === 'sewing' ? '/sewing/morning-targets' : '/finishing/morning-targets'}>
+                <Link to="/sewing/morning-targets">
                   <Button variant="ghost" size="sm">
                     <Plus className="h-4 w-4 mr-1" />
                     Add
@@ -516,9 +513,9 @@ export default function Dashboard() {
                       <div key={i} className="h-16 bg-muted rounded-lg animate-pulse" />
                     ))}
                   </div>
-                ) : currentTargets.length > 0 ? (
+                ) : sewingTargets.length > 0 ? (
                   <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                    {currentTargets.map((target) => (
+                    {sewingTargets.map((target) => (
                       <div
                         key={target.id}
                         onClick={() => {
@@ -551,7 +548,7 @@ export default function Dashboard() {
                   <div className="text-center py-8 text-muted-foreground">
                     <Crosshair className="h-12 w-12 mx-auto mb-3 opacity-50" />
                     <p>No targets submitted today</p>
-                    <Link to={departmentTab === 'sewing' ? '/sewing/morning-targets' : '/finishing/morning-targets'}>
+                    <Link to="/sewing/morning-targets">
                       <Button variant="link" size="sm" className="mt-2">
                         Add morning targets
                       </Button>
@@ -568,7 +565,7 @@ export default function Dashboard() {
                   <ClipboardCheck className="h-5 w-5 text-info" />
                   End of Day
                 </CardTitle>
-                <Link to={departmentTab === 'sewing' ? '/sewing/end-of-day' : '/finishing/end-of-day'}>
+                <Link to="/sewing/end-of-day">
                   <Button variant="ghost" size="sm">
                     <Plus className="h-4 w-4 mr-1" />
                     Add
@@ -582,13 +579,13 @@ export default function Dashboard() {
                       <div key={i} className="h-16 bg-muted rounded-lg animate-pulse" />
                     ))}
                   </div>
-                ) : currentEndOfDay.length > 0 ? (
+                ) : sewingEndOfDay.length > 0 ? (
                   <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                    {currentEndOfDay.map((update) => (
+                    {sewingEndOfDay.map((update) => (
                       <div
                         key={update.id}
                         onClick={() => {
-                          const submissionData = update.type === 'sewing' ? {
+                          setSelectedSubmission({
                             id: update.id,
                             type: 'sewing' as const,
                             line_name: update.line_name,
@@ -611,25 +608,7 @@ export default function Dashboard() {
                             notes: update.notes,
                             submitted_at: update.submitted_at,
                             production_date: update.production_date,
-                          } : {
-                            id: update.id,
-                            type: 'finishing' as const,
-                            line_name: update.line_name,
-                            po_number: update.po_number,
-                            buyer: update.buyer,
-                            style: update.style,
-                            hours_logged: update.hours_logged,
-                            total_poly: update.total_poly,
-                            total_carton: update.total_carton,
-                            has_blocker: false,
-                            blocker_description: null,
-                            blocker_impact: null,
-                            blocker_owner: null,
-                            blocker_status: null,
-                            submitted_at: update.submitted_at,
-                            production_date: update.production_date,
-                          };
-                          setSelectedSubmission(submissionData);
+                          });
                           setSubmissionModalOpen(true);
                         }}
                         className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
@@ -654,9 +633,7 @@ export default function Dashboard() {
                         </div>
                         <div className="text-right">
                           <p className="font-mono font-bold text-lg">{update.output.toLocaleString()}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {update.type === 'sewing' ? 'output' : 'QC pass'}
-                          </p>
+                          <p className="text-xs text-muted-foreground">output</p>
                         </div>
                       </div>
                     ))}
@@ -665,7 +642,7 @@ export default function Dashboard() {
                   <div className="text-center py-8 text-muted-foreground">
                     <ClipboardCheck className="h-12 w-12 mx-auto mb-3 opacity-50" />
                     <p>No end of day submissions</p>
-                    <Link to={departmentTab === 'sewing' ? '/sewing/end-of-day' : '/finishing/end-of-day'}>
+                    <Link to="/sewing/end-of-day">
                       <Button variant="link" size="sm" className="mt-2">
                         Add end of day report
                       </Button>
@@ -676,27 +653,30 @@ export default function Dashboard() {
             </Card>
           </div>
 
-          {/* Target vs Actual Comparison */}
+          {/* Target vs Actual Comparison - Sewing Only */}
           <TargetVsActualComparison
             allLines={allLines}
-            targets={currentTargets.map(t => ({
+            targets={sewingTargets.map(t => ({
               line_uuid: t.line_uuid,
               line_name: t.line_name,
               per_hour_target: t.per_hour_target,
               manpower_planned: t.manpower_planned,
-              m_power_planned: t.m_power_planned,
             }))}
-            actuals={currentEndOfDay.map(a => ({
+            actuals={sewingEndOfDay.map(a => ({
               line_uuid: a.line_uuid,
               line_name: a.line_name,
               output: a.output,
               manpower: a.manpower,
-              hours_logged: a.hours_logged,
               has_blocker: a.has_blocker,
             }))}
-            type={departmentTab}
+            type="sewing"
             loading={loading}
           />
+        </TabsContent>
+
+        {/* Finishing Tab Content - Completely Different View */}
+        <TabsContent value="finishing" className="space-y-6">
+          <FinishingDashboard />
         </TabsContent>
       </Tabs>
 
