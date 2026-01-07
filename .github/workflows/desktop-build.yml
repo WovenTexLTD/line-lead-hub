@@ -6,30 +6,24 @@ on:
     tags:
       - "desktop-v*"
 
+permissions:
+  contents: write
+
 jobs:
   build:
-    permissions:
-      contents: write
-
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: ubuntu-22.04
-            args: ""
-          - os: windows-latest
-            args: ""
-          - os: macos-latest
-            args: ""
-
-    runs-on: ${{ matrix.os }}
+        os: [ubuntu-22.04, windows-latest, macos-latest]
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Install Linux dependencies
-        if: matrix.os == 'ubuntu-22.04'
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -49,16 +43,41 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install frontend deps
-        run: npm ci --legacy-peer-deps
+        run: npm ci
 
-      - name: Build & Release (Tauri)
-        uses: tauri-apps/tauri-action@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build desktop app (Tauri)
+        run: npm run tauri:build
+
+      - name: List bundles (debug)
+        shell: bash
+        run: |
+          ls -la src-tauri/target/release || true
+          ls -R src-tauri/target/release/bundle || true
+
+      - name: Upload bundles
+        uses: actions/upload-artifact@v4
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: "Production Portal ${{ github.ref_name }}"
-          releaseBody: "Desktop installers for Production Portal."
-          releaseDraft: false
-          prerelease: false
-          args: ${{ matrix.args }}
+          name: bundle-${{ matrix.os }}
+          path: src-tauri/target/release/bundle/**
+          if-no-files-found: error
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all bundles
+        uses: actions/download-artifact@v4
+        with:
+          pattern: bundle-*
+          path: dist
+          merge-multiple: true
+
+      - name: Create Release + Upload Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/**
+          name: Production Portal ${{ github.ref_name }}
+          body: Desktop installers for Production Portal.
