@@ -34,6 +34,7 @@ jobs:
             librsvg2-dev \
             libsoup-3.0-dev \
             patchelf
+
           sudo apt-get install -y libayatana-appindicator3-dev || sudo apt-get install -y libappindicator3-dev
 
           # Make pkg-config see libsoup-3.0.pc (now + later steps)
@@ -57,32 +58,33 @@ jobs:
       - name: Build desktop app (Tauri)
         run: npm run tauri:build
 
-      - name: List bundles (debug)
-        shell: bash
-        run: |
-          ls -la src-tauri/target/release || true
-          ls -R src-tauri/target/release/bundle || true
-
-      - name: Upload bundles
+      # IMPORTANT: upload only installer files (NOT the whole bundle folder)
+      - name: Upload installers
         uses: actions/upload-artifact@v4
         with:
-          name: bundle-${{ matrix.os }}
-          path: src-tauri/target/release/bundle/**
+          name: installers-${{ matrix.os }}
           if-no-files-found: error
+          path: |
+            src-tauri/target/release/bundle/**/*.AppImage
+            src-tauri/target/release/bundle/**/*.deb
+            src-tauri/target/release/bundle/**/*.rpm
+            src-tauri/target/release/bundle/**/*.dmg
+            src-tauri/target/release/bundle/**/*.msi
+            src-tauri/target/release/bundle/**/*.exe
 
   release:
     name: Create GitHub Release
     needs: build
     runs-on: ubuntu-latest
 
-    # IMPORTANT: only run release on tag pushes (NOT workflow_dispatch)
+    # only run release on tag pushes
     if: startsWith(github.ref, 'refs/tags/desktop-v')
 
     steps:
-      - name: Download all bundles
+      - name: Download all installers
         uses: actions/download-artifact@v4
         with:
-          pattern: bundle-*
+          pattern: installers-*
           path: dist
           merge-multiple: true
 
@@ -92,7 +94,13 @@ jobs:
           tag: ${{ github.ref_name }}
           name: Production Portal ${{ github.ref_name }}
           body: Desktop installers for Production Portal.
-          artifacts: "dist/**"
           allowUpdates: true
           replacesArtifacts: true
+          artifacts: |
+            dist/**/*.AppImage
+            dist/**/*.deb
+            dist/**/*.rpm
+            dist/**/*.dmg
+            dist/**/*.msi
+            dist/**/*.exe
           token: ${{ secrets.GITHUB_TOKEN }}
