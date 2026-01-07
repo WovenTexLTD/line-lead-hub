@@ -46,13 +46,25 @@ export function useActiveLines() {
 
       if (archivedError) throw archivedError;
 
+      // Fetch latest factory data directly to ensure we have up-to-date max_lines
+      const { data: factoryData, error: factoryError } = await supabase
+        .from('factory_accounts')
+        .select('max_lines, subscription_tier')
+        .eq('id', profile.factory_id)
+        .single();
+
+      if (factoryError) throw factoryError;
+
       const activeCount = activeLines?.length || 0;
       const archivedCount = archivedLines?.length || 0;
 
-      // Get plan tier from factory
-      const planTier = mapLegacyTier(factory?.subscription_tier || 'starter');
+      // Use max_lines from database directly (authoritative source)
+      // Fall back to plan tier config only if max_lines is not set
+      const planTier = mapLegacyTier(factoryData?.subscription_tier || factory?.subscription_tier || 'starter');
       const planConfig = PLAN_TIERS[planTier];
-      const maxLines = planConfig.maxActiveLines;
+      
+      // IMPORTANT: Use factory's stored max_lines first, then fall back to plan config
+      const maxLines = factoryData?.max_lines ?? factory?.max_lines ?? planConfig.maxActiveLines;
 
       // Calculate status
       const isAtLimit = maxLines !== null && activeCount >= maxLines;
@@ -74,7 +86,7 @@ export function useActiveLines() {
     } finally {
       setLoading(false);
     }
-  }, [profile?.factory_id, factory?.subscription_tier]);
+  }, [profile?.factory_id, factory?.subscription_tier, factory?.max_lines]);
 
   useEffect(() => {
     fetchActiveLines();

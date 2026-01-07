@@ -9,6 +9,49 @@ const PLAN_TIERS: Record<string, { maxLines: number }> = {
   scale: { maxLines: 100 },
 };
 
+// Product ID to tier mapping - must match frontend plan-tiers.ts
+const PRODUCT_TO_TIER: Record<string, string> = {
+  'prod_Tk0Z6QU3HYNqmx': 'starter',
+  'prod_Tk0Zyl3J739mGp': 'growth',
+  'prod_Tk0ZNeXFFFP9jz': 'scale',
+};
+
+// Price ID to tier mapping (fallback)
+const PRICE_TO_TIER: Record<string, string> = {
+  'price_1SmWhXHuCf2bKZx0zzCX9He2': 'starter',
+  'price_1SmWh2HuCf2bKZx05MmCPACn': 'growth',
+  'price_1SmWfuHuCf2bKZx0rdbia7dk': 'scale',
+};
+
+// Helper to derive tier from subscription
+function deriveTierFromSubscription(subscription: Stripe.Subscription): { tier: string; maxLines: number } {
+  let tier = 'starter';
+  let maxLines = 30;
+
+  if (subscription.items.data.length > 0) {
+    const item = subscription.items.data[0];
+    const productId = typeof item.price.product === 'string'
+      ? item.price.product
+      : item.price.product?.id;
+
+    if (productId && PRODUCT_TO_TIER[productId]) {
+      tier = PRODUCT_TO_TIER[productId];
+      maxLines = PLAN_TIERS[tier]?.maxLines || 30;
+    } else if (item.price.id && PRICE_TO_TIER[item.price.id]) {
+      tier = PRICE_TO_TIER[item.price.id];
+      maxLines = PLAN_TIERS[tier]?.maxLines || 30;
+    }
+  }
+
+  // Allow metadata to override if explicitly set
+  if (subscription.metadata?.tier && PLAN_TIERS[subscription.metadata.tier]) {
+    tier = subscription.metadata.tier;
+    maxLines = PLAN_TIERS[tier]?.maxLines || 30;
+  }
+
+  return { tier, maxLines };
+}
+
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[STRIPE-WEBHOOK] ${step}${detailsStr}`);
@@ -68,12 +111,24 @@ serve(async (req) => {
           sessionId: session.id, 
           customerId: session.customer,
           factoryId: session.metadata?.factory_id,
-          tier: session.metadata?.tier
+          tier: session.metadata?.tier,
+          subscriptionId: session.subscription
         });
         
         if (session.metadata?.factory_id && session.subscription) {
-          const tier = session.metadata?.tier || 'starter';
-          const tierConfig = PLAN_TIERS[tier] || PLAN_TIERS.starter;
+          // Fetch the subscription to get the actual product/price for tier detection
+          let tier = session.metadata?.tier || 'starter';
+          let maxLines = PLAN_TIERS[tier]?.maxLines || 30;
+          
+          try {
+            const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
+            const derived = deriveTierFromSubscription(subscription);
+            tier = derived.tier;
+            maxLines = derived.maxLines;
+            logStep("Derived tier from subscription", { tier, maxLines });
+          } catch (err) {
+            logStep("Could not fetch subscription for tier derivation, using metadata", { tier });
+          }
           
           await supabaseAdmin
             .from('factory_accounts')
@@ -82,12 +137,12 @@ serve(async (req) => {
               stripe_subscription_id: session.subscription as string,
               subscription_status: 'active',
               subscription_tier: tier,
-              max_lines: tierConfig.maxLines,
+              max_lines: maxLines,
               payment_failed_at: null,
             })
             .eq('id', session.metadata.factory_id);
           
-          logStep("Factory updated to active", { tier, maxLines: tierConfig.maxLines });
+          logStep("Factory updated to active", { tier, maxLines });
         }
         break;
       }
@@ -122,20 +177,19 @@ serve(async (req) => {
                         subscription.status === 'canceled' ? 'canceled' : 
                         subscription.status === 'unpaid' ? 'expired' : 'inactive';
           
-          // Get tier from subscription metadata or items
-          const tier = subscription.metadata?.tier || 'starter';
-          const tierConfig = PLAN_TIERS[tier] || PLAN_TIERS.starter;
+          // Get tier from subscription items (not just metadata)
+          const { tier, maxLines } = deriveTierFromSubscription(subscription);
           
           await supabaseAdmin
             .from('factory_accounts')
             .update({ 
               subscription_status: status,
               subscription_tier: tier,
-              max_lines: tierConfig.maxLines,
+              max_lines: maxLines,
             })
             .eq('id', factoryId);
           
-          logStep("Factory status and tier updated", { status, tier, maxLines: tierConfig.maxLines });
+          logStep("Factory status and tier updated", { status, tier, maxLines });
         }
         break;
       }
