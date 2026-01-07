@@ -6,21 +6,15 @@ on:
     tags:
       - "desktop-v*"
 
+permissions:
+  contents: write
+
 jobs:
   build:
-    permissions:
-      contents: write
-
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: windows-latest
-            args: ""
-          - os: macos-latest
-            args: ""
-          - os: ubuntu-22.04
-            args: ""
+        os: [windows-latest, macos-latest, ubuntu-22.04]
 
     runs-on: ${{ matrix.os }}
 
@@ -43,6 +37,9 @@ jobs:
       - name: Install frontend deps
         run: npm ci
 
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Build & Release (Tauri)
         uses: tauri-apps/tauri-action@v0
         env:
@@ -53,4 +50,3 @@ jobs:
           releaseBody: "Desktop installers for Production Portal."
           releaseDraft: false
           prerelease: false
-          args: ${{ matrix.args }}
