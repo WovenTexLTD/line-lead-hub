@@ -107,6 +107,14 @@ export default function FactorySetup() {
   const [editingItem, setEditingItem] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Bulk add lines state
+  const [isBulkAddOpen, setIsBulkAddOpen] = useState(false);
+  const [bulkLineCount, setBulkLineCount] = useState(10);
+  const [bulkStartNumber, setBulkStartNumber] = useState(1);
+  const [bulkUnitId, setBulkUnitId] = useState('');
+  const [bulkFloorId, setBulkFloorId] = useState('');
+  const [isBulkAdding, setIsBulkAdding] = useState(false);
+
   // Factory creation state
   const [isCreatingFactory, setIsCreatingFactory] = useState(false);
   const [newFactoryName, setNewFactoryName] = useState("");
@@ -296,10 +304,10 @@ export default function FactorySetup() {
       }
     } catch (error: any) {
       // Check for plan limit error from trigger
-      if (error.message?.includes('Plan limit reached')) {
+      if (error.message?.includes('Plan limit reached') || error.message?.includes('limit')) {
         toast({ 
           variant: "destructive", 
-          title: "Plan limit reached", 
+          title: "Plan limit reached",
           description: "Upgrade your plan to activate more production lines." 
         });
       } else {
@@ -420,6 +428,60 @@ export default function FactorySetup() {
       toast({ variant: "destructive", title: "Error", description: error.message });
     } finally {
       setIsCreatingFactory(false);
+    }
+  }
+
+  async function handleBulkAddLines() {
+    if (!profile?.factory_id) return;
+    setIsBulkAdding(true);
+
+    try {
+      // Calculate how many lines can be added based on plan limits
+      const maxAllowed = lineStatus?.maxLines ?? 9999;
+      const currentActive = lineStatus?.activeCount ?? 0;
+      const availableSlots = maxAllowed - currentActive;
+      const linesToCreate = Math.min(bulkLineCount, availableSlots);
+
+      if (linesToCreate <= 0) {
+        toast({
+          variant: "destructive",
+          title: "Plan limit reached",
+          description: "Upgrade your plan to add more production lines."
+        });
+        return;
+      }
+
+      // Generate line data
+      const newLines = [];
+      for (let i = 0; i < linesToCreate; i++) {
+        const lineNum = bulkStartNumber + i;
+        newLines.push({
+          factory_id: profile.factory_id,
+          line_id: `L${lineNum}`,
+          name: `Line ${lineNum}`,
+          unit_id: bulkUnitId || null,
+          floor_id: bulkFloorId || null,
+          is_active: true,
+        });
+      }
+
+      const { error } = await supabase.from('lines').insert(newLines);
+      if (error) throw error;
+
+      toast({
+        title: `${linesToCreate} lines created`,
+        description: linesToCreate < bulkLineCount 
+          ? `Only ${linesToCreate} lines added due to plan limits.`
+          : `Lines L${bulkStartNumber} to L${bulkStartNumber + linesToCreate - 1} created.`
+      });
+
+      setIsBulkAddOpen(false);
+      fetchAllData();
+      refreshLineStatus();
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Error", description: error.message });
+    } finally {
+      setIsBulkAdding(false);
     }
   }
 
@@ -703,15 +765,35 @@ export default function FactorySetup() {
                 <CardTitle>Production Lines</CardTitle>
                 <CardDescription>Manage production lines (e.g., L1, L2, L3)</CardDescription>
               </div>
-              <Button 
-                onClick={openCreateDialog} 
-                size="sm"
-                disabled={isAtLimit}
-                title={isAtLimit ? "Plan limit reached. Upgrade to add more lines." : "Add a new line"}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Line
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={() => {
+                    // Set default start number based on existing lines
+                    const highestNum = lines.reduce((max, l) => {
+                      const num = parseInt(l.line_id.replace(/\D/g, '') || '0', 10);
+                      return num > max ? num : max;
+                    }, 0);
+                    setBulkStartNumber(highestNum + 1);
+                    setIsBulkAddOpen(true);
+                  }}
+                  size="sm"
+                  variant="outline"
+                  disabled={isAtLimit}
+                  title={isAtLimit ? "Plan limit reached" : "Add multiple lines at once"}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Bulk Add
+                </Button>
+                <Button 
+                  onClick={openCreateDialog} 
+                  size="sm"
+                  disabled={isAtLimit}
+                  title={isAtLimit ? "Plan limit reached. Upgrade to add more lines." : "Add a new line"}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Line
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <Table>
@@ -986,6 +1068,99 @@ export default function FactorySetup() {
               isSaving={isSaving}
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Add Lines Dialog */}
+      <Dialog open={isBulkAddOpen} onOpenChange={setIsBulkAddOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Bulk Add Lines</DialogTitle>
+            <DialogDescription>
+              Quickly create multiple production lines at once. Lines will be named numerically (e.g., Line 1, Line 2, etc.)
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Start From</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={bulkStartNumber}
+                  onChange={(e) => setBulkStartNumber(parseInt(e.target.value) || 1)}
+                  placeholder="1"
+                />
+                <p className="text-xs text-muted-foreground">First line number (e.g., L1)</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Number of Lines</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={bulkLineCount}
+                  onChange={(e) => setBulkLineCount(Math.min(100, parseInt(e.target.value) || 1))}
+                  placeholder="10"
+                />
+                <p className="text-xs text-muted-foreground">How many to create</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Unit (optional)</Label>
+              <Select value={bulkUnitId} onValueChange={(v) => { setBulkUnitId(v); setBulkFloorId(''); }}>
+                <SelectTrigger><SelectValue placeholder="Select unit" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">No unit</SelectItem>
+                  {units.filter(u => u.is_active).map(u => (
+                    <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {bulkUnitId && (
+              <div className="space-y-2">
+                <Label>Floor (optional)</Label>
+                <Select value={bulkFloorId} onValueChange={setBulkFloorId}>
+                  <SelectTrigger><SelectValue placeholder="Select floor" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">No floor</SelectItem>
+                    {floors.filter(f => f.is_active && f.unit_id === bulkUnitId).map(f => (
+                      <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {lineStatus && (
+              <div className="bg-muted/50 rounded-lg p-3 text-sm">
+                <p className="font-medium">Preview</p>
+                <p className="text-muted-foreground">
+                  Will create lines: L{bulkStartNumber} to L{bulkStartNumber + bulkLineCount - 1}
+                </p>
+                <p className="text-muted-foreground">
+                  Available slots: {lineStatus.maxLines !== null 
+                    ? Math.max(0, lineStatus.maxLines - lineStatus.activeCount)
+                    : 'Unlimited'}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsBulkAddOpen(false)}>Cancel</Button>
+            <Button 
+              onClick={handleBulkAddLines} 
+              disabled={isBulkAdding || bulkLineCount < 1}
+            >
+              {isBulkAdding && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Create {bulkLineCount} Lines
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
