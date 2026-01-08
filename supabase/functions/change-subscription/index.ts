@@ -11,30 +11,44 @@ const corsHeaders = {
 // Tiers are ordered from lowest to highest
 const PLAN_TIERS = {
   starter: {
-    priceId: "price_1SnFcPHWgEvVObNzV8DUHzpe",
+    priceIdMonthly: "price_1SnFcPHWgEvVObNzV8DUHzpe",
+    priceIdYearly: "price_1SnGNvHWgEvVObNzzSlIyDmj",
     productId: "prod_Tkl8Q1w6HfSqER",
     maxLines: 30,
     order: 1,
+    monthlyAmount: 39999,
+    yearlyAmount: 407990,
   },
   growth: {
-    priceId: "price_1SnFcNHWgEvVObNzag27TfQY",
+    priceIdMonthly: "price_1SnFcNHWgEvVObNzag27TfQY",
+    priceIdYearly: "price_1SnGPGHWgEvVObNz1cEK82X6",
     productId: "prod_Tkl8hBoNi8dZZL",
     maxLines: 60,
     order: 2,
+    monthlyAmount: 54999,
+    yearlyAmount: 560990,
   },
   scale: {
-    priceId: "price_1SnFcIHWgEvVObNz2u1IfoEw",
+    priceIdMonthly: "price_1SnFcIHWgEvVObNz2u1IfoEw",
+    priceIdYearly: "price_1SnGQQHWgEvVObNz6Gf4ff6Y",
     productId: "prod_Tkl8LGqEjZVnRG",
     maxLines: 100,
     order: 3,
+    monthlyAmount: 62999,
+    yearlyAmount: 642590,
   },
 };
 
-// Map price IDs to tier names for current plan detection
-const PRICE_TO_TIER: Record<string, string> = {
-  price_1SnFcPHWgEvVObNzV8DUHzpe: "starter",
-  price_1SnFcNHWgEvVObNzag27TfQY: "growth",
-  price_1SnFcIHWgEvVObNz2u1IfoEw: "scale",
+// Map price IDs to tier names and intervals for current plan detection
+const PRICE_TO_TIER: Record<string, { tier: string; interval: "month" | "year" }> = {
+  // Monthly
+  price_1SnFcPHWgEvVObNzV8DUHzpe: { tier: "starter", interval: "month" },
+  price_1SnFcNHWgEvVObNzag27TfQY: { tier: "growth", interval: "month" },
+  price_1SnFcIHWgEvVObNz2u1IfoEw: { tier: "scale", interval: "month" },
+  // Yearly
+  price_1SnGNvHWgEvVObNzzSlIyDmj: { tier: "starter", interval: "year" },
+  price_1SnGPGHWgEvVObNz1cEK82X6: { tier: "growth", interval: "year" },
+  price_1SnGQQHWgEvVObNz6Gf4ff6Y: { tier: "scale", interval: "year" },
 };
 
 const logStep = (step: string, details?: any) => {
@@ -61,7 +75,6 @@ const pickBestSubscription = (subs: Stripe.Subscription[]) => {
 
 const resolveSubscription = async (args: {
   stripe: Stripe;
-  // deno + supabase-js types are extremely strict in edge functions; keep this untyped for reliability
   supabaseAdmin: any;
   factoryId: string;
   userEmail: string;
@@ -168,6 +181,14 @@ const resolveSubscription = async (args: {
   return { subscription, customerId, repaired: true };
 };
 
+// Get effective amount for comparison (normalize yearly to monthly equivalent)
+const getEffectiveAmount = (tierConfig: typeof PLAN_TIERS.starter, interval: "month" | "year"): number => {
+  if (interval === "year") {
+    return tierConfig.yearlyAmount / 12; // Monthly equivalent
+  }
+  return tierConfig.monthlyAmount;
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -191,13 +212,16 @@ serve(async (req) => {
     const user = data.user;
     if (!user?.email) throw new Error("User not authenticated or email not available");
 
-    const { newTier } = await req.json();
+    const { newTier, billingInterval = "month" } = await req.json();
     if (!newTier) throw new Error("New tier is required");
 
     const tierConfig = PLAN_TIERS[newTier as keyof typeof PLAN_TIERS];
     if (!tierConfig) throw new Error(`Invalid tier: ${newTier}. Enterprise requires contacting sales.`);
 
-    logStep("Request body", { newTier, priceId: tierConfig.priceId });
+    // Get the correct price ID based on billing interval
+    const targetPriceId = billingInterval === "year" ? tierConfig.priceIdYearly : tierConfig.priceIdMonthly;
+    
+    logStep("Request body", { newTier, billingInterval, targetPriceId });
 
     // Get user's factory
     const { data: profile } = await supabaseAdmin
@@ -230,18 +254,48 @@ serve(async (req) => {
     const currentPriceId = subscription.items.data[0]?.price?.id;
     if (!currentPriceId) throw new Error("Could not determine current plan price");
 
-    const currentTierName = PRICE_TO_TIER[currentPriceId] || factory?.subscription_tier || "starter";
+    const currentPriceMapping = PRICE_TO_TIER[currentPriceId];
+    const currentTierName = currentPriceMapping?.tier || factory?.subscription_tier || "starter";
+    const currentInterval = currentPriceMapping?.interval || "month";
     const currentTierConfig = PLAN_TIERS[currentTierName as keyof typeof PLAN_TIERS];
+    
     if (!currentTierConfig) throw new Error("Could not determine current plan tier");
 
-    const isUpgrade = tierConfig.order > currentTierConfig.order;
-    const isDowngrade = tierConfig.order < currentTierConfig.order;
+    // Determine if this is an upgrade or downgrade
+    // Compare by tier order first, then by effective monthly amount if same tier
+    let isUpgrade: boolean;
+    let isDowngrade: boolean;
+
+    if (tierConfig.order !== currentTierConfig.order) {
+      // Different tier - compare by order
+      isUpgrade = tierConfig.order > currentTierConfig.order;
+      isDowngrade = tierConfig.order < currentTierConfig.order;
+    } else {
+      // Same tier - compare by effective amount (yearly is cheaper per month)
+      const currentEffective = getEffectiveAmount(currentTierConfig, currentInterval);
+      const newEffective = getEffectiveAmount(tierConfig, billingInterval as "month" | "year");
+      
+      // Switching from monthly to yearly at same tier is technically a "downgrade" in price
+      // but we treat it as an upgrade (immediate) since it's a commitment
+      if (currentInterval === "month" && billingInterval === "year") {
+        isUpgrade = true;
+        isDowngrade = false;
+      } else if (currentInterval === "year" && billingInterval === "month") {
+        isUpgrade = false;
+        isDowngrade = true;
+      } else {
+        // Same interval, same tier - no change
+        throw new Error("You are already on this plan");
+      }
+    }
 
     if (!isUpgrade && !isDowngrade) throw new Error("You are already on this plan");
 
     logStep("Plan change type", {
       currentTier: currentTierName,
+      currentInterval,
       newTier,
+      newInterval: billingInterval,
       isUpgrade,
       isDowngrade,
       currentOrder: currentTierConfig.order,
@@ -257,11 +311,12 @@ serve(async (req) => {
       logStep("Processing UPGRADE - immediate with proration");
 
       const updatedSubscription = await stripe.subscriptions.update(subscription.id, {
-        items: [{ id: subscription.items.data[0].id, price: tierConfig.priceId }],
+        items: [{ id: subscription.items.data[0].id, price: targetPriceId }],
         proration_behavior: "always_invoice",
         metadata: {
           ...subscription.metadata,
           tier: newTier,
+          interval: billingInterval,
         },
       });
 
@@ -278,9 +333,10 @@ serve(async (req) => {
         success: true,
         changeType: "upgrade",
         newTier,
+        newInterval: billingInterval,
         maxLines: tierConfig.maxLines,
         effectiveImmediately: true,
-        message: `Upgraded to ${newTier.charAt(0).toUpperCase() + newTier.slice(1)} plan. Your new limits are active now.`,
+        message: `Upgraded to ${newTier.charAt(0).toUpperCase() + newTier.slice(1)} plan${billingInterval === "year" ? " (Yearly)" : ""}. Your new limits are active now.`,
         subscription: {
           id: updatedSubscription.id,
           status: updatedSubscription.status,
@@ -314,9 +370,9 @@ serve(async (req) => {
             end_date: periodEnd,
           },
           {
-            items: [{ price: tierConfig.priceId, quantity: 1 }],
+            items: [{ price: targetPriceId, quantity: 1 }],
             start_date: periodEnd,
-            metadata: { tier: newTier },
+            metadata: { tier: newTier, interval: billingInterval },
           },
         ],
       });
@@ -325,10 +381,11 @@ serve(async (req) => {
         success: true,
         changeType: "downgrade",
         newTier,
+        newInterval: billingInterval,
         maxLines: tierConfig.maxLines,
         effectiveImmediately: false,
         scheduledDate: nextBillingDateIso,
-        message: `Downgrade to ${newTier.charAt(0).toUpperCase() + newTier.slice(1)} plan scheduled. You'll continue on your current plan until ${new Date(nextBillingDateIso).toLocaleDateString()}.`,
+        message: `Downgrade to ${newTier.charAt(0).toUpperCase() + newTier.slice(1)} plan${billingInterval === "year" ? " (Yearly)" : ""} scheduled. You'll continue on your current plan until ${new Date(nextBillingDateIso).toLocaleDateString()}.`,
         subscription: {
           id: subscription.id,
           status: subscription.status,
