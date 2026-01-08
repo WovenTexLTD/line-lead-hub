@@ -67,16 +67,12 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
-      # 🧩 Generate latest.json for Tauri updater (one time, on Linux job)
+      # 🧩 Sign latest.json for the Tauri updater (one time, on Linux job)
       - name: Generate updater JSON
         if: matrix.os == 'ubuntu-22.04'
         shell: bash
         run: |
-          npx tauri signer sign \
-            --private-key ~/.tauri/production-portal.key \
-            --password "${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}" \
-            --ci \
-            --output src-tauri/target/release/bundle/latest.json
+          npx tauri signer sign --private-key-path ~/.tauri/production-portal.key --password "${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}" src-tauri/target/release/bundle/latest.json
 
       # ✅ Upload installer artifacts + latest.json for the release job
       - name: Upload installers
