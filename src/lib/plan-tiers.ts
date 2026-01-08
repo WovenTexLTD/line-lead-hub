@@ -37,8 +37,8 @@ export const PLAN_TIERS: Record<PlanTier, PlanTierConfig> = {
       'Unlimited users',
       'Email support',
     ],
-    stripePriceId: 'price_1SmWhXHuCf2bKZx0zzCX9He2',
-    stripeProductId: 'prod_Tk0Z6QU3HYNqmx',
+    stripePriceId: 'price_1SnFcPHWgEvVObNzV8DUHzpe',
+    stripeProductId: 'prod_Tkl8Q1w6HfSqER',
   },
   growth: {
     id: 'growth',
@@ -53,8 +53,8 @@ export const PLAN_TIERS: Record<PlanTier, PlanTierConfig> = {
       'Priority email support',
       'Monthly insights reports',
     ],
-    stripePriceId: 'price_1SmWh2HuCf2bKZx05MmCPACn',
-    stripeProductId: 'prod_Tk0Zyl3J739mGp',
+    stripePriceId: 'price_1SnFcNHWgEvVObNzag27TfQY',
+    stripeProductId: 'prod_Tkl8hBoNi8dZZL',
   },
   scale: {
     id: 'scale',
@@ -68,8 +68,8 @@ export const PLAN_TIERS: Record<PlanTier, PlanTierConfig> = {
       'Phone support',
       'Dedicated success manager',
     ],
-    stripePriceId: 'price_1SmWfuHuCf2bKZx0rdbia7dk',
-    stripeProductId: 'prod_Tk0ZNeXFFFP9jz',
+    stripePriceId: 'price_1SnFcIHWgEvVObNz2u1IfoEw',
+    stripeProductId: 'prod_Tkl8LGqEjZVnRG',
   },
   enterprise: {
     id: 'enterprise',
@@ -92,16 +92,16 @@ export const PLAN_TIERS: Record<PlanTier, PlanTierConfig> = {
 
 // Price ID to tier mapping for webhook/check-subscription use
 export const STRIPE_PRICE_TO_TIER: Record<string, PlanTier> = {
-  'price_1SmWhXHuCf2bKZx0zzCX9He2': 'starter',
-  'price_1SmWh2HuCf2bKZx05MmCPACn': 'growth',
-  'price_1SmWfuHuCf2bKZx0rdbia7dk': 'scale',
+  'price_1SnFcPHWgEvVObNzV8DUHzpe': 'starter',
+  'price_1SnFcNHWgEvVObNzag27TfQY': 'growth',
+  'price_1SnFcIHWgEvVObNz2u1IfoEw': 'scale',
 };
 
 // Product ID to tier mapping
 export const STRIPE_PRODUCT_TO_TIER: Record<string, PlanTier> = {
-  'prod_Tk0Z6QU3HYNqmx': 'starter',
-  'prod_Tk0Zyl3J739mGp': 'growth',
-  'prod_Tk0ZNeXFFFP9jz': 'scale',
+  'prod_Tkl8Q1w6HfSqER': 'starter',
+  'prod_Tkl8hBoNi8dZZL': 'growth',
+  'prod_Tkl8LGqEjZVnRG': 'scale',
 };
 
 export const getPlanById = (planId: string): PlanTierConfig | undefined => {

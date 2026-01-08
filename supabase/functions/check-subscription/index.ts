@@ -7,11 +7,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Product ID to tier mapping - must match frontend plan-tiers.ts
+// Product ID to tier mapping - must match frontend plan-tiers.ts (LIVE)
 const PRODUCT_TO_TIER: Record<string, string> = {
-  'prod_Tk0Z6QU3HYNqmx': 'starter',
-  'prod_Tk0Zyl3J739mGp': 'growth',
-  'prod_Tk0ZNeXFFFP9jz': 'scale',
+  'prod_Tkl8Q1w6HfSqER': 'starter',
+  'prod_Tkl8hBoNi8dZZL': 'growth',
+  'prod_Tkl8LGqEjZVnRG': 'scale',
 };
 
 // Price amount to tier mapping (fallback)
