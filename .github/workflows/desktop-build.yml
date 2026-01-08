@@ -52,19 +52,19 @@ jobs:
       - name: Install frontend deps
         run: npm ci
 
-      # ✅ Make signing key available on the runner as a file
+      # ✅ Write the signing key (stored in GitHub Secrets) to a file for the signer step
       - name: Write signing key to file
         shell: bash
         run: |
           mkdir -p ~/.tauri
-          echo "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" > ~/.tauri/production-portal.key
+          printf '%s' "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" > ~/.tauri/production-portal.key
           chmod 600 ~/.tauri/production-portal.key
 
-      # ✅ Build (this will generate updater artifacts + .sig files if createUpdaterArtifacts=true)
+      # ✅ Build Tauri app + generate updater artifacts (.sig) using SECRET CONTENTS (base64)
       - name: Build desktop app (Tauri)
         run: npm run tauri:build
         env:
-          TAURI_SIGNING_PRIVATE_KEY: ~/.tauri/production-portal.key
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
       # 🧩 Generate latest.json for Tauri updater (one time, on Linux job)
