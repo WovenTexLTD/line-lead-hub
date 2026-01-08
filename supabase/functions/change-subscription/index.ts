@@ -7,21 +7,21 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Plan tier configuration - matches frontend plan-tiers.ts
+// Plan tier configuration - matches frontend plan-tiers.ts (LIVE)
 const PLAN_TIERS = {
   starter: {
-    priceId: 'price_1SmWhXHuCf2bKZx0zzCX9He2',
-    productId: 'prod_Tk0Z6QU3HYNqmx',
+    priceId: 'price_1SnFcPHWgEvVObNzV8DUHzpe',
+    productId: 'prod_Tkl8Q1w6HfSqER',
     maxLines: 30,
   },
   growth: {
-    priceId: 'price_1SmWh2HuCf2bKZx05MmCPACn',
-    productId: 'prod_Tk0Zyl3J739mGp',
+    priceId: 'price_1SnFcNHWgEvVObNzag27TfQY',
+    productId: 'prod_Tkl8hBoNi8dZZL',
     maxLines: 60,
   },
   scale: {
-    priceId: 'price_1SmWfuHuCf2bKZx0rdbia7dk',
-    productId: 'prod_Tk0ZNeXFFFP9jz',
+    priceId: 'price_1SnFcIHWgEvVObNz2u1IfoEw',
+    productId: 'prod_Tkl8LGqEjZVnRG',
     maxLines: 100,
   },
 };
