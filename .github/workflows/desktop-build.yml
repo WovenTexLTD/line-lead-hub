@@ -184,9 +184,10 @@ jobs:
       - name: Generate latest.json
         shell: bash
         run: |
-          VERSION="${{ github.ref_name }}"
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#desktop-v}"
           REPO="WovenTexLTD/line-lead-hub"
-          BASE_URL="https://github.com/$REPO/releases/download/$VERSION"
+          BASE_URL="https://github.com/$REPO/releases/download/$TAG"
           PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           
           # Find artifact filenames
