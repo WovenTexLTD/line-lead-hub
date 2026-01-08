@@ -37,10 +37,7 @@ jobs:
 
           sudo apt-get install -y libayatana-appindicator3-dev || sudo apt-get install -y libappindicator3-dev
 
-          # Make pkg-config see libsoup-3.0.pc (now + later steps)
           echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig" >> $GITHUB_ENV
-
-          # Fail fast if libsoup still isn't visible
           pkg-config --modversion libsoup-3.0
 
       - name: Setup Node
@@ -58,7 +55,17 @@ jobs:
       - name: Build desktop app (Tauri)
         run: npm run tauri:build
 
-      # IMPORTANT: upload only installer files (NOT the whole bundle folder)
+      # 🧩 Generate latest.json for Tauri updater
+      - name: Generate updater JSON
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          cd src-tauri
+          cargo tauri signer sign \
+            --private-key ~/.tauri/production-portal.key \
+            --ci \
+            --output ../src-tauri/target/release/bundle/latest.json
+
+      # ✅ Upload installer artifacts
       - name: Upload installers
         uses: actions/upload-artifact@v4
         with:
@@ -71,13 +78,12 @@ jobs:
             src-tauri/target/release/bundle/**/*.dmg
             src-tauri/target/release/bundle/**/*.msi
             src-tauri/target/release/bundle/**/*.exe
+            src-tauri/target/release/bundle/latest.json
 
   release:
     name: Create GitHub Release
     needs: build
     runs-on: ubuntu-latest
-
-    # only run release on tag pushes
     if: startsWith(github.ref, 'refs/tags/desktop-v')
 
     steps:
@@ -88,6 +94,7 @@ jobs:
           path: dist
           merge-multiple: true
 
+      # 🧾 Create release and include updater metadata
       - name: Create Release + Upload Assets
         uses: ncipollo/release-action@v1
         with:
@@ -103,4 +110,5 @@ jobs:
             dist/**/*.dmg
             dist/**/*.msi
             dist/**/*.exe
+            dist/**/latest.json
           token: ${{ secrets.GITHUB_TOKEN }}
