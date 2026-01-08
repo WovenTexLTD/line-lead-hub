@@ -46,6 +46,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
 import { NAV_ITEMS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { openExternalUrl } from "@/lib/capacitor";
 import logoSvg from "@/assets/logo.svg";
 import {
   Collapsible,
@@ -361,15 +362,13 @@ export function AppSidebar() {
           )}
           {!collapsed && (
             <>
-              <a
-                href="https://www.woventex.co"
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                onClick={() => openExternalUrl('https://www.woventex.co')}
                 className="shrink-0 h-8 w-8 flex items-center justify-center rounded-md text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
                 title={t('common.help') || 'Help'}
               >
                 <HelpCircle className="h-4 w-4" />
-              </a>
+              </button>
               <Button
                 variant="ghost"
                 size="icon"
