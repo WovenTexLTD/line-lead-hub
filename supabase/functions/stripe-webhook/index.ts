@@ -9,18 +9,18 @@ const PLAN_TIERS: Record<string, { maxLines: number }> = {
   scale: { maxLines: 100 },
 };
 
-// Product ID to tier mapping - must match frontend plan-tiers.ts
+// Product ID to tier mapping - must match frontend plan-tiers.ts (LIVE)
 const PRODUCT_TO_TIER: Record<string, string> = {
-  'prod_Tk0Z6QU3HYNqmx': 'starter',
-  'prod_Tk0Zyl3J739mGp': 'growth',
-  'prod_Tk0ZNeXFFFP9jz': 'scale',
+  'prod_Tkl8Q1w6HfSqER': 'starter',
+  'prod_Tkl8hBoNi8dZZL': 'growth',
+  'prod_Tkl8LGqEjZVnRG': 'scale',
 };
 
-// Price ID to tier mapping (fallback)
+// Price ID to tier mapping (fallback) - LIVE
 const PRICE_TO_TIER: Record<string, string> = {
-  'price_1SmWhXHuCf2bKZx0zzCX9He2': 'starter',
-  'price_1SmWh2HuCf2bKZx05MmCPACn': 'growth',
-  'price_1SmWfuHuCf2bKZx0rdbia7dk': 'scale',
+  'price_1SnFcPHWgEvVObNzV8DUHzpe': 'starter',
+  'price_1SnFcNHWgEvVObNzag27TfQY': 'growth',
+  'price_1SnFcIHWgEvVObNz2u1IfoEw': 'scale',
 };
 
 // Helper to derive tier from subscription
