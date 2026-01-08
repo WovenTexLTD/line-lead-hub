@@ -144,9 +144,9 @@ export function AppSidebar() {
     try {
       const { check } = await import('@tauri-apps/plugin-updater');
       const { relaunch } = await import('@tauri-apps/plugin-process');
-      
-      const update = await check();
-      
+
+      const update = await check({ timeout: 30_000 });
+
       if (update) {
         toast.info(`Update available: v${update.version}`, {
           description: "Downloading update...",
@@ -154,7 +154,7 @@ export function AppSidebar() {
         });
 
         await update.downloadAndInstall();
-        
+
         toast.success("Update installed!", {
           description: "Restarting application...",
           duration: 3000,
@@ -170,9 +170,10 @@ export function AppSidebar() {
         });
       }
     } catch (error: any) {
+      const message = error?.message ?? String(error);
       console.error('Update check failed:', error);
       toast.error("Update check failed", {
-        description: error.message || "Please try again later.",
+        description: message,
       });
     } finally {
       setIsCheckingUpdate(false);
