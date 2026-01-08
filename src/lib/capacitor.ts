@@ -358,3 +358,29 @@ export function getAuthRedirectUrl(path: string = '/'): string {
 export function getPasswordResetRedirectUrl(): string {
   return getAuthRedirectUrl('/reset-password');
 }
+
+/**
+ * Check if running in Tauri desktop app
+ */
+export function isTauri(): boolean {
+  return typeof window !== 'undefined' && !!(window as any).__TAURI__;
+}
+
+/**
+ * Open an external URL - works in Tauri, Capacitor, and web
+ */
+export async function openExternalUrl(url: string): Promise<void> {
+  // Tauri desktop app
+  if (isTauri()) {
+    try {
+      const { open } = await import('@tauri-apps/plugin-shell');
+      await open(url);
+      return;
+    } catch (error) {
+      console.warn('Tauri shell open failed, falling back to window.open:', error);
+    }
+  }
+
+  // Web/PWA fallback
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
