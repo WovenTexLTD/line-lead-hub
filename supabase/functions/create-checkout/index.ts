@@ -10,17 +10,20 @@ const corsHeaders = {
 // Plan tier configuration - matches frontend plan-tiers.ts (LIVE)
 const PLAN_TIERS = {
   starter: {
-    priceId: 'price_1SnFcPHWgEvVObNzV8DUHzpe',
+    priceIdMonthly: 'price_1SnFcPHWgEvVObNzV8DUHzpe',
+    priceIdYearly: 'price_1SnGNvHWgEvVObNzzSlIyDmj',
     productId: 'prod_Tkl8Q1w6HfSqER',
     maxLines: 30,
   },
   growth: {
-    priceId: 'price_1SnFcNHWgEvVObNzag27TfQY',
+    priceIdMonthly: 'price_1SnFcNHWgEvVObNzag27TfQY',
+    priceIdYearly: 'price_1SnGPGHWgEvVObNz1cEK82X6',
     productId: 'prod_Tkl8hBoNi8dZZL',
     maxLines: 60,
   },
   scale: {
-    priceId: 'price_1SnFcIHWgEvVObNz2u1IfoEw',
+    priceIdMonthly: 'price_1SnFcIHWgEvVObNz2u1IfoEw',
+    priceIdYearly: 'price_1SnGQQHWgEvVObNz6Gf4ff6Y',
     productId: 'prod_Tkl8LGqEjZVnRG',
     maxLines: 100,
   },
@@ -72,13 +75,22 @@ serve(async (req) => {
     logStep("Profile checked", { factoryId: factoryId || 'none' });
 
     const body = await req.json().catch(() => ({}));
-    const { tier = 'starter', startTrial = false } = body;
-    logStep("Request body", { tier, startTrial });
+    const { tier = 'starter', startTrial = false, interval = 'month' } = body;
+    logStep("Request body", { tier, startTrial, interval });
 
     // Validate tier
     const tierConfig = PLAN_TIERS[tier as keyof typeof PLAN_TIERS];
     if (!tierConfig && tier !== 'enterprise') {
       throw new Error(`Invalid tier: ${tier}`);
+    }
+
+    // Get the correct price ID based on billing interval
+    const priceId = interval === 'year' 
+      ? tierConfig?.priceIdYearly 
+      : tierConfig?.priceIdMonthly;
+
+    if (!priceId && tier !== 'enterprise') {
+      throw new Error(`No price ID found for tier: ${tier}, interval: ${interval}`);
     }
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", { 
@@ -97,9 +109,8 @@ serve(async (req) => {
     
     // If starting trial, create checkout with trial period
     if (startTrial) {
-      logStep("Creating checkout session with 14-day trial", { tier });
+      logStep("Creating checkout session with 14-day trial", { tier, interval });
       
-      const priceId = tierConfig?.priceId || PLAN_TIERS.starter.priceId;
       const maxLines = tierConfig?.maxLines || 30;
       
       const session = await stripe.checkout.sessions.create({
@@ -112,7 +123,7 @@ serve(async (req) => {
           },
         ],
         mode: "subscription",
-        success_url: `${origin}/setup/factory?payment=success&trial=true`,
+        success_url: `${origin}/setup/factory?payment=success&trial=true&interval=${interval}`,
         cancel_url: `${origin}/subscription?payment=cancelled`,
         subscription_data: {
           trial_period_days: 14,
@@ -120,6 +131,7 @@ serve(async (req) => {
             factory_id: factoryId || '',
             user_id: user.id,
             tier: tier,
+            interval: interval,
             max_lines: maxLines.toString(),
           },
         },
@@ -127,11 +139,12 @@ serve(async (req) => {
           factory_id: factoryId || '',
           user_id: user.id,
           tier: tier,
+          interval: interval,
           is_trial: 'true',
         },
       });
 
-      logStep("Trial checkout session created", { sessionId: session.id, tier, url: session.url });
+      logStep("Trial checkout session created", { sessionId: session.id, tier, interval, url: session.url });
 
       return new Response(JSON.stringify({ url: session.url }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -156,27 +169,29 @@ serve(async (req) => {
       customer_email: customerId ? undefined : user.email,
       line_items: [
         {
-          price: tierConfig.priceId,
+          price: priceId,
           quantity: 1,
         },
       ],
       mode: "subscription",
-      success_url: `${origin}/billing-plan?payment=success&tier=${tier}`,
+      success_url: `${origin}/billing-plan?payment=success&tier=${tier}&interval=${interval}`,
       cancel_url: `${origin}/billing-plan?payment=cancelled`,
       metadata: {
         factory_id: factoryId || '',
         user_id: user.id,
         tier: tier,
+        interval: interval,
       },
       subscription_data: {
         metadata: {
           factory_id: factoryId || '',
           tier: tier,
+          interval: interval,
         },
       },
     });
 
-    logStep("Checkout session created", { sessionId: session.id, tier, url: session.url });
+    logStep("Checkout session created", { sessionId: session.id, tier, interval, url: session.url });
 
     return new Response(JSON.stringify({ url: session.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

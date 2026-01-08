@@ -20,11 +20,23 @@ import {
   Star,
   ExternalLink,
   RefreshCw,
-  XCircle
+  XCircle,
+  Percent
 } from "lucide-react";
 import { ActiveLinesMeter } from "@/components/ActiveLinesMeter";
 import { useActiveLines } from "@/hooks/useActiveLines";
-import { PLAN_TIERS, formatPlanPrice, getNextTier, PlanTier, mapLegacyTier } from "@/lib/plan-tiers";
+import { 
+  PLAN_TIERS, 
+  formatPlanPrice, 
+  getNextTier, 
+  PlanTier, 
+  mapLegacyTier,
+  BillingInterval,
+  getDisplayPrice,
+  getMonthlyEquivalent
+} from "@/lib/plan-tiers";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 export default function BillingPlan() {
   const { user, factory, isAdminOrHigher } = useAuth();
@@ -36,6 +48,7 @@ export default function BillingPlan() {
   const [loading, setLoading] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [billingInterval, setBillingInterval] = useState<BillingInterval>('month');
 
   const currentTier = mapLegacyTier(factory?.subscription_tier || 'starter');
   const currentPlan = PLAN_TIERS[currentTier];
@@ -45,12 +58,13 @@ export default function BillingPlan() {
   useEffect(() => {
     const payment = searchParams.get('payment');
     const tier = searchParams.get('tier');
+    const interval = searchParams.get('interval');
     
     if (payment === 'success') {
       toast({
         title: "Payment Successful!",
         description: tier 
-          ? `You've been upgraded to the ${PLAN_TIERS[tier as PlanTier]?.name || tier} plan.`
+          ? `You've been upgraded to the ${PLAN_TIERS[tier as PlanTier]?.name || tier} plan${interval === 'year' ? ' (Yearly)' : ''}.`
           : "Your subscription is now active.",
       });
       // Clear the params
@@ -76,7 +90,7 @@ export default function BillingPlan() {
     setCheckoutLoading(tier);
     try {
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { tier }
+        body: { tier, interval: billingInterval }
       });
       
       if (error) throw error;
@@ -99,8 +113,6 @@ export default function BillingPlan() {
   };
 
   // Handle plan upgrades and downgrades
-  // - Upgrade: Immediate with proration (user pays difference now)
-  // - Downgrade: Scheduled for next billing cycle (no immediate charge)
   const handleChangePlan = async (tier: PlanTier) => {
     if (tier === 'enterprise') {
       handleContactSales();
@@ -110,23 +122,20 @@ export default function BillingPlan() {
     setCheckoutLoading(tier);
     try {
       const { data, error } = await supabase.functions.invoke('change-subscription', {
-        body: { newTier: tier }
+        body: { newTier: tier, billingInterval }
       });
       
       if (error) throw error;
       
       if (data.success) {
         if (data.changeType === 'upgrade') {
-          // Upgrade is immediate - refresh right away
           toast({
             title: "Upgrade Complete! 🎉",
             description: data.message || `You've upgraded to the ${PLAN_TIERS[tier].name} plan. Your new limits are active now.`,
           });
           refetchLines();
-          // Force reload to update factory data
           window.location.reload();
         } else if (data.changeType === 'downgrade') {
-          // Downgrade is scheduled - show when it takes effect
           const scheduledDate = data.scheduledDate 
             ? new Date(data.scheduledDate).toLocaleDateString() 
             : 'your next billing date';
@@ -135,7 +144,6 @@ export default function BillingPlan() {
             description: data.message || `Your plan will change to ${PLAN_TIERS[tier].name} on ${scheduledDate}. You'll keep your current features until then.`,
           });
           
-          // If they need to add a payment method, notify them
           if (data.needsPaymentMethod) {
             setTimeout(() => {
               toast({
@@ -169,7 +177,7 @@ export default function BillingPlan() {
     setCheckoutLoading(tier);
     try {
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { tier, startTrial: true }
+        body: { tier, startTrial: true, interval: billingInterval }
       });
       
       if (error) throw error;
@@ -348,10 +356,43 @@ export default function BillingPlan() {
 
       {/* Plan Tiers */}
       <div className="mb-6">
-        <h2 className="text-xl font-semibold mb-2">Available Plans</h2>
-        <p className="text-muted-foreground text-sm">
-          All plans include full access to all production modules. Plans are based on active production lines.
-        </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-semibold mb-2">Available Plans</h2>
+            <p className="text-muted-foreground text-sm">
+              All plans include full access to all production modules. Plans are based on active production lines.
+            </p>
+          </div>
+          
+          {/* Billing Interval Toggle */}
+          <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+            <Label 
+              htmlFor="billing-toggle" 
+              className={`text-sm font-medium cursor-pointer ${billingInterval === 'month' ? 'text-foreground' : 'text-muted-foreground'}`}
+            >
+              Monthly
+            </Label>
+            <Switch
+              id="billing-toggle"
+              checked={billingInterval === 'year'}
+              onCheckedChange={(checked) => setBillingInterval(checked ? 'year' : 'month')}
+            />
+            <div className="flex items-center gap-1.5">
+              <Label 
+                htmlFor="billing-toggle" 
+                className={`text-sm font-medium cursor-pointer ${billingInterval === 'year' ? 'text-foreground' : 'text-muted-foreground'}`}
+              >
+                Yearly
+              </Label>
+              {billingInterval === 'year' && (
+                <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                  <Percent className="h-3 w-3 mr-1" />
+                  Save 15%
+                </Badge>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -364,37 +405,63 @@ export default function BillingPlan() {
           );
           const isDowngrade = !isCurrent && !isUpgrade && plan.id !== 'enterprise';
           const isLoading = checkoutLoading === plan.id;
+          
+          const displayPrice = getDisplayPrice(plan, billingInterval);
+          const isYearly = billingInterval === 'year';
+          const monthlyEquivalent = isYearly ? getMonthlyEquivalent(plan.priceYearly) : null;
 
           return (
             <Card 
               key={plan.id} 
               className={`relative ${isCurrent ? 'border-primary ring-2 ring-primary/20' : ''} ${plan.popular ? 'border-primary/50' : ''}`}
             >
-              {plan.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+              {/* Badges container */}
+              <div className="absolute -top-3 left-0 right-0 flex justify-between px-4">
+                {plan.popular && (
                   <Badge className="bg-primary">
                     <Star className="h-3 w-3 mr-1" />
                     Popular
                   </Badge>
-                </div>
-              )}
-              {isCurrent && (
-                <div className="absolute -top-3 right-4">
+                )}
+                {!plan.popular && <span />}
+                {isCurrent && (
                   <Badge variant="secondary">Current</Badge>
-                </div>
-              )}
-              <CardHeader className="pb-2">
+                )}
+                {!isCurrent && isYearly && plan.priceMonthly > 0 && (
+                  <Badge className="bg-green-600 text-white">
+                    15% off
+                  </Badge>
+                )}
+              </div>
+              
+              <CardHeader className="pb-2 pt-6">
                 <CardTitle className="text-lg">{plan.name}</CardTitle>
                 <CardDescription className="text-xs">{plan.description}</CardDescription>
               </CardHeader>
               <CardContent className="pb-2">
                 <div className="mb-4">
-                  {plan.priceMonthly > 0 ? (
+                  {displayPrice > 0 ? (
                     <>
-                      <span className="text-3xl font-bold">
-                        {formatPlanPrice(plan.priceMonthly)}
-                      </span>
-                      <span className="text-muted-foreground text-sm">/mo</span>
+                      {isYearly ? (
+                        <div>
+                          <span className="text-3xl font-bold">
+                            {formatPlanPrice(displayPrice)}
+                          </span>
+                          <span className="text-muted-foreground text-sm">/yr</span>
+                          {monthlyEquivalent && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              ({formatPlanPrice(monthlyEquivalent)}/mo equivalent)
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <>
+                          <span className="text-3xl font-bold">
+                            {formatPlanPrice(displayPrice)}
+                          </span>
+                          <span className="text-muted-foreground text-sm">/mo</span>
+                        </>
+                      )}
                     </>
                   ) : (
                     <span className="text-2xl font-bold">Custom</span>
@@ -475,24 +542,34 @@ export default function BillingPlan() {
                     {isLoading ? (
                       <Loader2 className="h-4 w-4 animate-spin mr-2" />
                     ) : (
-                      <CreditCard className="h-4 w-4 mr-2" />
+                      'Get Started'
                     )}
-                    Subscribe
                   </Button>
-                ) : (
+                ) : isUpgrade ? (
                   <Button 
                     onClick={() => handleChangePlan(plan.id)}
-                    variant={isUpgrade ? "default" : "outline"}
+                    variant="default"
                     className="w-full"
                     disabled={isLoading}
                   >
                     {isLoading ? (
                       <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : isUpgrade ? (
+                    ) : (
                       <>
                         <TrendingUp className="h-4 w-4 mr-2" />
                         Upgrade
                       </>
+                    )}
+                  </Button>
+                ) : isDowngrade ? (
+                  <Button 
+                    onClick={() => handleChangePlan(plan.id)}
+                    variant="outline"
+                    className="w-full"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
                     ) : (
                       <>
                         <TrendingDown className="h-4 w-4 mr-2" />
@@ -500,142 +577,101 @@ export default function BillingPlan() {
                       </>
                     )}
                   </Button>
-                )}
+                ) : null}
               </CardFooter>
             </Card>
           );
         })}
       </div>
 
-      {/* Need More Lines Banner */}
-      {lineStatus && lineStatus.isAtLimit && currentTier !== 'enterprise' && (
-        <Card className="mt-8 border-warning bg-warning/5">
-          <CardContent className="p-6 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-full bg-warning/20 flex items-center justify-center">
-                <AlertCircle className="h-6 w-6 text-warning" />
-              </div>
+      {/* At Line Limit Banner */}
+      {lineStatus && currentPlan.maxActiveLines && lineStatus.activeCount >= currentPlan.maxActiveLines && (
+        <Card className="mt-8 border-amber-500/50 bg-amber-50/50 dark:bg-amber-950/20">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
               <div>
-                <p className="font-semibold">Need more production lines?</p>
-                <p className="text-sm text-muted-foreground">
-                  You've reached your plan's active line limit. Upgrade to add more lines.
+                <p className="font-medium text-amber-800 dark:text-amber-200">
+                  You've reached your plan limit
                 </p>
+                <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                  You're using all {currentPlan.maxActiveLines} active lines included in your {currentPlan.name} plan. 
+                  Upgrade to get more lines and additional features.
+                </p>
+                {getNextTier(currentTier) && (
+                  <Button 
+                    onClick={() => handleChangePlan(getNextTier(currentTier)!)}
+                    size="sm"
+                    className="mt-3"
+                    disabled={checkoutLoading === getNextTier(currentTier)}
+                  >
+                    {checkoutLoading === getNextTier(currentTier) ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <TrendingUp className="h-4 w-4 mr-2" />
+                    )}
+                    Upgrade to {PLAN_TIERS[getNextTier(currentTier)!].name}
+                  </Button>
+                )}
               </div>
             </div>
-            {getNextTier(currentTier) === 'enterprise' ? (
-              <Button onClick={handleContactSales}>
-                <Mail className="h-4 w-4 mr-2" />
-                Contact Sales
-              </Button>
-            ) : hasActiveSubscription ? (
-              <Button onClick={handleManageBilling} disabled={portalLoading}>
-                {portalLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <TrendingUp className="h-4 w-4 mr-2" />
-                )}
-                Upgrade Plan
-              </Button>
-            ) : (
-              <Button onClick={() => handleSubscribe(getNextTier(currentTier) || 'growth')}>
-                <TrendingUp className="h-4 w-4 mr-2" />
-                Subscribe Now
-              </Button>
-            )}
           </CardContent>
         </Card>
       )}
 
-      {/* No Subscription CTA */}
-      {!hasActiveSubscription && (
-        <Card className="mt-8 border-primary bg-primary/5">
-          <CardContent className="p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center">
-                <CreditCard className="h-6 w-6 text-primary" />
-              </div>
+      {/* No Subscription Banner */}
+      {!hasActiveSubscription && !isExpired && (
+        <Card className="mt-8 border-blue-500/50 bg-blue-50/50 dark:bg-blue-950/20">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
               <div>
-                <p className="font-semibold">Get Started Today</p>
-                <p className="text-sm text-muted-foreground">
-                  Start your 14-day free trial or subscribe to a plan.
+                <p className="font-medium text-blue-800 dark:text-blue-200">
+                  No active subscription
+                </p>
+                <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                  Subscribe to a plan to unlock all features and start tracking your production lines.
                 </p>
               </div>
-            </div>
-            <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                onClick={() => handleStartTrial('starter')}
-                disabled={checkoutLoading === 'starter'}
-              >
-                {checkoutLoading === 'starter' ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : null}
-                Start Free Trial
-              </Button>
-              <Button 
-                onClick={() => handleSubscribe('growth')}
-                disabled={checkoutLoading === 'growth'}
-              >
-                {checkoutLoading === 'growth' ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <CreditCard className="h-4 w-4 mr-2" />
-                )}
-                Subscribe
-              </Button>
             </div>
           </CardContent>
         </Card>
       )}
+
+      <Separator className="my-8" />
 
       {/* FAQ Section */}
-      <div className="mt-12">
+      <div className="mb-8">
         <h2 className="text-xl font-semibold mb-4">Frequently Asked Questions</h2>
-        <div className="grid md:grid-cols-2 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">What counts as an active line?</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                An active line is any production line with status set to "Active" in your Factory Setup. 
-                Archived/inactive lines don't count toward your limit and can be reactivated anytime.
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Can I archive lines to stay under my limit?</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Yes! You can archive any line to free up a slot. Archived lines keep their historical data 
-                but won't appear in dropdowns or require submissions.
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">What happens if I need more than 100 lines?</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                For factories with more than 100 active lines, we offer custom Enterprise plans. 
-                Contact our sales team for personalized pricing and support.
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Are all modules included in every plan?</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Yes! All plans include full access to Sewing, Cutting, Finishing, and Storing modules. 
-                Plans differ only by the number of active production lines allowed.
-              </p>
-            </CardContent>
-          </Card>
+        <div className="grid md:grid-cols-2 gap-6">
+          <div>
+            <h3 className="font-medium mb-2">What are active production lines?</h3>
+            <p className="text-sm text-muted-foreground">
+              Active lines are production lines that have submitted data in the last 30 days. 
+              Inactive lines don't count towards your plan limit.
+            </p>
+          </div>
+          <div>
+            <h3 className="font-medium mb-2">Can I upgrade or downgrade anytime?</h3>
+            <p className="text-sm text-muted-foreground">
+              Yes! Upgrades take effect immediately with prorated billing. 
+              Downgrades are scheduled for your next billing cycle.
+            </p>
+          </div>
+          <div>
+            <h3 className="font-medium mb-2">What's included in all plans?</h3>
+            <p className="text-sm text-muted-foreground">
+              Every plan includes sewing, finishing, and cutting modules, 
+              real-time insights, work order management, and unlimited users.
+            </p>
+          </div>
+          <div>
+            <h3 className="font-medium mb-2">How does yearly billing work?</h3>
+            <p className="text-sm text-muted-foreground">
+              Choose yearly billing to save 15% compared to monthly payments. 
+              You'll be billed once per year at the discounted rate.
+            </p>
+          </div>
         </div>
       </div>
     </div>
