@@ -92,6 +92,23 @@ const resolveSubscription = async (args: {
   // 2) Recover by customer id or email
   let customerId = args.stripeCustomerId || null;
 
+  // Validate stored customer id (it may be stale / from a different Stripe environment)
+  if (customerId) {
+    try {
+      await stripe.customers.retrieve(customerId);
+    } catch (e: any) {
+      const msg = e?.message ? String(e.message) : String(e);
+      if (msg.includes("No such customer")) {
+        logStep("Stored customer id invalid; attempting recovery by email", {
+          stripeCustomerId: customerId,
+        });
+        customerId = null;
+      } else {
+        throw e;
+      }
+    }
+  }
+
   if (!customerId) {
     const customers = await stripe.customers.list({ email: userEmail, limit: 1 });
     if (customers.data.length === 0) {
@@ -102,7 +119,26 @@ const resolveSubscription = async (args: {
     customerId = customers.data[0].id;
   }
 
-  const subs = await stripe.subscriptions.list({ customer: customerId, status: "all", limit: 10 });
+  let subs;
+  try {
+    subs = await stripe.subscriptions.list({ customer: customerId, status: "all", limit: 10 });
+  } catch (e: any) {
+    const msg = e?.message ? String(e.message) : String(e);
+    if (msg.includes("No such customer")) {
+      logStep("Customer id rejected by Stripe; retrying lookup by email", { customerId });
+      const customers = await stripe.customers.list({ email: userEmail, limit: 1 });
+      if (customers.data.length === 0) {
+        throw new Error(
+          "No billing customer found for this account. Please subscribe first (or use Manage Billing)."
+        );
+      }
+      customerId = customers.data[0].id;
+      subs = await stripe.subscriptions.list({ customer: customerId, status: "all", limit: 10 });
+    } else {
+      throw e;
+    }
+  }
+
   const candidates = subs.data.filter(
     (s: Stripe.Subscription) => s.status !== "canceled" && (s.items?.data?.length ?? 0) > 0
   );
