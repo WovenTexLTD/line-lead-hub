@@ -52,20 +52,33 @@ jobs:
       - name: Install frontend deps
         run: npm ci
 
+      # ✅ Make signing key available on the runner as a file
+      - name: Write signing key to file
+        shell: bash
+        run: |
+          mkdir -p ~/.tauri
+          echo "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" > ~/.tauri/production-portal.key
+          chmod 600 ~/.tauri/production-portal.key
+
+      # ✅ Build (this will generate updater artifacts + .sig files if createUpdaterArtifacts=true)
       - name: Build desktop app (Tauri)
         run: npm run tauri:build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ~/.tauri/production-portal.key
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
-      # 🧩 Generate latest.json for Tauri updater
+      # 🧩 Generate latest.json for Tauri updater (one time, on Linux job)
       - name: Generate updater JSON
         if: matrix.os == 'ubuntu-22.04'
+        shell: bash
         run: |
-          cd src-tauri
-          cargo tauri signer sign \
+          npx tauri signer sign \
             --private-key ~/.tauri/production-portal.key \
+            --password "${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}" \
             --ci \
-            --output ../src-tauri/target/release/bundle/latest.json
+            --output src-tauri/target/release/bundle/latest.json
 
-      # ✅ Upload installer artifacts
+      # ✅ Upload installer artifacts + latest.json for the release job
       - name: Upload installers
         uses: actions/upload-artifact@v4
         with:
@@ -94,7 +107,6 @@ jobs:
           path: dist
           merge-multiple: true
 
-      # 🧾 Create release and include updater metadata
       - name: Create Release + Upload Assets
         uses: ncipollo/release-action@v1
         with:
