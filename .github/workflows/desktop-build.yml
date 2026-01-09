@@ -201,9 +201,14 @@ jobs:
           PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           
           # Find artifact filenames (update bundles)
-          LINUX_FILE=$(find dist -name "*.AppImage" -type f | head -1 | xargs -r basename)
-          WINDOWS_FILE=$(find dist -name "*.msi" -type f | head -1 | xargs -r basename)
-          MACOS_FILE=$(find dist -name "*.app.tar.gz" -type f | head -1 | xargs -r basename)
+          # IMPORTANT: filenames include spaces ("Production Portal ..."), so avoid xargs (it splits on whitespace)
+          LINUX_PATH=$(find dist -name "*.AppImage" -type f -print -quit)
+          WINDOWS_PATH=$(find dist -name "*.msi" -type f -print -quit)
+          MACOS_PATH=$(find dist -name "*.app.tar.gz" -type f -print -quit)
+
+          LINUX_FILE=$(basename "$LINUX_PATH")
+          WINDOWS_FILE=$(basename "$WINDOWS_PATH")
+          MACOS_FILE=$(basename "$MACOS_PATH")
 
           # Read signatures
           LINUX_SIG=""
