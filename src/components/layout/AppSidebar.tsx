@@ -142,10 +142,16 @@ export function AppSidebar() {
 
     setIsCheckingUpdate(true);
     try {
-      const { check } = await import('@tauri-apps/plugin-updater');
-      const { relaunch } = await import('@tauri-apps/plugin-process');
+      // Use safe dynamic imports with .catch() for web environments
+      const updaterModule = await import('@tauri-apps/plugin-updater').catch(() => null);
+      const processModule = await import('@tauri-apps/plugin-process').catch(() => null);
 
-      const update = await check({ timeout: 30_000 });
+      if (!updaterModule?.check || !processModule?.relaunch) {
+        toast.info("Update feature not available in this environment");
+        return;
+      }
+
+      const update = await updaterModule.check({ timeout: 30_000 });
 
       if (update) {
         toast.info(`Update available: v${update.version}`, {
@@ -162,7 +168,7 @@ export function AppSidebar() {
 
         // Relaunch the app after a short delay
         setTimeout(() => {
-          relaunch();
+          processModule.relaunch();
         }, 1500);
       } else {
         toast.success("You're up to date!", {
