@@ -171,69 +171,75 @@ export function EmailScheduleSettings() {
 
     try {
       const emailString = emails.filter(e => e.trim()).join(", ");
+      console.log("Saving email recipients:", emailString);
       
-      // Update both schedules with the new email list
-      const updates = [];
-      
+      // Update daily schedule
       if (dailySchedule.id) {
-        updates.push(
-          supabase
-            .from("email_schedules")
-            .update({ email: emailString })
-            .eq("id", dailySchedule.id)
-        );
+        console.log("Updating daily schedule:", dailySchedule.id);
+        const { error } = await supabase
+          .from("email_schedules")
+          .update({ email: emailString })
+          .eq("id", dailySchedule.id);
+        if (error) {
+          console.error("Error updating daily schedule:", error);
+          throw error;
+        }
       } else {
-        // Create daily schedule if it doesn't exist
-        updates.push(
-          supabase
-            .from("email_schedules")
-            .insert({
-              factory_id: profile.factory_id,
-              user_id: user.id,
-              email: emailString,
-              schedule_type: "daily",
-              is_active: false,
-              send_time: "18:00:00",
-              day_of_week: 5,
-            })
-            .select()
-            .single()
-            .then(({ data }) => {
-              if (data) setDailySchedule(prev => ({ ...prev, id: data.id }));
-            })
-        );
+        console.log("Creating new daily schedule");
+        const { data, error } = await supabase
+          .from("email_schedules")
+          .insert({
+            factory_id: profile.factory_id,
+            user_id: user.id,
+            email: emailString,
+            schedule_type: "daily",
+            is_active: false,
+            send_time: "18:00:00",
+            day_of_week: 5,
+          })
+          .select()
+          .single();
+        if (error) {
+          console.error("Error creating daily schedule:", error);
+          throw error;
+        }
+        if (data) setDailySchedule(prev => ({ ...prev, id: data.id }));
       }
       
+      // Update weekly schedule
       if (weeklySchedule.id) {
-        updates.push(
-          supabase
-            .from("email_schedules")
-            .update({ email: emailString })
-            .eq("id", weeklySchedule.id)
-        );
+        console.log("Updating weekly schedule:", weeklySchedule.id);
+        const { error } = await supabase
+          .from("email_schedules")
+          .update({ email: emailString })
+          .eq("id", weeklySchedule.id);
+        if (error) {
+          console.error("Error updating weekly schedule:", error);
+          throw error;
+        }
       } else {
-        // Create weekly schedule if it doesn't exist
-        updates.push(
-          supabase
-            .from("email_schedules")
-            .insert({
-              factory_id: profile.factory_id,
-              user_id: user.id,
-              email: emailString,
-              schedule_type: "weekly",
-              is_active: false,
-              send_time: "18:00:00",
-              day_of_week: 5,
-            })
-            .select()
-            .single()
-            .then(({ data }) => {
-              if (data) setWeeklySchedule(prev => ({ ...prev, id: data.id }));
-            })
-        );
+        console.log("Creating new weekly schedule");
+        const { data, error } = await supabase
+          .from("email_schedules")
+          .insert({
+            factory_id: profile.factory_id,
+            user_id: user.id,
+            email: emailString,
+            schedule_type: "weekly",
+            is_active: false,
+            send_time: "18:00:00",
+            day_of_week: 5,
+          })
+          .select()
+          .single();
+        if (error) {
+          console.error("Error creating weekly schedule:", error);
+          throw error;
+        }
+        if (data) setWeeklySchedule(prev => ({ ...prev, id: data.id }));
       }
 
-      await Promise.all(updates);
+      console.log("Email recipients saved successfully");
       toast.success(`Email recipients saved (${emails.filter(e => e.trim()).length} recipient(s))`);
     } catch (error) {
       console.error("Error saving email recipients:", error);
