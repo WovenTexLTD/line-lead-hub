@@ -392,6 +392,22 @@ export default function AllSubmissions() {
       {/* Department Selection - Primary Tabs */}
       <div className="grid grid-cols-4 gap-3">
         <Button
+          variant={department === 'storage' ? 'default' : 'outline'}
+          className="h-14 flex flex-col gap-0.5"
+          onClick={() => setDepartment('storage')}
+        >
+          <Package className="h-4 w-4" />
+          <span className="font-semibold text-sm">Storage</span>
+        </Button>
+        <Button
+          variant={department === 'cutting' ? 'default' : 'outline'}
+          className="h-14 flex flex-col gap-0.5"
+          onClick={() => setDepartment('cutting')}
+        >
+          <Scissors className="h-4 w-4" />
+          <span className="font-semibold text-sm">Cutting</span>
+        </Button>
+        <Button
           variant={department === 'sewing' ? 'default' : 'outline'}
           className="h-14 flex flex-col gap-0.5"
           onClick={() => setDepartment('sewing')}
@@ -406,22 +422,6 @@ export default function AllSubmissions() {
         >
           <Package className="h-4 w-4" />
           <span className="font-semibold text-sm">Finishing</span>
-        </Button>
-        <Button
-          variant={department === 'cutting' ? 'default' : 'outline'}
-          className="h-14 flex flex-col gap-0.5"
-          onClick={() => setDepartment('cutting')}
-        >
-          <Scissors className="h-4 w-4" />
-          <span className="font-semibold text-sm">Cutting</span>
-        </Button>
-        <Button
-          variant={department === 'storage' ? 'default' : 'outline'}
-          className="h-14 flex flex-col gap-0.5"
-          onClick={() => setDepartment('storage')}
-        >
-          <Package className="h-4 w-4" />
-          <span className="font-semibold text-sm">Storage</span>
         </Button>
       </div>
 

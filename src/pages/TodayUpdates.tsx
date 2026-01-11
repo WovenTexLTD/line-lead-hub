@@ -492,10 +492,10 @@ export default function TodayUpdates() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="all">All ({sewingUpdates.length + finishingSheets.length + cuttingActuals.length + storageTransactions.length})</TabsTrigger>
+          <TabsTrigger value="storage">Storage ({storageTransactions.length})</TabsTrigger>
+          <TabsTrigger value="cutting">Cutting ({cuttingActuals.length})</TabsTrigger>
           <TabsTrigger value="sewing">Sewing ({sewingUpdates.length})</TabsTrigger>
           <TabsTrigger value="finishing">Finishing ({finishingSheets.length})</TabsTrigger>
-          <TabsTrigger value="cutting">Cutting ({cuttingActuals.length})</TabsTrigger>
-          <TabsTrigger value="storage">Storage ({storageTransactions.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="all" className="mt-4 space-y-4">
