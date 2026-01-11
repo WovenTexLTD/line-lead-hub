@@ -170,9 +170,34 @@ export function EmailScheduleSettings() {
     setSaving(true);
 
     try {
-      const emailString = emails.filter(e => e.trim()).join(", ");
+      // Include any pending "Add another email" value even if the user didn't click "Add"
+      const normalized = [...emails, newEmail]
+        .map((e) => e.trim())
+        .filter(Boolean);
+
+      // De-dupe (case-insensitive)
+      const seen = new Set<string>();
+      const uniqueEmails: string[] = [];
+      for (const e of normalized) {
+        const key = e.toLowerCase();
+        if (!seen.has(key)) {
+          seen.add(key);
+          uniqueEmails.push(e);
+        }
+      }
+
+      if (uniqueEmails.length === 0) {
+        toast.error("Please add at least one email address");
+        return;
+      }
+
+      setEmails(uniqueEmails);
+      setNewEmail("");
+
+      const emailString = uniqueEmails.join(", ");
+      const recipientCount = uniqueEmails.length;
       console.log("Saving email recipients:", emailString);
-      
+
       // Update daily schedule
       if (dailySchedule.id) {
         console.log("Updating daily schedule:", dailySchedule.id);
@@ -240,7 +265,7 @@ export function EmailScheduleSettings() {
       }
 
       console.log("Email recipients saved successfully");
-      toast.success(`Email recipients saved (${emails.filter(e => e.trim()).length} recipient(s))`);
+      toast.success(`Email recipients saved (${recipientCount} recipient(s))`);
     } catch (error) {
       console.error("Error saving email recipients:", error);
       toast.error("Failed to save email recipients");
@@ -390,7 +415,7 @@ export function EmailScheduleSettings() {
             variant="default"
             size="sm"
             onClick={saveEmailRecipients}
-            disabled={saving || emails.filter(e => e.trim()).length === 0}
+            disabled={saving || (emails.filter((e) => e.trim()).length === 0 && !newEmail.trim())}
             className="w-full sm:w-auto"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Mail className="h-4 w-4 mr-1" />}
