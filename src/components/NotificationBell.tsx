@@ -37,21 +37,28 @@ export function NotificationBell() {
   // Get navigation path based on notification type and data
   const getNavigationPath = (notification: Notification): string | null => {
     const data = notification.data as Record<string, unknown> | null;
-    
+
     switch (notification.type) {
+      // Blocker notifications (older + new)
       case "blocker":
-      case "blocker_reported":
-        // Navigate to blockers page with filter params if available
-        if (data?.lineName) {
-          return `/blockers?search=${encodeURIComponent(data.lineName as string)}`;
+      case "blocker_reported": {
+        const lineName = (data?.lineName as string | undefined) ?? (data?.line_name as string | undefined);
+        if (lineName) {
+          return `/blockers?search=${encodeURIComponent(lineName)}`;
         }
         return "/blockers";
+      }
+
+      // Efficiency alerts (current data uses type="warning" and data.line_id)
       case "efficiency_alert":
-        // Navigate to the line insights if we have line info
-        if (data?.lineId) {
-          return `/insights?line=${data.lineId}`;
+      case "warning": {
+        const lineId = (data?.lineId as string | undefined) ?? (data?.line_id as string | undefined);
+        if (lineId) {
+          return `/insights?line=${lineId}`;
         }
         return "/insights";
+      }
+
       case "target_reminder":
         return "/morning-targets";
       case "submission_reminder":
@@ -203,15 +210,25 @@ export function NotificationBell() {
                 className={`flex flex-col items-start gap-1 p-3 cursor-pointer ${
                   !notification.is_read ? "bg-muted/50" : ""
                 }`}
-                onClick={() => {
+                onSelect={(e) => {
+                  e.preventDefault();
+
+                  const path = getNavigationPath(notification);
+                  console.log("Notification selected:", {
+                    id: notification.id,
+                    type: notification.type,
+                    path,
+                    data: notification.data,
+                  });
+
                   if (!notification.is_read) {
                     markAsRead(notification.id);
                   }
-                  // Navigate to relevant page
-                  const path = getNavigationPath(notification);
+
                   if (path) {
                     setOpen(false);
-                    navigate(path);
+                    // Allow Radix menu to close cleanly before route change
+                    setTimeout(() => navigate(path), 0);
                   }
                 }}
               >
