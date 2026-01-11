@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -52,8 +52,8 @@ import { cn } from "@/lib/utils";
 import { openExternalUrl, isTauri } from "@/lib/capacitor";
 import logoSvg from "@/assets/logo.svg";
 
-// App version - update this when releasing new versions
-const APP_VERSION = "1.0.32";
+// Web fallback version (desktop uses the runtime version from the installed app)
+const WEB_APP_VERSION = "1.0.32";
 import {
   Collapsible,
   CollapsibleContent,
@@ -133,6 +133,37 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const [expandedMenus, setExpandedMenus] = React.useState<string[]>(['/setup']);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+  const [appVersion, setAppVersion] = useState<string>(WEB_APP_VERSION);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadVersion = async () => {
+      if (!isTauri()) {
+        setAppVersion(WEB_APP_VERSION);
+        return;
+      }
+
+      const appModule = await import("@tauri-apps/api/app").catch(() => null);
+      if (!appModule?.getVersion) {
+        setAppVersion(WEB_APP_VERSION);
+        return;
+      }
+
+      try {
+        const v = await appModule.getVersion();
+        if (!cancelled) setAppVersion(v);
+      } catch {
+        if (!cancelled) setAppVersion(WEB_APP_VERSION);
+      }
+    };
+
+    loadVersion();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
 
   const handleCheckUpdate = async () => {
     if (!isTauri()) {
@@ -142,9 +173,9 @@ export function AppSidebar() {
 
     setIsCheckingUpdate(true);
     try {
-      // Use safe dynamic imports with .catch() for web environments
-      const updaterModule = await import('@tauri-apps/plugin-updater').catch(() => null);
-      const processModule = await import('@tauri-apps/plugin-process').catch(() => null);
+      // Safe dynamic imports for web environments
+      const updaterModule = await import("@tauri-apps/plugin-updater").catch(() => null);
+      const processModule = await import("@tauri-apps/plugin-process").catch(() => null);
 
       if (!updaterModule?.check || !processModule?.relaunch) {
         toast.info("Update feature not available in this environment");
@@ -152,32 +183,33 @@ export function AppSidebar() {
       }
 
       const update = await updaterModule.check({ timeout: 30_000 });
+      const isAvailable =
+        !!update && ("available" in update ? Boolean((update as any).available) : true);
 
-      if (update) {
-        toast.info(`Update available: v${update.version}`, {
+      if (isAvailable) {
+        const nextVersion = (update as any).version ?? "unknown";
+
+        toast.info(`Update available: v${nextVersion}`, {
           description: "Downloading update...",
           duration: 5000,
         });
 
-        await update.downloadAndInstall();
+        await (update as any).downloadAndInstall();
 
         toast.success("Update installed!", {
           description: "Restarting application...",
           duration: 3000,
         });
 
-        // Relaunch the app after a short delay
-        setTimeout(() => {
-          processModule.relaunch();
-        }, 1500);
+        await processModule.relaunch();
       } else {
         toast.success("No updates required", {
-          description: `You're already on the latest version (v${APP_VERSION}).`,
+          description: `You're already on the latest version (v${appVersion}).`,
         });
       }
     } catch (error: any) {
       const message = error?.message ?? String(error);
-      console.error('Update check failed:', error);
+      console.error("Update check failed:", error);
       toast.error("Update check failed", {
         description: message,
       });
@@ -406,7 +438,7 @@ export function AppSidebar() {
         {!collapsed && (
           <div className="flex items-center justify-between mb-3 pb-3 border-b border-sidebar-border/50">
             <span className="text-xs text-sidebar-foreground/50">
-              v{APP_VERSION}
+              v{appVersion}
             </span>
             <Button
               variant="ghost"
@@ -428,7 +460,7 @@ export function AppSidebar() {
         {collapsed && (
           <div className="flex flex-col items-center gap-1 mb-2 pb-2 border-b border-sidebar-border/50">
             <span className="text-[10px] text-sidebar-foreground/50">
-              v{APP_VERSION}
+              v{appVersion}
             </span>
             <Button
               variant="ghost"
