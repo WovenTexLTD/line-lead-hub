@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Mail, Loader2, Calendar, Clock, Send, Globe } from "lucide-react";
+import { Mail, Loader2, Calendar, Clock, Send, Globe, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 
@@ -25,7 +25,8 @@ export function EmailScheduleSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
-  const [email, setEmail] = useState("");
+  const [emails, setEmails] = useState<string[]>([]);
+  const [newEmail, setNewEmail] = useState("");
   const [factoryTimezone, setFactoryTimezone] = useState<string>("UTC");
   const [dailySchedule, setDailySchedule] = useState<EmailSchedule>({
     schedule_type: "daily",
@@ -78,8 +79,15 @@ export function EmailScheduleSettings() {
 
       if (error) throw error;
 
-      // Set email from profile
-      setEmail(profile?.email || user.email || "");
+      // Set emails from first schedule found, or use profile email as default
+      const firstSchedule = data?.[0];
+      if (firstSchedule?.email) {
+        // Parse comma-separated emails
+        const emailList = firstSchedule.email.split(",").map((e: string) => e.trim()).filter(Boolean);
+        setEmails(emailList.length > 0 ? emailList : [profile?.email || user.email || ""]);
+      } else {
+        setEmails([profile?.email || user.email || ""]);
+      }
 
       data?.forEach((schedule) => {
         if (schedule.schedule_type === "daily") {
@@ -114,10 +122,13 @@ export function EmailScheduleSettings() {
     setSaving(true);
 
     try {
+      // Join emails with comma for storage
+      const emailString = emails.filter(e => e.trim()).join(", ");
+      
       const scheduleData = {
         factory_id: profile.factory_id,
         user_id: user.id,
-        email: email,
+        email: emailString,
         schedule_type: schedule.schedule_type,
         is_active: schedule.is_active,
         send_time: schedule.send_time + ":00",
@@ -159,9 +170,12 @@ export function EmailScheduleSettings() {
     setSending(true);
 
     try {
+      // Send to all email addresses
+      const emailString = emails.filter(e => e.trim()).join(", ");
+      
       const { data, error } = await supabase.functions.invoke("send-insights-report", {
         body: {
-          email: email,
+          email: emailString,
           factoryId: profile.factory_id,
           scheduleType: scheduleType,
           userId: user?.id,
@@ -170,7 +184,7 @@ export function EmailScheduleSettings() {
 
       if (error) throw error;
 
-      toast.success("Test email sent! Check your inbox.");
+      toast.success(`Test email sent to ${emails.length} recipient(s)! Check your inbox.`);
     } catch (error: any) {
       console.error("Error sending test email:", error);
       toast.error(error.message || "Failed to send test email");
@@ -222,16 +236,75 @@ export function EmailScheduleSettings() {
           </Badge>
         </div>
 
-        {/* Email Address */}
-        <div className="space-y-2">
-          <Label htmlFor="email">Email Address</Label>
-          <Input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="your@email.com"
-          />
+        {/* Email Recipients */}
+        <div className="space-y-3">
+          <Label>Email Recipients</Label>
+          <div className="space-y-2">
+            {emails.map((emailAddr, index) => (
+              <div key={index} className="flex items-center gap-2">
+                <Input
+                  type="email"
+                  value={emailAddr}
+                  onChange={(e) => {
+                    const updated = [...emails];
+                    updated[index] = e.target.value;
+                    setEmails(updated);
+                  }}
+                  placeholder="email@example.com"
+                  className="flex-1"
+                />
+                {emails.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setEmails(emails.filter((_, i) => i !== index));
+                    }}
+                    className="h-9 w-9 text-muted-foreground hover:text-destructive"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <Input
+              type="email"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+              placeholder="Add another email..."
+              className="flex-1"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && newEmail.trim()) {
+                  e.preventDefault();
+                  if (!emails.includes(newEmail.trim())) {
+                    setEmails([...emails, newEmail.trim()]);
+                    setNewEmail("");
+                  }
+                }
+              }}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (newEmail.trim() && !emails.includes(newEmail.trim())) {
+                  setEmails([...emails, newEmail.trim()]);
+                  setNewEmail("");
+                }
+              }}
+              disabled={!newEmail.trim()}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Add
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            All recipients will receive both daily and weekly reports when enabled.
+          </p>
         </div>
 
         {/* Daily Report */}
