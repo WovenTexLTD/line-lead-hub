@@ -28,6 +28,41 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Ensure the built desktop binaries' version matches the release tag.
+      # This avoids "update downloads but version stays old" when latest.json says 1.0.xx
+      # but the app was built with an older tauri.conf.json/Cargo.toml version.
+      - name: Sync app version from tag
+        if: startsWith(github.ref, 'refs/tags/desktop-v')
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#desktop-v}"
+          export VERSION
+          echo "Building desktop version: $VERSION"
+
+          python - <<'PY'
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          version = os.environ.get('VERSION')
+          if not version:
+            raise SystemExit('VERSION env var not set')
+
+          # Update src-tauri/tauri.conf.json
+          conf_path = Path('src-tauri/tauri.conf.json')
+          conf = json.loads(conf_path.read_text(encoding='utf-8'))
+          conf['version'] = version
+          conf_path.write_text(json.dumps(conf, indent=2) + "\n", encoding='utf-8')
+
+          # Update src-tauri/Cargo.toml (package.version)
+          cargo_path = Path('src-tauri/Cargo.toml')
+          cargo_text = cargo_path.read_text(encoding='utf-8')
+          cargo_text = re.sub(r'(?m)^version\s*=\s*"[^"]+"\s*$', f'version = "{version}"', cargo_text, count=1)
+          cargo_path.write_text(cargo_text, encoding='utf-8')
+          PY
+
       - name: Install Linux dependencies
         if: matrix.os == 'ubuntu-22.04'
         shell: bash
