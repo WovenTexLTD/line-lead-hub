@@ -449,39 +449,46 @@ export default function Dashboard() {
         submitted_at: c.submitted_at,
       }));
 
-      // Format storage bin cards
-      const formattedBinCards: StorageBinCard[] = (binCardsData || []).map((b: any) => {
-        const transactions = (b.storage_bin_card_transactions || []).sort(
-          (a: any, b: any) => new Date(a.transaction_date).getTime() - new Date(b.transaction_date).getTime()
-        );
-        const latestBalance = transactions.length > 0 ? transactions[transactions.length - 1].balance_qty : 0;
-        
-        return {
-          id: b.id,
-          buyer: b.work_orders?.buyer || b.buyer || null,
-          style: b.work_orders?.style || b.style || null,
-          po_number: b.work_orders?.po_number || null,
-          supplier_name: b.supplier_name,
-          description: b.description,
-          construction: b.construction,
-          color: b.color,
-          width: b.width,
-          package_qty: b.package_qty,
-          prepared_by: b.prepared_by,
-          transactions: transactions.map((t: any) => ({
-            id: t.id,
-            transaction_date: t.transaction_date,
-            receive_qty: t.receive_qty,
-            issue_qty: t.issue_qty,
-            ttl_receive: t.ttl_receive,
-            balance_qty: t.balance_qty,
-            remarks: t.remarks,
-            created_at: t.created_at,
-          })),
-          transaction_count: transactions.length,
-          latest_balance: latestBalance,
-        };
-      });
+      // Format storage bin cards - only include those with transactions from today
+      const formattedBinCards: StorageBinCard[] = (binCardsData || [])
+        .map((b: any) => {
+          const allTransactions = (b.storage_bin_card_transactions || []).sort(
+            (a: any, b: any) => new Date(a.transaction_date).getTime() - new Date(b.transaction_date).getTime()
+          );
+          // Filter to only today's transactions
+          const todayTransactions = allTransactions.filter(
+            (t: any) => t.transaction_date === today
+          );
+          const latestBalance = allTransactions.length > 0 ? allTransactions[allTransactions.length - 1].balance_qty : 0;
+          
+          return {
+            id: b.id,
+            buyer: b.work_orders?.buyer || b.buyer || null,
+            style: b.work_orders?.style || b.style || null,
+            po_number: b.work_orders?.po_number || null,
+            supplier_name: b.supplier_name,
+            description: b.description,
+            construction: b.construction,
+            color: b.color,
+            width: b.width,
+            package_qty: b.package_qty,
+            prepared_by: b.prepared_by,
+            transactions: allTransactions.map((t: any) => ({
+              id: t.id,
+              transaction_date: t.transaction_date,
+              receive_qty: t.receive_qty,
+              issue_qty: t.issue_qty,
+              ttl_receive: t.ttl_receive,
+              balance_qty: t.balance_qty,
+              remarks: t.remarks,
+              created_at: t.created_at,
+            })),
+            transaction_count: todayTransactions.length, // Show only today's transaction count
+            latest_balance: latestBalance,
+            hasTodayTransactions: todayTransactions.length > 0,
+          };
+        })
+        .filter((b: any) => b.hasTodayTransactions); // Only show bin cards with today's transactions
 
       // Fetch active blockers
       const { data: sewingBlockers } = await supabase
