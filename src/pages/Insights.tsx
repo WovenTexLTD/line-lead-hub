@@ -11,7 +11,7 @@ import {
   Minus, Zap, Clock, CheckCircle2, XCircle, ChevronRight
 } from "lucide-react";
 import {
-  LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
+  LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, Sector,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from "recharts";
 import { PeriodComparison } from "@/components/insights/PeriodComparison";
@@ -394,6 +394,64 @@ export default function Insights() {
     '#d97706', // Amber
     '#dc2626', // Red
   ];
+
+  // State for active pie segment hover
+  const [activePieIndex, setActivePieIndex] = useState<number | undefined>(undefined);
+
+  // 3D-like active shape renderer for pie chart
+  const renderActiveShape = (props: any) => {
+    const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, percent } = props;
+    
+    return (
+      <g>
+        {/* Outer glow effect */}
+        <Sector
+          cx={cx}
+          cy={cy}
+          innerRadius={innerRadius - 4}
+          outerRadius={outerRadius + 12}
+          startAngle={startAngle}
+          endAngle={endAngle}
+          fill={fill}
+          opacity={0.2}
+          style={{ filter: 'blur(8px)' }}
+        />
+        {/* Main elevated segment */}
+        <Sector
+          cx={cx}
+          cy={cy}
+          innerRadius={innerRadius - 2}
+          outerRadius={outerRadius + 8}
+          startAngle={startAngle}
+          endAngle={endAngle}
+          fill={fill}
+          stroke="hsl(var(--card))"
+          strokeWidth={3}
+          style={{ 
+            filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.25))',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+          }}
+        />
+        {/* Inner highlight ring */}
+        <Sector
+          cx={cx}
+          cy={cy}
+          innerRadius={innerRadius - 2}
+          outerRadius={innerRadius + 2}
+          startAngle={startAngle}
+          endAngle={endAngle}
+          fill="rgba(255,255,255,0.3)"
+        />
+        {/* Center text */}
+        <text x={cx} y={cy - 8} textAnchor="middle" fill="hsl(var(--foreground))" className="text-sm font-semibold">
+          {payload.type}
+        </text>
+        <text x={cx} y={cy + 12} textAnchor="middle" fill="hsl(var(--muted-foreground))" className="text-xs">
+          {`${(percent * 100).toFixed(0)}%`}
+        </text>
+      </g>
+    );
+  };
 
   const TrendIcon = ({ trend }: { trend: 'up' | 'down' | 'stable' }) => {
     if (trend === 'up') return <ArrowUp className="h-4 w-4 text-success" />;
@@ -894,95 +952,140 @@ export default function Insights() {
         </h2>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Blocker Type Distribution - Premium Design */}
-          <Card className="w-full overflow-hidden bg-gradient-to-br from-card via-card to-muted/30 shadow-lg border-border/50">
+          {/* Blocker Type Distribution - Premium 3D Design */}
+          <Card className="w-full overflow-hidden bg-gradient-to-br from-card via-card to-muted/20 shadow-xl border-border/40 hover:shadow-2xl transition-shadow duration-500">
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-semibold tracking-tight">
                 Blocker Type Distribution
               </CardTitle>
               <CardDescription className="text-muted-foreground/80">
-                Most common blocker categories
+                Hover over segments for details
               </CardDescription>
             </CardHeader>
             <CardContent className="p-4 sm:p-6">
               {blockerBreakdown.length > 0 ? (
                 <div className="w-full flex flex-col items-center">
-                  <ResponsiveContainer width="100%" height={220}>
-                    <PieChart>
-                      <defs>
-                        {CHART_COLORS.map((color, idx) => (
-                          <linearGradient key={idx} id={`blockerGradient${idx}`} x1="0" y1="0" x2="1" y2="1">
-                            <stop offset="0%" stopColor={color} stopOpacity={1} />
-                            <stop offset="100%" stopColor={color} stopOpacity={0.75} />
-                          </linearGradient>
-                        ))}
-                        <filter id="pieDropShadow" x="-20%" y="-20%" width="140%" height="140%">
-                          <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.15" />
-                        </filter>
-                      </defs>
-                      <Pie
-                        data={blockerBreakdown}
-                        dataKey="count"
-                        nameKey="type"
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={85}
-                        innerRadius={50}
-                        paddingAngle={3}
-                        cornerRadius={4}
-                        label={false}
-                        labelLine={false}
-                        stroke="hsl(var(--card))"
-                        strokeWidth={2}
-                        style={{ filter: 'url(#pieDropShadow)' }}
-                      >
-                        {blockerBreakdown.map((_, idx) => (
-                          <Cell 
-                            key={idx} 
-                            fill={`url(#blockerGradient${idx % CHART_COLORS.length})`}
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: 'hsl(var(--card))', 
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: '12px',
-                          boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.15)',
-                          padding: '12px 16px'
-                        }}
-                        itemStyle={{
-                          color: 'hsl(var(--foreground))',
-                          fontWeight: 500
-                        }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  
-                  {/* Custom Legend */}
-                  <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 mt-4">
-                    {blockerBreakdown.map((item, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
-                        <div 
-                          className="w-3 h-3 rounded-full shadow-sm" 
-                          style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}
+                  <div className="relative">
+                    {/* Ambient glow behind chart */}
+                    <div 
+                      className="absolute inset-0 rounded-full opacity-30 blur-3xl pointer-events-none"
+                      style={{
+                        background: `radial-gradient(circle, ${CHART_COLORS[0]}40 0%, transparent 70%)`,
+                        transform: 'scale(0.8)'
+                      }}
+                    />
+                    <ResponsiveContainer width={300} height={260}>
+                      <PieChart>
+                        <defs>
+                          {CHART_COLORS.map((color, idx) => (
+                            <linearGradient key={idx} id={`blockerGradient3d${idx}`} x1="0" y1="0" x2="0.5" y2="1">
+                              <stop offset="0%" stopColor={color} stopOpacity={1} />
+                              <stop offset="50%" stopColor={color} stopOpacity={0.9} />
+                              <stop offset="100%" stopColor={color} stopOpacity={0.7} />
+                            </linearGradient>
+                          ))}
+                          {/* 3D depth shadow filter */}
+                          <filter id="pie3dShadow" x="-50%" y="-50%" width="200%" height="200%">
+                            <feDropShadow dx="0" dy="4" stdDeviation="6" floodColor="#000" floodOpacity="0.25" />
+                          </filter>
+                          {/* Inner shadow for depth */}
+                          <filter id="pieInnerShadow">
+                            <feOffset dx="0" dy="2" />
+                            <feGaussianBlur stdDeviation="2" result="offset-blur" />
+                            <feComposite operator="out" in="SourceGraphic" in2="offset-blur" result="inverse" />
+                            <feFlood floodColor="black" floodOpacity="0.15" result="color" />
+                            <feComposite operator="in" in="color" in2="inverse" result="shadow" />
+                            <feComposite operator="over" in="shadow" in2="SourceGraphic" />
+                          </filter>
+                        </defs>
+                        <Pie
+                          data={blockerBreakdown}
+                          dataKey="count"
+                          nameKey="type"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={90}
+                          innerRadius={55}
+                          paddingAngle={4}
+                          cornerRadius={6}
+                          activeIndex={activePieIndex}
+                          activeShape={renderActiveShape}
+                          onMouseEnter={(_, index) => setActivePieIndex(index)}
+                          onMouseLeave={() => setActivePieIndex(undefined)}
+                          stroke="hsl(var(--card))"
+                          strokeWidth={2}
+                          style={{ 
+                            filter: 'url(#pie3dShadow)',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {blockerBreakdown.map((_, idx) => (
+                            <Cell 
+                              key={idx} 
+                              fill={`url(#blockerGradient3d${idx % CHART_COLORS.length})`}
+                              style={{
+                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                transformOrigin: 'center'
+                              }}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'hsl(var(--card))', 
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '12px',
+                            boxShadow: '0 20px 40px -10px rgb(0 0 0 / 0.25)',
+                            padding: '14px 18px',
+                            backdropFilter: 'blur(8px)'
+                          }}
+                          itemStyle={{
+                            color: 'hsl(var(--foreground))',
+                            fontWeight: 600
+                          }}
                         />
-                        <span className="text-sm text-muted-foreground">
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
+                  {/* Interactive Legend */}
+                  <div className="flex flex-wrap justify-center gap-3 mt-6">
+                    {blockerBreakdown.map((item, idx) => (
+                      <div 
+                        key={idx} 
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-all duration-300 cursor-pointer
+                          ${activePieIndex === idx 
+                            ? 'bg-primary/10 scale-105 shadow-md' 
+                            : 'bg-muted/50 hover:bg-muted'
+                          }`}
+                        onMouseEnter={() => setActivePieIndex(idx)}
+                        onMouseLeave={() => setActivePieIndex(undefined)}
+                      >
+                        <div 
+                          className={`w-3 h-3 rounded-full transition-transform duration-300 ${activePieIndex === idx ? 'scale-125' : ''}`}
+                          style={{ 
+                            backgroundColor: CHART_COLORS[idx % CHART_COLORS.length],
+                            boxShadow: activePieIndex === idx 
+                              ? `0 0 12px ${CHART_COLORS[idx % CHART_COLORS.length]}80` 
+                              : 'none'
+                          }}
+                        />
+                        <span className={`text-sm transition-colors duration-300 ${activePieIndex === idx ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
                           {item.type}
                         </span>
-                        <span className="text-sm font-semibold text-foreground">
-                          ({item.count})
+                        <span className="text-sm font-bold text-foreground">
+                          {item.count}
                         </span>
                       </div>
                     ))}
                   </div>
                 </div>
               ) : (
-                <div className="h-[280px] flex flex-col items-center justify-center text-muted-foreground">
-                  <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mb-4">
-                    <CheckCircle2 className="h-8 w-8 text-success" />
+                <div className="h-[300px] flex flex-col items-center justify-center text-muted-foreground">
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-success/20 to-success/5 flex items-center justify-center mb-4 shadow-lg">
+                    <CheckCircle2 className="h-10 w-10 text-success" />
                   </div>
-                  <p className="font-medium">No blockers in this period!</p>
+                  <p className="font-semibold text-lg">No blockers!</p>
                   <p className="text-sm text-muted-foreground/70 mt-1">Great job keeping production flowing</p>
                 </div>
               )}
