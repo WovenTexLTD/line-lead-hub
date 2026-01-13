@@ -98,6 +98,15 @@ export async function initializeCapacitor() {
 
   try {
     const { App } = await import('@capacitor/app');
+    
+    // Configure status bar for white background
+    try {
+      const { StatusBar, Style } = await import('@capacitor/status-bar');
+      await StatusBar.setStyle({ style: Style.Light });
+      await StatusBar.setBackgroundColor({ color: '#ffffff' });
+    } catch (statusBarError) {
+      console.warn('StatusBar plugin not available:', statusBarError);
+    }
 
     // Handle deep links for auth
     App.addListener('appUrlOpen', async (event) => {
