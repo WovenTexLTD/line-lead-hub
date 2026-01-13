@@ -28,7 +28,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Ensure the built desktop binaries' version matches the release tag.
       - name: Sync app version from tag
         if: startsWith(github.ref, 'refs/tags/desktop-v')
         shell: bash
@@ -48,13 +47,20 @@ jobs:
           if not version:
             raise SystemExit('VERSION env var not set')
 
-          # Update src-tauri/tauri.conf.json
           conf_path = Path('src-tauri/tauri.conf.json')
           conf = json.loads(conf_path.read_text(encoding='utf-8'))
-          conf['version'] = version
+
+          # Try to update version in the most common locations (works across config shapes)
+          if isinstance(conf.get("package"), dict) and "version" in conf["package"]:
+            conf["package"]["version"] = version
+          elif "version" in conf:
+            conf["version"] = version
+          else:
+            # fallback: create top-level version if nothing else exists
+            conf["version"] = version
+
           conf_path.write_text(json.dumps(conf, indent=2) + "\n", encoding='utf-8')
 
-          # Update src-tauri/Cargo.toml (package.version)
           cargo_path = Path('src-tauri/Cargo.toml')
           cargo_text = cargo_path.read_text(encoding='utf-8')
           cargo_text = re.sub(r'(?m)^version\s*=\s*"[^"]+"\s*$', f'version = "{version}"', cargo_text, count=1)
@@ -88,7 +94,6 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      # Add universal target for macOS (builds for both Intel and Apple Silicon)
       - name: Add macOS universal target
         if: matrix.os == 'macos-latest'
         run: |
@@ -98,7 +103,6 @@ jobs:
       - name: Install frontend deps
         run: npm ci
 
-      # Write the signing key (stored in GitHub Secrets) to a file for the signer step
       - name: Write signing key to file
         shell: bash
         run: |
@@ -107,7 +111,7 @@ jobs:
           chmod 600 ~/.tauri/production-portal.key
 
       ######################################################################
-      # macOS SIGNING + NOTARIZATION SETUP (NEW)
+      # macOS SIGNING + NOTARIZATION SETUP
       ######################################################################
       - name: Setup macOS signing keychain (Developer ID)
         if: matrix.os == 'macos-latest'
@@ -118,32 +122,26 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Create a temporary keychain
           KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
           KEYCHAIN_PASSWORD="$(uuidgen)"
 
-          echo "Creating temporary keychain..."
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 
-          # Make it the default keychain for this job
           security list-keychains -d user -s "$KEYCHAIN_PATH"
           security default-keychain -d user -s "$KEYCHAIN_PATH"
 
-          # Decode and import the .p12
-          echo "Importing signing certificate..."
           CERT_PATH="$RUNNER_TEMP/cert.p12"
           echo "$APPLE_CERTIFICATE" | base64 --decode > "$CERT_PATH"
 
           security import "$CERT_PATH" -k "$KEYCHAIN_PATH" -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
-
-          # Allow codesign to access the key without UI prompts
           security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 
-          echo "Keychain and certificate imported."
+          echo "Developer ID cert imported."
 
-      - name: Ensure macOS signing identity is set in tauri.conf.json (NEW)
+      # ✅ FIXED: works for both config shapes, and removes invalid top-level `tauri` if present
+      - name: Set macOS signing identity in tauri.conf.json (FIXED)
         if: matrix.os == 'macos-latest'
         shell: bash
         env:
@@ -161,21 +159,34 @@ jobs:
           conf_path = Path("src-tauri/tauri.conf.json")
           conf = json.loads(conf_path.read_text(encoding="utf-8"))
 
-          # Tauri v1 location: conf["tauri"]["bundle"]["macOS"]["signingIdentity"]
-          conf.setdefault("tauri", {})
-          conf["tauri"].setdefault("bundle", {})
-          conf["tauri"]["bundle"].setdefault("macOS", {})
-          conf["tauri"]["bundle"]["macOS"]["signingIdentity"] = identity
+          # If the project is on the newer config shape, top-level "tauri" is invalid.
+          # If it exists (injected earlier), remove it to avoid schema validation failure.
+          # Heuristic: if "app" or "plugins" exists at top-level, it's the newer shape.
+          if "tauri" in conf and ("app" in conf or "plugins" in conf):
+            conf.pop("tauri", None)
+
+          # Two supported shapes:
+          # - Older: conf["tauri"]["bundle"]["macOS"]["signingIdentity"]
+          # - Newer: conf["bundle"]["macOS"]["signingIdentity"]
+          if "tauri" in conf:
+            conf.setdefault("tauri", {})
+            conf["tauri"].setdefault("bundle", {})
+            conf["tauri"]["bundle"].setdefault("macOS", {})
+            conf["tauri"]["bundle"]["macOS"]["signingIdentity"] = identity
+            where = "tauri.bundle.macOS.signingIdentity"
+          else:
+            conf.setdefault("bundle", {})
+            conf["bundle"].setdefault("macOS", {})
+            conf["bundle"]["macOS"]["signingIdentity"] = identity
+            where = "bundle.macOS.signingIdentity"
 
           conf_path.write_text(json.dumps(conf, indent=2) + "\n", encoding="utf-8")
-          print("Set tauri.bundle.macOS.signingIdentity =", identity)
+          print(f"Set {where} = {identity}")
           PY
 
       ######################################################################
       # BUILDS
       ######################################################################
-
-      # Build Tauri app + generate updater artifacts (.sig)
       - name: Build desktop app (Tauri) - Linux/Windows
         if: matrix.os != 'macos-latest'
         run: npm run tauri:build
@@ -183,7 +194,6 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
-      # Build universal binary for macOS (both Intel and Apple Silicon)
       - name: Build desktop app (Tauri) - macOS Universal
         if: matrix.os == 'macos-latest'
         run: npm run tauri:build -- --target universal-apple-darwin
@@ -191,14 +201,10 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
-          # These are used for identity resolution / notarization step below
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-
       ######################################################################
-      # NOTARIZE macOS DMG (NEW)
+      # NOTARIZE macOS DMG
       ######################################################################
-      - name: Notarize + staple macOS DMG (NEW)
+      - name: Notarize + staple macOS DMG
         if: matrix.os == 'macos-latest'
         shell: bash
         env:
@@ -208,7 +214,6 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Find DMG created by the build
           DMG=$(find src-tauri/target/universal-apple-darwin/release/bundle -name "*.dmg" -type f 2>/dev/null | head -1)
           if [ -z "$DMG" ]; then
             DMG=$(find src-tauri/target/release/bundle -name "*.dmg" -type f 2>/dev/null | head -1)
@@ -235,13 +240,11 @@ jobs:
       ######################################################################
       # COLLECT ARTIFACTS
       ######################################################################
-
       - name: Collect artifact info (Linux)
         if: matrix.os == 'ubuntu-22.04'
         shell: bash
         run: |
           mkdir -p artifacts
-          
           APPIMAGE=$(find src-tauri/target/release/bundle -name "*.AppImage" -type f | head -1)
           if [ -n "$APPIMAGE" ] && [ -f "$APPIMAGE" ]; then
             cp "$APPIMAGE" artifacts/
@@ -251,7 +254,6 @@ jobs:
             fi
             echo "LINUX_ARTIFACT=$(basename $APPIMAGE)" >> $GITHUB_ENV
           fi
-          
           find src-tauri/target/release/bundle -name "*.deb" -exec cp {} artifacts/ \;
           find src-tauri/target/release/bundle -name "*.rpm" -exec cp {} artifacts/ \;
 
@@ -260,7 +262,6 @@ jobs:
         shell: bash
         run: |
           mkdir -p artifacts
-          
           MSI=$(find src-tauri/target/release/bundle -name "*.msi" -type f | head -1)
           if [ -n "$MSI" ] && [ -f "$MSI" ]; then
             cp "$MSI" artifacts/
@@ -270,7 +271,6 @@ jobs:
             fi
             echo "WINDOWS_ARTIFACT=$(basename $MSI)" >> $GITHUB_ENV
           fi
-          
           find src-tauri/target/release/bundle -name "*.exe" -exec cp {} artifacts/ \;
 
       - name: Collect artifact info (macOS)
