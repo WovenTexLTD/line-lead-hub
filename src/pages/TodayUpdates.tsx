@@ -490,13 +490,15 @@ export default function TodayUpdates() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="all">All ({sewingUpdates.length + finishingSheets.length + cuttingActuals.length + storageTransactions.length})</TabsTrigger>
-          <TabsTrigger value="storage">Storage ({storageTransactions.length})</TabsTrigger>
-          <TabsTrigger value="cutting">Cutting ({cuttingActuals.length})</TabsTrigger>
-          <TabsTrigger value="sewing">Sewing ({sewingUpdates.length})</TabsTrigger>
-          <TabsTrigger value="finishing">Finishing ({finishingSheets.length})</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+          <TabsList className="w-max min-w-full md:w-auto">
+            <TabsTrigger value="all">All ({sewingUpdates.length + finishingSheets.length + cuttingActuals.length + storageTransactions.length})</TabsTrigger>
+            <TabsTrigger value="storage">Storage ({storageTransactions.length})</TabsTrigger>
+            <TabsTrigger value="cutting">Cutting ({cuttingActuals.length})</TabsTrigger>
+            <TabsTrigger value="sewing">Sewing ({sewingUpdates.length})</TabsTrigger>
+            <TabsTrigger value="finishing">Finishing ({finishingSheets.length})</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="all" className="mt-4 space-y-4">
           {/* Sewing Table */}
