@@ -215,29 +215,29 @@ export default function UsersPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-3xl font-bold">{users.length}</p>
-            <p className="text-sm text-muted-foreground">Total Users</p>
+          <CardContent className="p-3 sm:p-4 text-center">
+            <p className="text-2xl sm:text-3xl font-bold">{users.length}</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">Total Users</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-3xl font-bold text-success">{activeUsers.length}</p>
-            <p className="text-sm text-muted-foreground">Active</p>
+          <CardContent className="p-3 sm:p-4 text-center">
+            <p className="text-2xl sm:text-3xl font-bold text-success">{activeUsers.length}</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">Active</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-3xl font-bold text-warning">{pendingUsers.length}</p>
-            <p className="text-sm text-muted-foreground">Pending</p>
+          <CardContent className="p-3 sm:p-4 text-center">
+            <p className="text-2xl sm:text-3xl font-bold text-warning">{pendingUsers.length}</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">Pending</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-3xl font-bold text-primary">{adminCount}</p>
-            <p className="text-sm text-muted-foreground">Admins</p>
+          <CardContent className="p-3 sm:p-4 text-center">
+            <p className="text-2xl sm:text-3xl font-bold text-primary">{adminCount}</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">Admins</p>
           </CardContent>
         </Card>
       </div>
