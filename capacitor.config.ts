@@ -79,9 +79,9 @@ const config: CapacitorConfig = {
     },
     
     StatusBar: {
-      style: 'LIGHT', // Dark icons on light background
+      style: 'DARK', // Dark icons on light background
       backgroundColor: '#f1f3f5', // Match app background
-      overlaysWebView: false, // Content does NOT render behind status bar (safer)
+      overlaysWebView: true, // iOS: extend WebView under status bar to prevent black gaps
     },
     
     PushNotifications: {

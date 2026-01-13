@@ -102,19 +102,22 @@ export async function initializeCapacitor() {
     // Configure status bar for proper safe area handling
     try {
       const { StatusBar, Style } = await import('@capacitor/status-bar');
-      
-      // Set status bar style (dark icons on light background)
-      await StatusBar.setStyle({ style: Style.Light });
-      
-      // Set status bar background to match app background (light theme)
-      // This eliminates black bands on iOS by making status bar same color as app
-      await StatusBar.setBackgroundColor({ color: '#f1f3f5' }); // Matches --background: 220 14% 96%
-      
-      // Overlay = false means content will NOT render behind status bar
-      // This is safer for most apps - content starts below status bar
-      // The safe-area-inset CSS still applies for notch areas
-      await StatusBar.setOverlaysWebView({ overlay: false });
-      
+
+      // iOS: we must extend the WebView behind the status bar + home indicator
+      // otherwise the native window background can show through as black during overscroll.
+      await StatusBar.setOverlaysWebView({ overlay: platform === 'ios' });
+
+      // Light UI -> dark content (dark icons/text) for readability
+      // If the app is in dark mode, flip to light content.
+      const isDarkMode = document.documentElement.classList.contains('dark');
+      await StatusBar.setStyle({ style: isDarkMode ? Style.Light : Style.Dark });
+
+      // Android only: set an explicit status bar background color.
+      // (iOS ignores setBackgroundColor; it uses the WebView behind it.)
+      if (platform === 'android') {
+        await StatusBar.setBackgroundColor({ color: '#f1f3f5' }); // matches hsl(var(--background)) in light theme
+      }
+
       console.log('StatusBar configured successfully');
     } catch (statusBarError) {
       console.warn('StatusBar plugin not available:', statusBarError);
