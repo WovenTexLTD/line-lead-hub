@@ -32,13 +32,9 @@ export function AppLayout() {
         Root container: fills viewport including safe areas
         Uses min-h-screen with safe-area padding for proper iOS layout
       */}
-      <div 
-        className="flex w-full flex-col overflow-x-hidden bg-background"
-        style={{
-          minHeight: '100dvh',
-          paddingTop: 'env(safe-area-inset-top, 0px)',
-        }}
-      >
+      <div className="flex w-full flex-col overflow-x-hidden bg-background" style={{ minHeight: '100dvh' }}>
+        {/* Safe-area background filler (prevents black bars behind notch/status bar) */}
+        <div className="w-full bg-background" style={{ height: 'env(safe-area-inset-top, 0px)' }} />
         <TrialExpirationBanner />
         <div className="flex flex-1 min-w-0 overflow-x-hidden">
           <AppSidebar />

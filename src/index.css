@@ -2,76 +2,65 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 
+/*
  * SAFE AREA & SCROLLING FIX FOR iOS/Android Capacitor
- * - Eliminates black bands behind safe areas
- * - Enables native iOS momentum scrolling with bounce
+ * - Forces a non-transparent background for the entire viewport (prevents black bars)
+ * - Enables native iOS momentum scrolling + bounce
  * - Works with viewport-fit=cover
  */
 
 :root {
-  /* App background color - matches design system --background: 220 14% 96% = #f1f3f5 */
-  --app-bg-color: #f1f3f5;
+  /* Always mirror the design-system background (HSL tokens) */
+  --app-bg: hsl(var(--background));
 }
 
-.dark:root {
-  /* Dark mode background - matches --background: 222 47% 6% */
-  --app-bg-color: hsl(222 47% 6%);
-}
-
-/* 
- * HTML/BODY/ROOT: Full screen coverage with consistent background
- * This ensures no black gaps anywhere on the screen
- */
-html {
-  background-color: var(--app-bg-color);
-  /* Use 100% + safe-area to extend behind status bar/home indicator */
+html,
+body {
+  height: 100%;
   min-height: 100%;
   min-height: -webkit-fill-available;
-  /* DO NOT set overflow: hidden - it breaks iOS scroll bounce */
+  background-color: var(--app-bg) !important;
 }
 
 body {
-  background-color: var(--app-bg-color);
-  min-height: 100%;
-  min-height: -webkit-fill-available;
   margin: 0;
   padding: 0;
-  /* DO NOT add safe-area padding here - handle it in app containers */
-  /* DO NOT set overflow: hidden - it breaks iOS scroll bounce */
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
 }
 
 #root {
-  background-color: var(--app-bg-color);
+  height: 100%;
   min-height: 100%;
   min-height: -webkit-fill-available;
   display: flex;
   flex-direction: column;
+  background-color: var(--app-bg) !important;
 }
 
 /*
  * MAIN SCROLL CONTAINER
- * This is the single scroll container for the app
- * Momentum scrolling + bounce enabled
+ * Keep ONE primary scroll container for the app.
+ * (AppLayout renders <main> as the scroll container.)
  */
 main {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  background-color: var(--app-bg-color);
-  /* iOS momentum scrolling - critical for native feel */
+  background-color: var(--app-bg) !important;
+
+  /* iOS momentum scrolling */
   -webkit-overflow-scrolling: touch;
-  /* Allow natural overscroll bounce - DO NOT use 'none' or 'contain' */
+
+  /* Allow natural overscroll bounce (do not set to none/contain) */
   overscroll-behavior-y: auto;
-  /* Safe area padding for content - prevents content under notch/home indicator */
+
+  /* Safe area bottom padding so content doesn't sit under the home indicator */
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* 
- * All scrollable containers get momentum scrolling
- * But DO NOT disable overscroll behavior
- */
+/* All scrollable containers should keep iOS momentum scrolling */
 [data-radix-scroll-area-viewport],
 .overflow-auto,
 .overflow-y-auto,
