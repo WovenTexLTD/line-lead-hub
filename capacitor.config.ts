@@ -49,6 +49,9 @@ const config: CapacitorConfig = {
     scheme: 'productionportal',
     // Required for Supabase auth deep links
     limitsNavigationsToAppBoundDomains: true,
+    // Enable native iOS bounce scrolling
+    scrollEnabled: true,
+    allowsLinkPreview: true,
   },
 
   // Android specific configuration
@@ -59,6 +62,8 @@ const config: CapacitorConfig = {
     captureInput: true,
     // Enable for debugging, disable for production releases
     webContentsDebuggingEnabled: false,
+    // Enable overscroll bounce effect on Android 12+
+    overScrollMode: 'always',
     // Custom URL scheme for deep links
     // This allows: productionportal://callback URLs
   },
