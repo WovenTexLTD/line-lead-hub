@@ -22,6 +22,47 @@ body {
   padding-right: var(--safe-area-inset-right);
 }
 
+/* Premium mobile scrolling with elastic bounce effect */
+html {
+  -webkit-overflow-scrolling: touch;
+  overflow-scrolling: touch;
+}
+
+body, 
+#root,
+main,
+[data-radix-scroll-area-viewport],
+.overflow-auto,
+.overflow-y-auto,
+.overflow-x-auto,
+.overflow-scroll {
+  -webkit-overflow-scrolling: touch;
+  overflow-scrolling: touch;
+  overscroll-behavior: auto;
+}
+
+/* Enable iOS-style rubber band scrolling */
+@supports (-webkit-touch-callout: none) {
+  body {
+    /* iOS already has bounce by default, ensure it's not disabled */
+    overscroll-behavior-y: auto;
+  }
+}
+
+/* For Android/other platforms - add subtle overscroll indication */
+@supports not (-webkit-touch-callout: none) {
+  html, body, #root {
+    overscroll-behavior: contain;
+  }
+  
+  /* Add a subtle stretch effect on scroll boundaries */
+  .scroll-container,
+  main,
+  [data-radix-scroll-area-viewport] {
+    scroll-behavior: smooth;
+  }
+}
+
 /* Production Portal Premium Design System
    Refined industrial-modern aesthetic with premium feel
 */
