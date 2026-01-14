@@ -78,6 +78,12 @@ interface CuttingActual {
   production_date: string;
   colour: string | null;
   order_qty: number | null;
+  leftover_recorded: boolean | null;
+  leftover_type: string | null;
+  leftover_unit: string | null;
+  leftover_quantity: number | null;
+  leftover_notes: string | null;
+  leftover_location: string | null;
   lines: { line_id: string; name: string | null } | null;
   work_orders: { po_number: string; buyer: string; style: string } | null;
 }
@@ -432,6 +438,12 @@ export default function TodayUpdates() {
       total_input: cutting.total_input,
       balance: cutting.balance,
       submitted_at: cutting.submitted_at,
+      leftover_recorded: cutting.leftover_recorded,
+      leftover_type: cutting.leftover_type,
+      leftover_unit: cutting.leftover_unit,
+      leftover_quantity: cutting.leftover_quantity,
+      leftover_notes: cutting.leftover_notes,
+      leftover_location: cutting.leftover_location,
     });
     setCuttingModalOpen(true);
   };
@@ -792,15 +804,20 @@ export default function TodayUpdates() {
                             <TableCell className="text-right font-mono">{manpower || '-'}</TableCell>
                             <TableCell className="text-right font-mono">{dayInput?.toLocaleString() || '-'}</TableCell>
                             <TableCell>
-                              {hasActual && hasTarget ? (
-                                <StatusBadge variant={percent && percent >= 100 ? 'success' : percent && percent >= 80 ? 'warning' : 'danger'} size="sm">
-                                  {Math.round(percent || 0)}%
-                                </StatusBadge>
-                              ) : hasActual ? (
-                                <StatusBadge variant="success" size="sm">Output</StatusBadge>
-                              ) : (
-                                <StatusBadge variant="info" size="sm">Target</StatusBadge>
-                              )}
+                              <div className="flex items-center gap-1 flex-wrap">
+                                {hasActual && hasTarget ? (
+                                  <StatusBadge variant={percent && percent >= 100 ? 'success' : percent && percent >= 80 ? 'warning' : 'danger'} size="sm">
+                                    {Math.round(percent || 0)}%
+                                  </StatusBadge>
+                                ) : hasActual ? (
+                                  <StatusBadge variant="success" size="sm">Output</StatusBadge>
+                                ) : (
+                                  <StatusBadge variant="info" size="sm">Target</StatusBadge>
+                                )}
+                                {item.actual?.leftover_recorded && (
+                                  <StatusBadge variant="warning" size="sm">Left Over</StatusBadge>
+                                )}
+                              </div>
                             </TableCell>
                           </TableRow>
                         );
