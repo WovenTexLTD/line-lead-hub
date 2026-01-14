@@ -18,6 +18,8 @@ import FinishingUpdate from "./pages/FinishingUpdate";
 import SewingMorningTargets from "./pages/SewingMorningTargets";
 import SewingEndOfDay from "./pages/SewingEndOfDay";
 import FinishingDailySheet from "./pages/FinishingDailySheet";
+import FinishingDailyTarget from "./pages/FinishingDailyTarget";
+import FinishingDailyOutput from "./pages/FinishingDailyOutput";
 import FinishingMySubmissions from "./pages/FinishingMySubmissions";
 import SewingMySubmissions from "./pages/SewingMySubmissions";
 import FinishingOverview from "./pages/FinishingOverview";
@@ -102,6 +104,8 @@ function AppRoutes() {
         <Route path="/sewing/morning-targets" element={<SubscriptionGate><SewingMorningTargets /></SubscriptionGate>} />
         <Route path="/sewing/end-of-day" element={<SubscriptionGate><SewingEndOfDay /></SubscriptionGate>} />
         <Route path="/finishing/daily-sheet" element={<SubscriptionGate><FinishingDailySheet /></SubscriptionGate>} />
+        <Route path="/finishing/daily-target" element={<SubscriptionGate><FinishingDailyTarget /></SubscriptionGate>} />
+        <Route path="/finishing/daily-output" element={<SubscriptionGate><FinishingDailyOutput /></SubscriptionGate>} />
         <Route path="/finishing/my-submissions" element={<SubscriptionGate><FinishingMySubmissions /></SubscriptionGate>} />
         <Route path="/finishing/overview" element={<SubscriptionGate><FinishingOverview /></SubscriptionGate>} />
         <Route path="/morning-targets" element={<SubscriptionGate><MorningTargets /></SubscriptionGate>} />
