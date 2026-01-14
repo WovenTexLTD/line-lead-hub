@@ -50,6 +50,8 @@ import StorageBinCard from "./pages/StorageBinCard";
 import StorageHistory from "./pages/StorageHistory";
 import StorageDashboard from "./pages/StorageDashboard";
 import CuttingForm from "./pages/CuttingForm";
+import CuttingMorningTargets from "./pages/CuttingMorningTargets";
+import CuttingEndOfDay from "./pages/CuttingEndOfDay";
 import CuttingSummary from "./pages/CuttingSummary";
 import CuttingAllSubmissions from "./pages/CuttingAllSubmissions";
 import CuttingHandoffs from "./pages/CuttingHandoffs";
@@ -137,6 +139,8 @@ function AppRoutes() {
         <Route path="/storage/history" element={<SubscriptionGate><StorageHistory /></SubscriptionGate>} />
         <Route path="/storage/dashboard" element={<SubscriptionGate><StorageDashboard /></SubscriptionGate>} />
         {/* Cutting module routes */}
+        <Route path="/cutting/morning-targets" element={<SubscriptionGate><CuttingMorningTargets /></SubscriptionGate>} />
+        <Route path="/cutting/end-of-day" element={<SubscriptionGate><CuttingEndOfDay /></SubscriptionGate>} />
         <Route path="/cutting/form" element={<SubscriptionGate><CuttingForm /></SubscriptionGate>} />
         <Route path="/cutting/summary" element={<SubscriptionGate><CuttingSummary /></SubscriptionGate>} />
         <Route path="/cutting/submissions" element={<SubscriptionGate><CuttingAllSubmissions /></SubscriptionGate>} />

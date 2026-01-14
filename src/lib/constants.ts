@@ -237,7 +237,8 @@ export const NAV_ITEMS = {
     { path: '/preferences', label: 'My Preferences', icon: 'UserCog' },
   ],
   cutting: [
-    { path: '/cutting/form', label: 'Daily Cutting Report', icon: 'Scissors' },
+    { path: '/cutting/morning-targets', label: 'Cutting Morning Targets', icon: 'Crosshair' },
+    { path: '/cutting/end-of-day', label: 'Cutting End of Day', icon: 'ClipboardCheck' },
     { path: '/cutting/submissions', label: 'All Submissions', icon: 'FileText' },
     { path: '/report-blocker', label: 'Report Blocker', icon: 'AlertTriangle' },
     { path: '/preferences', label: 'My Preferences', icon: 'UserCog' },
