@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Search, Scissors, ClipboardCheck, ChevronDown, ChevronRight, X, Upload, ImageIcon, Package } from "lucide-react";
+import { Loader2, Search, Scissors, ClipboardCheck, ChevronDown, ChevronRight, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -122,9 +122,6 @@ export default function CuttingEndOfDay() {
   const [leftoverQuantity, setLeftoverQuantity] = useState("");
   const [leftoverNotes, setLeftoverNotes] = useState("");
   const [leftoverLocation, setLeftoverLocation] = useState("");
-  const [leftoverPhotos, setLeftoverPhotos] = useState<File[]>([]);
-  const [leftoverPhotoUrls, setLeftoverPhotoUrls] = useState<string[]>([]);
-  const [uploadingPhotos, setUploadingPhotos] = useState(false);
 
   // Validation
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -235,7 +232,7 @@ export default function CuttingEndOfDay() {
           setLeftoverQuantity(actualData.leftover_quantity ? String(actualData.leftover_quantity) : "");
           setLeftoverNotes(actualData.leftover_notes || "");
           setLeftoverLocation(actualData.leftover_location || "");
-          setLeftoverPhotoUrls(actualData.leftover_photo_urls || []);
+          
         }
       } else {
         setIsEditing(false);
@@ -257,8 +254,6 @@ export default function CuttingEndOfDay() {
         setLeftoverQuantity("");
         setLeftoverNotes("");
         setLeftoverLocation("");
-        setLeftoverPhotos([]);
-        setLeftoverPhotoUrls([]);
       }
     } catch (error) {
       console.error("Error checking existing data:", error);
@@ -324,54 +319,6 @@ export default function CuttingEndOfDay() {
     return Object.keys(newErrors).length === 0;
   }
 
-  async function uploadLeftoverPhotos(): Promise<string[]> {
-    if (leftoverPhotos.length === 0) return leftoverPhotoUrls;
-
-    const uploadedUrls: string[] = [...leftoverPhotoUrls];
-    
-    for (const file of leftoverPhotos) {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${profile!.factory_id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-      
-      const { data, error } = await supabase.storage
-        .from('cutting-leftover-photos')
-        .upload(fileName, file);
-
-      if (error) {
-        console.error('Error uploading photo:', error);
-        throw new Error('Failed to upload photo');
-      }
-
-      const { data: urlData } = supabase.storage
-        .from('cutting-leftover-photos')
-        .getPublicUrl(data.path);
-
-      uploadedUrls.push(urlData.publicUrl);
-    }
-
-    return uploadedUrls;
-  }
-
-  function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = e.target.files;
-    if (!files) return;
-
-    const totalPhotos = leftoverPhotos.length + leftoverPhotoUrls.length + files.length;
-    if (totalPhotos > 3) {
-      toast.error("Maximum 3 photos allowed");
-      return;
-    }
-
-    setLeftoverPhotos(prev => [...prev, ...Array.from(files)]);
-  }
-
-  function removePhoto(index: number, isExisting: boolean) {
-    if (isExisting) {
-      setLeftoverPhotoUrls(prev => prev.filter((_, i) => i !== index));
-    } else {
-      setLeftoverPhotos(prev => prev.filter((_, i) => i !== index));
-    }
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -401,20 +348,6 @@ export default function CuttingEndOfDay() {
         isLate = now > cutoffTime;
       }
 
-      // Upload leftover photos if any
-      let finalPhotoUrls: string[] = [];
-      if (leftoverRecorded && (leftoverPhotos.length > 0 || leftoverPhotoUrls.length > 0)) {
-        setUploadingPhotos(true);
-        try {
-          finalPhotoUrls = await uploadLeftoverPhotos();
-        } catch (error) {
-          toast.error("Failed to upload photos");
-          setUploadingPhotos(false);
-          setSubmitting(false);
-          return;
-        }
-        setUploadingPhotos(false);
-      }
 
       const actualData = {
         factory_id: profile.factory_id,
@@ -447,7 +380,7 @@ export default function CuttingEndOfDay() {
         leftover_quantity: leftoverRecorded && leftoverQuantity ? parseFloat(leftoverQuantity) : null,
         leftover_notes: leftoverRecorded ? leftoverNotes || null : null,
         leftover_location: leftoverRecorded ? leftoverLocation || null : null,
-        leftover_photo_urls: leftoverRecorded && finalPhotoUrls.length > 0 ? finalPhotoUrls : null,
+        leftover_photo_urls: null,
       };
 
       if (isEditing && existingActual) {
@@ -897,51 +830,6 @@ export default function CuttingEndOfDay() {
                       />
                     </div>
 
-                    {/* Photo Upload */}
-                    <div className="space-y-2">
-                      <Label>Photos (optional, max 3)</Label>
-                      <div className="flex flex-wrap gap-2">
-                        {/* Existing photos */}
-                        {leftoverPhotoUrls.map((url, index) => (
-                          <div key={`existing-${index}`} className="relative w-20 h-20 rounded-lg overflow-hidden border">
-                            <img src={url} alt={`Leftover ${index + 1}`} className="w-full h-full object-cover" />
-                            <button
-                              type="button"
-                              onClick={() => removePhoto(index, true)}
-                              className="absolute top-1 right-1 p-1 rounded-full bg-destructive text-destructive-foreground"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </div>
-                        ))}
-                        {/* New photos */}
-                        {leftoverPhotos.map((file, index) => (
-                          <div key={`new-${index}`} className="relative w-20 h-20 rounded-lg overflow-hidden border">
-                            <img src={URL.createObjectURL(file)} alt={`New ${index + 1}`} className="w-full h-full object-cover" />
-                            <button
-                              type="button"
-                              onClick={() => removePhoto(index, false)}
-                              className="absolute top-1 right-1 p-1 rounded-full bg-destructive text-destructive-foreground"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </div>
-                        ))}
-                        {/* Upload button */}
-                        {(leftoverPhotos.length + leftoverPhotoUrls.length) < 3 && (
-                          <label className="w-20 h-20 rounded-lg border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center cursor-pointer hover:border-primary transition-colors">
-                            <Upload className="h-5 w-5 text-muted-foreground" />
-                            <span className="text-xs text-muted-foreground mt-1">Add</span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={handlePhotoSelect}
-                              className="hidden"
-                            />
-                          </label>
-                        )}
-                      </div>
-                    </div>
                   </>
                 )}
               </CardContent>
@@ -954,12 +842,12 @@ export default function CuttingEndOfDay() {
           type="submit" 
           className="w-full" 
           size="lg"
-          disabled={submitting || uploadingPhotos}
+          disabled={submitting}
         >
-          {submitting || uploadingPhotos ? (
+          {submitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {uploadingPhotos ? "Uploading photos..." : "Submitting..."}
+              Submitting...
             </>
           ) : isEditing ? (
             "Update End-of-Day Actuals"
