@@ -48,11 +48,13 @@ jobs:
           if not version:
             raise SystemExit('VERSION env var not set')
 
+          # Update src-tauri/tauri.conf.json
           conf_path = Path('src-tauri/tauri.conf.json')
           conf = json.loads(conf_path.read_text(encoding='utf-8'))
           conf['version'] = version
           conf_path.write_text(json.dumps(conf, indent=2) + "\n", encoding='utf-8')
 
+          # Update src-tauri/Cargo.toml (package.version)
           cargo_path = Path('src-tauri/Cargo.toml')
           cargo_text = cargo_path.read_text(encoding='utf-8')
           cargo_text = re.sub(r'(?m)^version\s*=\s*"[^"]+"\s*$', f'version = "{version}"', cargo_text, count=1)
@@ -88,6 +90,7 @@ jobs:
 
       - name: Add macOS universal target
         if: matrix.os == 'macos-latest'
+        shell: bash
         run: |
           rustup target add x86_64-apple-darwin
           rustup target add aarch64-apple-darwin
@@ -95,13 +98,15 @@ jobs:
       - name: Install frontend deps
         run: npm ci
 
-      - name: Write signing key to file
+      # Write the Tauri updater signing key (stored in GitHub Secrets) to a file
+      - name: Write Tauri signing key to file
         shell: bash
         run: |
           mkdir -p ~/.tauri
           printf '%s' "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" > ~/.tauri/production-portal.key
           chmod 600 ~/.tauri/production-portal.key
 
+      # ---------- BUILD ----------
       - name: Build desktop app (Tauri) - Linux/Windows
         if: matrix.os != 'macos-latest'
         run: npm run tauri:build
@@ -115,8 +120,16 @@ jobs:
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # Used by your notarize step (below)
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Used for signing by many tooling setups (keep it here for future signing steps/plugins)
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
 
-      # ✅ NOTARIZE + STAPLE (FIXED: no infinite loop, fetches logs on failure)
+      # ---------- NOTARIZE (DMG) ----------
       - name: Notarize + staple macOS DMG
         if: matrix.os == 'macos-latest'
         shell: bash
@@ -127,75 +140,88 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Find DMG
-          DMG="$(find src-tauri/target/universal-apple-darwin/release/bundle/dmg -name "*.dmg" -type f 2>/dev/null | head -1 || true)"
+          DMG=$(find src-tauri/target/universal-apple-darwin/release/bundle -name "*.dmg" -type f 2>/dev/null | head -1)
           if [ -z "${DMG:-}" ]; then
-            DMG="$(find src-tauri/target/release/bundle/dmg -name "*.dmg" -type f 2>/dev/null | head -1 || true)"
+            DMG=$(find src-tauri/target/release/bundle -name "*.dmg" -type f 2>/dev/null | head -1)
           fi
 
           if [ -z "${DMG:-}" ] || [ ! -f "$DMG" ]; then
             echo "Could not find DMG to notarize" >&2
-            find src-tauri/target -maxdepth 7 -type f -name "*.dmg" -print || true
             exit 1
           fi
 
           echo "Submitting for notarization: $DMG"
 
-          # Submit and capture JSON
-          SUBMIT_JSON="$(xcrun notarytool submit "$DMG" \
+          retry() {
+            local n=0
+            local max=5
+            local delay=20
+            until "$@"; do
+              n=$((n+1))
+              if [ "$n" -ge "$max" ]; then
+                echo "Command failed after $n attempts: $*" >&2
+                return 1
+              fi
+              echo "Command failed (attempt $n/$max). Retrying in ${delay}s..." >&2
+              sleep "$delay"
+              delay=$((delay*2))
+            done
+          }
+
+          SUBMIT_JSON=$(retry xcrun notarytool submit "$DMG" \
             --apple-id "$APPLE_ID" \
             --password "$APPLE_APP_SPECIFIC_PASSWORD" \
             --team-id "$APPLE_TEAM_ID" \
-            --output-format json)"
+            --output-format json)
 
           echo "Submit output:"
           echo "$SUBMIT_JSON"
 
-          # Extract UUID safely
-          UUID="$(python3 - <<'PY'
-import json, sys
-data = json.loads(sys.stdin.read())
-print(data.get("id",""))
-PY
-<<< "$SUBMIT_JSON")"
-
+          UUID=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("id",""))' "$SUBMIT_JSON")
           if [ -z "${UUID:-}" ]; then
-            echo "Failed to extract notarization submission UUID." >&2
+            echo "Failed to extract notarization submission id from JSON." >&2
             exit 1
           fi
 
           echo "Notary submission id: $UUID"
 
-          # Wait (single call, timeout)
-          set +e
-          xcrun notarytool wait "$UUID" \
-            --apple-id "$APPLE_ID" \
-            --password "$APPLE_APP_SPECIFIC_PASSWORD" \
-            --team-id "$APPLE_TEAM_ID" \
-            --timeout 60m
-          WAIT_EXIT=$?
-          set -e
-
-          if [ "$WAIT_EXIT" -ne 0 ]; then
-            echo "Notarization wait failed (exit $WAIT_EXIT). Fetching notarization log..." >&2
-            xcrun notarytool log "$UUID" \
+          # Poll status (prevents an infinite-looking wait loop)
+          # Tries up to 80 times with 30s sleep = ~40 minutes max.
+          for i in $(seq 1 80); do
+            INFO_JSON=$(retry xcrun notarytool info "$UUID" \
               --apple-id "$APPLE_ID" \
               --password "$APPLE_APP_SPECIFIC_PASSWORD" \
-              --team-id "$APPLE_TEAM_ID" || true
-            exit 1
-          fi
+              --team-id "$APPLE_TEAM_ID" \
+              --output-format json || true)
+
+            STATUS=$(python3 -c 'import json,sys; print((json.loads(sys.argv[1]).get("status","") if sys.argv[1] else ""))' "${INFO_JSON:-}")
+            echo "Notary status ($i/80): ${STATUS:-unknown}"
+
+            if [ "$STATUS" = "Accepted" ]; then
+              break
+            fi
+            if [ "$STATUS" = "Invalid" ] || [ "$STATUS" = "Rejected" ]; then
+              echo "Notarization failed. Info JSON:"
+              echo "${INFO_JSON:-}"
+              exit 1
+            fi
+
+            sleep 30
+          done
 
           echo "Stapling notarization ticket..."
-          xcrun stapler staple "$DMG"
+          retry xcrun stapler staple "$DMG"
 
           echo "Gatekeeper verification:"
           spctl -a -vv "$DMG" || true
 
+      # ---------- COLLECT ARTIFACTS ----------
       - name: Collect artifact info (Linux)
         if: matrix.os == 'ubuntu-22.04'
         shell: bash
         run: |
           mkdir -p artifacts
+
           APPIMAGE=$(find src-tauri/target/release/bundle -name "*.AppImage" -type f | head -1)
           if [ -n "$APPIMAGE" ] && [ -f "$APPIMAGE" ]; then
             cp "$APPIMAGE" artifacts/
@@ -203,14 +229,16 @@ PY
               cat "$APPIMAGE.sig" > artifacts/linux-x86_64.sig
             fi
           fi
-          find src-tauri/target/release/bundle -name "*.deb" -exec cp {} artifacts/ \;
-          find src-tauri/target/release/bundle -name "*.rpm" -exec cp {} artifacts/ \;
+
+          find src-tauri/target/release/bundle -name "*.deb" -exec cp {} artifacts/ \; || true
+          find src-tauri/target/release/bundle -name "*.rpm" -exec cp {} artifacts/ \; || true
 
       - name: Collect artifact info (Windows)
         if: matrix.os == 'windows-latest'
         shell: bash
         run: |
           mkdir -p artifacts
+
           MSI=$(find src-tauri/target/release/bundle -name "*.msi" -type f | head -1)
           if [ -n "$MSI" ] && [ -f "$MSI" ]; then
             cp "$MSI" artifacts/
@@ -218,7 +246,8 @@ PY
               cat "$MSI.sig" > artifacts/windows-x86_64.sig
             fi
           fi
-          find src-tauri/target/release/bundle -name "*.exe" -exec cp {} artifacts/ \;
+
+          find src-tauri/target/release/bundle -name "*.exe" -exec cp {} artifacts/ \; || true
 
       - name: Collect artifact info (macOS)
         if: matrix.os == 'macos-latest'
@@ -226,9 +255,10 @@ PY
         run: |
           mkdir -p artifacts
 
-          MACOS_UPDATE=$(find src-tauri/target/universal-apple-darwin/release/bundle/macos -name "*.app.tar.gz" -type f 2>/dev/null | head -1 || true)
+          # Updater bundle for macOS
+          MACOS_UPDATE=$(find src-tauri/target/universal-apple-darwin/release/bundle/macos -name "*.app.tar.gz" -type f 2>/dev/null | head -1)
           if [ -z "$MACOS_UPDATE" ]; then
-            MACOS_UPDATE=$(find src-tauri/target/release/bundle/macos -name "*.app.tar.gz" -type f 2>/dev/null | head -1 || true)
+            MACOS_UPDATE=$(find src-tauri/target/release/bundle/macos -name "*.app.tar.gz" -type f 2>/dev/null | head -1)
           fi
 
           if [ -n "$MACOS_UPDATE" ] && [ -f "$MACOS_UPDATE" ]; then
@@ -239,9 +269,10 @@ PY
             fi
           fi
 
-          DMG=$(find src-tauri/target/universal-apple-darwin/release/bundle/dmg -name "*.dmg" -type f 2>/dev/null | head -1 || true)
+          # DMG (manual install)
+          DMG=$(find src-tauri/target/universal-apple-darwin/release/bundle -name "*.dmg" -type f 2>/dev/null | head -1)
           if [ -z "$DMG" ]; then
-            DMG=$(find src-tauri/target/release/bundle/dmg -name "*.dmg" -type f 2>/dev/null | head -1 || true)
+            DMG=$(find src-tauri/target/release/bundle -name "*.dmg" -type f 2>/dev/null | head -1)
           fi
           if [ -n "$DMG" ] && [ -f "$DMG" ]; then
             cp "$DMG" artifacts/
@@ -320,18 +351,23 @@ PY
 
           python3 - <<'PY' > dist/asset_urls.env
           import json
+
           with open('dist/release.json', 'r', encoding='utf-8') as f:
             data = json.load(f)
+
           assets = data.get('assets', []) or []
+
           def find_url(endswith: str) -> str:
             for a in assets:
               name = a.get('name', '') or ''
               if name.endswith(endswith):
                 return a.get('browser_download_url', '') or ''
             return ''
+
           linux_url = find_url('.AppImage')
           windows_url = find_url('.msi')
           macos_url = find_url('.app.tar.gz')
+
           print(f"LINUX_URL={linux_url}")
           print(f"WINDOWS_URL={windows_url}")
           print(f"MACOS_URL={macos_url}")
