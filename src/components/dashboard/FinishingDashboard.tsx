@@ -7,14 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Package,
   Clock,
   Plus,
   ChevronRight,
   ClipboardList,
-  Boxes,
-  Timer,
+  Target,
+  TrendingUp,
 } from "lucide-react";
 
 interface DailySheetSummary {
@@ -26,17 +27,20 @@ interface DailySheetSummary {
   style: string | null;
   finishing_no: string | null;
   hours_logged: number;
-  total_poly: number;
-  total_carton: number;
-  total_iron: number;
+  total_poly_target: number;
+  total_carton_target: number;
+  total_poly_actual: number;
+  total_carton_actual: number;
   created_at: string;
 }
 
 interface FinishingStats {
   totalSheets: number;
   totalHoursLogged: number;
-  totalPoly: number;
-  totalCarton: number;
+  totalPolyTarget: number;
+  totalCartonTarget: number;
+  totalPolyActual: number;
+  totalCartonActual: number;
   linesWithSheets: number;
 }
 
@@ -47,11 +51,14 @@ export function FinishingDashboard() {
   const [stats, setStats] = useState<FinishingStats>({
     totalSheets: 0,
     totalHoursLogged: 0,
-    totalPoly: 0,
-    totalCarton: 0,
+    totalPolyTarget: 0,
+    totalCartonTarget: 0,
+    totalPolyActual: 0,
+    totalCartonActual: 0,
     linesWithSheets: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"targets" | "outputs">("targets");
 
   useEffect(() => {
     if (profile?.factory_id) {
@@ -86,9 +93,10 @@ export function FinishingDashboard() {
           style: sheet.work_orders?.style || sheet.style || null,
           finishing_no: sheet.finishing_no,
           hours_logged: logs.length,
-          total_poly: logs.reduce((sum: number, l: any) => sum + (l.poly_actual || 0), 0),
-          total_carton: logs.reduce((sum: number, l: any) => sum + (l.carton_actual || 0), 0),
-          total_iron: logs.reduce((sum: number, l: any) => sum + (l.iron_actual || 0), 0),
+          total_poly_target: logs.reduce((sum: number, l: any) => sum + (l.poly_target || 0), 0),
+          total_carton_target: logs.reduce((sum: number, l: any) => sum + (l.carton_target || 0), 0),
+          total_poly_actual: logs.reduce((sum: number, l: any) => sum + (l.poly_actual || 0), 0),
+          total_carton_actual: logs.reduce((sum: number, l: any) => sum + (l.carton_actual || 0), 0),
           created_at: sheet.created_at,
         };
       });
@@ -98,8 +106,10 @@ export function FinishingDashboard() {
       const totalStats: FinishingStats = {
         totalSheets: formattedSheets.length,
         totalHoursLogged: formattedSheets.reduce((sum, s) => sum + s.hours_logged, 0),
-        totalPoly: formattedSheets.reduce((sum, s) => sum + s.total_poly, 0),
-        totalCarton: formattedSheets.reduce((sum, s) => sum + s.total_carton, 0),
+        totalPolyTarget: formattedSheets.reduce((sum, s) => sum + s.total_poly_target, 0),
+        totalCartonTarget: formattedSheets.reduce((sum, s) => sum + s.total_carton_target, 0),
+        totalPolyActual: formattedSheets.reduce((sum, s) => sum + s.total_poly_actual, 0),
+        totalCartonActual: formattedSheets.reduce((sum, s) => sum + s.total_carton_actual, 0),
         linesWithSheets: uniqueLines.size,
       };
 
@@ -144,167 +154,208 @@ export function FinishingDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Finishing Stats - Consolidated into 2 cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Activity Card */}
-        <Card>
-          <CardContent className="p-5">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <ClipboardList className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Today's Activity</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <p className="text-3xl font-bold">{stats.totalSheets}</p>
-                <p className="text-sm text-muted-foreground">Daily Sheets</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{stats.linesWithSheets} lines active</p>
-              </div>
-              <div>
-                <p className="text-3xl font-bold">{stats.totalHoursLogged}</p>
-                <p className="text-sm text-muted-foreground">Hours Logged</p>
-                <p className="text-xs text-muted-foreground mt-0.5">across all sheets</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Tabs for Targets vs Outputs */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "targets" | "outputs")}>
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="targets" className="flex items-center gap-2">
+            <Target className="h-4 w-4" />
+            Daily Targets
+          </TabsTrigger>
+          <TabsTrigger value="outputs" className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            Daily Outputs
+          </TabsTrigger>
+        </TabsList>
 
-        {/* Output Card */}
-        <Card>
-          <CardContent className="p-5">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-10 w-10 rounded-lg bg-success/10 flex items-center justify-center">
-                <Package className="h-5 w-5 text-success" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Today's Output</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <p className="text-3xl font-bold text-success">{stats.totalPoly.toLocaleString()}</p>
-                <p className="text-sm text-muted-foreground">Poly Packed</p>
-              </div>
-              <div>
-                <p className="text-3xl font-bold text-warning">{stats.totalCarton.toLocaleString()}</p>
-                <p className="text-sm text-muted-foreground">Cartons Packed</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+        <TabsContent value={activeTab} className="mt-6 space-y-6">
+          {/* Finishing Stats - Consolidated into 2 cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Activity Card */}
+            <Card>
+              <CardContent className="p-5">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <ClipboardList className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Today's Activity</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <p className="text-3xl font-bold">{stats.totalSheets}</p>
+                    <p className="text-sm text-muted-foreground">Daily Sheets</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{stats.linesWithSheets} lines active</p>
+                  </div>
+                  <div>
+                    <p className="text-3xl font-bold">{stats.totalHoursLogged}</p>
+                    <p className="text-sm text-muted-foreground">Hours Logged</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">across all sheets</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-      {/* Today's Daily Sheets */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Clock className="h-5 w-5 text-primary" />
-            Today's Daily Sheets
-          </CardTitle>
-          <div className="flex gap-2">
-            <Link to="/finishing/daily-sheet">
-              <Button variant="outline" size="sm">
-                <Plus className="h-4 w-4 mr-1" />
-                New Sheet
-              </Button>
-            </Link>
-            <Link to="/finishing/my-submissions">
-              <Button variant="ghost" size="sm">
-                View All
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
-            </Link>
+            {/* Output Card - changes based on tab */}
+            <Card>
+              <CardContent className="p-5">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-10 w-10 rounded-lg bg-success/10 flex items-center justify-center">
+                    {activeTab === "targets" ? (
+                      <Target className="h-5 w-5 text-primary" />
+                    ) : (
+                      <Package className="h-5 w-5 text-success" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Today's {activeTab === "targets" ? "Targets" : "Output"}
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <p className="text-3xl font-bold text-success">
+                      {activeTab === "targets" 
+                        ? stats.totalPolyTarget.toLocaleString()
+                        : stats.totalPolyActual.toLocaleString()}
+                    </p>
+                    <p className="text-sm text-muted-foreground">Poly {activeTab === "targets" ? "Target" : "Packed"}</p>
+                  </div>
+                  <div>
+                    <p className="text-3xl font-bold text-warning">
+                      {activeTab === "targets"
+                        ? stats.totalCartonTarget.toLocaleString()
+                        : stats.totalCartonActual.toLocaleString()}
+                    </p>
+                    <p className="text-sm text-muted-foreground">Cartons {activeTab === "targets" ? "Target" : "Packed"}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
-        </CardHeader>
-        <CardContent>
-          {sheets.length > 0 ? (
-            <div className="w-full overflow-x-auto">
-              <div className="space-y-3 max-h-[500px] overflow-y-auto min-w-[480px]">
-                {sheets.map((sheet) => (
-                  <Link
-                    key={sheet.id}
-                    to={`/finishing/daily-sheet?sheet=${sheet.id}`}
-                    className="block"
-                  >
-                    <div className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
-                      <div className="flex items-center gap-4 shrink-0">
-                        <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                          <Package className="h-6 w-6 text-primary" />
-                        </div>
-                        <div className="whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold">{sheet.line_name}</span>
-                            {sheet.finishing_no && (
-                              <Badge variant="outline" className="text-xs">
-                                {sheet.finishing_no}
-                              </Badge>
-                            )}
-                            {sheet.hours_logged < minRequiredHours ? (
-                              <Badge variant="destructive" className="text-xs">
-                                Incomplete
-                              </Badge>
-                            ) : (
-                              <Badge variant="default" className="text-xs bg-success hover:bg-success/90">
-                                Complete
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-sm text-muted-foreground">
-                            {sheet.po_number || 'No PO'} • {sheet.style || 'No Style'}
-                          </p>
-                          <div className="flex items-center gap-3 mt-1">
-                            <span className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {sheet.hours_logged}/{minRequiredHours} hours
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              Started {formatTime(sheet.created_at)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0 ml-4">
-                        <div className="flex gap-4">
-                          <div>
-                            <p className="font-mono font-bold text-lg text-success">{sheet.total_poly.toLocaleString()}</p>
-                            <p className="text-xs text-muted-foreground">poly</p>
-                          </div>
-                          <div>
-                            <p className="font-mono font-bold text-lg text-warning">{sheet.total_carton.toLocaleString()}</p>
-                            <p className="text-xs text-muted-foreground">carton</p>
-                          </div>
-                        </div>
-                        {/* Progress bar for hours */}
-                        <div className="mt-2 w-32">
-                          <Progress 
-                            value={(sheet.hours_logged / maxHoursPerSheet) * 100} 
-                            className="h-1.5"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
+
+          {/* Today's Daily Sheets */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Clock className="h-5 w-5 text-primary" />
+                Today's {activeTab === "targets" ? "Target" : "Output"} Sheets
+              </CardTitle>
+              <div className="flex gap-2">
+                <Link to={activeTab === "targets" ? "/finishing/daily-target" : "/finishing/daily-output"}>
+                  <Button variant="outline" size="sm">
+                    <Plus className="h-4 w-4 mr-1" />
+                    New Sheet
+                  </Button>
+                </Link>
+                <Link to="/finishing/my-submissions">
+                  <Button variant="ghost" size="sm">
+                    View All
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </Link>
               </div>
-            </div>
-          ) : (
-            <div className="text-center py-12 text-muted-foreground">
-              <Package className="h-16 w-16 mx-auto mb-4 opacity-30" />
-              <p className="text-lg font-medium">No daily sheets today</p>
-              <p className="text-sm mb-4">Start tracking finishing production for today</p>
-              <Link to="/finishing/daily-sheet">
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Daily Sheet
-                </Button>
-              </Link>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            </CardHeader>
+            <CardContent>
+              {sheets.length > 0 ? (
+                <div className="w-full overflow-x-auto">
+                  <div className="space-y-3 max-h-[500px] overflow-y-auto min-w-[480px]">
+                    {sheets.map((sheet) => {
+                      const polyValue = activeTab === "targets" ? sheet.total_poly_target : sheet.total_poly_actual;
+                      const cartonValue = activeTab === "targets" ? sheet.total_carton_target : sheet.total_carton_actual;
+                      
+                      return (
+                        <Link
+                          key={sheet.id}
+                          to={activeTab === "targets" 
+                            ? `/finishing/daily-target?sheet=${sheet.id}`
+                            : `/finishing/daily-output?sheet=${sheet.id}`}
+                          className="block"
+                        >
+                          <div className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
+                            <div className="flex items-center gap-4 shrink-0">
+                              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                                {activeTab === "targets" ? (
+                                  <Target className="h-6 w-6 text-primary" />
+                                ) : (
+                                  <Package className="h-6 w-6 text-primary" />
+                                )}
+                              </div>
+                              <div className="whitespace-nowrap">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-semibold">{sheet.line_name}</span>
+                                  {sheet.finishing_no && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {sheet.finishing_no}
+                                    </Badge>
+                                  )}
+                                  {sheet.hours_logged < minRequiredHours ? (
+                                    <Badge variant="destructive" className="text-xs">
+                                      Incomplete
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="default" className="text-xs bg-success hover:bg-success/90">
+                                      Complete
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                  {sheet.po_number || 'No PO'} • {sheet.style || 'No Style'}
+                                </p>
+                                <div className="flex items-center gap-3 mt-1">
+                                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    {sheet.hours_logged}/{minRequiredHours} hours
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    Started {formatTime(sheet.created_at)}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right shrink-0 ml-4">
+                              <div className="flex gap-4">
+                                <div>
+                                  <p className="font-mono font-bold text-lg text-success">{polyValue.toLocaleString()}</p>
+                                  <p className="text-xs text-muted-foreground">poly</p>
+                                </div>
+                                <div>
+                                  <p className="font-mono font-bold text-lg text-warning">{cartonValue.toLocaleString()}</p>
+                                  <p className="text-xs text-muted-foreground">carton</p>
+                                </div>
+                              </div>
+                              {/* Progress bar for hours */}
+                              <div className="mt-2 w-32">
+                                <Progress 
+                                  value={(sheet.hours_logged / maxHoursPerSheet) * 100} 
+                                  className="h-1.5"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Package className="h-16 w-16 mx-auto mb-4 opacity-30" />
+                  <p className="text-lg font-medium">No {activeTab === "targets" ? "target" : "output"} sheets today</p>
+                  <p className="text-sm mb-4">Start tracking finishing {activeTab === "targets" ? "targets" : "production"} for today</p>
+                  <Link to={activeTab === "targets" ? "/finishing/daily-target" : "/finishing/daily-output"}>
+                    <Button>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create {activeTab === "targets" ? "Target" : "Output"} Sheet
+                    </Button>
+                  </Link>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

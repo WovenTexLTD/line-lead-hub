@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -23,28 +24,28 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { format, isToday, parseISO, startOfWeek, endOfWeek, isWithinInterval } from "date-fns";
-import { FileText, Eye, Clock, Timer, Target, TrendingUp, Search } from "lucide-react";
+import { FileText, Eye, Clock, Timer, Target, TrendingUp, Search, Package } from "lucide-react";
 
 interface HourlyLog {
   id: string;
   hour_slot: string;
   sheet_id: string;
-  thread_cutting_target: number;
-  thread_cutting_actual: number;
-  inside_check_target: number;
-  inside_check_actual: number;
-  top_side_check_target: number;
-  top_side_check_actual: number;
-  buttoning_target: number;
-  buttoning_actual: number;
-  iron_target: number;
-  iron_actual: number;
-  get_up_target: number;
-  get_up_actual: number;
-  poly_target: number;
-  poly_actual: number;
-  carton_target: number;
-  carton_actual: number;
+  thread_cutting_target: number | null;
+  thread_cutting_actual: number | null;
+  inside_check_target: number | null;
+  inside_check_actual: number | null;
+  top_side_check_target: number | null;
+  top_side_check_actual: number | null;
+  buttoning_target: number | null;
+  buttoning_actual: number | null;
+  iron_target: number | null;
+  iron_actual: number | null;
+  get_up_target: number | null;
+  get_up_actual: number | null;
+  poly_target: number | null;
+  poly_actual: number | null;
+  carton_target: number | null;
+  carton_actual: number | null;
 }
 
 interface FinishingSheet {
@@ -80,6 +81,7 @@ export default function FinishingMySubmissions() {
   const [sheets, setSheets] = useState<FinishingSheet[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState<string>("all");
+  const [activeTab, setActiveTab] = useState<"targets" | "outputs">("targets");
 
   useEffect(() => {
     if (profile?.factory_id && user) {
@@ -138,7 +140,7 @@ export default function FinishingMySubmissions() {
     }
   };
 
-  // Calculate stats
+  // Calculate stats based on active tab
   const stats = useMemo(() => {
     const now = new Date();
     const weekStart = startOfWeek(now, { weekStartsOn: 1 });
@@ -159,26 +161,26 @@ export default function FinishingMySubmissions() {
           totalOTHoursThisWeek++;
         }
 
-        // Sum all targets and actuals for averages (using carton as the main metric)
+        // Sum all targets and actuals for averages
         const hourTarget =
-          log.thread_cutting_target +
-          log.inside_check_target +
-          log.top_side_check_target +
-          log.buttoning_target +
-          log.iron_target +
-          log.get_up_target +
-          log.poly_target +
-          log.carton_target;
+          (log.thread_cutting_target || 0) +
+          (log.inside_check_target || 0) +
+          (log.top_side_check_target || 0) +
+          (log.buttoning_target || 0) +
+          (log.iron_target || 0) +
+          (log.get_up_target || 0) +
+          (log.poly_target || 0) +
+          (log.carton_target || 0);
 
         const hourActual =
-          log.thread_cutting_actual +
-          log.inside_check_actual +
-          log.top_side_check_actual +
-          log.buttoning_actual +
-          log.iron_actual +
-          log.get_up_actual +
-          log.poly_actual +
-          log.carton_actual;
+          (log.thread_cutting_actual || 0) +
+          (log.inside_check_actual || 0) +
+          (log.top_side_check_actual || 0) +
+          (log.buttoning_actual || 0) +
+          (log.iron_actual || 0) +
+          (log.get_up_actual || 0) +
+          (log.poly_actual || 0) +
+          (log.carton_actual || 0);
 
         totalTargetSum += hourTarget;
         totalActualSum += hourActual;
@@ -193,9 +195,24 @@ export default function FinishingMySubmissions() {
     };
   }, [sheets]);
 
-  // Filtered sheets (only show if at least 1 hour logged)
+  // Filtered sheets based on tab (targets have target data, outputs have actual data)
   const filteredSheets = useMemo(() => {
     let result = sheets.filter((s) => s.hourly_logs_count > 0);
+
+    // Filter by tab - check if logs have target or actual data
+    if (activeTab === "targets") {
+      result = result.filter((s) =>
+        s.hourly_logs.some((log) =>
+          (log.poly_target || 0) > 0 || (log.carton_target || 0) > 0 || (log.iron_target || 0) > 0
+        )
+      );
+    } else {
+      result = result.filter((s) =>
+        s.hourly_logs.some((log) =>
+          (log.poly_actual || 0) > 0 || (log.carton_actual || 0) > 0 || (log.iron_actual || 0) > 0
+        )
+      );
+    }
 
     // Date filter
     if (dateFilter === "today") {
@@ -223,10 +240,36 @@ export default function FinishingMySubmissions() {
     }
 
     return result;
-  }, [sheets, dateFilter, searchQuery]);
+  }, [sheets, dateFilter, searchQuery, activeTab]);
 
   const handleViewSheet = (sheet: FinishingSheet) => {
-    navigate(`/finishing/daily-sheet?line=${sheet.line_id}&po=${sheet.work_order_id}`);
+    if (activeTab === "targets") {
+      navigate(`/finishing/daily-target?line=${sheet.line_id}&po=${sheet.work_order_id}`);
+    } else {
+      navigate(`/finishing/daily-output?line=${sheet.line_id}&po=${sheet.work_order_id}`);
+    }
+  };
+
+  const handleNewSheet = () => {
+    if (activeTab === "targets") {
+      navigate("/finishing/daily-target");
+    } else {
+      navigate("/finishing/daily-output");
+    }
+  };
+
+  // Calculate totals for a sheet based on active tab
+  const getSheetTotals = (sheet: FinishingSheet) => {
+    if (activeTab === "targets") {
+      return {
+        poly: sheet.hourly_logs.reduce((sum, log) => sum + (log.poly_target || 0), 0),
+        carton: sheet.hourly_logs.reduce((sum, log) => sum + (log.carton_target || 0), 0),
+      };
+    }
+    return {
+      poly: sheet.hourly_logs.reduce((sum, log) => sum + (log.poly_actual || 0), 0),
+      carton: sheet.hourly_logs.reduce((sum, log) => sum + (log.carton_actual || 0), 0),
+    };
   };
 
   if (loading) {
@@ -258,189 +301,220 @@ export default function FinishingMySubmissions() {
           <FileText className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold">My Finishing Submissions</h1>
         </div>
-        <Button onClick={() => navigate("/finishing/daily-sheet")}>
-          + New Daily Sheet
+        <Button onClick={handleNewSheet}>
+          + New {activeTab === "targets" ? "Target" : "Output"} Sheet
         </Button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-full bg-amber-100 dark:bg-amber-900/30">
-                <Timer className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">OT Hours This Week</p>
-                <p className="text-2xl font-bold">{stats.otHoursThisWeek}</p>
-              </div>
+      {/* Tabs for Targets vs Outputs */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "targets" | "outputs")}>
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="targets" className="flex items-center gap-2">
+            <Target className="h-4 w-4" />
+            Daily Targets
+          </TabsTrigger>
+          <TabsTrigger value="outputs" className="flex items-center gap-2">
+            <Package className="h-4 w-4" />
+            Daily Outputs
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value={activeTab} className="mt-6 space-y-6">
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-full bg-amber-100 dark:bg-amber-900/30">
+                    <Timer className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">OT Hours This Week</p>
+                    <p className="text-2xl font-bold">{stats.otHoursThisWeek}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-full bg-blue-100 dark:bg-blue-900/30">
+                    <Target className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Avg Hourly Target</p>
+                    <p className="text-2xl font-bold">{stats.avgHourlyTarget.toLocaleString()}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-full bg-green-100 dark:bg-green-900/30">
+                    <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Avg Hourly Actual</p>
+                    <p className="text-2xl font-bold">{stats.avgHourlyActual.toLocaleString()}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Filters */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by PO, style, buyer, line..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
             </div>
-          </CardContent>
-        </Card>
+            <Select value={dateFilter} onValueChange={setDateFilter}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Filter by date" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Time</SelectItem>
+                <SelectItem value="today">Today</SelectItem>
+                <SelectItem value="week">This Week</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-full bg-blue-100 dark:bg-blue-900/30">
-                <Target className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Avg Hourly Target</p>
-                <p className="text-2xl font-bold">{stats.avgHourlyTarget.toLocaleString()}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-full bg-green-100 dark:bg-green-900/30">
-                <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Avg Hourly Actual</p>
-                <p className="text-2xl font-bold">{stats.avgHourlyActual.toLocaleString()}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by PO, style, buyer, line..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <Select value={dateFilter} onValueChange={setDateFilter}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="Filter by date" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Time</SelectItem>
-            <SelectItem value="today">Today</SelectItem>
-            <SelectItem value="week">This Week</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Submission History</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {filteredSheets.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No submissions found</p>
-              <p className="text-sm mt-2">
-                {searchQuery || dateFilter !== "all"
-                  ? "Try adjusting your filters"
-                  : "Create a new daily sheet to start logging hourly production"}
-              </p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Line</TableHead>
-                  <TableHead>PO / Style</TableHead>
-                  <TableHead>Buyer</TableHead>
-                  <TableHead className="text-center">Hours Logged</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredSheets.map((sheet) => {
-                  const date = parseISO(sheet.production_date);
-                  const isTodaySheet = isToday(date);
-                  const hoursProgress = sheet.hourly_logs_count;
-                  const otHours = sheet.hourly_logs.filter((l) =>
-                    l.hour_slot.startsWith("OT-")
-                  ).length;
-
-                  return (
-                    <TableRow key={sheet.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span>{format(date, "MMM dd, yyyy")}</span>
-                          {isTodaySheet && (
-                            <Badge variant="secondary" className="text-xs">
-                              Today
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="font-medium">
-                          {sheet.line?.line_id || "—"}
-                        </span>
-                        {sheet.line?.name && (
-                          <span className="text-muted-foreground ml-1">
-                            ({sheet.line.name})
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">
-                            {sheet.po_no || sheet.work_order?.po_number || "—"}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            {sheet.style || sheet.work_order?.style || "—"}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {sheet.buyer || sheet.work_order?.buyer || "—"}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <Clock className="h-4 w-4 text-muted-foreground" />
-                          <Badge
-                            variant={
-                              hoursProgress >= 10
-                                ? "default"
-                                : hoursProgress > 0
-                                ? "secondary"
-                                : "outline"
-                            }
-                          >
-                            {hoursProgress}
-                          </Badge>
-                          {otHours > 0 && (
-                            <Badge variant="outline" className="text-amber-600 border-amber-300">
-                              +{otHours} OT
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleViewSheet(sheet)}
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          {isTodaySheet ? "Continue" : "View"}
-                        </Button>
-                      </TableCell>
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                {activeTab === "targets" ? "Target Submissions" : "Output Submissions"}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {filteredSheets.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No {activeTab === "targets" ? "target" : "output"} submissions found</p>
+                  <p className="text-sm mt-2">
+                    {searchQuery || dateFilter !== "all"
+                      ? "Try adjusting your filters"
+                      : `Create a new ${activeTab === "targets" ? "target" : "output"} sheet to start logging`}
+                  </p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Line</TableHead>
+                      <TableHead>PO / Style</TableHead>
+                      <TableHead>Buyer</TableHead>
+                      <TableHead className="text-center">Hours</TableHead>
+                      <TableHead className="text-right">Poly</TableHead>
+                      <TableHead className="text-right">Carton</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredSheets.map((sheet) => {
+                      const date = parseISO(sheet.production_date);
+                      const isTodaySheet = isToday(date);
+                      const hoursProgress = sheet.hourly_logs_count;
+                      const otHours = sheet.hourly_logs.filter((l) =>
+                        l.hour_slot.startsWith("OT-")
+                      ).length;
+                      const totals = getSheetTotals(sheet);
+
+                      return (
+                        <TableRow key={sheet.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <span>{format(date, "MMM dd, yyyy")}</span>
+                              {isTodaySheet && (
+                                <Badge variant="secondary" className="text-xs">
+                                  Today
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className="font-medium">
+                              {sheet.line?.line_id || "—"}
+                            </span>
+                            {sheet.line?.name && (
+                              <span className="text-muted-foreground ml-1">
+                                ({sheet.line.name})
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">
+                                {sheet.po_no || sheet.work_order?.po_number || "—"}
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                {sheet.style || sheet.work_order?.style || "—"}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {sheet.buyer || sheet.work_order?.buyer || "—"}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <Clock className="h-4 w-4 text-muted-foreground" />
+                              <Badge
+                                variant={
+                                  hoursProgress >= 10
+                                    ? "default"
+                                    : hoursProgress > 0
+                                    ? "secondary"
+                                    : "outline"
+                                }
+                              >
+                                {hoursProgress}
+                              </Badge>
+                              {otHours > 0 && (
+                                <Badge variant="outline" className="text-amber-600 border-amber-300">
+                                  +{otHours} OT
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <span className="font-mono font-bold text-success">
+                              {totals.poly.toLocaleString()}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <span className="font-mono font-bold text-warning">
+                              {totals.carton.toLocaleString()}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleViewSheet(sheet)}
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              {isTodaySheet ? "Continue" : "View"}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

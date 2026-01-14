@@ -3,11 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, CheckCircle2, AlertCircle, Clock } from "lucide-react";
+import { ArrowLeft, Loader2, CheckCircle2, AlertCircle, Clock, Target, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 
 interface SheetSummary {
@@ -19,6 +20,8 @@ interface SheetSummary {
   style: string;
   buyer: string;
   slots_submitted: number;
+  has_targets: boolean;
+  has_outputs: boolean;
 }
 
 interface Line {
@@ -34,6 +37,7 @@ export default function FinishingOverview() {
   const [sheets, setSheets] = useState<SheetSummary[]>([]);
   const [lines, setLines] = useState<Line[]>([]);
   const [linesWithoutSheet, setLinesWithoutSheet] = useState<Line[]>([]);
+  const [activeTab, setActiveTab] = useState<"targets" | "outputs">("targets");
 
   useEffect(() => {
     if (profile?.factory_id && isAdminOrHigher()) {
@@ -55,7 +59,7 @@ export default function FinishingOverview() {
 
       setLines(linesData || []);
 
-      // Fetch today's sheets with hourly log counts
+      // Fetch today's sheets with hourly log counts and data
       const { data: sheetsData, error } = await supabase
         .from("finishing_daily_sheets")
         .select(`
@@ -65,7 +69,7 @@ export default function FinishingOverview() {
           po_no,
           style,
           buyer,
-          finishing_hourly_logs(id)
+          finishing_hourly_logs(id, poly_target, poly_actual)
         `)
         .eq("factory_id", profile.factory_id)
         .eq("production_date", today);
@@ -74,6 +78,10 @@ export default function FinishingOverview() {
 
       const summaries: SheetSummary[] = (sheetsData || []).map((sheet: any) => {
         const line = linesData?.find(l => l.id === sheet.line_id);
+        const logs = sheet.finishing_hourly_logs || [];
+        const hasTargets = logs.some((l: any) => (l.poly_target || 0) > 0);
+        const hasOutputs = logs.some((l: any) => (l.poly_actual || 0) > 0);
+        
         return {
           id: sheet.id,
           line_id: sheet.line_id,
@@ -82,7 +90,9 @@ export default function FinishingOverview() {
           po_no: sheet.po_no || "-",
           style: sheet.style || "-",
           buyer: sheet.buyer || "-",
-          slots_submitted: sheet.finishing_hourly_logs?.length || 0,
+          slots_submitted: logs.length,
+          has_targets: hasTargets,
+          has_outputs: hasOutputs,
         };
       });
 
@@ -115,9 +125,22 @@ export default function FinishingOverview() {
     );
   }
 
-  const totalSlotsPossible = sheets.length * 10;
-  const totalSlotsSubmitted = sheets.reduce((acc, s) => acc + s.slots_submitted, 0);
+  // Filter sheets based on active tab
+  const filteredSheets = sheets.filter(s => 
+    activeTab === "targets" ? s.has_targets : s.has_outputs
+  );
+
+  const totalSlotsPossible = filteredSheets.length * 10;
+  const totalSlotsSubmitted = filteredSheets.reduce((acc, s) => acc + s.slots_submitted, 0);
   const overallProgress = totalSlotsPossible > 0 ? (totalSlotsSubmitted / totalSlotsPossible) * 100 : 0;
+
+  const handleSheetClick = (sheet: SheetSummary) => {
+    if (activeTab === "targets") {
+      navigate(`/finishing/daily-target?line=${sheet.line_id}&po=${sheet.work_order_id}`);
+    } else {
+      navigate(`/finishing/daily-output?line=${sheet.line_id}&po=${sheet.work_order_id}`);
+    }
+  };
 
   return (
     <div className="container max-w-4xl py-4 px-4 pb-8">
@@ -133,127 +156,152 @@ export default function FinishingOverview() {
         </div>
       </div>
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-full">
-                <CheckCircle2 className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{sheets.length}</p>
-                <p className="text-sm text-muted-foreground">Active Sheets</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-amber-500/10 rounded-full">
-                <Clock className="h-5 w-5 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{totalSlotsSubmitted} / {totalSlotsPossible}</p>
-                <p className="text-sm text-muted-foreground">Hours Logged</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-destructive/10 rounded-full">
-                <AlertCircle className="h-5 w-5 text-destructive" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{linesWithoutSheet.length}</p>
-                <p className="text-sm text-muted-foreground">Lines Without Sheet</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Tabs for Targets vs Outputs */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "targets" | "outputs")} className="mb-6">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="targets" className="flex items-center gap-2">
+            <Target className="h-4 w-4" />
+            Daily Targets
+          </TabsTrigger>
+          <TabsTrigger value="outputs" className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            Daily Outputs
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Overall Progress */}
-      <Card className="mb-6">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Overall Progress</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Progress value={overallProgress} className="h-3" />
-          <p className="text-sm text-muted-foreground mt-2">
-            {overallProgress.toFixed(0)}% of expected hourly logs submitted
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Active Sheets */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="text-base">Active Finishing Sheets</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {sheets.length === 0 ? (
-            <div className="p-6 text-center text-muted-foreground">
-              No finishing sheets created today
-            </div>
-          ) : (
-            <div className="divide-y">
-              {sheets.map((sheet) => (
-                <div
-                  key={sheet.id}
-                  className="p-4 flex items-center justify-between hover:bg-muted/50 cursor-pointer"
-                  onClick={() => navigate(`/finishing/daily-sheet?line=${sheet.line_id}&po=${sheet.work_order_id}`)}
-                >
+        <TabsContent value={activeTab} className="mt-6 space-y-6">
+          {/* Summary Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary/10 rounded-full">
+                    <CheckCircle2 className="h-5 w-5 text-primary" />
+                  </div>
                   <div>
-                    <p className="font-medium">{sheet.line_name}</p>
+                    <p className="text-2xl font-bold">{filteredSheets.length}</p>
                     <p className="text-sm text-muted-foreground">
-                      {sheet.po_no} • {sheet.style} • {sheet.buyer}
+                      Active {activeTab === "targets" ? "Target" : "Output"} Sheets
                     </p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Badge
-                      variant={
-                        sheet.slots_submitted >= 10
-                          ? "default"
-                          : sheet.slots_submitted > 0
-                          ? "secondary"
-                          : "outline"
-                      }
-                    >
-                      {sheet.slots_submitted}/10 hours
-                    </Badge>
-                    <Progress value={(sheet.slots_submitted / 10) * 100} className="w-20 h-2" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-amber-500/10 rounded-full">
+                    <Clock className="h-5 w-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{totalSlotsSubmitted} / {totalSlotsPossible}</p>
+                    <p className="text-sm text-muted-foreground">Hours Logged</p>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-destructive/10 rounded-full">
+                    <AlertCircle className="h-5 w-5 text-destructive" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{linesWithoutSheet.length}</p>
+                    <p className="text-sm text-muted-foreground">Lines Without Sheet</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-      {/* Lines Without Sheet */}
-      {linesWithoutSheet.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-amber-600" />
-              Lines Without Today's Sheet
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {linesWithoutSheet.map((line) => (
-                <Badge key={line.id} variant="outline" className="text-amber-600 border-amber-300">
-                  {line.name || line.line_id}
-                </Badge>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+          {/* Overall Progress */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Overall Progress</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Progress value={overallProgress} className="h-3" />
+              <p className="text-sm text-muted-foreground mt-2">
+                {overallProgress.toFixed(0)}% of expected hourly logs submitted
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Active Sheets */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                {activeTab === "targets" ? (
+                  <Target className="h-4 w-4 text-primary" />
+                ) : (
+                  <TrendingUp className="h-4 w-4 text-primary" />
+                )}
+                Active {activeTab === "targets" ? "Target" : "Output"} Sheets
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {filteredSheets.length === 0 ? (
+                <div className="p-6 text-center text-muted-foreground">
+                  No {activeTab === "targets" ? "target" : "output"} sheets created today
+                </div>
+              ) : (
+                <div className="divide-y">
+                  {filteredSheets.map((sheet) => (
+                    <div
+                      key={sheet.id}
+                      className="p-4 flex items-center justify-between hover:bg-muted/50 cursor-pointer"
+                      onClick={() => handleSheetClick(sheet)}
+                    >
+                      <div>
+                        <p className="font-medium">{sheet.line_name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {sheet.po_no} • {sheet.style} • {sheet.buyer}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Badge
+                          variant={
+                            sheet.slots_submitted >= 10
+                              ? "default"
+                              : sheet.slots_submitted > 0
+                              ? "secondary"
+                              : "outline"
+                          }
+                        >
+                          {sheet.slots_submitted}/10 hours
+                        </Badge>
+                        <Progress value={(sheet.slots_submitted / 10) * 100} className="w-20 h-2" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Lines Without Sheet */}
+          {linesWithoutSheet.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-amber-600" />
+                  Lines Without Today's Sheet
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {linesWithoutSheet.map((line) => (
+                    <Badge key={line.id} variant="outline" className="text-amber-600 border-amber-300">
+                      {line.name || line.line_id}
+                    </Badge>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
