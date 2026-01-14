@@ -172,20 +172,22 @@ export default function Insights() {
         .gte('production_date', prevStartDateStr)
         .lt('production_date', startDateStr);
 
-      // Fetch finishing data
-      const { data: finishingData } = await supabase
-        .from('production_updates_finishing')
-        .select('*, lines(name, line_id), work_orders(po_number, buyer, style, order_qty), blocker_types(name)')
+      // Fetch finishing data from finishing_daily_logs (poly + carton = output)
+      const { data: finishingDailyLogs } = await supabase
+        .from('finishing_daily_logs')
+        .select('*, lines(name, line_id), work_orders(po_number, buyer, style, order_qty)')
         .eq('factory_id', profile.factory_id)
+        .eq('log_type', 'OUTPUT')
         .gte('production_date', startDateStr)
         .lte('production_date', today)
         .order('production_date', { ascending: true });
 
-      // Fetch previous period finishing data
-      const { data: prevFinishingData } = await supabase
-        .from('production_updates_finishing')
-        .select('day_qc_pass, has_blocker')
+      // Fetch previous period finishing data from finishing_daily_logs
+      const { data: prevFinishingDailyLogs } = await supabase
+        .from('finishing_daily_logs')
+        .select('poly, carton')
         .eq('factory_id', profile.factory_id)
+        .eq('log_type', 'OUTPUT')
         .gte('production_date', prevStartDateStr)
         .lt('production_date', startDateStr);
 
@@ -217,7 +219,7 @@ export default function Insights() {
         dailyMap.set(u.production_date, existing);
       });
 
-      finishingData?.forEach(u => {
+      finishingDailyLogs?.forEach(u => {
         const existing = dailyMap.get(u.production_date) || {
           date: u.production_date,
           displayDate: new Date(u.production_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
@@ -228,8 +230,8 @@ export default function Insights() {
           blockers: 0,
           manpower: 0,
         };
-        existing.finishingQcPass += u.day_qc_pass || 0;
-        if (u.has_blocker) existing.blockers += 1;
+        // Total Finishing Output = poly + carton
+        existing.finishingQcPass += (u.poly || 0) + (u.carton || 0);
         dailyMap.set(u.production_date, existing);
       });
 
@@ -272,11 +274,10 @@ export default function Insights() {
 
       setLinePerformance(linePerformanceArray);
 
-      // Process blocker breakdown
+      // Process blocker breakdown (blockers only come from sewing now)
       const blockerMap = new Map<string, { count: number; impact: string }>();
       const allBlockers = [
         ...(sewingData?.filter(u => u.has_blocker) || []),
-        ...(finishingData?.filter(u => u.has_blocker) || []),
       ];
 
       allBlockers.forEach(b => {
@@ -321,17 +322,17 @@ export default function Insights() {
 
       setWorkOrderProgress(woProgressArray);
 
-      // Calculate summary
+      // Calculate summary - Total Finishing Output = poly + carton from finishing_daily_logs
       const totalSewingOutput = sewingData?.reduce((sum, u) => sum + (u.output_qty || 0), 0) || 0;
       const totalSewingTarget = sewingData?.reduce((sum, u) => sum + (u.target_qty || 0), 0) || 0;
-      const totalFinishingQcPass = finishingData?.reduce((sum, u) => sum + (u.day_qc_pass || 0), 0) || 0;
+      const totalFinishingQcPass = finishingDailyLogs?.reduce((sum, u) => sum + (u.poly || 0) + (u.carton || 0), 0) || 0;
       const totalManpower = sewingData?.reduce((sum, u) => sum + (u.manpower || 0), 0) || 0;
       
       const prevTotalOutput = prevSewingData?.reduce((sum, u) => sum + (u.output_qty || 0), 0) || 0;
       const prevTotalTarget = prevSewingData?.reduce((sum, u) => sum + (u.target_qty || 0), 0) || 0;
-      const prevTotalQcPass = prevFinishingData?.reduce((sum, u) => sum + (u.day_qc_pass || 0), 0) || 0;
+      const prevTotalQcPass = prevFinishingDailyLogs?.reduce((sum, u) => sum + (u.poly || 0) + (u.carton || 0), 0) || 0;
       const prevEfficiency = prevTotalTarget > 0 ? (prevTotalOutput / prevTotalTarget) * 100 : 0;
-      const prevTotalBlockers = (prevSewingData?.filter(u => u.has_blocker).length || 0) + (prevFinishingData?.filter(u => u.has_blocker).length || 0);
+      const prevTotalBlockers = prevSewingData?.filter(u => u.has_blocker).length || 0;
       const prevTotalManpower = prevSewingData?.reduce((sum, u) => sum + (u.manpower || 0), 0) || 0;
       const prevDaysWithData = new Set(prevSewingData?.map(u => u.output_qty) || []).size;
 
@@ -600,7 +601,7 @@ export default function Insights() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Package className="h-4 w-4" />
-              Total QC Pass
+              Total Finishing Output
             </CardTitle>
           </CardHeader>
           <CardContent>
