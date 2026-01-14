@@ -16,7 +16,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Package, Archive, PackageCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2, Package, Archive, PackageCheck, Plus, ExternalLink } from "lucide-react";
+import { ExtrasLedgerModal } from "./ExtrasLedgerModal";
 
 interface ExtrasOverviewData {
   work_order_id: string;
@@ -31,6 +34,8 @@ interface ExtrasOverviewData {
   available: number;
 }
 
+type FilterType = 'all' | 'available' | 'stocked' | 'consumed';
+
 interface ExtrasOverviewModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -40,6 +45,9 @@ export function ExtrasOverviewModal({ open, onOpenChange }: ExtrasOverviewModalP
   const { profile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<ExtrasOverviewData[]>([]);
+  const [filter, setFilter] = useState<FilterType>('all');
+  const [selectedPO, setSelectedPO] = useState<ExtrasOverviewData | null>(null);
+  const [showLedger, setShowLedger] = useState(false);
 
   useEffect(() => {
     if (open && profile?.factory_id) {
@@ -145,112 +153,190 @@ export function ExtrasOverviewModal({ open, onOpenChange }: ExtrasOverviewModalP
     { extras: 0, available: 0, stocked: 0, consumed: 0 }
   );
 
+  // Filter data based on selected filter
+  const filteredData = data.filter(item => {
+    switch (filter) {
+      case 'available':
+        return item.available > 0;
+      case 'stocked':
+        return item.stocked > 0;
+      case 'consumed':
+        return item.consumed > 0;
+      default:
+        return true;
+    }
+  });
+
+  const handleOpenLedger = (item: ExtrasOverviewData) => {
+    setSelectedPO(item);
+    setShowLedger(true);
+  };
+
+  const handleLedgerChange = () => {
+    fetchExtrasOverview();
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
-            Extras Overview - All POs
-          </DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Extras Overview - All POs
+            </DialogTitle>
+          </DialogHeader>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-4 gap-3 mb-4">
-          <div className="bg-muted/50 rounded-lg p-3 text-center">
-            <p className="text-2xl font-bold font-mono">{totals.extras.toLocaleString()}</p>
-            <p className="text-xs text-muted-foreground">Total Extras</p>
+          {/* Summary Cards */}
+          <div className="grid grid-cols-4 gap-3 mb-4">
+            <div className="bg-muted/50 rounded-lg p-3 text-center">
+              <p className="text-2xl font-bold font-mono">{totals.extras.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">Total Extras</p>
+            </div>
+            <div className="bg-warning/10 rounded-lg p-3 text-center">
+              <p className="text-2xl font-bold font-mono text-warning">{totals.available.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                <Package className="h-3 w-3" /> Available
+              </p>
+            </div>
+            <div className="bg-primary/10 rounded-lg p-3 text-center">
+              <p className="text-2xl font-bold font-mono text-primary">{totals.stocked.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                <Archive className="h-3 w-3" /> Stocked
+              </p>
+            </div>
+            <div className="bg-muted rounded-lg p-3 text-center">
+              <p className="text-2xl font-bold font-mono text-muted-foreground">{totals.consumed.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                <PackageCheck className="h-3 w-3" /> Consumed
+              </p>
+            </div>
           </div>
-          <div className="bg-warning/10 rounded-lg p-3 text-center">
-            <p className="text-2xl font-bold font-mono text-warning">{totals.available.toLocaleString()}</p>
-            <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
-              <Package className="h-3 w-3" /> Available
-            </p>
-          </div>
-          <div className="bg-primary/10 rounded-lg p-3 text-center">
-            <p className="text-2xl font-bold font-mono text-primary">{totals.stocked.toLocaleString()}</p>
-            <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
-              <Archive className="h-3 w-3" /> Stocked
-            </p>
-          </div>
-          <div className="bg-muted rounded-lg p-3 text-center">
-            <p className="text-2xl font-bold font-mono text-muted-foreground">{totals.consumed.toLocaleString()}</p>
-            <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
-              <PackageCheck className="h-3 w-3" /> Consumed
-            </p>
-          </div>
-        </div>
 
-        {loading ? (
-          <div className="flex justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : data.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            No POs with extras found
-          </div>
-        ) : (
-          <div className="border rounded-lg overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>PO Number</TableHead>
-                  <TableHead>Buyer / Style</TableHead>
-                  <TableHead className="text-right">Order Qty</TableHead>
-                  <TableHead className="text-right">Total Carton</TableHead>
-                  <TableHead className="text-right">Extras</TableHead>
-                  <TableHead className="text-right">Available</TableHead>
-                  <TableHead className="text-right">Stocked</TableHead>
-                  <TableHead className="text-right">Consumed</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.map((item) => (
-                  <TableRow key={item.work_order_id}>
-                    <TableCell className="font-mono font-medium">{item.po_number}</TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium text-sm">{item.buyer}</p>
-                        <p className="text-xs text-muted-foreground">{item.style}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right font-mono">{item.order_qty.toLocaleString()}</TableCell>
-                    <TableCell className="text-right font-mono">{item.total_carton.toLocaleString()}</TableCell>
-                    <TableCell className="text-right">
-                      <Badge variant="secondary" className="font-mono">
-                        +{item.extras_total.toLocaleString()}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {item.available > 0 ? (
-                        <Badge variant="warning" className="font-mono">
-                          {item.available.toLocaleString()}
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground font-mono">0</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {item.stocked > 0 ? (
-                        <span className="font-mono text-primary font-medium">{item.stocked.toLocaleString()}</span>
-                      ) : (
-                        <span className="text-muted-foreground font-mono">0</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {item.consumed > 0 ? (
-                        <span className="font-mono text-muted-foreground">{item.consumed.toLocaleString()}</span>
-                      ) : (
-                        <span className="text-muted-foreground font-mono">0</span>
-                      )}
-                    </TableCell>
+          {/* Filter Tabs */}
+          <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterType)}>
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="all" className="gap-1">
+                All
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                  {data.length}
+                </Badge>
+              </TabsTrigger>
+              <TabsTrigger value="available" className="gap-1">
+                <Package className="h-3 w-3" />
+                Available
+                <Badge variant="warning" className="ml-1 h-5 px-1.5 text-xs">
+                  {data.filter(d => d.available > 0).length}
+                </Badge>
+              </TabsTrigger>
+              <TabsTrigger value="stocked" className="gap-1">
+                <Archive className="h-3 w-3" />
+                Stocked
+                <Badge variant="default" className="ml-1 h-5 px-1.5 text-xs">
+                  {data.filter(d => d.stocked > 0).length}
+                </Badge>
+              </TabsTrigger>
+              <TabsTrigger value="consumed" className="gap-1">
+                <PackageCheck className="h-3 w-3" />
+                Consumed
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                  {data.filter(d => d.consumed > 0).length}
+                </Badge>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : filteredData.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              {filter === 'all' ? 'No POs with extras found' : `No POs with ${filter} extras`}
+            </div>
+          ) : (
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>PO Number</TableHead>
+                    <TableHead>Buyer / Style</TableHead>
+                    <TableHead className="text-right">Extras</TableHead>
+                    <TableHead className="text-right">Available</TableHead>
+                    <TableHead className="text-right">Stocked</TableHead>
+                    <TableHead className="text-right">Consumed</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+                </TableHeader>
+                <TableBody>
+                  {filteredData.map((item) => (
+                    <TableRow key={item.work_order_id}>
+                      <TableCell className="font-mono font-medium">{item.po_number}</TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium text-sm">{item.buyer}</p>
+                          <p className="text-xs text-muted-foreground">{item.style}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Badge variant="secondary" className="font-mono">
+                          +{item.extras_total.toLocaleString()}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {item.available > 0 ? (
+                          <Badge variant="warning" className="font-mono">
+                            {item.available.toLocaleString()}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground font-mono">0</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {item.stocked > 0 ? (
+                          <span className="font-mono text-primary font-medium">{item.stocked.toLocaleString()}</span>
+                        ) : (
+                          <span className="text-muted-foreground font-mono">0</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {item.consumed > 0 ? (
+                          <span className="font-mono text-muted-foreground">{item.consumed.toLocaleString()}</span>
+                        ) : (
+                          <span className="text-muted-foreground font-mono">0</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleOpenLedger(item)}
+                          className="gap-1"
+                        >
+                          <Plus className="h-3 w-3" />
+                          Manage
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Ledger Modal for selected PO */}
+      {selectedPO && (
+        <ExtrasLedgerModal
+          open={showLedger}
+          onOpenChange={setShowLedger}
+          workOrderId={selectedPO.work_order_id}
+          poNumber={selectedPO.po_number}
+          extrasAvailable={selectedPO.available}
+          onLedgerChange={handleLedgerChange}
+        />
+      )}
+    </>
   );
 }
