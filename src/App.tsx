@@ -110,6 +110,8 @@ function AppRoutes() {
         <Route path="/finishing/daily-output" element={<SubscriptionGate><FinishingDailyOutput /></SubscriptionGate>} />
         <Route path="/finishing/my-submissions" element={<SubscriptionGate><FinishingMySubmissions /></SubscriptionGate>} />
         <Route path="/finishing/overview" element={<SubscriptionGate><FinishingOverview /></SubscriptionGate>} />
+        <Route path="/finishing/hourly-archive" element={<SubscriptionGate><FinishingHourlyArchive /></SubscriptionGate>} />
+        <Route path="/finishing/daily-summary" element={<SubscriptionGate><FinishingDailySummary /></SubscriptionGate>} />
         <Route path="/morning-targets" element={<SubscriptionGate><MorningTargets /></SubscriptionGate>} />
         <Route path="/end-of-day" element={<SubscriptionGate><EndOfDay /></SubscriptionGate>} />
         <Route path="/report-blocker" element={<SubscriptionGate><ReportBlocker /></SubscriptionGate>} />
