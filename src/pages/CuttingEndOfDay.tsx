@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
@@ -68,7 +68,7 @@ export default function CuttingEndOfDay() {
   const [selectedWorkOrder, setSelectedWorkOrder] = useState<WorkOrder | null>(null);
   const [selectedLine, setSelectedLine] = useState<Line | null>(null);
 
-  // Actual fields (same as targets form)
+  // Daily Actuals fields (same as original form)
   const [dayCutting, setDayCutting] = useState("");
   const [dayInput, setDayInput] = useState("");
 
@@ -492,7 +492,7 @@ export default function CuttingEndOfDay() {
           </Card>
         )}
 
-        {/* Daily Actuals (same fields as targets) */}
+        {/* Daily Actuals */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
@@ -527,27 +527,27 @@ export default function CuttingEndOfDay() {
           </CardContent>
         </Card>
 
-        {/* Cumulative Totals - Only for Actuals form */}
-        {selectedWorkOrder && (dayCutting || dayInput) && (
-          <Card>
+        {/* Computed Totals (only on End of Day form) */}
+        {selectedWorkOrder && (
+          <Card className="bg-muted/50">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Cumulative Totals</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="bg-muted/50 rounded-lg p-4 text-center">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">TOTAL CUTTING</p>
-                  <p className="text-2xl font-bold">{totalCutting.toLocaleString()}</p>
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div className="p-3 rounded-lg bg-background">
+                  <p className="text-2xl font-bold text-primary">{totalCutting.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground">TOTAL CUTTING</p>
                 </div>
-                <div className="bg-muted/50 rounded-lg p-4 text-center">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">TOTAL INPUT</p>
-                  <p className="text-2xl font-bold text-success">{totalInput.toLocaleString()}</p>
+                <div className="p-3 rounded-lg bg-background">
+                  <p className="text-2xl font-bold text-primary">{totalInput.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground">TOTAL INPUT</p>
                 </div>
-                <div className="bg-muted/50 rounded-lg p-4 text-center">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">BALANCE</p>
-                  <p className={`text-2xl font-bold ${balance < 0 ? 'text-destructive' : ''}`}>
+                <div className="p-3 rounded-lg bg-background">
+                  <p className={`text-2xl font-bold ${balance < 0 ? 'text-destructive' : 'text-primary'}`}>
                     {balance.toLocaleString()}
                   </p>
+                  <p className="text-xs text-muted-foreground">BALANCE</p>
                 </div>
               </div>
             </CardContent>

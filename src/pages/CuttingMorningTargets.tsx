@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
@@ -68,9 +68,12 @@ export default function CuttingMorningTargets() {
   const [selectedWorkOrder, setSelectedWorkOrder] = useState<WorkOrder | null>(null);
   const [selectedLine, setSelectedLine] = useState<Line | null>(null);
 
-  // Target fields (same as actuals form)
-  const [dayCutting, setDayCutting] = useState("");
-  const [dayInput, setDayInput] = useState("");
+  // Target Capacities fields (from original form)
+  const [manPower, setManPower] = useState("");
+  const [markerCapacity, setMarkerCapacity] = useState("");
+  const [layCapacity, setLayCapacity] = useState("");
+  const [cuttingCapacity, setCuttingCapacity] = useState("");
+  const [underQty, setUnderQty] = useState("0");
 
   // Editing state
   const [isEditing, setIsEditing] = useState(false);
@@ -160,15 +163,21 @@ export default function CuttingMorningTargets() {
       if (data) {
         setIsEditing(true);
         setExistingTarget(data);
-        // Use marker_capacity and lay_capacity as our day_cutting and day_input targets
-        setDayCutting(String(data.cutting_capacity || 0));
-        setDayInput(String(data.lay_capacity || 0));
+        setManPower(String(data.man_power || 0));
+        setMarkerCapacity(String(data.marker_capacity || 0));
+        setLayCapacity(String(data.lay_capacity || 0));
+        setCuttingCapacity(String(data.cutting_capacity || 0));
+        setUnderQty(String(data.under_qty || 0));
       } else {
         setIsEditing(false);
         setExistingTarget(null);
-        if (!dayCutting && !dayInput) {
-          setDayCutting("");
-          setDayInput("");
+        // Reset fields if not already filled
+        if (!manPower && !markerCapacity && !layCapacity && !cuttingCapacity) {
+          setManPower("");
+          setMarkerCapacity("");
+          setLayCapacity("");
+          setCuttingCapacity("");
+          setUnderQty("0");
         }
       }
     } catch (error) {
@@ -185,8 +194,10 @@ export default function CuttingMorningTargets() {
 
     if (!selectedLine) newErrors.line = "Line is required";
     if (!selectedWorkOrder) newErrors.workOrder = "PO is required";
-    if (!dayCutting || parseInt(dayCutting) < 0) newErrors.dayCutting = "Day Cutting Target is required";
-    if (!dayInput || parseInt(dayInput) < 0) newErrors.dayInput = "Day Input Target is required";
+    if (!manPower || parseInt(manPower) < 0) newErrors.manPower = "Man Power is required";
+    if (!markerCapacity || parseInt(markerCapacity) < 0) newErrors.markerCapacity = "Marker Capacity is required";
+    if (!layCapacity || parseInt(layCapacity) < 0) newErrors.layCapacity = "Lay Capacity is required";
+    if (!cuttingCapacity || parseInt(cuttingCapacity) < 0) newErrors.cuttingCapacity = "Cutting Capacity is required";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -220,7 +231,6 @@ export default function CuttingMorningTargets() {
         isLate = now > cutoffTime;
       }
 
-      // Map day_cutting to cutting_capacity and day_input to lay_capacity for storage
       const targetData = {
         factory_id: profile.factory_id,
         production_date: today,
@@ -233,11 +243,11 @@ export default function CuttingMorningTargets() {
         po_no: selectedWorkOrder.po_number,
         colour: selectedWorkOrder.color || "",
         order_qty: selectedWorkOrder.order_qty,
-        man_power: 0,
-        marker_capacity: 0,
-        lay_capacity: parseInt(dayInput) || 0, // Store day_input target here
-        cutting_capacity: parseInt(dayCutting) || 0, // Store day_cutting target here
-        under_qty: 0,
+        man_power: parseInt(manPower),
+        marker_capacity: parseInt(markerCapacity),
+        lay_capacity: parseInt(layCapacity),
+        cutting_capacity: parseInt(cuttingCapacity),
+        under_qty: parseInt(underQty) || 0,
         is_late: isLate,
       };
 
@@ -446,37 +456,71 @@ export default function CuttingMorningTargets() {
           </Card>
         )}
 
-        {/* Daily Targets (same fields as actuals) */}
+        {/* Target Capacities */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Scissors className="h-4 w-4" />
-              Daily Targets
+              Target Capacities
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>DAY CUTTING (Target) *</Label>
+              <Label>MAN POWER *</Label>
               <Input
                 type="number"
-                value={dayCutting}
-                onChange={(e) => setDayCutting(e.target.value)}
+                value={manPower}
+                onChange={(e) => setManPower(e.target.value)}
                 placeholder="0"
-                className={errors.dayCutting ? "border-destructive" : ""}
+                className={errors.manPower ? "border-destructive" : ""}
               />
-              {errors.dayCutting && <p className="text-sm text-destructive">{errors.dayCutting}</p>}
+              {errors.manPower && <p className="text-sm text-destructive">{errors.manPower}</p>}
             </div>
 
             <div className="space-y-2">
-              <Label>DAY INPUT (Target) * (to Sewing)</Label>
+              <Label>MARKER CAPACITY *</Label>
               <Input
                 type="number"
-                value={dayInput}
-                onChange={(e) => setDayInput(e.target.value)}
+                value={markerCapacity}
+                onChange={(e) => setMarkerCapacity(e.target.value)}
                 placeholder="0"
-                className={errors.dayInput ? "border-destructive" : ""}
+                className={errors.markerCapacity ? "border-destructive" : ""}
               />
-              {errors.dayInput && <p className="text-sm text-destructive">{errors.dayInput}</p>}
+              {errors.markerCapacity && <p className="text-sm text-destructive">{errors.markerCapacity}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label>LAY CAPACITY *</Label>
+              <Input
+                type="number"
+                value={layCapacity}
+                onChange={(e) => setLayCapacity(e.target.value)}
+                placeholder="0"
+                className={errors.layCapacity ? "border-destructive" : ""}
+              />
+              {errors.layCapacity && <p className="text-sm text-destructive">{errors.layCapacity}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label>CUTTING CAPACITY *</Label>
+              <Input
+                type="number"
+                value={cuttingCapacity}
+                onChange={(e) => setCuttingCapacity(e.target.value)}
+                placeholder="0"
+                className={errors.cuttingCapacity ? "border-destructive" : ""}
+              />
+              {errors.cuttingCapacity && <p className="text-sm text-destructive">{errors.cuttingCapacity}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label>UNDER QTY</Label>
+              <Input
+                type="number"
+                value={underQty}
+                onChange={(e) => setUnderQty(e.target.value)}
+                placeholder="0"
+              />
             </div>
           </CardContent>
         </Card>
@@ -494,9 +538,9 @@ export default function CuttingMorningTargets() {
               Submitting...
             </>
           ) : isEditing ? (
-            "Update Daily Cutting Targets"
+            "Update Cutting Targets"
           ) : (
-            "Submit Daily Cutting Targets"
+            "Submit Cutting Targets"
           )}
         </Button>
       </form>
