@@ -497,6 +497,14 @@ export default function CuttingAllSubmissions() {
                             {actual.balance?.toLocaleString() || "—"}
                           </span>
                         </div>
+                        {actual.leftover_recorded && (
+                          <div className="flex items-center gap-2 pt-2 mt-2 border-t">
+                            <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30">
+                              <Package className="h-3 w-3 mr-1" />
+                              Left Over: {actual.leftover_quantity} {actual.leftover_unit}
+                            </Badge>
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -539,6 +547,12 @@ export default function CuttingAllSubmissions() {
             total_input: selectedActual.total_input,
             balance: selectedActual.balance,
             submitted_at: selectedActual.submitted_at,
+            leftover_recorded: selectedActual.leftover_recorded,
+            leftover_type: selectedActual.leftover_type,
+            leftover_unit: selectedActual.leftover_unit,
+            leftover_quantity: selectedActual.leftover_quantity,
+            leftover_notes: selectedActual.leftover_notes,
+            leftover_location: selectedActual.leftover_location,
           }}
           open={!!selectedActual}
           onOpenChange={(open) => !open && setSelectedActual(null)}
