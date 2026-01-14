@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays } from "date-fns";
 import { toast } from "sonner";
-import { Loader2, Search, Scissors } from "lucide-react";
+import { Loader2, Search, Scissors, Package } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -42,6 +42,9 @@ interface CuttingSubmission {
   day_input: number;
   total_input: number | null;
   balance: number | null;
+  leftover_recorded: boolean | null;
+  leftover_quantity: number | null;
+  leftover_unit: string | null;
   lines?: { line_id: string; name: string | null };
   work_orders?: { po_number: string; buyer: string; style: string };
 }
@@ -119,6 +122,9 @@ export function CuttingSubmissionsTable({
           day_input: actual.day_input,
           total_input: actual.total_input,
           balance: actual.balance,
+          leftover_recorded: actual.leftover_recorded,
+          leftover_quantity: actual.leftover_quantity,
+          leftover_unit: actual.leftover_unit,
           lines: actual.lines,
           work_orders: actual.work_orders,
         };
@@ -146,11 +152,27 @@ export function CuttingSubmissionsTable({
   const stats = useMemo(() => {
     const today = format(new Date(), "yyyy-MM-dd");
     const todaySubmissions = submissions.filter(s => s.production_date === today);
+    
+    // Calculate total leftover fabric in yards
+    const totalLeftoverYards = submissions
+      .filter(s => s.leftover_recorded && s.leftover_quantity && s.leftover_quantity > 0)
+      .reduce((sum, s) => {
+        const qty = s.leftover_quantity || 0;
+        const unit = s.leftover_unit || "pcs";
+        // Convert to yards based on unit
+        if (unit === "yard") return sum + qty;
+        if (unit === "meter") return sum + qty * 1.0936; // meters to yards
+        if (unit === "kg") return sum + qty * 3; // approximate: 1kg ≈ 3 yards
+        if (unit === "roll") return sum + qty * 50; // approximate: 1 roll ≈ 50 yards
+        return sum + qty; // pcs and other units as-is
+      }, 0);
+    
     return {
       total: submissions.length,
       todayCount: todaySubmissions.length,
       totalCutting: submissions.reduce((sum, s) => sum + (s.day_cutting || 0), 0),
       totalInput: submissions.reduce((sum, s) => sum + (s.day_input || 0), 0),
+      totalLeftoverYards: Math.round(totalLeftoverYards * 100) / 100,
     };
   }, [submissions]);
 
@@ -174,8 +196,11 @@ export function CuttingSubmissionsTable({
         </Card>
         <Card className="border-l-4 border-l-amber-500">
           <CardContent className="pt-4 pb-3">
-            <p className="text-xs text-muted-foreground uppercase">Today</p>
-            <p className="text-xl font-bold">{stats.todayCount}</p>
+            <p className="text-xs text-muted-foreground uppercase flex items-center gap-1">
+              <Package className="h-3 w-3" />
+              Left Over Fabric
+            </p>
+            <p className="text-xl font-bold">{stats.totalLeftoverYards.toLocaleString()} <span className="text-sm font-normal text-muted-foreground">yards</span></p>
           </CardContent>
         </Card>
         <Card className="border-l-4 border-l-green-500">
