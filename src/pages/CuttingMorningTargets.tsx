@@ -543,12 +543,12 @@ export default function CuttingMorningTargets() {
           </CardContent>
         </Card>
 
-        {/* Target Daily Actuals */}
+        {/* Target Daily Output */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Scissors className="h-4 w-4" />
-              Target Daily Actuals
+              Target Daily Output
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
