@@ -455,7 +455,6 @@ export default function ThisWeek() {
                 <tr className="border-b">
                   <th className="text-left py-2 font-medium whitespace-nowrap">Day</th>
                   <th className="text-right py-2 font-medium whitespace-nowrap">Sewing Output</th>
-                  <th className="text-right py-2 font-medium whitespace-nowrap">Finishing Target</th>
                   <th className="text-right py-2 font-medium whitespace-nowrap">Finishing Output</th>
                   <th className="text-right py-2 font-medium whitespace-nowrap">Updates</th>
                   <th className="text-right py-2 font-medium whitespace-nowrap">Blockers</th>
@@ -472,7 +471,6 @@ export default function ThisWeek() {
                         {isToday && <span className="ml-2 text-xs text-primary">(Today)</span>}
                       </td>
                       <td className="text-right font-mono whitespace-nowrap">{isFuture ? '-' : day.sewingOutput.toLocaleString()}</td>
-                      <td className="text-right font-mono whitespace-nowrap">{isFuture ? '-' : day.finishingTarget.toLocaleString()}</td>
                       <td className="text-right font-mono whitespace-nowrap">{isFuture ? '-' : day.finishingOutput.toLocaleString()}</td>
                       <td className="text-right whitespace-nowrap">{isFuture ? '-' : day.sewingUpdates + day.finishingUpdates}</td>
                       <td className={`text-right whitespace-nowrap ${day.blockers > 0 ? 'text-warning font-medium' : ''}`}>
