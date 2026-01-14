@@ -481,6 +481,7 @@
     "reject": "রিজেক্ট",
     "rework": "রিওয়ার্ক",
     "cumulativeGoodTotal": "ক্রমবর্ধমান মোট ভালো",
+    "autoCalculated": "স্বয়ংক্রিয়ভাবে গণনা করা (ভালো আউটপুট + রিওয়ার্ক)",
     "qcProductionOutput": "QC ও উৎপাদন আউটপুট",
     "dayQcPass": "দৈনিক QC পাস",
     "totalQcPass": "মোট QC পাস",

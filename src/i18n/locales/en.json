@@ -483,6 +483,7 @@
     "reject": "Reject",
     "rework": "Rework",
     "cumulativeGoodTotal": "Cumulative Good Total",
+    "autoCalculated": "Auto-calculated from Good Output + Rework",
     "qcProductionOutput": "QC & Production Output",
     "dayQcPass": "Day QC Pass",
     "totalQcPass": "Total QC Pass",
