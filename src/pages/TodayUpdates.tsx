@@ -19,6 +19,7 @@ import { Loader2, Factory, Package, Search, Download, RefreshCw, Scissors, Archi
 import { SubmissionDetailModal } from "@/components/SubmissionDetailModal";
 import { CuttingDetailModal } from "@/components/CuttingDetailModal";
 import { StorageBinCardDetailModal } from "@/components/StorageBinCardDetailModal";
+import { FinishingLogDetailModal } from "@/components/FinishingLogDetailModal";
 import { ExportSubmissionsDialog } from "@/components/ExportSubmissionsDialog";
 
 interface SewingUpdate {
@@ -156,6 +157,8 @@ export default function TodayUpdates() {
   const [storageModalOpen, setStorageModalOpen] = useState(false);
   const [storageLoading, setStorageLoading] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [selectedFinishingLog, setSelectedFinishingLog] = useState<FinishingDailyLog | null>(null);
+  const [finishingLogModalOpen, setFinishingLogModalOpen] = useState(false);
 
   useEffect(() => {
     if (profile?.factory_id) {
@@ -279,11 +282,8 @@ export default function TodayUpdates() {
   };
 
   const handleFinishingClick = (log: FinishingDailyLog) => {
-    if (log.log_type === 'TARGET') {
-      navigate(`/finishing/daily-target?id=${log.id}`);
-    } else {
-      navigate(`/finishing/daily-output?id=${log.id}`);
-    }
+    setSelectedFinishingLog(log);
+    setFinishingLogModalOpen(true);
   };
 
   const handleCuttingClick = (cutting: CuttingActual) => {
@@ -919,6 +919,36 @@ export default function TodayUpdates() {
         transactions={binCardTransactions}
         open={storageModalOpen}
         onOpenChange={setStorageModalOpen}
+      />
+
+      {/* Finishing Log Detail Modal */}
+      <FinishingLogDetailModal
+        log={selectedFinishingLog ? {
+          ...selectedFinishingLog,
+          work_order_id: null,
+          shift: null,
+          thread_cutting: selectedFinishingLog.thread_cutting || 0,
+          inside_check: selectedFinishingLog.inside_check || 0,
+          top_side_check: selectedFinishingLog.top_side_check || 0,
+          buttoning: selectedFinishingLog.buttoning || 0,
+          iron: selectedFinishingLog.iron || 0,
+          get_up: selectedFinishingLog.get_up || 0,
+          poly: selectedFinishingLog.poly || 0,
+          carton: selectedFinishingLog.carton || 0,
+          is_locked: false,
+          submitted_at: selectedFinishingLog.submitted_at,
+          line: selectedFinishingLog.lines ? {
+            line_id: selectedFinishingLog.lines.line_id,
+            name: selectedFinishingLog.lines.name
+          } : null,
+          work_order: selectedFinishingLog.work_orders ? {
+            po_number: selectedFinishingLog.work_orders.po_number,
+            style: selectedFinishingLog.work_orders.style,
+            buyer: selectedFinishingLog.work_orders.buyer
+          } : null
+        } : null}
+        open={finishingLogModalOpen}
+        onOpenChange={setFinishingLogModalOpen}
       />
 
       {/* Export Dialog */}

@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +13,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, Package, Search, ClipboardList, ExternalLink, Target, TrendingUp } from "lucide-react";
+import { Loader2, Package, Search, ClipboardList, Eye, Target, TrendingUp } from "lucide-react";
+import { FinishingLogDetailModal } from "@/components/FinishingLogDetailModal";
 import type { Database } from "@/integrations/supabase/types";
 
 type FinishingLogType = Database["public"]["Enums"]["finishing_log_type"];
@@ -54,6 +54,8 @@ export function FinishingDailySheetsTable({
   const [logs, setLogs] = useState<DailyLogRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"targets" | "outputs">("targets");
+  const [selectedLog, setSelectedLog] = useState<DailyLogRow | null>(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
 
   useEffect(() => {
     fetchLogs();
@@ -249,68 +251,105 @@ export function FinishingDailySheetsTable({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredLogs.map((log) => (
-                      <TableRow key={log.id} className="hover:bg-muted/50">
-                        <TableCell>
-                          <div>
-                            <p className="font-mono text-sm">{formatDate(log.production_date)}</p>
-                            <p className="text-xs text-muted-foreground">{formatTime(log.submitted_at)}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className="font-medium">{log.line_name}</span>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{log.po_number || "-"}</p>
-                            <p className="text-xs text-muted-foreground">{log.style || "-"}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <span className="font-mono font-bold text-success">
-                            {log.poly.toLocaleString()}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <span className="font-mono font-bold text-warning">
-                            {log.carton.toLocaleString()}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          {log.is_locked ? (
-                            <Badge variant="secondary">Locked</Badge>
-                          ) : (
-                            <Badge variant="default" className="bg-success hover:bg-success/90">
-                              Submitted
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Link to={activeTab === "targets" 
-                            ? `/finishing/daily-target?id=${log.id}`
-                            : `/finishing/daily-output?id=${log.id}`}>
+                      {filteredLogs.map((log) => (
+                        <TableRow 
+                          key={log.id} 
+                          className="hover:bg-muted/50 cursor-pointer"
+                          onClick={() => {
+                            setSelectedLog(log);
+                            setDetailModalOpen(true);
+                          }}
+                        >
+                          <TableCell>
+                            <div>
+                              <p className="font-mono text-sm">{formatDate(log.production_date)}</p>
+                              <p className="text-xs text-muted-foreground">{formatTime(log.submitted_at)}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className="font-medium">{log.line_name}</span>
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{log.po_number || "-"}</p>
+                              <p className="text-xs text-muted-foreground">{log.style || "-"}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <span className="font-mono font-bold text-success">
+                              {log.poly.toLocaleString()}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <span className="font-mono font-bold text-warning">
+                              {log.carton.toLocaleString()}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            {log.is_locked ? (
+                              <Badge variant="secondary">Locked</Badge>
+                            ) : (
+                              <Badge variant="default" className="bg-success hover:bg-success/90">
+                                Submitted
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
                             <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <ExternalLink className="h-4 w-4" />
+                              <Eye className="h-4 w-4" />
                             </Button>
-                          </Link>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {filteredLogs.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
-                          <Package className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                          <p>No {activeTab === "targets" ? "targets" : "outputs"} found</p>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {filteredLogs.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                            <Package className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                            <p>No {activeTab === "targets" ? "targets" : "outputs"} found</p>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
                 </Table>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Finishing Log Detail Modal */}
+      <FinishingLogDetailModal
+        log={selectedLog ? {
+          id: selectedLog.id,
+          production_date: selectedLog.production_date,
+          line_id: selectedLog.line_name,
+          work_order_id: null,
+          log_type: selectedLog.log_type,
+          shift: null,
+          thread_cutting: selectedLog.thread_cutting,
+          inside_check: selectedLog.inside_check,
+          top_side_check: selectedLog.top_side_check,
+          buttoning: selectedLog.buttoning,
+          iron: selectedLog.iron,
+          get_up: selectedLog.get_up,
+          poly: selectedLog.poly,
+          carton: selectedLog.carton,
+          remarks: null,
+          submitted_at: selectedLog.submitted_at,
+          is_locked: selectedLog.is_locked,
+          line: {
+            line_id: selectedLog.line_name,
+            name: selectedLog.line_name
+          },
+          work_order: selectedLog.po_number ? {
+            po_number: selectedLog.po_number,
+            style: selectedLog.style || "",
+            buyer: ""
+          } : null
+        } : null}
+        open={detailModalOpen}
+        onOpenChange={setDetailModalOpen}
+      />
     </div>
   );
 }
