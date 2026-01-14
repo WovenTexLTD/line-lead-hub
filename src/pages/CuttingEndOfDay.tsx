@@ -523,41 +523,6 @@ export default function CuttingEndOfDay() {
           </Card>
         )}
 
-        {/* Daily Actuals */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Scissors className="h-4 w-4" />
-              Daily Actuals
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>DAY CUTTING *</Label>
-              <Input
-                type="number"
-                value={dayCutting}
-                onChange={(e) => setDayCutting(e.target.value)}
-                placeholder="0"
-                className={errors.dayCutting ? "border-destructive" : ""}
-              />
-              {errors.dayCutting && <p className="text-sm text-destructive">{errors.dayCutting}</p>}
-            </div>
-
-            <div className="space-y-2">
-              <Label>DAY INPUT * (to Sewing)</Label>
-              <Input
-                type="number"
-                value={dayInput}
-                onChange={(e) => setDayInput(e.target.value)}
-                placeholder="0"
-                className={errors.dayInput ? "border-destructive" : ""}
-              />
-              {errors.dayInput && <p className="text-sm text-destructive">{errors.dayInput}</p>}
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Actual Capacities */}
         <Card>
           <CardHeader className="pb-3">
@@ -623,6 +588,41 @@ export default function CuttingEndOfDay() {
                 onChange={(e) => setUnderQty(e.target.value)}
                 placeholder="0"
               />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Actual Daily Output */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Scissors className="h-4 w-4" />
+              Actual Daily Output
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>DAY CUTTING *</Label>
+              <Input
+                type="number"
+                value={dayCutting}
+                onChange={(e) => setDayCutting(e.target.value)}
+                placeholder="0"
+                className={errors.dayCutting ? "border-destructive" : ""}
+              />
+              {errors.dayCutting && <p className="text-sm text-destructive">{errors.dayCutting}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label>DAY INPUT * (to Sewing)</Label>
+              <Input
+                type="number"
+                value={dayInput}
+                onChange={(e) => setDayInput(e.target.value)}
+                placeholder="0"
+                className={errors.dayInput ? "border-destructive" : ""}
+              />
+              {errors.dayInput && <p className="text-sm text-destructive">{errors.dayInput}</p>}
             </div>
           </CardContent>
         </Card>
