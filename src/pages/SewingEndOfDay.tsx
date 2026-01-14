@@ -84,7 +84,7 @@ export default function SewingEndOfDay() {
   const [goodToday, setGoodToday] = useState("");
   const [rejectToday, setRejectToday] = useState("");
   const [reworkToday, setReworkToday] = useState("");
-  const [cumulativeGoodTotal, setCumulativeGoodTotal] = useState("");
+  const [previousCumulativeTotal, setPreviousCumulativeTotal] = useState(0);
   const [manpowerActual, setManpowerActual] = useState("");
   const [otHoursActual, setOtHoursActual] = useState("0");
   const [actualStageId, setActualStageId] = useState("");
@@ -106,6 +106,52 @@ export default function SewingEndOfDay() {
   const selectedWorkOrder = useMemo(() => {
     return workOrders.find(wo => wo.id === selectedWorkOrderId);
   }, [workOrders, selectedWorkOrderId]);
+
+  // Auto-calculate cumulative good total: previous cumulative + today's good + today's rework
+  const cumulativeGoodTotal = useMemo(() => {
+    const good = parseInt(goodToday) || 0;
+    const rework = parseInt(reworkToday) || 0;
+    return previousCumulativeTotal + good + rework;
+  }, [previousCumulativeTotal, goodToday, reworkToday]);
+
+  // Fetch previous cumulative total when line/work order changes
+  useEffect(() => {
+    async function fetchPreviousCumulative() {
+      if (!profile?.factory_id || !selectedLineId || !selectedWorkOrderId) {
+        setPreviousCumulativeTotal(0);
+        return;
+      }
+
+      try {
+        const today = format(new Date(), "yyyy-MM-dd");
+        
+        // Get the most recent submission for this line/work order (before today)
+        const { data, error } = await supabase
+          .from("sewing_actuals")
+          .select("cumulative_good_total")
+          .eq("factory_id", profile.factory_id)
+          .eq("line_id", selectedLineId)
+          .eq("work_order_id", selectedWorkOrderId)
+          .lt("production_date", today)
+          .order("production_date", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (error) {
+          console.error("Error fetching previous cumulative:", error);
+          setPreviousCumulativeTotal(0);
+          return;
+        }
+
+        setPreviousCumulativeTotal(data?.cumulative_good_total || 0);
+      } catch (error) {
+        console.error("Error fetching previous cumulative:", error);
+        setPreviousCumulativeTotal(0);
+      }
+    }
+
+    fetchPreviousCumulative();
+  }, [profile?.factory_id, selectedLineId, selectedWorkOrderId]);
 
   useEffect(() => {
     if (profile?.factory_id) {
@@ -174,7 +220,7 @@ export default function SewingEndOfDay() {
     if (!goodToday || parseInt(goodToday) < 0) newErrors.goodToday = t("forms.goodOutputRequired");
     if (!rejectToday || parseInt(rejectToday) < 0) newErrors.rejectToday = t("forms.rejectRequired");
     if (!reworkToday || parseInt(reworkToday) < 0) newErrors.reworkToday = t("forms.reworkRequired");
-    if (!cumulativeGoodTotal || parseInt(cumulativeGoodTotal) < 0) newErrors.cumulativeGoodTotal = t("forms.cumulativeRequired");
+    // cumulativeGoodTotal is now auto-calculated, no validation needed
     if (!manpowerActual || parseInt(manpowerActual) <= 0) newErrors.manpowerActual = t("forms.manpowerRequired");
     if (otHoursActual === "" || parseFloat(otHoursActual) < 0) newErrors.otHoursActual = t("forms.otHoursRequired");
     if (!actualStageId) newErrors.actualStage = t("forms.stageRequired");
@@ -217,7 +263,7 @@ export default function SewingEndOfDay() {
         good_today: parseInt(goodToday),
         reject_today: parseInt(rejectToday),
         rework_today: parseInt(reworkToday),
-        cumulative_good_total: parseInt(cumulativeGoodTotal),
+        cumulative_good_total: cumulativeGoodTotal,
         manpower_actual: parseInt(manpowerActual),
         ot_hours_actual: parseFloat(otHoursActual),
         actual_stage_id: actualStageId,
@@ -424,15 +470,15 @@ export default function SewingEndOfDay() {
               </div>
 
               <div className="space-y-2">
-                <Label>{t("forms.cumulativeGoodTotal")} *</Label>
+                <Label>{t("forms.cumulativeGoodTotal")}</Label>
                 <Input
                   type="number"
                   value={cumulativeGoodTotal}
-                  onChange={(e) => setCumulativeGoodTotal(e.target.value)}
-                  placeholder="0"
-                  className={errors.cumulativeGoodTotal ? "border-destructive" : ""}
+                  readOnly
+                  disabled
+                  className="bg-muted"
                 />
-                {errors.cumulativeGoodTotal && <p className="text-sm text-destructive">{errors.cumulativeGoodTotal}</p>}
+                <p className="text-xs text-muted-foreground">{t("forms.autoCalculated")}</p>
               </div>
             </div>
 
