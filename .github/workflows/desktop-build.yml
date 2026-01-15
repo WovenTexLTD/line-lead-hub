@@ -178,7 +178,7 @@ jobs:
            fi
 
            # Use ImageMagick to generate a crisp background with perfect text (avoids AI-generated text artifacts)
-           if ! command -v convert >/dev/null 2>&1; then
+           if ! command -v magick >/dev/null 2>&1; then
              echo "Installing ImageMagick..."
              brew update
              brew install imagemagick
@@ -186,10 +186,11 @@ jobs:
 
            BG_W=660
            BG_H=500
-           BACKGROUND_RENDERED="$STAGE_DIR/.dmg-background.png"
+           # NOTE: do NOT start the filename with a dot; Finder background setting can fail on hidden files.
+           BACKGROUND_RENDERED="$STAGE_DIR/dmg-background-rendered.png"
 
-           if command -v convert >/dev/null 2>&1; then
-             convert -size ${BG_W}x${BG_H} gradient:'#202124-#0b0c0d' \
+           if command -v magick >/dev/null 2>&1; then
+             magick -size ${BG_W}x${BG_H} gradient:'#202124-#0b0c0d' \
                -attenuate 0.12 +noise Gaussian \
                -stroke 'rgba(255,255,255,0.18)' -strokewidth 2 -fill none \
                -draw "roundrectangle 96,236 264,404 18,18" \
