@@ -370,22 +370,22 @@ jobs:
         run: |
           set -euo pipefail
 
-MACOS_FILE="$(ls -1 dist/*.app.tar.gz 2>/dev/null | head -1 || true)"
-if [ -z "${MACOS_FILE:-}" ]; then
-  echo "No .app.tar.gz found in dist" >&2
-  ls -la dist >&2
-  exit 1
-fi
+          MACOS_FILE="$(ls -1 dist/*.app.tar.gz 2>/dev/null | head -1 || true)"
+          if [ -z "${MACOS_FILE:-}" ]; then
+            echo "No .app.tar.gz found in dist" >&2
+            ls -la dist >&2
+            exit 1
+          fi
 
-DEST="dist/Production.Portal.app.tar.gz"
+          DEST="dist/Production.Portal.app.tar.gz"
 
-# If it’s already the correct name, do nothing (prevents deleting it)
-if [ "$MACOS_FILE" != "$DEST" ]; then
-  cp -f "$MACOS_FILE" "$DEST"
-rm -f "$MACOS_FILE" || true
-fi
+          # If it’s already the correct name, do nothing (prevents deleting it)
+          if [ "$MACOS_FILE" != "$DEST" ]; then
+            cp -f "$MACOS_FILE" "$DEST"
+            rm -f "$MACOS_FILE" || true
+          fi
 
-ls -la dist
+          ls -la dist
 
       - name: Debug dist contents
         shell: bash
