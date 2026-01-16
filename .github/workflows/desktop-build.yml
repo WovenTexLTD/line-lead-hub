@@ -342,6 +342,7 @@ jobs:
           elif [ -f "src-tauri/target/release/bundle/macos/darwin-universal.sig" ]; then
             cp "src-tauri/target/release/bundle/macos/darwin-universal.sig" artifacts/darwin-universal.sig
           fi
+          cp "$MAC_TAR" "artifacts/Production.Portal.app.tar.gz"
 
       - name: Upload installers
         uses: actions/upload-artifact@v4
@@ -363,6 +364,28 @@ jobs:
           pattern: installers-*
           path: dist
           merge-multiple: true
+     
+      - name: Normalize macOS updater filename
+        shell: bash
+        run: |
+          set -euo pipefail
+
+MACOS_FILE="$(ls -1 dist/*.app.tar.gz 2>/dev/null | head -1 || true)"
+if [ -z "${MACOS_FILE:-}" ]; then
+  echo "No .app.tar.gz found in dist" >&2
+  ls -la dist >&2
+  exit 1
+fi
+
+DEST="dist/Production.Portal.app.tar.gz"
+
+# If it’s already the correct name, do nothing (prevents deleting it)
+if [ "$MACOS_FILE" != "$DEST" ]; then
+  cp -f "$MACOS_FILE" "$DEST"
+rm -f "$MACOS_FILE" || true
+fi
+
+ls -la dist
 
       - name: Debug dist contents
         shell: bash
@@ -383,7 +406,7 @@ jobs:
 
           LINUX_FILE="$(ls -1 dist/*.AppImage 2>/dev/null | head -1 || true)"
           WINDOWS_FILE="$(ls -1 dist/*.msi 2>/dev/null | head -1 || true)"
-          MACOS_FILE="$(ls -1 dist/*.app.tar.gz 2>/dev/null | head -1 || true)"
+          MACOS_FILE="dist/Production.Portal.app.tar.gz"
 
           if [ -z "${LINUX_FILE:-}" ] || [ -z "${WINDOWS_FILE:-}" ] || [ -z "${MACOS_FILE:-}" ]; then
             echo "Missing one or more required assets in dist/" >&2
