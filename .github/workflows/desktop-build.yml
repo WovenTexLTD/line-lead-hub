@@ -277,10 +277,17 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts
 
-          APPIMAGE=$(find src-tauri/target/release/bundle -name "*.AppImage" -type f | head -1 || true)
+          APPIMAGE="$(find src-tauri/target/release/bundle -name "*.AppImage" -type f | head -1 || true)"
           if [ -n "${APPIMAGE:-}" ] && [ -f "$APPIMAGE" ]; then
             cp "$APPIMAGE" artifacts/
-            [ -f "$APPIMAGE.sig" ] && cp "$APPIMAGE.sig" artifacts/linux-x86_64.sig || true
+          fi
+
+          if [ -f "src-tauri/target/release/bundle/appimage/linux-x86_64.AppImage.sig" ]; then
+            cp "src-tauri/target/release/bundle/appimage/linux-x86_64.AppImage.sig" artifacts/linux-x86_64.sig
+          elif [ -n "${APPIMAGE:-}" ] && [ -f "$APPIMAGE.sig" ]; then
+            cp "$APPIMAGE.sig" artifacts/linux-x86_64.sig
+          elif [ -f "src-tauri/target/release/bundle/appimage/linux-x86_64.sig" ]; then
+            cp "src-tauri/target/release/bundle/appimage/linux-x86_64.sig" artifacts/linux-x86_64.sig
           fi
 
           find src-tauri/target/release/bundle -name "*.deb" -type f -exec cp {} artifacts/ \; || true
@@ -293,10 +300,17 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts
 
-          MSI=$(find src-tauri/target/release/bundle -name "*.msi" -type f | head -1 || true)
+          MSI="$(find src-tauri/target/release/bundle -name "*.msi" -type f | head -1 || true)"
           if [ -n "${MSI:-}" ] && [ -f "$MSI" ]; then
             cp "$MSI" artifacts/
-            [ -f "$MSI.sig" ] && cp "$MSI.sig" artifacts/windows-x86_64.sig || true
+          fi
+
+          if [ -f "src-tauri/target/release/bundle/msi/windows-x86_64.msi.sig" ]; then
+            cp "src-tauri/target/release/bundle/msi/windows-x86_64.msi.sig" artifacts/windows-x86_64.sig
+          elif [ -n "${MSI:-}" ] && [ -f "$MSI.sig" ]; then
+            cp "$MSI.sig" artifacts/windows-x86_64.sig
+          elif [ -f "src-tauri/target/release/bundle/msi/windows-x86_64.sig" ]; then
+            cp "src-tauri/target/release/bundle/msi/windows-x86_64.sig" artifacts/windows-x86_64.sig
           fi
 
           find src-tauri/target/release/bundle -name "*.exe" -type f -exec cp {} artifacts/ \; || true
@@ -310,17 +324,23 @@ jobs:
 
           [ -f artifacts/Production_Portal_universal.dmg ] || (echo "Missing notarized DMG" >&2 && exit 1)
 
-          # Updater bundle is the .app.tar.gz produced by Tauri
-          MAC_TAR=$(find src-tauri/target/universal-apple-darwin/release/bundle/macos -name "*.app.tar.gz" -type f 2>/dev/null | head -1 || true)
+          MAC_TAR="$(find src-tauri/target/universal-apple-darwin/release/bundle/macos -name "*.app.tar.gz" -type f 2>/dev/null | head -1 || true)"
           if [ -z "${MAC_TAR:-}" ]; then
-            MAC_TAR=$(find src-tauri/target -name "*.app.tar.gz" -type f 2>/dev/null | head -1 || true)
+            MAC_TAR="$(find src-tauri/target -name "*.app.tar.gz" -type f 2>/dev/null | head -1 || true)"
           fi
 
           if [ -n "${MAC_TAR:-}" ] && [ -f "$MAC_TAR" ]; then
             cp "$MAC_TAR" artifacts/
-            [ -f "$MAC_TAR.sig" ] && cp "$MAC_TAR.sig" artifacts/darwin-universal.sig || true
           else
             echo "WARNING: .app.tar.gz updater bundle not found" >&2
+          fi
+
+          if [ -f "src-tauri/target/universal-apple-darwin/release/bundle/macos/darwin-universal.sig" ]; then
+            cp "src-tauri/target/universal-apple-darwin/release/bundle/macos/darwin-universal.sig" artifacts/darwin-universal.sig
+          elif [ -n "${MAC_TAR:-}" ] && [ -f "$MAC_TAR.sig" ]; then
+            cp "$MAC_TAR.sig" artifacts/darwin-universal.sig
+          elif [ -f "src-tauri/target/release/bundle/macos/darwin-universal.sig" ]; then
+            cp "src-tauri/target/release/bundle/macos/darwin-universal.sig" artifacts/darwin-universal.sig
           fi
 
       - name: Upload installers
@@ -347,10 +367,11 @@ jobs:
       - name: Debug dist contents
         shell: bash
         run: |
+          set -euo pipefail
           echo "DIST FILES:"
           ls -la dist
 
-           - name: Generate latest.json (from filenames in dist)
+      - name: Generate latest.json (from filenames in dist)
         shell: bash
         run: |
           set -euo pipefail
@@ -360,32 +381,31 @@ jobs:
           REPO="${{ github.repository }}"
           PUB_DATE="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
-          # Pick files (these may contain spaces!)
-          LINUX_FILE="$(ls -1 dist/*.AppImage | head -1)"
-          WINDOWS_FILE="$(ls -1 dist/*.msi | head -1)"
-          MACOS_FILE="$(ls -1 dist/*.app.tar.gz | head -1)"
+          LINUX_FILE="$(ls -1 dist/*.AppImage 2>/dev/null | head -1 || true)"
+          WINDOWS_FILE="$(ls -1 dist/*.msi 2>/dev/null | head -1 || true)"
+          MACOS_FILE="$(ls -1 dist/*.app.tar.gz 2>/dev/null | head -1 || true)"
 
-          # Read signatures (single-line)
-          LINUX_SIG="$(tr -d '\n' < dist/linux-x86_64.sig)"
-          WINDOWS_SIG="$(tr -d '\n' < dist/windows-x86_64.sig)"
-          DARWIN_SIG="$(tr -d '\n' < dist/darwin-universal.sig)"
+          if [ -z "${LINUX_FILE:-}" ] || [ -z "${WINDOWS_FILE:-}" ] || [ -z "${MACOS_FILE:-}" ]; then
+            echo "Missing one or more required assets in dist/" >&2
+            ls -la dist >&2
+            exit 1
+          fi
+
+          urlencode() {
+            python3 -c 'import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))' "$1"
+          }
 
           LINUX_NAME="$(basename "$LINUX_FILE")"
           WINDOWS_NAME="$(basename "$WINDOWS_FILE")"
           MACOS_NAME="$(basename "$MACOS_FILE")"
 
-          # URL-encode filenames so GitHub download links work even if the name has spaces
-          urlencode () {
-            python3 -c 'import sys,urllib.parse; print(urllib.parse.quote(sys.argv[1]))' "$1"
-          }
+          LINUX_URL="https://github.com/$REPO/releases/download/$TAG/$(urlencode "$LINUX_NAME")"
+          WINDOWS_URL="https://github.com/$REPO/releases/download/$TAG/$(urlencode "$WINDOWS_NAME")"
+          MACOS_URL="https://github.com/$REPO/releases/download/$TAG/$(urlencode "$MACOS_NAME")"
 
-          LINUX_NAME_ENC="$(urlencode "$LINUX_NAME")"
-          WINDOWS_NAME_ENC="$(urlencode "$WINDOWS_NAME")"
-          MACOS_NAME_ENC="$(urlencode "$MACOS_NAME")"
-
-          LINUX_URL="https://github.com/$REPO/releases/download/$TAG/$LINUX_NAME_ENC"
-          WINDOWS_URL="https://github.com/$REPO/releases/download/$TAG/$WINDOWS_NAME_ENC"
-          MACOS_URL="https://github.com/$REPO/releases/download/$TAG/$MACOS_NAME_ENC"
+          LINUX_SIG="$(tr -d '\n' < dist/linux-x86_64.sig)"
+          WINDOWS_SIG="$(tr -d '\n' < dist/windows-x86_64.sig)"
+          DARWIN_SIG="$(tr -d '\n' < dist/darwin-universal.sig)"
 
           cat > dist/latest.json <<EOF
           {
@@ -404,22 +424,9 @@ jobs:
           python3 -m json.tool dist/latest.json >/dev/null
           echo "latest.json generated OK"
           cat dist/latest.json
-          
-      - name: Create Release + Upload Assets (includes latest.json)
-        uses: ncipollo/release-action@v1
+
+      - name: Create GitHub release + upload assets
+        uses: softprops/action-gh-release@v2
         with:
-          tag: ${{ github.ref_name }}
-          name: Production Portal ${{ github.ref_name }}
-          allowUpdates: true
-          replacesArtifacts: true
-          artifacts: |
-            dist/latest.json
-            dist/*.AppImage
-            dist/*.deb
-            dist/*.rpm
-            dist/*.dmg
-            dist/*.app.tar.gz
-            dist/*.msi
-            dist/*.exe
-            dist/*.sig
-          token: ${{ secrets.GITHUB_TOKEN }}
+          files: |
+            dist/*
