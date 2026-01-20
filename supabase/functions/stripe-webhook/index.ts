@@ -107,15 +107,31 @@ serve(async (req) => {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
-        logStep("Checkout completed", { 
-          sessionId: session.id, 
+        logStep("Checkout completed", {
+          sessionId: session.id,
           customerId: session.customer,
           factoryId: session.metadata?.factory_id,
           tier: session.metadata?.tier,
           subscriptionId: session.subscription
         });
-        
-        if (session.metadata?.factory_id && session.subscription) {
+
+        let checkoutFactoryId = session.metadata?.factory_id;
+
+        if (!checkoutFactoryId && session.metadata?.user_id) {
+          logStep("No factory_id in metadata, attempting user_id fallback");
+          const { data: userProfile } = await supabaseAdmin
+            .from('profiles')
+            .select('factory_id')
+            .eq('id', session.metadata.user_id)
+            .single();
+
+          if (userProfile?.factory_id) {
+            checkoutFactoryId = userProfile.factory_id;
+            logStep("Factory ID found via user_id fallback", { factoryId: checkoutFactoryId });
+          }
+        }
+
+        if (checkoutFactoryId && session.subscription) {
           // Fetch the subscription to get the actual product/price for tier detection
           let tier = session.metadata?.tier || 'starter';
           let maxLines = PLAN_TIERS[tier]?.maxLines || 30;
@@ -140,7 +156,7 @@ serve(async (req) => {
               max_lines: maxLines,
               payment_failed_at: null,
             })
-            .eq('id', session.metadata.factory_id);
+            .eq('id', checkoutFactoryId);
           
           logStep("Factory updated to active", { tier, maxLines });
         }

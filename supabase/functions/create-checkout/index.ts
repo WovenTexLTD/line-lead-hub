@@ -73,6 +73,10 @@ serve(async (req) => {
     const factoryId = profile?.factory_id;
     logStep("Profile checked", { factoryId: factoryId || 'none' });
 
+    if (!factoryId) {
+      logStep("No factory ID - will link via user_id after checkout completes");
+    }
+
     const body = await req.json().catch(() => ({}));
     const { tier = 'starter', startTrial = false, interval = 'month' } = body;
     logStep("Request body", { tier, startTrial, interval });
