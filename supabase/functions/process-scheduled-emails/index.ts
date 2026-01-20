@@ -1,16 +1,15 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders } from "../_shared/security.ts";
 
 // This function is designed to be called by an external cron service (e.g., cron-job.org)
 // It checks which email schedules are due based on factory timezones and triggers them
 
 const handler = async (req: Request): Promise<Response> => {
   console.log("process-scheduled-emails function called");
+
+  const origin = req.headers.get("origin");
+  const corsHeaders = getCorsHeaders(origin);
 
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });

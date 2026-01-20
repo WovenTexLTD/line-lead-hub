@@ -2,6 +2,36 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
+// Allowed origins for CORS - add your production domains here
+const ALLOWED_ORIGINS = [
+  "https://production-portal.lovable.app",
+  "https://woventex.co",
+  "https://www.woventex.co",
+  "capacitor://localhost",  // iOS Capacitor
+  "http://localhost",       // Android Capacitor
+  "http://localhost:5173",  // Vite dev server
+  "http://localhost:8100",  // Ionic dev server
+];
+
+// Check if origin is allowed
+export function isAllowedOrigin(origin: string | null): boolean {
+  if (!origin) return false;
+  return ALLOWED_ORIGINS.includes(origin);
+}
+
+// Get CORS headers with dynamic origin validation
+export function getCorsHeaders(origin: string | null): Record<string, string> {
+  const allowedOrigin = isAllowedOrigin(origin) ? origin! : ALLOWED_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Credentials": "true",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  };
+}
+
+// Legacy corsHeaders for backwards compatibility - should be replaced with getCorsHeaders(req)
+// @deprecated Use getCorsHeaders(req.headers.get("origin")) instead
 export const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
