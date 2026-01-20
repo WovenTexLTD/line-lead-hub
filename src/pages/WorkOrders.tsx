@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { z } from "zod";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -62,6 +63,21 @@ const WORK_ORDER_STATUSES = [
   { value: 'on_hold', label: 'On Hold' },
 ];
 
+const workOrderSchema = z.object({
+  po_number: z.string().min(1, "PO Number is required").max(100, "PO Number too long"),
+  buyer: z.string().min(1, "Buyer is required").max(200, "Buyer name too long"),
+  style: z.string().min(1, "Style is required").max(200, "Style too long"),
+  item: z.string().max(200, "Item too long").optional().nullable(),
+  color: z.string().max(100, "Color too long").optional().nullable(),
+  order_qty: z.number().min(0, "Cannot be negative").max(100000000, "Too high"),
+  smv: z.number().min(0, "Cannot be negative").max(1000, "Too high").optional().nullable(),
+  planned_ex_factory: z.string().optional().nullable(),
+  target_per_hour: z.number().min(0, "Cannot be negative").max(100000, "Too high").optional().nullable(),
+  target_per_day: z.number().min(0, "Cannot be negative").max(1000000, "Too high").optional().nullable(),
+  status: z.enum(["not_started", "in_progress", "completed", "on_hold"]),
+  is_active: z.boolean(),
+});
+
 const getStatusColor = (status: string) => {
   switch (status) {
     case 'not_started': return 'bg-muted text-muted-foreground';
@@ -115,7 +131,8 @@ export default function WorkOrders() {
     is_active: true,
   });
   const [selectedLineIds, setSelectedLineIds] = useState<string[]>([]);
-  
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
   // Delete confirmation state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
@@ -243,29 +260,40 @@ export default function WorkOrders() {
 
   async function handleSave() {
     if (!profile?.factory_id) return;
-    if (!formData.po_number.trim() || !formData.buyer.trim() || !formData.style.trim()) {
-      toast({ variant: "destructive", title: "PO Number, Buyer, and Style are required" });
+
+    const dataToValidate = {
+      po_number: formData.po_number.trim(),
+      buyer: formData.buyer.trim(),
+      style: formData.style.trim(),
+      item: formData.item.trim() || null,
+      color: formData.color.trim() || null,
+      order_qty: parseInt(formData.order_qty) || 0,
+      smv: formData.smv ? parseFloat(formData.smv) : null,
+      planned_ex_factory: formData.planned_ex_factory || null,
+      target_per_hour: formData.target_per_hour ? parseInt(formData.target_per_hour) : null,
+      target_per_day: formData.target_per_day ? parseInt(formData.target_per_day) : null,
+      status: formData.status as "not_started" | "in_progress" | "completed" | "on_hold",
+      is_active: formData.is_active,
+    };
+
+    const result = workOrderSchema.safeParse(dataToValidate);
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        if (err.path[0]) fieldErrors[err.path[0] as string] = err.message;
+      });
+      setFormErrors(fieldErrors);
       return;
     }
-    
+    setFormErrors({});
+
     setIsSaving(true);
-    
+
     try {
       const data = {
         factory_id: profile.factory_id,
-        po_number: formData.po_number.trim(),
-        buyer: formData.buyer.trim(),
-        style: formData.style.trim(),
-        item: formData.item.trim() || null,
-        color: formData.color.trim() || null,
-        order_qty: parseInt(formData.order_qty) || 0,
-        smv: formData.smv ? parseFloat(formData.smv) : null,
-        planned_ex_factory: formData.planned_ex_factory || null,
-        target_per_hour: formData.target_per_hour ? parseInt(formData.target_per_hour) : null,
-        target_per_day: formData.target_per_day ? parseInt(formData.target_per_day) : null,
-        status: formData.status,
-        is_active: formData.is_active,
-        line_id: selectedLineIds.length === 1 ? selectedLineIds[0] : null, // Keep backward compatibility
+        ...result.data,
+        line_id: selectedLineIds.length === 1 ? selectedLineIds[0] : null,
       };
       
       let workOrderId: string;
@@ -724,6 +752,7 @@ export default function WorkOrders() {
                   onChange={(e) => setFormData({ ...formData, po_number: e.target.value })}
                   placeholder="PO-001"
                 />
+                {formErrors.po_number && <p className="text-sm text-destructive">{formErrors.po_number}</p>}
               </div>
               <div className="space-y-2">
                 <Label>Buyer *</Label>
@@ -732,9 +761,10 @@ export default function WorkOrders() {
                   onChange={(e) => setFormData({ ...formData, buyer: e.target.value })}
                   placeholder="ABC Fashions"
                 />
+                {formErrors.buyer && <p className="text-sm text-destructive">{formErrors.buyer}</p>}
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Style *</Label>
@@ -743,6 +773,7 @@ export default function WorkOrders() {
                   onChange={(e) => setFormData({ ...formData, style: e.target.value })}
                   placeholder="STYLE-001"
                 />
+                {formErrors.style && <p className="text-sm text-destructive">{formErrors.style}</p>}
               </div>
               <div className="space-y-2">
                 <Label>Item</Label>
@@ -751,9 +782,10 @@ export default function WorkOrders() {
                   onChange={(e) => setFormData({ ...formData, item: e.target.value })}
                   placeholder="T-Shirt"
                 />
+                {formErrors.item && <p className="text-sm text-destructive">{formErrors.item}</p>}
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Color</Label>
@@ -762,6 +794,7 @@ export default function WorkOrders() {
                   onChange={(e) => setFormData({ ...formData, color: e.target.value })}
                   placeholder="Blue"
                 />
+                {formErrors.color && <p className="text-sm text-destructive">{formErrors.color}</p>}
               </div>
               <div className="space-y-2">
                 <Label>Order Quantity</Label>
@@ -771,9 +804,10 @@ export default function WorkOrders() {
                   onChange={(e) => setFormData({ ...formData, order_qty: e.target.value })}
                   placeholder="5000"
                 />
+                {formErrors.order_qty && <p className="text-sm text-destructive">{formErrors.order_qty}</p>}
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>SMV</Label>
@@ -784,6 +818,7 @@ export default function WorkOrders() {
                   onChange={(e) => setFormData({ ...formData, smv: e.target.value })}
                   placeholder="12.5"
                 />
+                {formErrors.smv && <p className="text-sm text-destructive">{formErrors.smv}</p>}
               </div>
               <div className="space-y-2">
                 <Label>Planned Ex-Factory</Label>
@@ -794,7 +829,7 @@ export default function WorkOrders() {
                 />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Target/Hour</Label>
@@ -804,6 +839,7 @@ export default function WorkOrders() {
                   onChange={(e) => setFormData({ ...formData, target_per_hour: e.target.value })}
                   placeholder="100"
                 />
+                {formErrors.target_per_hour && <p className="text-sm text-destructive">{formErrors.target_per_hour}</p>}
               </div>
               <div className="space-y-2">
                 <Label>Target/Day</Label>
@@ -813,6 +849,7 @@ export default function WorkOrders() {
                   onChange={(e) => setFormData({ ...formData, target_per_day: e.target.value })}
                   placeholder="800"
                 />
+                {formErrors.target_per_day && <p className="text-sm text-destructive">{formErrors.target_per_day}</p>}
               </div>
             </div>
             

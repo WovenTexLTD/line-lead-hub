@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { z } from "zod";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -59,6 +60,19 @@ interface DropdownOption {
   id: string;
   label: string;
 }
+
+const sewingActualsSchema = z.object({
+  line_id: z.string().min(1, "Line is required"),
+  work_order_id: z.string().min(1, "PO is required"),
+  good_today: z.number().min(0, "Cannot be negative").max(100000, "Too high"),
+  reject_today: z.number().min(0, "Cannot be negative").max(100000, "Too high"),
+  rework_today: z.number().min(0, "Cannot be negative").max(100000, "Too high"),
+  manpower_actual: z.number().min(1, "Must be at least 1").max(500, "Too high"),
+  ot_hours_actual: z.number().min(0, "Cannot be negative").max(24, "Max 24 hours"),
+  actual_stage_id: z.string().min(1, "Stage is required"),
+  actual_stage_progress: z.string().min(1, "Progress is required"),
+  remarks: z.string().max(1000, "Remarks too long").optional(),
+});
 
 export default function SewingEndOfDay() {
   const navigate = useNavigate();
@@ -213,21 +227,40 @@ export default function SewingEndOfDay() {
   }
 
   function validateForm(): boolean {
-    const newErrors: Record<string, string> = {};
+    const formData = {
+      line_id: selectedLineId,
+      work_order_id: selectedWorkOrderId,
+      good_today: parseInt(goodToday) || 0,
+      reject_today: parseInt(rejectToday) || 0,
+      rework_today: parseInt(reworkToday) || 0,
+      manpower_actual: parseInt(manpowerActual) || 0,
+      ot_hours_actual: parseFloat(otHoursActual) || 0,
+      actual_stage_id: actualStageId,
+      actual_stage_progress: actualStageProgress,
+      remarks: remarks || undefined,
+    };
 
-    if (!selectedLineId) newErrors.line = t("forms.lineRequired");
-    if (!selectedWorkOrderId) newErrors.workOrder = t("forms.poRequired");
-    if (!goodToday || parseInt(goodToday) < 0) newErrors.goodToday = t("forms.goodOutputRequired");
-    if (!rejectToday || parseInt(rejectToday) < 0) newErrors.rejectToday = t("forms.rejectRequired");
-    if (!reworkToday || parseInt(reworkToday) < 0) newErrors.reworkToday = t("forms.reworkRequired");
-    // cumulativeGoodTotal is now auto-calculated, no validation needed
-    if (!manpowerActual || parseInt(manpowerActual) <= 0) newErrors.manpowerActual = t("forms.manpowerRequired");
-    if (otHoursActual === "" || parseFloat(otHoursActual) < 0) newErrors.otHoursActual = t("forms.otHoursRequired");
-    if (!actualStageId) newErrors.actualStage = t("forms.stageRequired");
-    if (!actualStageProgress) newErrors.actualStageProgress = t("forms.progressRequired");
+    const result = sewingActualsSchema.safeParse(formData);
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    if (!result.success) {
+      const fieldErrors = result.error.flatten().fieldErrors;
+      const newErrors: Record<string, string> = {};
+      if (fieldErrors.line_id) newErrors.line = t("forms.lineRequired");
+      if (fieldErrors.work_order_id) newErrors.workOrder = t("forms.poRequired");
+      if (fieldErrors.good_today) newErrors.goodToday = t("forms.goodOutputRequired");
+      if (fieldErrors.reject_today) newErrors.rejectToday = t("forms.rejectRequired");
+      if (fieldErrors.rework_today) newErrors.reworkToday = t("forms.reworkRequired");
+      if (fieldErrors.manpower_actual) newErrors.manpowerActual = t("forms.manpowerRequired");
+      if (fieldErrors.ot_hours_actual) newErrors.otHoursActual = t("forms.otHoursRequired");
+      if (fieldErrors.actual_stage_id) newErrors.actualStage = t("forms.stageRequired");
+      if (fieldErrors.actual_stage_progress) newErrors.actualStageProgress = t("forms.progressRequired");
+      if (fieldErrors.remarks) newErrors.remarks = fieldErrors.remarks[0];
+      setErrors(newErrors);
+      return false;
+    }
+
+    setErrors({});
+    return true;
   }
 
   async function handleSubmit(e: React.FormEvent) {
