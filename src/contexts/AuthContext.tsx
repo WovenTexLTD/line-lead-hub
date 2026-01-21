@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
@@ -68,18 +68,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [factory, setFactory] = useState<Factory | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchingRef = useRef(false);
+  const lastFetchedUserId = useRef<string | null>(null);
+
   useEffect(() => {
-    // Set up auth state listener FIRST
+    let isMounted = true;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        if (!isMounted) return;
+
         setSession(session);
         setUser(session?.user ?? null);
-        
-        // Defer data fetching to avoid deadlock
+
         if (session?.user) {
-          setTimeout(() => {
-            fetchUserData(session.user.id);
-          }, 0);
+          fetchUserData(session.user.id);
         } else {
           setProfile(null);
           setRoles([]);
@@ -89,23 +92,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!isMounted) return;
+
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user) {
+      if (session?.user && lastFetchedUserId.current !== session.user.id) {
         fetchUserData(session.user.id);
-      } else {
+      } else if (!session) {
         setLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   async function fetchUserData(userId: string) {
+    if (fetchingRef.current && lastFetchedUserId.current === userId) {
+      return;
+    }
+
+    fetchingRef.current = true;
+    lastFetchedUserId.current = userId;
+
     try {
-      // Fetch profile
       const { data: profileData } = await supabase
         .from('profiles')
         .select('*')
@@ -166,6 +179,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Error fetching user data:', error);
     } finally {
+      fetchingRef.current = false;
       setLoading(false);
     }
   }
