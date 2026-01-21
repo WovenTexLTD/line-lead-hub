@@ -1,39 +1,45 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
+import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import type { AppRole } from '@/lib/constants';
 
-interface Profile {
-  id: string;
-  factory_id: string | null;
-  full_name: string;
-  email: string;
-  phone: string | null;
-  avatar_url: string | null;
-  is_active: boolean;
-  department: string | null;
-}
+const profileSchema = z.object({
+  id: z.string(),
+  factory_id: z.string().nullable(),
+  full_name: z.string(),
+  email: z.string(),
+  phone: z.string().nullable(),
+  avatar_url: z.string().nullable(),
+  is_active: z.boolean(),
+  department: z.string().nullable(),
+  invitation_status: z.string().nullable().optional(),
+});
 
-interface UserRole {
-  role: AppRole;
-  factory_id: string | null;
-}
+const userRoleSchema = z.object({
+  role: z.enum(['worker', 'admin', 'owner', 'storage', 'cutting']),
+  factory_id: z.string().nullable(),
+});
 
-interface Factory {
-  id: string;
-  name: string;
-  slug: string;
-  subscription_tier: string;
-  subscription_status: string | null;
-  trial_end_date: string | null;
-  cutoff_time: string;
-  morning_target_cutoff: string | null;
-  evening_actual_cutoff: string | null;
-  timezone: string;
-  logo_url: string | null;
-  max_lines: number | null;
-  low_stock_threshold: number;
-}
+const factorySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  subscription_tier: z.string(),
+  subscription_status: z.string().nullable(),
+  trial_end_date: z.string().nullable(),
+  cutoff_time: z.string(),
+  morning_target_cutoff: z.string().nullable(),
+  evening_actual_cutoff: z.string().nullable(),
+  timezone: z.string(),
+  logo_url: z.string().nullable(),
+  max_lines: z.number().nullable(),
+  low_stock_threshold: z.number(),
+});
+
+type Profile = z.infer<typeof profileSchema>;
+type UserRole = z.infer<typeof userRoleSchema>;
+type Factory = z.infer<typeof factorySchema>;
 
 interface AuthContextType {
   user: User | null;
@@ -107,7 +113,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .maybeSingle();
 
       if (profileData) {
-        // If user was pending, mark them as active now that they've signed in
         if (profileData.invitation_status === 'pending') {
           await supabase
             .from('profiles')
@@ -116,34 +121,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           profileData.invitation_status = 'active';
         }
 
-        setProfile(profileData as Profile);
+        const profileResult = profileSchema.safeParse(profileData);
+        if (!profileResult.success) {
+          console.error('Invalid profile data:', profileResult.error);
+          return;
+        }
+        setProfile(profileResult.data);
 
-        // Fetch roles
         const { data: rolesData } = await supabase
           .from('user_roles')
           .select('role, factory_id')
           .eq('user_id', userId);
 
         if (rolesData) {
-          // Only consider roles for the user's current factory.
-          const filtered = (rolesData as UserRole[]).filter((r) => {
-            if (profileData.factory_id) return r.factory_id === profileData.factory_id;
-            // No factory assigned yet: keep only non-scoped roles
-            return r.factory_id === null;
-          });
-          setRoles(filtered);
+          const rolesResult = z.array(userRoleSchema).safeParse(rolesData);
+          if (rolesResult.success) {
+            const filtered = rolesResult.data.filter((r) => {
+              if (profileResult.data.factory_id) return r.factory_id === profileResult.data.factory_id;
+              return r.factory_id === null;
+            });
+            setRoles(filtered);
+          } else {
+            console.error('Invalid roles data:', rolesResult.error);
+          }
         }
 
-        // Fetch factory if user has one
-        if (profileData.factory_id) {
+        if (profileResult.data.factory_id) {
           const { data: factoryData } = await supabase
             .from('factory_accounts')
             .select('*')
-            .eq('id', profileData.factory_id)
+            .eq('id', profileResult.data.factory_id)
             .maybeSingle();
 
           if (factoryData) {
-            setFactory(factoryData as Factory);
+            const factoryResult = factorySchema.safeParse(factoryData);
+            if (factoryResult.success) {
+              setFactory(factoryResult.data);
+            } else {
+              console.error('Invalid factory data:', factoryResult.error);
+            }
           }
         }
       }
