@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { z } from "zod";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,39 @@ import { BLOCKER_IMPACTS, BLOCKER_IMPACT_LABELS, DEFAULT_STAGES, DEFAULT_BLOCKER
 import { ActiveLinesMeter } from "@/components/ActiveLinesMeter";
 import { useActiveLines } from "@/hooks/useActiveLines";
 import { EmailScheduleSettings } from "@/components/insights/EmailScheduleSettings";
+
+const unitSchema = z.object({
+  code: z.string().min(1, "Code is required").max(20, "Code too long"),
+  name: z.string().min(1, "Name is required").max(100, "Name too long"),
+});
+
+const floorSchema = z.object({
+  code: z.string().min(1, "Code is required").max(20, "Code too long"),
+  name: z.string().min(1, "Name is required").max(100, "Name too long"),
+  unit_id: z.string().min(1, "Unit is required"),
+});
+
+const lineSchema = z.object({
+  line_id: z.string().min(1, "Line ID is required").max(20, "Line ID too long"),
+  name: z.string().max(100, "Name too long").optional().nullable(),
+  unit_id: z.string().optional().nullable(),
+  floor_id: z.string().optional().nullable(),
+  target_per_hour: z.number().min(0, "Cannot be negative").max(100000, "Too high").optional().nullable(),
+  target_per_day: z.number().min(0, "Cannot be negative").max(1000000, "Too high").optional().nullable(),
+});
+
+const stageSchema = z.object({
+  code: z.string().min(1, "Code is required").max(20, "Code too long"),
+  name: z.string().min(1, "Name is required").max(100, "Name too long"),
+  sequence: z.number().min(0, "Cannot be negative").max(1000, "Too high"),
+});
+
+const blockerTypeSchema = z.object({
+  code: z.string().min(1, "Code is required").max(20, "Code too long"),
+  name: z.string().min(1, "Name is required").max(100, "Name too long"),
+  default_owner: z.string().max(100, "Owner too long").optional().nullable(),
+  default_impact: z.enum(["low", "medium", "high", "critical"]),
+});
 
 // Types
 interface Unit {
@@ -1276,20 +1310,37 @@ export default function FactorySetup() {
 function UnitForm({ initialData, onSave, onCancel, isSaving }: { initialData?: Unit, onSave: (data: any) => void, onCancel: () => void, isSaving: boolean }) {
   const [code, setCode] = useState(initialData?.code || '');
   const [name, setName] = useState(initialData?.name || '');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const handleSave = () => {
+    const result = unitSchema.safeParse({ code, name });
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        if (err.path[0]) fieldErrors[err.path[0] as string] = err.message;
+      });
+      setErrors(fieldErrors);
+      return;
+    }
+    setErrors({});
+    onSave(result.data);
+  };
 
   return (
     <div className="space-y-4">
       <div className="space-y-2">
         <Label>Code *</Label>
         <Input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="e.g., UNIT-A" />
+        {errors.code && <p className="text-sm text-destructive">{errors.code}</p>}
       </div>
       <div className="space-y-2">
         <Label>Name *</Label>
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., Unit Alpha" />
+        {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
       </div>
       <DialogFooter>
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
-        <Button onClick={() => onSave({ code, name })} disabled={!code || !name || isSaving}>
+        <Button onClick={handleSave} disabled={isSaving}>
           {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
           Save
         </Button>
@@ -1302,16 +1353,33 @@ function FloorForm({ initialData, units, onSave, onCancel, isSaving }: { initial
   const [code, setCode] = useState(initialData?.code || '');
   const [name, setName] = useState(initialData?.name || '');
   const [unitId, setUnitId] = useState(initialData?.unit_id || '');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const handleSave = () => {
+    const result = floorSchema.safeParse({ code, name, unit_id: unitId });
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        if (err.path[0]) fieldErrors[err.path[0] as string] = err.message;
+      });
+      setErrors(fieldErrors);
+      return;
+    }
+    setErrors({});
+    onSave(result.data);
+  };
 
   return (
     <div className="space-y-4">
       <div className="space-y-2">
         <Label>Code *</Label>
         <Input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="e.g., 1F" />
+        {errors.code && <p className="text-sm text-destructive">{errors.code}</p>}
       </div>
       <div className="space-y-2">
         <Label>Name *</Label>
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., First Floor" />
+        {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
       </div>
       <div className="space-y-2">
         <Label>Unit *</Label>
@@ -1323,10 +1391,11 @@ function FloorForm({ initialData, units, onSave, onCancel, isSaving }: { initial
             ))}
           </SelectContent>
         </Select>
+        {errors.unit_id && <p className="text-sm text-destructive">{errors.unit_id}</p>}
       </div>
       <DialogFooter>
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
-        <Button onClick={() => onSave({ code, name, unit_id: unitId })} disabled={!code || !name || !unitId || isSaving}>
+        <Button onClick={handleSave} disabled={isSaving}>
           {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
           Save
         </Button>
@@ -1342,18 +1411,43 @@ function LineForm({ initialData, units, floors, onSave, onCancel, isSaving }: { 
   const [floorId, setFloorId] = useState(initialData?.floor_id || '');
   const [targetPerHour, setTargetPerHour] = useState(initialData?.target_per_hour?.toString() || '');
   const [targetPerDay, setTargetPerDay] = useState(initialData?.target_per_day?.toString() || '');
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const filteredFloors = floors.filter(f => !unitId || f.unit_id === unitId);
+
+  const handleSave = () => {
+    const data = {
+      line_id: lineId,
+      name: name || null,
+      unit_id: unitId || null,
+      floor_id: floorId || null,
+      target_per_hour: targetPerHour ? parseInt(targetPerHour) : null,
+      target_per_day: targetPerDay ? parseInt(targetPerDay) : null,
+    };
+    const result = lineSchema.safeParse(data);
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        if (err.path[0]) fieldErrors[err.path[0] as string] = err.message;
+      });
+      setErrors(fieldErrors);
+      return;
+    }
+    setErrors({});
+    onSave(result.data);
+  };
 
   return (
     <div className="space-y-4">
       <div className="space-y-2">
         <Label>Line ID *</Label>
         <Input value={lineId} onChange={(e) => setLineId(e.target.value.toUpperCase())} placeholder="e.g., L1" />
+        {errors.line_id && <p className="text-sm text-destructive">{errors.line_id}</p>}
       </div>
       <div className="space-y-2">
         <Label>Name</Label>
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., Line 1 - Jackets" />
+        {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
@@ -1383,22 +1477,17 @@ function LineForm({ initialData, units, floors, onSave, onCancel, isSaving }: { 
         <div className="space-y-2">
           <Label>Target/Hour</Label>
           <Input type="number" value={targetPerHour} onChange={(e) => setTargetPerHour(e.target.value)} placeholder="0" />
+          {errors.target_per_hour && <p className="text-sm text-destructive">{errors.target_per_hour}</p>}
         </div>
         <div className="space-y-2">
           <Label>Target/Day</Label>
           <Input type="number" value={targetPerDay} onChange={(e) => setTargetPerDay(e.target.value)} placeholder="0" />
+          {errors.target_per_day && <p className="text-sm text-destructive">{errors.target_per_day}</p>}
         </div>
       </div>
       <DialogFooter>
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
-        <Button onClick={() => onSave({ 
-          line_id: lineId, 
-          name: name || null, 
-          unit_id: unitId || null, 
-          floor_id: floorId || null,
-          target_per_hour: parseInt(targetPerHour) || null,
-          target_per_day: parseInt(targetPerDay) || null
-        })} disabled={!lineId || isSaving}>
+        <Button onClick={handleSave} disabled={isSaving}>
           {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
           Save
         </Button>
@@ -1411,24 +1500,43 @@ function StageForm({ initialData, onSave, onCancel, isSaving }: { initialData?: 
   const [code, setCode] = useState(initialData?.code || '');
   const [name, setName] = useState(initialData?.name || '');
   const [sequence, setSequence] = useState(initialData?.sequence?.toString() || '');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const handleSave = () => {
+    const data = { code, name, sequence: parseInt(sequence) || 0 };
+    const result = stageSchema.safeParse(data);
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        if (err.path[0]) fieldErrors[err.path[0] as string] = err.message;
+      });
+      setErrors(fieldErrors);
+      return;
+    }
+    setErrors({});
+    onSave(result.data);
+  };
 
   return (
     <div className="space-y-4">
       <div className="space-y-2">
         <Label>Code *</Label>
         <Input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="e.g., SEW" />
+        {errors.code && <p className="text-sm text-destructive">{errors.code}</p>}
       </div>
       <div className="space-y-2">
         <Label>Name *</Label>
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., Sewing" />
+        {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
       </div>
       <div className="space-y-2">
         <Label>Sequence</Label>
         <Input type="number" value={sequence} onChange={(e) => setSequence(e.target.value)} placeholder="1" />
+        {errors.sequence && <p className="text-sm text-destructive">{errors.sequence}</p>}
       </div>
       <DialogFooter>
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
-        <Button onClick={() => onSave({ code, name, sequence: parseInt(sequence) || 0 })} disabled={!code || !name || isSaving}>
+        <Button onClick={handleSave} disabled={isSaving}>
           {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
           Save
         </Button>
@@ -1442,20 +1550,44 @@ function BlockerTypeForm({ initialData, onSave, onCancel, isSaving }: { initialD
   const [name, setName] = useState(initialData?.name || '');
   const [defaultOwner, setDefaultOwner] = useState(initialData?.default_owner || '');
   const [defaultImpact, setDefaultImpact] = useState(initialData?.default_impact || 'medium');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const handleSave = () => {
+    const data = {
+      code,
+      name,
+      default_owner: defaultOwner || null,
+      default_impact: defaultImpact as "low" | "medium" | "high" | "critical",
+    };
+    const result = blockerTypeSchema.safeParse(data);
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        if (err.path[0]) fieldErrors[err.path[0] as string] = err.message;
+      });
+      setErrors(fieldErrors);
+      return;
+    }
+    setErrors({});
+    onSave(result.data);
+  };
 
   return (
     <div className="space-y-4">
       <div className="space-y-2">
         <Label>Code *</Label>
         <Input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="e.g., MATERIAL" />
+        {errors.code && <p className="text-sm text-destructive">{errors.code}</p>}
       </div>
       <div className="space-y-2">
         <Label>Name *</Label>
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., Material Shortage" />
+        {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
       </div>
       <div className="space-y-2">
         <Label>Default Owner</Label>
         <Input value={defaultOwner} onChange={(e) => setDefaultOwner(e.target.value)} placeholder="e.g., Procurement" />
+        {errors.default_owner && <p className="text-sm text-destructive">{errors.default_owner}</p>}
       </div>
       <div className="space-y-2">
         <Label>Default Impact</Label>
@@ -1467,10 +1599,11 @@ function BlockerTypeForm({ initialData, onSave, onCancel, isSaving }: { initialD
             ))}
           </SelectContent>
         </Select>
+        {errors.default_impact && <p className="text-sm text-destructive">{errors.default_impact}</p>}
       </div>
       <DialogFooter>
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
-        <Button onClick={() => onSave({ code, name, default_owner: defaultOwner || null, default_impact: defaultImpact })} disabled={!code || !name || isSaving}>
+        <Button onClick={handleSave} disabled={isSaving}>
           {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
           Save
         </Button>

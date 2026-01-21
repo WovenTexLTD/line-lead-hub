@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { z } from "zod";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -61,6 +62,11 @@ interface Line {
 
 const ASSIGNABLE_ROLES: AppRole[] = ['worker', 'admin', 'storage'];
 
+const editUserSchema = z.object({
+  role: z.enum(["worker", "admin", "storage", "cutting", "owner"]),
+  isActive: z.boolean(),
+});
+
 export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUserDialogProps) {
   const { profile, hasRole, user: currentUser } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -71,6 +77,7 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
     role: "worker" as AppRole,
     isActive: true,
   });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // Admins can assign all roles including other admins
   const availableRoles = hasRole('admin') || hasRole('owner')
@@ -127,7 +134,18 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
 
   async function handleSave() {
     if (!user || !profile?.factory_id) return;
-    
+
+    const result = editUserSchema.safeParse(formData);
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        if (err.path[0]) fieldErrors[err.path[0] as string] = err.message;
+      });
+      setFormErrors(fieldErrors);
+      return;
+    }
+    setFormErrors({});
+
     setLoading(true);
 
     try {
@@ -304,6 +322,7 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
               {isOwnerOrHigher && !isCurrentUser && (
                 <p className="text-xs text-muted-foreground">Owner/Admin roles cannot be changed here</p>
               )}
+              {formErrors.role && <p className="text-sm text-destructive">{formErrors.role}</p>}
             </div>
 
             {/* Line Assignment - for workers, storage, and cutting roles */}

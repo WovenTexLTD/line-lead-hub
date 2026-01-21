@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { z } from "zod";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -59,6 +60,19 @@ interface DropdownOption {
   id: string;
   label: string;
 }
+
+const sewingTargetSchema = z.object({
+  line_id: z.string().min(1, "Line is required"),
+  work_order_id: z.string().min(1, "PO is required"),
+  per_hour_target: z.number().min(1, "Must be at least 1").max(10000, "Too high"),
+  manpower_planned: z.number().min(1, "Must be at least 1").max(500, "Too high"),
+  ot_hours_planned: z.number().min(0, "Cannot be negative").max(24, "Max 24 hours"),
+  planned_stage_id: z.string().min(1, "Stage is required"),
+  planned_stage_progress: z.string().min(1, "Progress is required"),
+  next_milestone: z.string().min(1, "Milestone is required"),
+  estimated_ex_factory: z.string().optional(),
+  remarks: z.string().max(1000, "Remarks too long").optional(),
+});
 
 export default function SewingMorningTargets() {
   const navigate = useNavigate();
@@ -167,19 +181,39 @@ export default function SewingMorningTargets() {
   }
 
   function validateForm(): boolean {
-    const newErrors: Record<string, string> = {};
+    const formData = {
+      line_id: selectedLineId,
+      work_order_id: selectedWorkOrderId,
+      per_hour_target: parseInt(perHourTarget) || 0,
+      manpower_planned: parseInt(manpowerPlanned) || 0,
+      ot_hours_planned: parseFloat(otHoursPlanned) || 0,
+      planned_stage_id: plannedStageId,
+      planned_stage_progress: plannedStageProgress,
+      next_milestone: nextMilestone,
+      estimated_ex_factory: estimatedExFactory || undefined,
+      remarks: remarks || undefined,
+    };
 
-    if (!selectedLineId) newErrors.line = t("forms.lineRequired");
-    if (!selectedWorkOrderId) newErrors.workOrder = t("forms.poRequired");
-    if (!perHourTarget || parseInt(perHourTarget) <= 0) newErrors.perHourTarget = t("forms.targetRequired");
-    if (!manpowerPlanned || parseInt(manpowerPlanned) <= 0) newErrors.manpowerPlanned = t("forms.manpowerRequired");
-    if (otHoursPlanned === "" || parseFloat(otHoursPlanned) < 0) newErrors.otHoursPlanned = t("forms.otHoursRequired");
-    if (!plannedStageId) newErrors.plannedStage = t("forms.stageRequired");
-    if (!plannedStageProgress) newErrors.plannedStageProgress = t("forms.progressRequired");
-    if (!nextMilestone) newErrors.nextMilestone = t("forms.milestoneRequired");
+    const result = sewingTargetSchema.safeParse(formData);
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    if (!result.success) {
+      const fieldErrors = result.error.flatten().fieldErrors;
+      const newErrors: Record<string, string> = {};
+      if (fieldErrors.line_id) newErrors.line = t("forms.lineRequired");
+      if (fieldErrors.work_order_id) newErrors.workOrder = t("forms.poRequired");
+      if (fieldErrors.per_hour_target) newErrors.perHourTarget = t("forms.targetRequired");
+      if (fieldErrors.manpower_planned) newErrors.manpowerPlanned = t("forms.manpowerRequired");
+      if (fieldErrors.ot_hours_planned) newErrors.otHoursPlanned = t("forms.otHoursRequired");
+      if (fieldErrors.planned_stage_id) newErrors.plannedStage = t("forms.stageRequired");
+      if (fieldErrors.planned_stage_progress) newErrors.plannedStageProgress = t("forms.progressRequired");
+      if (fieldErrors.next_milestone) newErrors.nextMilestone = t("forms.milestoneRequired");
+      if (fieldErrors.remarks) newErrors.remarks = fieldErrors.remarks[0];
+      setErrors(newErrors);
+      return false;
+    }
+
+    setErrors({});
+    return true;
   }
 
   async function handleSubmit(e: React.FormEvent) {

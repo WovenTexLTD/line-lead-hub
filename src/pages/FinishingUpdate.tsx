@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { z } from "zod";
 import { useAuth } from "@/contexts/AuthContext";
 import type { AppRole } from "@/lib/constants";
 import { supabase } from "@/integrations/supabase/client";
@@ -48,6 +49,25 @@ interface Factory {
   id: string;
   name: string;
 }
+
+const finishingSchema = z.object({
+  line_id: z.string().min(1, "Line is required"),
+  work_order_id: z.string().min(1, "PO is required"),
+  m_power: z.number().min(0, "Cannot be negative").max(1000, "Too high"),
+  per_hour_target: z.number().min(0, "Cannot be negative").max(10000, "Too high"),
+  day_qc_pass: z.number().min(0, "Cannot be negative").max(100000, "Too high"),
+  total_qc_pass: z.number().min(0, "Cannot be negative").max(10000000, "Too high"),
+  day_poly: z.number().min(0, "Cannot be negative").max(100000, "Too high"),
+  total_poly: z.number().min(0, "Cannot be negative").max(10000000, "Too high"),
+  average_production: z.number().min(0, "Cannot be negative").max(100000, "Too high"),
+  day_over_time: z.number().min(0, "Cannot be negative").max(24, "Max 24 hours"),
+  total_over_time: z.number().min(0, "Cannot be negative").max(10000, "Too high"),
+  day_hour: z.number().min(0, "Cannot be negative").max(24, "Max 24 hours"),
+  total_hour: z.number().min(0, "Cannot be negative").max(10000, "Too high"),
+  day_carton: z.number().min(0, "Cannot be negative").max(10000, "Too high"),
+  total_carton: z.number().min(0, "Cannot be negative").max(1000000, "Too high"),
+  remarks: z.string().max(1000, "Remarks too long").optional(),
+});
 
 export default function FinishingUpdate() {
   const { t, i18n } = useTranslation();
@@ -223,44 +243,52 @@ export default function FinishingUpdate() {
   }
 
   function validateForm(): boolean {
-    const newErrors: Record<string, string> = {};
+    const formData = {
+      line_id: selectedLine,
+      work_order_id: selectedPO,
+      m_power: parseInt(mPower) || 0,
+      per_hour_target: parseInt(perHourTarget) || 0,
+      day_qc_pass: parseInt(dayQcPass) || 0,
+      total_qc_pass: parseInt(totalQcPass) || 0,
+      day_poly: parseInt(dayPoly) || 0,
+      total_poly: parseInt(totalPoly) || 0,
+      average_production: parseInt(averageProduction) || 0,
+      day_over_time: parseFloat(dayOverTime) || 0,
+      total_over_time: parseFloat(totalOverTime) || 0,
+      day_hour: parseFloat(dayHour) || 0,
+      total_hour: parseFloat(totalHour) || 0,
+      day_carton: parseInt(dayCarton) || 0,
+      total_carton: parseInt(totalCarton) || 0,
+      remarks: remarks || undefined,
+    };
 
-    // Required selections
-    if (!selectedPO) newErrors.po = "PO ID is required";
-    if (!selectedLine) newErrors.line = "Line No. is required";
+    const result = finishingSchema.safeParse(formData);
 
-    // Required metrics - must be non-negative numbers
-    const numericFields = [
-      { key: "mPower", value: mPower, label: "M Power" },
-      { key: "perHourTarget", value: perHourTarget, label: "Per Hour Target" },
-      { key: "dayQcPass", value: dayQcPass, label: "Day QC Pass" },
-      { key: "totalQcPass", value: totalQcPass, label: "Total QC Pass" },
-      { key: "dayPoly", value: dayPoly, label: "Day Poly" },
-      { key: "totalPoly", value: totalPoly, label: "Total Poly" },
-      { key: "averageProduction", value: averageProduction, label: "Average Production" },
-      { key: "dayOverTime", value: dayOverTime, label: "Day Over Time" },
-      { key: "totalOverTime", value: totalOverTime, label: "Total Over Time" },
-      { key: "dayHour", value: dayHour, label: "Day Hour" },
-      { key: "totalHour", value: totalHour, label: "Total Hour" },
-      { key: "dayCarton", value: dayCarton, label: "Day Carton" },
-      { key: "totalCarton", value: totalCarton, label: "Total Carton" },
-    ];
+    if (!result.success) {
+      const fieldErrors = result.error.flatten().fieldErrors;
+      const newErrors: Record<string, string> = {};
+      if (fieldErrors.line_id) newErrors.line = "Line No. is required";
+      if (fieldErrors.work_order_id) newErrors.po = "PO ID is required";
+      if (fieldErrors.m_power) newErrors.mPower = fieldErrors.m_power[0];
+      if (fieldErrors.per_hour_target) newErrors.perHourTarget = fieldErrors.per_hour_target[0];
+      if (fieldErrors.day_qc_pass) newErrors.dayQcPass = fieldErrors.day_qc_pass[0];
+      if (fieldErrors.total_qc_pass) newErrors.totalQcPass = fieldErrors.total_qc_pass[0];
+      if (fieldErrors.day_poly) newErrors.dayPoly = fieldErrors.day_poly[0];
+      if (fieldErrors.total_poly) newErrors.totalPoly = fieldErrors.total_poly[0];
+      if (fieldErrors.average_production) newErrors.averageProduction = fieldErrors.average_production[0];
+      if (fieldErrors.day_over_time) newErrors.dayOverTime = fieldErrors.day_over_time[0];
+      if (fieldErrors.total_over_time) newErrors.totalOverTime = fieldErrors.total_over_time[0];
+      if (fieldErrors.day_hour) newErrors.dayHour = fieldErrors.day_hour[0];
+      if (fieldErrors.total_hour) newErrors.totalHour = fieldErrors.total_hour[0];
+      if (fieldErrors.day_carton) newErrors.dayCarton = fieldErrors.day_carton[0];
+      if (fieldErrors.total_carton) newErrors.totalCarton = fieldErrors.total_carton[0];
+      if (fieldErrors.remarks) newErrors.remarks = fieldErrors.remarks[0];
+      setErrors(newErrors);
+      return false;
+    }
 
-    numericFields.forEach(({ key, value, label }) => {
-      if (value === "" || value === null || value === undefined) {
-        newErrors[key] = `${label} is required`;
-      } else {
-        const num = parseFloat(value);
-        if (isNaN(num)) {
-          newErrors[key] = `${label} must be a valid number`;
-        } else if (num < 0) {
-          newErrors[key] = `${label} cannot be negative`;
-        }
-      }
-    });
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setErrors({});
+    return true;
   }
 
   async function handleSubmit(e: React.FormEvent) {

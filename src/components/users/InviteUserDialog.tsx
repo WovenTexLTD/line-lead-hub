@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { z } from "zod";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -42,6 +43,14 @@ const ASSIGNABLE_ROLES: AppRole[] = ['worker', 'admin', 'storage', 'cutting'];
 const DEPARTMENTS = ['sewing', 'finishing', 'both'] as const;
 type Department = typeof DEPARTMENTS[number];
 
+const inviteUserSchema = z.object({
+  email: z.string().email("Invalid email address").max(255, "Email too long"),
+  fullName: z.string().min(1, "Full name is required").max(100, "Name too long"),
+  role: z.enum(["worker", "admin", "storage", "cutting"]),
+  department: z.enum(["sewing", "finishing", "both"]),
+  temporaryPassword: z.string().min(6, "Password must be at least 6 characters").max(100, "Password too long").optional(),
+});
+
 export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDialogProps) {
   const { profile, hasRole } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -56,6 +65,7 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
     role: "worker" as AppRole,
     department: "both" as Department,
   });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // Admins can invite all roles including other admins
   const availableRoles = hasRole('admin') || hasRole('owner')
@@ -100,11 +110,24 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
     e.preventDefault();
     if (!profile?.factory_id) return;
 
-    // Validate password if using temporary password
-    if (useTemporaryPassword && temporaryPassword.length < 6) {
-      toast.error("Password must be at least 6 characters");
+    const dataToValidate = {
+      email: formData.email,
+      fullName: formData.fullName,
+      role: formData.role,
+      department: formData.department,
+      temporaryPassword: useTemporaryPassword ? temporaryPassword : undefined,
+    };
+
+    const result = inviteUserSchema.safeParse(dataToValidate);
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        if (err.path[0]) fieldErrors[err.path[0] as string] = err.message;
+      });
+      setFormErrors(fieldErrors);
       return;
     }
+    setFormErrors({});
 
     setLoading(true);
 
@@ -205,6 +228,7 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
               placeholder="Enter full name"
               required
             />
+            {formErrors.fullName && <p className="text-sm text-destructive">{formErrors.fullName}</p>}
           </div>
 
           <div className="space-y-2">
@@ -220,6 +244,7 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
               placeholder="user@example.com"
               required
             />
+            {formErrors.email && <p className="text-sm text-destructive">{formErrors.email}</p>}
           </div>
 
           {/* Temporary Password Toggle */}
@@ -277,6 +302,7 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
               <p className="text-xs text-muted-foreground">
                 Share this password with the user. They should change it after first login.
               </p>
+              {formErrors.temporaryPassword && <p className="text-sm text-destructive">{formErrors.temporaryPassword}</p>}
             </div>
           )}
 
