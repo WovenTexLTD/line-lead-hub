@@ -111,7 +111,38 @@ Deno.serve(async (req) => {
       userId = newUser.user.id;
     }
 
-    // Update profile with factory_id, department, and set as pending
+    const { data: existingProfile } = await adminClient
+      .from("profiles")
+      .select("factory_id")
+      .eq("id", userId)
+      .single();
+
+    if (existingProfile?.factory_id && existingProfile.factory_id !== factoryId) {
+      await adminClient
+        .from("user_roles")
+        .delete()
+        .eq("user_id", userId)
+        .eq("factory_id", existingProfile.factory_id);
+
+      await adminClient
+        .from("user_line_assignments")
+        .delete()
+        .eq("user_id", userId)
+        .eq("factory_id", existingProfile.factory_id);
+
+      await adminClient
+        .from("notification_preferences")
+        .delete()
+        .eq("user_id", userId)
+        .eq("factory_id", existingProfile.factory_id);
+
+      console.log("Cleaned up old factory associations", {
+        userId,
+        oldFactoryId: existingProfile.factory_id,
+        newFactoryId: factoryId,
+      });
+    }
+
     const { error: profileError } = await adminClient
       .from("profiles")
       .update({
