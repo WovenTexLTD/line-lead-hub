@@ -295,8 +295,15 @@ serve(async (req) => {
     // ============================================================
     logStep("Processing downgrade - scheduling for period end");
 
+    // Get period end timestamp and convert to Date
     const periodEnd = subscription.current_period_end;
+    if (!periodEnd || typeof periodEnd !== "number") {
+      throw new Error("Could not determine subscription billing period");
+    }
     const periodEndDate = new Date(periodEnd * 1000);
+    if (isNaN(periodEndDate.getTime())) {
+      throw new Error("Invalid subscription period end date");
+    }
 
     // Update subscription to cancel at period end and store downgrade info in metadata
     // The webhook will handle creating the new subscription when this one ends
@@ -326,6 +333,13 @@ serve(async (req) => {
 
     logStep("Downgrade scheduled", { effectiveDate: periodEndDate.toISOString() });
 
+    // Format date as readable string (e.g., "Jan 15, 2026")
+    const formattedDate = periodEndDate.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -334,7 +348,7 @@ serve(async (req) => {
         newInterval: billingInterval,
         maxLines: tierConfig.maxLines,
         effectiveDate: periodEndDate.toISOString(),
-        message: `Your plan will change to ${newTier.charAt(0).toUpperCase() + newTier.slice(1)} on ${periodEndDate.toLocaleDateString()}. You'll keep your current features until then.`,
+        message: `Your plan will change to ${newTier.charAt(0).toUpperCase() + newTier.slice(1)} on ${formattedDate}. You'll keep your current features until then.`,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
