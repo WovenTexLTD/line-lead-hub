@@ -126,6 +126,8 @@ export default function BillingPlan() {
   };
 
   // Handle plan upgrades and downgrades
+  // Upgrades redirect to Stripe Checkout for user confirmation before any charge
+  // Downgrades are scheduled for the end of the current billing period
   const handleChangePlan = async (tier: PlanTier) => {
     if (tier === 'enterprise') {
       handleContactSales();
@@ -137,39 +139,25 @@ export default function BillingPlan() {
       const { data, error } = await supabase.functions.invoke('change-subscription', {
         body: { newTier: tier, billingInterval }
       });
-      
+
       if (error) throw error;
-      
+
       if (data.success) {
-        if (data.changeType === 'upgrade') {
-          toast({
-            title: "Upgrade Complete! 🎉",
-            description: data.message || `You've upgraded to the ${PLAN_TIERS[tier].name} plan. Your new limits are active now.`,
-          });
-          refetchLines();
-          window.location.reload();
-        } else if (data.changeType === 'downgrade') {
-          const scheduledDate = data.scheduledDate 
-            ? new Date(data.scheduledDate).toLocaleDateString() 
+        // Upgrades return a checkout URL - redirect user to confirm payment
+        if (data.requiresCheckout && data.checkoutUrl) {
+          await openExternalUrl(data.checkoutUrl);
+          return;
+        }
+
+        // Downgrades are scheduled for period end
+        if (data.changeType === 'downgrade') {
+          const scheduledDate = data.effectiveDate
+            ? new Date(data.effectiveDate).toLocaleDateString()
             : 'your next billing date';
           toast({
             title: "Downgrade Scheduled",
             description: data.message || `Your plan will change to ${PLAN_TIERS[tier].name} on ${scheduledDate}. You'll keep your current features until then.`,
           });
-          
-          if (data.needsPaymentMethod) {
-            setTimeout(() => {
-              toast({
-                title: "Payment Method Required",
-                description: "Please add a payment method to ensure your subscription continues at renewal.",
-                action: (
-                  <Button size="sm" variant="outline" onClick={handleManageBilling}>
-                    Add Payment Method
-                  </Button>
-                ),
-              });
-            }, 2000);
-          }
         }
       } else if (data.error) {
         throw new Error(data.error);
@@ -221,15 +209,24 @@ export default function BillingPlan() {
     }
   };
 
+  // Opens Stripe Customer Portal for managing payment methods, viewing invoices, etc.
+  // If no billing account exists, redirects user to subscription page
   const handleManageBilling = async () => {
     setPortalLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('customer-portal');
-      
+
       if (error) throw error;
-      
+
       if (data.url) {
         await openExternalUrl(data.url);
+      } else if (data.redirectTo) {
+        // No billing account - redirect to subscription page
+        toast({
+          title: "No Billing Account",
+          description: data.message || "Please subscribe to a plan first.",
+        });
+        navigate(data.redirectTo);
       } else if (data.error) {
         throw new Error(data.error);
       }
