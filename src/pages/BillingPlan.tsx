@@ -151,9 +151,15 @@ export default function BillingPlan() {
 
         // Downgrades are scheduled for period end
         if (data.changeType === 'downgrade') {
-          const scheduledDate = data.effectiveDate
-            ? new Date(data.effectiveDate).toLocaleDateString()
-            : 'your next billing date';
+          // Use the pre-formatted message from backend, or format date locally as fallback
+          let scheduledDate = 'your next billing date';
+          if (data.effectiveDate) {
+            try {
+              scheduledDate = new Date(data.effectiveDate).toLocaleDateString();
+            } catch {
+              // Date parsing failed, use fallback
+            }
+          }
           toast({
             title: "Downgrade Scheduled",
             description: data.message || `Your plan will change to ${PLAN_TIERS[tier].name} on ${scheduledDate}. You'll keep your current features until then.`,
