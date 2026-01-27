@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import logoSvg from "@/assets/logo.svg";
+import i18n from "@/i18n/config";
 
 const resetSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
@@ -51,6 +52,23 @@ export default function ResetPassword() {
 
   const [checkingLink, setCheckingLink] = useState(true);
   const [isInvalidLink, setIsInvalidLink] = useState(false);
+
+  // Force English language on password reset page since it doesn't support translations
+  useEffect(() => {
+    if (i18n.language !== 'en') {
+      i18n.changeLanguage('en');
+    }
+    // Ensure HTML lang attribute is set to English
+    document.documentElement.lang = 'en';
+
+    // Cleanup: restore language settings when leaving page
+    return () => {
+      const savedLanguage = localStorage.getItem('app-language');
+      if (savedLanguage && savedLanguage !== 'en') {
+        i18n.changeLanguage(savedLanguage);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -158,7 +176,7 @@ export default function ResetPassword() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-background" style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif" }}>
       <div className="gradient-industrial text-sidebar-foreground py-12 px-4">
         <div className="container mx-auto max-w-6xl">
           <div className="flex items-center gap-3 mb-6">
@@ -230,7 +248,7 @@ export default function ResetPassword() {
                     <Input
                       id="new-password"
                       type="password"
-                      placeholder="••••••••"
+                      placeholder="Enter your new password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="h-11"
@@ -244,7 +262,7 @@ export default function ResetPassword() {
                     <Input
                       id="confirm-new-password"
                       type="password"
-                      placeholder="••••••••"
+                      placeholder="Confirm your new password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       className="h-11"

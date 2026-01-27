@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { checkRateLimit } from "@/lib/security";
 import { getPasswordResetRedirectUrl } from "@/lib/capacitor";
 import logoSvg from "@/assets/logo.svg";
+import i18n from "@/i18n/config";
 
 const passwordSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
@@ -45,6 +46,23 @@ export default function Auth() {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+
+  // Force English language on Auth page since it doesn't support translations
+  useEffect(() => {
+    if (i18n.language !== 'en') {
+      i18n.changeLanguage('en');
+    }
+    // Ensure HTML lang attribute is set to English
+    document.documentElement.lang = 'en';
+
+    // Cleanup: restore language settings when leaving auth page
+    return () => {
+      const savedLanguage = localStorage.getItem('app-language');
+      if (savedLanguage && savedLanguage !== 'en') {
+        i18n.changeLanguage(savedLanguage);
+      }
+    };
+  }, []);
 
   const isForcedPasswordReset =
     typeof window !== "undefined" && sessionStorage.getItem("pp_force_password_reset") === "1";
@@ -335,7 +353,7 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-background" style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif" }}>
       {/* Hero section */}
       <div className="gradient-industrial text-sidebar-foreground py-12 px-4">
         <div className="container mx-auto max-w-6xl flex flex-col items-center text-center">
@@ -380,7 +398,7 @@ export default function Auth() {
                     <Input
                       id="new-password"
                       type="password"
-                      placeholder="••••••••"
+                      placeholder="Enter your password"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       className="h-11"
@@ -395,7 +413,7 @@ export default function Auth() {
                     <Input
                       id="confirm-new-password"
                       type="password"
-                      placeholder="••••••••"
+                      placeholder="Confirm your password"
                       value={confirmNewPassword}
                       onChange={(e) => setConfirmNewPassword(e.target.value)}
                       className="h-11"
@@ -463,7 +481,7 @@ export default function Auth() {
                         <Input
                           id="login-password"
                           type="password"
-                          placeholder="••••••••"
+                          placeholder="Enter your password"
                           value={loginPassword}
                           onChange={(e) => setLoginPassword(e.target.value)}
                           className="h-11"
@@ -560,7 +578,7 @@ export default function Auth() {
                         <Input
                           id="signup-password"
                           type="password"
-                          placeholder="••••••••"
+                          placeholder="Enter your password"
                           value={signupPassword}
                           onChange={(e) => setSignupPassword(e.target.value)}
                           className="h-11"
@@ -575,7 +593,7 @@ export default function Auth() {
                         <Input
                           id="signup-confirm"
                           type="password"
-                          placeholder="••••••••"
+                          placeholder="Confirm your password"
                           value={signupConfirmPassword}
                           onChange={(e) => setSignupConfirmPassword(e.target.value)}
                           className="h-11"
