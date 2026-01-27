@@ -91,7 +91,8 @@ export function StorageSubmissionsTable({
           )
         `)
         .eq("factory_id", factoryId)
-        .gte("created_at", format(startDate, "yyyy-MM-dd"))
+        .gte("created_at", startDate.toISOString())
+        .lte("created_at", endDate.toISOString())
         .order("updated_at", { ascending: false });
 
       if (error) throw error;

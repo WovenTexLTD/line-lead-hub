@@ -143,8 +143,9 @@ export function ExtrasLedgerModal({
       setNotes('');
       setReferenceNumber('');
       setTransactionType('sold');
-      fetchEntries();
       onLedgerChange?.();
+      // Close modal to force refresh with updated data
+      onOpenChange(false);
     } catch (error) {
       console.error('Error adding entry:', error);
       toast.error('Failed to add entry');

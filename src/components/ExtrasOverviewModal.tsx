@@ -307,15 +307,27 @@ export function ExtrasOverviewModal({ open, onOpenChange }: ExtrasOverviewModalP
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => handleOpenLedger(item)}
-                          className="gap-1"
-                        >
-                          <Plus className="h-3 w-3" />
-                          Manage
-                        </Button>
+                        {item.available === 0 && item.extras_total > 0 ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleOpenLedger(item)}
+                            className="gap-1 text-destructive hover:text-destructive"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            Delete
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleOpenLedger(item)}
+                            className="gap-1"
+                          >
+                            <Plus className="h-3 w-3" />
+                            Manage
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
