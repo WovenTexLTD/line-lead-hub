@@ -42,7 +42,7 @@ const signupSchema = z.object({
 export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("login");
-  const { signIn, signUp, user, profile, hasRole, isAdminOrHigher, loading: authLoading } = useAuth();
+  const { signIn, signUp, signOut, user, profile, hasRole, isAdminOrHigher, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
@@ -104,6 +104,7 @@ export default function Auth() {
 
     if (user && !isPasswordResetMode) {
       if (profile?.factory_id) {
+        // User has factory access - redirect to appropriate page
         // Check for cutting role first
         if (hasRole("cutting")) {
           navigate("/cutting/submissions", { replace: true });
@@ -126,11 +127,28 @@ export default function Auth() {
           (hasRole("worker") && !isAdminOrHigher());
 
         navigate(isWorker ? "/sewing/morning-targets" : "/dashboard", { replace: true });
+      } else if (profile && !profile.is_active) {
+        // User account is deactivated
+        toast({
+          variant: "destructive",
+          title: "Account Deactivated",
+          description: "Your account has been deactivated. Please contact your administrator.",
+        });
+        signOut();
+      } else if (profile && profile.factory_id === null) {
+        // User was removed from factory
+        toast({
+          variant: "destructive",
+          title: "No Factory Access",
+          description: "You have been removed from the factory. Please contact your administrator for access.",
+        });
+        signOut();
       } else if (profile) {
+        // New user without factory - redirect to subscription
         navigate("/subscription", { replace: true });
       }
     }
-  }, [authLoading, user, profile, navigate, isPasswordResetMode, hasRole, isAdminOrHigher, isForcedPasswordReset]);
+  }, [authLoading, user, profile, navigate, isPasswordResetMode, hasRole, isAdminOrHigher, isForcedPasswordReset, toast, signOut]);
 
   // Login form state
   const [loginEmail, setLoginEmail] = useState("");
