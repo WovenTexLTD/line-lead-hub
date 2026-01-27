@@ -290,9 +290,21 @@ export default function WorkOrders() {
     setIsSaving(true);
 
     try {
-      const data = {
+      // Ensure required fields are present for DB insert
+      const insertData = {
         factory_id: profile.factory_id,
-        ...result.data,
+        po_number: result.data.po_number,
+        buyer: result.data.buyer,
+        style: result.data.style,
+        item: result.data.item ?? null,
+        color: result.data.color ?? null,
+        order_qty: result.data.order_qty,
+        smv: result.data.smv ?? null,
+        planned_ex_factory: result.data.planned_ex_factory ?? null,
+        target_per_hour: result.data.target_per_hour ?? null,
+        target_per_day: result.data.target_per_day ?? null,
+        status: result.data.status,
+        is_active: result.data.is_active,
         line_id: selectedLineIds.length === 1 ? selectedLineIds[0] : null,
       };
       
@@ -301,14 +313,14 @@ export default function WorkOrders() {
       if (dialogMode === 'create') {
         const { data: insertedData, error } = await supabase
           .from('work_orders')
-          .insert(data)
+          .insert([insertData])
           .select('id')
           .single();
         if (error) throw error;
         workOrderId = insertedData.id;
         toast({ title: "Work order created" });
       } else if (editingItem) {
-        const { error } = await supabase.from('work_orders').update(data).eq('id', editingItem.id);
+        const { error } = await supabase.from('work_orders').update(insertData).eq('id', editingItem.id);
         if (error) throw error;
         workOrderId = editingItem.id;
         toast({ title: "Work order updated" });

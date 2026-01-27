@@ -8,10 +8,11 @@ interface RateLimitOptions {
   isCritical?: boolean;
 }
 
-const CRITICAL_ACTIONS = ["login", "reset_password", "signup"] as const;
+const CRITICAL_ACTIONS = ["login", "reset_password", "signup", "invite"] as const;
+type RateLimitAction = typeof CRITICAL_ACTIONS[number];
 
 export async function checkRateLimit(
-  action: "login" | "reset_password" | "invite" | "signup",
+  action: RateLimitAction,
   options: RateLimitOptions = {}
 ): Promise<{ allowed: boolean; error?: string }> {
   const { email, factoryId, isCritical } = options;
