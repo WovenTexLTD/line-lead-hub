@@ -228,13 +228,19 @@ main {
   }
 
   html {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', system-ui, sans-serif;
+    font-family: 'Inter', 'Noto Sans Bengali', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
     width: 100%;
     max-width: 100vw;
     overflow-x: hidden;
+  }
+
+  /* Bengali language support */
+  html[lang="bn"],
+  html[lang="bn"] * {
+    font-family: 'Noto Sans Bengali', 'Inter', system-ui, sans-serif;
   }
 
   body {

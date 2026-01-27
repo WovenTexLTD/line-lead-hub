@@ -11,6 +11,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { SubscriptionGate } from "@/components/SubscriptionGate";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import i18n from "@/i18n/config";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
@@ -71,6 +72,32 @@ function AppRoutes() {
 
   const isForcedPasswordReset =
     typeof window !== "undefined" && sessionStorage.getItem("pp_force_password_reset") === "1";
+
+  // Global i18n and font configuration
+  useEffect(() => {
+    // Sync HTML lang attribute with i18n language
+    const updateLangAttribute = () => {
+      const currentLang = i18n.language || 'en';
+      document.documentElement.lang = currentLang;
+
+      // Add Bengali font to body if language is Bengali
+      if (currentLang === 'bn') {
+        document.body.style.fontFamily = "'Noto Sans Bengali', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif";
+      } else {
+        document.body.style.fontFamily = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif";
+      }
+    };
+
+    // Initial update
+    updateLangAttribute();
+
+    // Listen for language changes
+    i18n.on('languageChanged', updateLangAttribute);
+
+    return () => {
+      i18n.off('languageChanged', updateLangAttribute);
+    };
+  }, []);
 
   useEffect(() => {
     if (hasRecoverySignal && typeof window !== "undefined") {
