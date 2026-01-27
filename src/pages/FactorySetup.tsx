@@ -150,6 +150,7 @@ export default function FactorySetup() {
   const [bulkStartNumber, setBulkStartNumber] = useState(1);
   const [bulkUnitId, setBulkUnitId] = useState('');
   const [bulkFloorId, setBulkFloorId] = useState('');
+  const [bulkLineNamePattern, setBulkLineNamePattern] = useState('Line {n}');
   const [isBulkAdding, setIsBulkAdding] = useState(false);
 
   // Factory creation state
@@ -490,6 +491,17 @@ export default function FactorySetup() {
 
   async function handleBulkAddLines() {
     if (!profile?.factory_id) return;
+
+    // Validate required fields
+    if (!bulkUnitId) {
+      toast({ variant: "destructive", title: "Error", description: "Unit is required" });
+      return;
+    }
+    if (!bulkFloorId) {
+      toast({ variant: "destructive", title: "Error", description: "Floor is required" });
+      return;
+    }
+
     setIsBulkAdding(true);
 
     try {
@@ -512,12 +524,17 @@ export default function FactorySetup() {
       const newLines = [];
       for (let i = 0; i < linesToCreate; i++) {
         const lineNum = bulkStartNumber + i;
+        // Replace {n} or {number} in the pattern with the line number
+        const lineName = bulkLineNamePattern
+          .replace(/\{n\}/gi, lineNum.toString())
+          .replace(/\{number\}/gi, lineNum.toString());
+
         newLines.push({
           factory_id: profile.factory_id,
           line_id: `L${lineNum}`,
-          name: `Line ${lineNum}`,
-          unit_id: bulkUnitId || null,
-          floor_id: bulkFloorId || null,
+          name: lineName,
+          unit_id: bulkUnitId,
+          floor_id: bulkFloorId,
           is_active: true,
         });
       }
@@ -527,7 +544,7 @@ export default function FactorySetup() {
 
       toast({
         title: `${linesToCreate} lines created`,
-        description: linesToCreate < bulkLineCount 
+        description: linesToCreate < bulkLineCount
           ? `Only ${linesToCreate} lines added due to plan limits.`
           : `Lines L${bulkStartNumber} to L${bulkStartNumber + linesToCreate - 1} created.`
       });
@@ -1084,10 +1101,10 @@ export default function FactorySetup() {
           <DialogHeader>
             <DialogTitle>Bulk Add Lines</DialogTitle>
             <DialogDescription>
-              Quickly create multiple production lines at once. Lines will be named numerically (e.g., Line 1, Line 2, etc.)
+              Quickly create multiple production lines at once with custom naming.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -1116,11 +1133,22 @@ export default function FactorySetup() {
             </div>
 
             <div className="space-y-2">
-              <Label>Unit (optional)</Label>
-              <Select value={bulkUnitId || "none"} onValueChange={(v) => { setBulkUnitId(v === "none" ? "" : v); setBulkFloorId(''); }}>
+              <Label>Naming Pattern *</Label>
+              <Input
+                value={bulkLineNamePattern}
+                onChange={(e) => setBulkLineNamePattern(e.target.value)}
+                placeholder="e.g., Line {n} or Line{n}A"
+              />
+              <p className="text-xs text-muted-foreground">
+                Use {`{n}`} or {`{number}`} for the line number
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Unit *</Label>
+              <Select value={bulkUnitId} onValueChange={(v) => { setBulkUnitId(v); setBulkFloorId(''); }}>
                 <SelectTrigger><SelectValue placeholder="Select unit" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">No unit</SelectItem>
                   {units.filter(u => u.is_active).map(u => (
                     <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
                   ))}
@@ -1128,29 +1156,29 @@ export default function FactorySetup() {
               </Select>
             </div>
 
-            {bulkUnitId && (
-              <div className="space-y-2">
-                <Label>Floor (optional)</Label>
-                <Select value={bulkFloorId || "none"} onValueChange={(v) => setBulkFloorId(v === "none" ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="Select floor" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No floor</SelectItem>
-                    {floors.filter(f => f.is_active && f.unit_id === bulkUnitId).map(f => (
-                      <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            <div className="space-y-2">
+              <Label>Floor *</Label>
+              <Select value={bulkFloorId} onValueChange={setBulkFloorId} disabled={!bulkUnitId}>
+                <SelectTrigger><SelectValue placeholder="Select floor" /></SelectTrigger>
+                <SelectContent>
+                  {floors.filter(f => f.is_active && f.unit_id === bulkUnitId).map(f => (
+                    <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
             {lineStatus && (
-              <div className="bg-muted/50 rounded-lg p-3 text-sm">
+              <div className="bg-muted/50 rounded-lg p-3 text-sm space-y-1">
                 <p className="font-medium">Preview</p>
                 <p className="text-muted-foreground">
                   Will create lines: L{bulkStartNumber} to L{bulkStartNumber + bulkLineCount - 1}
                 </p>
                 <p className="text-muted-foreground">
-                  Available slots: {lineStatus.maxLines !== null 
+                  Names: {bulkLineNamePattern.replace(/\{n\}/gi, bulkStartNumber.toString()).replace(/\{number\}/gi, bulkStartNumber.toString())}, {bulkLineNamePattern.replace(/\{n\}/gi, (bulkStartNumber + 1).toString()).replace(/\{number\}/gi, (bulkStartNumber + 1).toString())}, ...
+                </p>
+                <p className="text-muted-foreground">
+                  Available slots: {lineStatus.maxLines !== null
                     ? Math.max(0, lineStatus.maxLines - lineStatus.activeCount)
                     : 'Unlimited'}
                 </p>
@@ -1160,9 +1188,9 @@ export default function FactorySetup() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsBulkAddOpen(false)}>Cancel</Button>
-            <Button 
-              onClick={handleBulkAddLines} 
-              disabled={isBulkAdding || bulkLineCount < 1}
+            <Button
+              onClick={handleBulkAddLines}
+              disabled={isBulkAdding || bulkLineCount < 1 || !bulkUnitId || !bulkFloorId || !bulkLineNamePattern.trim()}
             >
               {isBulkAdding && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Create {bulkLineCount} Lines
