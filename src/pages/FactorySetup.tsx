@@ -739,7 +739,7 @@ export default function FactorySetup() {
       </Card>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5 mb-6">
+        <TabsList className="grid w-full grid-cols-3 mb-6">
           <TabsTrigger value="units" className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />
             <span className="hidden sm:inline">Units</span>
@@ -751,14 +751,6 @@ export default function FactorySetup() {
           <TabsTrigger value="lines" className="flex items-center gap-2">
             <Rows3 className="h-4 w-4" />
             <span className="hidden sm:inline">Lines</span>
-          </TabsTrigger>
-          <TabsTrigger value="stages" className="flex items-center gap-2">
-            <ListOrdered className="h-4 w-4" />
-            <span className="hidden sm:inline">Stages</span>
-          </TabsTrigger>
-          <TabsTrigger value="blockerTypes" className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4" />
-            <span className="hidden sm:inline">Blockers</span>
           </TabsTrigger>
         </TabsList>
 
@@ -964,130 +956,6 @@ export default function FactorySetup() {
                             <Pencil className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="icon" onClick={() => openDeleteDialog(line.id)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Stages Tab */}
-        <TabsContent value="stages">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Production Stages</CardTitle>
-                <CardDescription>Define workflow stages (e.g., Cutting, Sewing, QC)</CardDescription>
-              </div>
-              <Button onClick={openCreateDialog} size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Stage
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Sequence</TableHead>
-                    <TableHead>Code</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Active</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {stages.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground">
-                        No stages found. Add your first production stage.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    stages.map((stage) => (
-                      <TableRow key={stage.id}>
-                        <TableCell className="font-mono">{stage.sequence}</TableCell>
-                        <TableCell className="font-mono">{stage.code}</TableCell>
-                        <TableCell>{stage.name}</TableCell>
-                        <TableCell>
-                          <Switch
-                            checked={stage.is_active}
-                            onCheckedChange={() => toggleActive(stage.id, stage.is_active)}
-                          />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="icon" onClick={() => openEditDialog(stage)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => openDeleteDialog(stage.id)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Blocker Types Tab */}
-        <TabsContent value="blockerTypes">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Blocker Types</CardTitle>
-                <CardDescription>Define types of blockers (e.g., Material, Machine)</CardDescription>
-              </div>
-              <Button onClick={openCreateDialog} size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Blocker Type
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Code</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Default Owner</TableHead>
-                    <TableHead>Default Impact</TableHead>
-                    <TableHead>Active</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {blockerTypes.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground">
-                        No blocker types found. Add your first blocker type.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    blockerTypes.map((bt) => (
-                      <TableRow key={bt.id}>
-                        <TableCell className="font-mono">{bt.code}</TableCell>
-                        <TableCell>{bt.name}</TableCell>
-                        <TableCell>{bt.default_owner || '-'}</TableCell>
-                        <TableCell>
-                          {bt.default_impact ? BLOCKER_IMPACT_LABELS[bt.default_impact as keyof typeof BLOCKER_IMPACT_LABELS] : '-'}
-                        </TableCell>
-                        <TableCell>
-                          <Switch
-                            checked={bt.is_active}
-                            onCheckedChange={() => toggleActive(bt.id, bt.is_active)}
-                          />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="icon" onClick={() => openEditDialog(bt)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => openDeleteDialog(bt.id)}>
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </TableCell>

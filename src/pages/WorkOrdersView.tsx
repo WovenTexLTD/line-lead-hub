@@ -225,8 +225,8 @@ export default function WorkOrdersView() {
 
       {/* Extras Overview Button */}
       <div className="flex gap-3">
-        <Button variant="outline" onClick={() => setShowExtrasOverview(true)} className="gap-2">
-          <Archive className="h-4 w-4" />
+        <Button variant="default" onClick={() => setShowExtrasOverview(true)} className="gap-2" size="lg">
+          <Archive className="h-5 w-5" />
           View All Leftovers
         </Button>
       </div>

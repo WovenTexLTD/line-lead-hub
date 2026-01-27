@@ -526,7 +526,7 @@ export function AppSidebar() {
           {!collapsed && (
             <>
               <button
-                onClick={() => openExternalUrl('https://www.woventex.co')}
+                onClick={() => openExternalUrl('https://productionportal.co')}
                 className="shrink-0 h-8 w-8 flex items-center justify-center rounded-md text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
                 title={t('common.help') || 'Help'}
               >
