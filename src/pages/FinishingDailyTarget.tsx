@@ -106,6 +106,16 @@ export default function FinishingDailyTarget() {
     }
   }, [selectedLineId, selectedWorkOrderId, profile?.factory_id]);
 
+  // Clear PO selection when line changes
+  useEffect(() => {
+    if (selectedLineId && selectedWorkOrderId) {
+      const selectedWO = workOrders.find(wo => wo.id === selectedWorkOrderId);
+      if (selectedWO && selectedWO.line_id && selectedWO.line_id !== selectedLineId) {
+        setSelectedWorkOrderId("");
+      }
+    }
+  }, [selectedLineId, selectedWorkOrderId, workOrders]);
+
   async function fetchFormData() {
     if (!profile?.factory_id) return;
 
@@ -377,9 +387,9 @@ export default function FinishingDailyTarget() {
 
             <div className="space-y-2">
               <Label>PO Number *</Label>
-              <Select value={selectedWorkOrderId} onValueChange={setSelectedWorkOrderId}>
+              <Select value={selectedWorkOrderId} onValueChange={setSelectedWorkOrderId} disabled={!selectedLineId}>
                 <SelectTrigger className={errors.workOrder ? "border-destructive" : ""}>
-                  <SelectValue placeholder="Select PO" />
+                  <SelectValue placeholder={selectedLineId ? "Select PO" : "Select a line first"} />
                 </SelectTrigger>
                 <SelectContent>
                   {filteredWorkOrders.map((wo) => (

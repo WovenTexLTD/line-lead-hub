@@ -126,6 +126,12 @@ export default function CuttingEndOfDay() {
   // Validation
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Filter work orders by selected line
+  const filteredWorkOrders = workOrders.filter(wo => {
+    if (!selectedLine) return true;
+    return wo.line_id === selectedLine.id || !wo.line_id;
+  });
+
   useEffect(() => {
     if (profile?.factory_id) {
       fetchFormData();
@@ -139,6 +145,15 @@ export default function CuttingEndOfDay() {
       calculateTotals();
     }
   }, [selectedLine?.id, selectedWorkOrder?.id, profile?.factory_id]);
+
+  // Clear PO selection when line changes
+  useEffect(() => {
+    if (selectedLine && selectedWorkOrder) {
+      if (selectedWorkOrder.line_id && selectedWorkOrder.line_id !== selectedLine.id) {
+        setSelectedWorkOrder(null);
+      }
+    }
+  }, [selectedLine?.id, selectedWorkOrder?.id, workOrders]);
 
   // Recalculate totals when day values change
   useEffect(() => {
@@ -510,15 +525,16 @@ export default function CuttingEndOfDay() {
           <CardContent>
             <Popover open={searchOpen} onOpenChange={setSearchOpen}>
               <PopoverTrigger asChild>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className={`w-full justify-start min-w-0 ${errors.workOrder ? 'border-destructive' : ''}`}
+                  disabled={!selectedLine}
                 >
                   <Search className="mr-2 h-4 w-4 shrink-0" />
                   <span className="truncate">
-                    {selectedWorkOrder 
+                    {selectedWorkOrder
                       ? `${selectedWorkOrder.po_number} - ${selectedWorkOrder.buyer} / ${selectedWorkOrder.style}`
-                      : "Search by PO, Buyer, Style..."}
+                      : selectedLine ? "Search by PO, Buyer, Style..." : "Select a line first"}
                   </span>
                 </Button>
               </PopoverTrigger>
@@ -528,9 +544,9 @@ export default function CuttingEndOfDay() {
                   <CommandList>
                     <CommandEmpty>No work orders found.</CommandEmpty>
                     <CommandGroup>
-                      {workOrders.map(wo => (
-                        <CommandItem 
-                          key={wo.id} 
+                      {filteredWorkOrders.map(wo => (
+                        <CommandItem
+                          key={wo.id}
                           value={getSearchableValue(wo)}
                           onSelect={() => {
                             setSelectedWorkOrder(wo);
