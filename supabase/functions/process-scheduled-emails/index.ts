@@ -132,6 +132,16 @@ const handler = async (req: Request): Promise<Response> => {
           } else {
             console.log(`Successfully triggered email for schedule ${schedule.id}`);
             processedEmails.push(`${schedule.email} (${scheduleType})`);
+
+            // Update last_sent_at timestamp
+            const { error: updateError } = await supabase
+              .from("email_schedules")
+              .update({ last_sent_at: nowUTC.toISOString() })
+              .eq("id", schedule.id);
+
+            if (updateError) {
+              console.error(`Failed to update last_sent_at for schedule ${schedule.id}:`, updateError);
+            }
           }
         }
       } catch (scheduleError: any) {

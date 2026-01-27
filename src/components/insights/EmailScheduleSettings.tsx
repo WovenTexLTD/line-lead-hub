@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Mail, Loader2, Calendar, Clock, Send, Globe } from "lucide-react";
+import { Mail, Loader2, Calendar, Clock, Send, Globe, AlertCircle, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 
@@ -211,6 +211,26 @@ export function EmailScheduleSettings() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Setup Instructions Notice */}
+        <div className="flex items-start gap-3 p-4 rounded-lg bg-warning/10 border border-warning/20">
+          <AlertCircle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-warning">Setup Required for Automated Emails</p>
+            <p className="text-sm text-muted-foreground">
+              Email scheduling requires an external cron service to trigger scheduled emails.
+              The "Test" button works immediately, but automated schedules need additional setup.
+            </p>
+            <a
+              href="https://github.com/anthropics/claude-code/blob/main/docs/EMAIL_SCHEDULING_SETUP.md"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+            >
+              View Setup Guide <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
+        </div>
+
         {/* Timezone Notice */}
         <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border">
           <Globe className="h-4 w-4 text-muted-foreground" />
