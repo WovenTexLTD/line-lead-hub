@@ -33,6 +33,7 @@ interface WorkOrder {
   item: string | null;
   order_qty: number;
   color: string | null;
+  line_id: string | null;
 }
 
 interface Line {
@@ -123,7 +124,7 @@ export default function CuttingMorningTargets() {
       const [workOrdersRes, linesRes] = await Promise.all([
         supabase
           .from("work_orders")
-          .select("id, po_number, buyer, style, item, order_qty, color")
+          .select("id, po_number, buyer, style, item, order_qty, color, line_id")
           .eq("factory_id", profile.factory_id)
           .eq("is_active", true)
           .order("po_number", { ascending: true }),

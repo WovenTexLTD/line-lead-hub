@@ -59,14 +59,15 @@ function pickBestSubscription(subs: Stripe.Subscription[]): Stripe.Subscription 
  * Resolves the user's active Stripe subscription, attempting recovery if stored IDs are stale.
  * Updates the database with corrected IDs if recovery is needed.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function resolveSubscription(args: {
   stripe: Stripe;
-  supabaseAdmin: ReturnType<typeof createClient>;
+  supabaseAdmin: any;
   factoryId: string;
   userEmail: string;
   stripeSubscriptionId: string | null;
   stripeCustomerId: string | null;
-}): Promise<{ subscription: Stripe.Subscription; customerId: string }> {
+}): Promise<{ subscription: Stripe.Subscription; customerId: string | null }> {
   const { stripe, supabaseAdmin, factoryId, userEmail } = args;
 
   // Try stored subscription ID first (fast path)
@@ -112,7 +113,7 @@ async function resolveSubscription(args: {
   // Find active subscriptions for this customer
   const subs = await stripe.subscriptions.list({ customer: customerId, status: "all", limit: 10 });
   const candidates = subs.data.filter(
-    (s) => s.status !== "canceled" && (s.items?.data?.length ?? 0) > 0
+    (s: Stripe.Subscription) => s.status !== "canceled" && (s.items?.data?.length ?? 0) > 0
   );
 
   const subscription = pickBestSubscription(candidates);

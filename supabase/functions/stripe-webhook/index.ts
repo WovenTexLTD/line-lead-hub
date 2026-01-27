@@ -66,8 +66,9 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
 /**
  * Finds factory by various methods: subscription ID, customer ID, or metadata
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function findFactory(
-  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseAdmin: any,
   stripe: Stripe,
   options: {
     subscriptionId?: string;
@@ -119,7 +120,7 @@ async function findFactory(
           const { data: factory } = await supabaseAdmin
             .from('factory_accounts')
             .select('id, name, stripe_customer_id, pending_plan_change')
-            .eq('id', profile.factory_id)
+            .eq('id', profile.factory_id as string)
             .single();
           return factory;
         }
