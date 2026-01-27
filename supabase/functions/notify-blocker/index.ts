@@ -91,16 +91,38 @@ Deno.serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // Get admin emails from profiles
+    // Get admin profiles and filter by department
+    // Only notify admins whose department matches the blocker's department, or who have "both" or null (all access)
     const { data: adminProfiles, error: profilesError } = await supabase
       .from("profiles")
-      .select("id, email, full_name")
+      .select("id, email, full_name, department")
       .in("id", adminUserIds);
 
     if (profilesError) {
       console.error("Error fetching admin profiles:", profilesError);
       throw profilesError;
     }
+
+    // Filter admins by department - only notify those with matching department, "both", or null (all access)
+    const filteredAdminProfiles = (adminProfiles || []).filter(profile => {
+      const profileDept = profile.department;
+      // Admins with no department (null) or "both" get all notifications
+      if (!profileDept || profileDept === "both") {
+        return true;
+      }
+      // Otherwise, only notify if departments match
+      return profileDept === department;
+    });
+
+    if (filteredAdminProfiles.length === 0) {
+      console.log(`No admins found with access to ${department} department for factory:`, factoryId);
+      return new Response(
+        JSON.stringify({ success: true, message: `No admins with ${department} access to notify` }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    const filteredAdminUserIds = filteredAdminProfiles.map(p => p.id);
 
     // Format impact for display
     const impactColors: Record<string, string> = {
@@ -111,11 +133,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
     };
     const impactColor = impactColors[blockerImpact] || "#6b7280";
 
-    // Create in-app notifications for all admins
+    // Create in-app notifications for filtered admins
     const notificationTitle = `🚨 ${blockerImpact.toUpperCase()} Blocker: ${lineName}`;
     const notificationMessage = `${blockerType} reported by ${submittedBy}${poNumber ? ` on ${poNumber}` : ""}. ${blockerDescription.slice(0, 100)}${blockerDescription.length > 100 ? "..." : ""}`;
 
-    const notificationsToInsert = adminUserIds.map(userId => ({
+    const notificationsToInsert = filteredAdminUserIds.map(userId => ({
       factory_id: factoryId,
       user_id: userId,
       type: "blocker_reported",
@@ -142,8 +164,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
       console.log(`Created ${notificationsToInsert.length} in-app notifications`);
     }
 
-    // Send email notifications to admins
-    const emailPromises = (adminProfiles || []).map(async (admin) => {
+    // Send email notifications to filtered admins
+    const emailPromises = filteredAdminProfiles.map(async (admin) => {
       if (!admin.email) return null;
 
       try {
@@ -222,7 +244,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const emailResults = await Promise.all(emailPromises);
     const successfulEmails = emailResults.filter(r => r?.success).length;
 
-    console.log(`Sent ${successfulEmails} of ${adminProfiles?.length || 0} emails`);
+    console.log(`Sent ${successfulEmails} of ${filteredAdminProfiles.length} emails to ${department} department admins`);
 
     return new Response(
       JSON.stringify({ 

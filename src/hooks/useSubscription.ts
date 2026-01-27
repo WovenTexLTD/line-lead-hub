@@ -14,7 +14,7 @@ interface SubscriptionStatus {
 }
 
 export function useSubscription() {
-  const { user, profile, factory } = useAuth();
+  const { user, profile, factory, loading: authLoading } = useAuth();
   const [status, setStatus] = useState<SubscriptionStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -80,9 +80,18 @@ export function useSubscription() {
       return;
     }
 
+    // Wait for auth data to finish loading before checking subscription
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    // Set loading to true at the start to prevent flash of stale data
+    setLoading(true);
+
     try {
       setError(null);
-      
+
       // Verify we have a valid session before calling the edge function
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) {
@@ -109,7 +118,7 @@ export function useSubscription() {
     } finally {
       setLoading(false);
     }
-  }, [user, checkFromFactory]);
+  }, [user, authLoading, checkFromFactory]);
 
   useEffect(() => {
     checkSubscription();

@@ -522,12 +522,31 @@ export default function FactorySetup() {
 
       // Generate line data
       const newLines = [];
+      const hasPlaceholder = /\{n\}|\{number\}/i.test(bulkLineNamePattern);
+
       for (let i = 0; i < linesToCreate; i++) {
         const lineNum = bulkStartNumber + i;
-        // Replace {n} or {number} in the pattern with the line number
-        const lineName = bulkLineNamePattern
-          .replace(/\{n\}/gi, lineNum.toString())
-          .replace(/\{number\}/gi, lineNum.toString());
+        let lineName: string;
+
+        if (hasPlaceholder) {
+          // Replace {n} or {number} in the pattern with the line number
+          lineName = bulkLineNamePattern
+            .replace(/\{n\}/gi, lineNum.toString())
+            .replace(/\{number\}/gi, lineNum.toString());
+        } else {
+          // No placeholder found - intelligently insert the number
+          // Check if pattern ends with letter(s) like "Line A" or "LineA"
+          const trailingLettersMatch = bulkLineNamePattern.match(/^(.*?)([A-Za-z]+)$/);
+          if (trailingLettersMatch && trailingLettersMatch[1].trim()) {
+            // Pattern like "Line A" -> "Line 1A", "Line 2A"
+            const prefix = trailingLettersMatch[1].trimEnd();
+            const suffix = trailingLettersMatch[2];
+            lineName = `${prefix} ${lineNum}${suffix}`;
+          } else {
+            // No trailing letters or just letters, append number at end
+            lineName = `${bulkLineNamePattern} ${lineNum}`;
+          }
+        }
 
         newLines.push({
           factory_id: profile.factory_id,
@@ -1140,7 +1159,7 @@ export default function FactorySetup() {
                 placeholder="e.g., Line {n} or Line{n}A"
               />
               <p className="text-xs text-muted-foreground">
-                Use {`{n}`} or {`{number}`} for the line number
+                Use {`{n}`} for custom placement, or enter a label like "Line A" to auto-generate "Line 1A, Line 2A..."
               </p>
             </div>
 
@@ -1175,7 +1194,22 @@ export default function FactorySetup() {
                   Will create lines: L{bulkStartNumber} to L{bulkStartNumber + bulkLineCount - 1}
                 </p>
                 <p className="text-muted-foreground">
-                  Names: {bulkLineNamePattern.replace(/\{n\}/gi, bulkStartNumber.toString()).replace(/\{number\}/gi, bulkStartNumber.toString())}, {bulkLineNamePattern.replace(/\{n\}/gi, (bulkStartNumber + 1).toString()).replace(/\{number\}/gi, (bulkStartNumber + 1).toString())}, ...
+                  Names: {(() => {
+                    const hasPlaceholder = /\{n\}|\{number\}/i.test(bulkLineNamePattern);
+                    const generateName = (num: number) => {
+                      if (hasPlaceholder) {
+                        return bulkLineNamePattern.replace(/\{n\}/gi, num.toString()).replace(/\{number\}/gi, num.toString());
+                      }
+                      const trailingLettersMatch = bulkLineNamePattern.match(/^(.*?)([A-Za-z]+)$/);
+                      if (trailingLettersMatch && trailingLettersMatch[1].trim()) {
+                        const prefix = trailingLettersMatch[1].trimEnd();
+                        const suffix = trailingLettersMatch[2];
+                        return `${prefix} ${num}${suffix}`;
+                      }
+                      return `${bulkLineNamePattern} ${num}`;
+                    };
+                    return `${generateName(bulkStartNumber)}, ${generateName(bulkStartNumber + 1)}, ...`;
+                  })()}
                 </p>
                 <p className="text-muted-foreground">
                   Available slots: {lineStatus.maxLines !== null

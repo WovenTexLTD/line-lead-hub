@@ -216,7 +216,7 @@ export function CuttingSubmissionsTable({
               <Package className="h-3 w-3" />
               Left Over Fabric
             </p>
-            <p className="text-xl font-bold">{stats.totalLeftoverYards.toLocaleString()} <span className="text-sm font-normal text-muted-foreground">yards</span></p>
+            <p className="text-xl font-bold">{stats.totalLeftoverYards.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})} <span className="text-sm font-normal text-muted-foreground">yards</span></p>
           </CardContent>
         </Card>
         <Card className="border-l-4 border-l-green-500">

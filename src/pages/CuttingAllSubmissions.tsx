@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays, isToday, parseISO } from "date-fns";
 import { toast } from "sonner";
-import { Loader2, Download, RefreshCw, Scissors, Target, ClipboardCheck, Pencil, Package, Trash2, Clock } from "lucide-react";
+import { Loader2, Download, RefreshCw, Scissors, Target, ClipboardCheck, Package, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,9 +18,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { EditCuttingActualModal } from "@/components/EditCuttingActualModal";
 import { CuttingDetailModal } from "@/components/CuttingDetailModal";
-import { useEditPermission } from "@/hooks/useEditPermission";
 
 interface CuttingTarget {
   id: string;
@@ -84,19 +82,15 @@ interface Line {
 
 export default function CuttingAllSubmissions() {
   const { profile } = useAuth();
-  const { canEditSubmission, getTimeUntilCutoff } = useEditPermission();
   const [loading, setLoading] = useState(true);
   const [targets, setTargets] = useState<CuttingTarget[]>([]);
   const [actuals, setActuals] = useState<CuttingActual[]>([]);
   const [lines, setLines] = useState<Line[]>([]);
   const [activeTab, setActiveTab] = useState("actuals");
 
-  const timeUntilCutoff = getTimeUntilCutoff();
-  
   // Modals
   const [selectedTarget, setSelectedTarget] = useState<CuttingTarget | null>(null);
   const [selectedActual, setSelectedActual] = useState<CuttingActual | null>(null);
-  const [editingActual, setEditingActual] = useState<any>(null);
 
   // Filters
   const [dateFrom, setDateFrom] = useState(format(subDays(new Date(), 30), "yyyy-MM-dd"));
@@ -318,12 +312,6 @@ export default function CuttingAllSubmissions() {
             <h1 className="text-xl font-bold">All Cutting Submissions</h1>
             <p className="text-sm text-muted-foreground">View targets and actuals</p>
           </div>
-          {timeUntilCutoff && (
-            <Badge variant="outline" className="gap-1">
-              <Clock className="h-3 w-3" />
-              Edit window: {timeUntilCutoff}
-            </Badge>
-          )}
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => fetchData()}>
@@ -500,46 +488,21 @@ export default function CuttingAllSubmissions() {
             </Card>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredActuals.map((actual) => {
-                const editCheck = canEditSubmission(actual.production_date);
-                return (
-                  <Card 
-                    key={actual.id} 
-                    className="cursor-pointer hover:shadow-md transition-shadow"
-                    onClick={() => setSelectedActual(actual)}
-                  >
+              {filteredActuals.map((actual) => (
+                <Card
+                  key={actual.id}
+                  className="cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={() => setSelectedActual(actual)}
+                >
                     <CardHeader className="pb-2">
                       <div className="flex items-center justify-between">
                         <Badge variant="outline" className="bg-success/10 text-success">
                           <ClipboardCheck className="h-3 w-3 mr-1" />
                           Actual
                         </Badge>
-                        <div className="flex items-center gap-2">
-                          {isToday(parseISO(actual.production_date)) && (
-                            <Badge variant="secondary" className="text-xs">Today</Badge>
-                          )}
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7"
-                                  disabled={!editCheck.canEdit}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditingActual(actual);
-                                  }}
-                                >
-                                  <Pencil className="h-3.5 w-3.5" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                {editCheck.canEdit ? "Edit submission" : editCheck.reason}
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
+                        {isToday(parseISO(actual.production_date)) && (
+                          <Badge variant="secondary" className="text-xs">Today</Badge>
+                        )}
                       </div>
                       <CardTitle className="text-base mt-2">
                         {actual.lines?.name || actual.lines?.line_id || "—"}
@@ -580,8 +543,7 @@ export default function CuttingAllSubmissions() {
                       </div>
                     </CardContent>
                   </Card>
-                );
-              })}
+                ))}
             </div>
           )}
         </TabsContent>
@@ -608,7 +570,7 @@ export default function CuttingAllSubmissions() {
                         <CardTitle className="text-base">{poData.po_number}</CardTitle>
                       </div>
                       <Badge className="bg-amber-500 text-white">
-                        Total: {poData.totalQuantity} {poData.unit}
+                        Total: {poData.totalQuantity.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})} {poData.unit}
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground mt-1">
@@ -618,9 +580,10 @@ export default function CuttingAllSubmissions() {
                   <CardContent>
                     <div className="space-y-3">
                       {poData.entries.map((entry) => (
-                        <div 
-                          key={entry.id} 
-                          className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                        <div
+                          key={entry.id}
+                          className="flex items-center justify-between p-3 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted transition-colors"
+                          onClick={() => setSelectedActual(entry)}
                         >
                           <div className="flex-1">
                             <div className="flex items-center gap-2 text-sm">
@@ -660,7 +623,10 @@ export default function CuttingAllSubmissions() {
                                   variant="ghost"
                                   size="icon"
                                   className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                  onClick={() => markLeftoverAsUsed(entry.id)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    markLeftoverAsUsed(entry.id);
+                                  }}
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
@@ -724,14 +690,6 @@ export default function CuttingAllSubmissions() {
           onOpenChange={(open) => !open && setSelectedActual(null)}
         />
       )}
-
-      {/* Edit Actual Modal */}
-      <EditCuttingActualModal
-        submission={editingActual}
-        open={!!editingActual}
-        onOpenChange={(open) => !open && setEditingActual(null)}
-        onSaved={fetchData}
-      />
     </div>
   );
 }

@@ -298,7 +298,6 @@ export default function ReportBlocker() {
         blocker_type_id: blockerType,
         blocker_owner: blockerOwnerLabel,
         blocker_impact: severityValue,
-        blocker_resolution_date: blockerResolution ? format(blockerResolution, "yyyy-MM-dd") : null,
         blocker_description: blockerDescription,
         blocker_status: "open",
 
@@ -307,6 +306,11 @@ export default function ReportBlocker() {
         floor_name: floorName,
         factory_name: factory?.name || "",
       };
+
+      // Add blocker_resolution_date only for sewing (finishing table doesn't have this field)
+      if (updateType === "sewing") {
+        insertData.blocker_resolution_date = blockerResolution ? format(blockerResolution, "yyyy-MM-dd") : null;
+      }
 
       // Add table-specific required fields
       if (updateType === "sewing") {

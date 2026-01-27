@@ -277,17 +277,17 @@ export default function Dashboard() {
         .order('line_id');
 
       // Fetch sewing targets
-      const { data: sewingTargetsData } = await supabase
+      const { data: sewingTargetsData, count: sewingTargetsCount } = await supabase
         .from('sewing_targets')
-        .select('*, lines(id, line_id, name), work_orders(po_number, buyer, style)')
+        .select('*, lines(id, line_id, name), work_orders(po_number, buyer, style)', { count: 'exact' })
         .eq('factory_id', profile.factory_id)
         .eq('production_date', today)
         .order('submitted_at', { ascending: false });
 
       // Fetch finishing targets
-      const { data: finishingTargetsData } = await supabase
+      const { data: finishingTargetsData, count: finishingTargetsCount } = await supabase
         .from('finishing_targets')
-        .select('*, lines(id, line_id, name), work_orders(po_number, buyer, style)')
+        .select('*, lines(id, line_id, name), work_orders(po_number, buyer, style)', { count: 'exact' })
         .eq('factory_id', profile.factory_id)
         .eq('production_date', today)
         .order('submitted_at', { ascending: false });
@@ -309,17 +309,17 @@ export default function Dashboard() {
         .order('submitted_at', { ascending: false });
 
       // Fetch cutting targets for today
-      const { data: cuttingTargetsData } = await supabase
+      const { data: cuttingTargetsData, count: cuttingTargetsCount } = await supabase
         .from('cutting_targets')
-        .select('*, lines(id, line_id, name), work_orders(po_number, buyer, style, color)')
+        .select('*, lines(id, line_id, name), work_orders(po_number, buyer, style, color)', { count: 'exact' })
         .eq('factory_id', profile.factory_id)
         .eq('production_date', today)
         .order('submitted_at', { ascending: false });
 
       // Fetch cutting actuals for today
-      const { data: cuttingActualsData } = await supabase
+      const { data: cuttingActualsData, count: cuttingActualsCount } = await supabase
         .from('cutting_actuals')
-        .select('*, lines!cutting_actuals_line_id_fkey(id, line_id, name), work_orders(po_number, buyer, style, color)')
+        .select('*, lines!cutting_actuals_line_id_fkey(id, line_id, name), work_orders(po_number, buyer, style, color)', { count: 'exact' })
         .eq('factory_id', profile.factory_id)
         .eq('production_date', today)
         .order('submitted_at', { ascending: false });
@@ -331,6 +331,13 @@ export default function Dashboard() {
         .eq('factory_id', profile.factory_id)
         .order('updated_at', { ascending: false })
         .limit(20);
+
+      // Count storage transactions from today
+      const { count: storageTransactionsCount } = await supabase
+        .from('storage_bin_card_transactions')
+        .select('*', { count: 'exact', head: true })
+        .gte('transaction_date', today)
+        .lte('transaction_date', today);
 
       // Blocker counts from production_updates tables (same source as Blockers page)
       const { count: sewingBlockersCount } = await supabase
@@ -616,7 +623,7 @@ export default function Dashboard() {
         .reduce((sum: number, log: any) => sum + (log.carton || 0), 0);
 
       setStats({
-        updatesToday: (sewingCount || 0) + (finishingCount || 0),
+        updatesToday: (sewingTargetsCount || 0) + (sewingCount || 0) + (finishingTargetsCount || 0) + (finishingCount || 0) + (cuttingTargetsCount || 0) + (cuttingActualsCount || 0) + (storageTransactionsCount || 0),
         blockersToday: (sewingBlockersCount || 0) + (finishingBlockersCount || 0),
         daySewingOutput,
         dayFinishingOutput,
