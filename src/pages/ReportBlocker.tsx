@@ -375,9 +375,19 @@ export default function ReportBlocker() {
         description: t('reportBlocker.blockerReportedDesc'),
       });
 
-      // Navigate workers to my-submissions, others to blockers view
-      const isWorker = hasRole("worker") && !isAdminOrHigher();
-      navigate(isWorker ? "/my-submissions" : "/blockers");
+      // Navigate users to their respective submission pages based on role/department
+      if (isAdminOrHigher()) {
+        navigate("/blockers");
+      } else if (hasRole("cutting")) {
+        navigate("/cutting/submissions");
+      } else if (hasRole("storage")) {
+        navigate("/submissions?department=storage");
+      } else if (updateType === "finishing" || profile?.department === "finishing") {
+        navigate("/finishing/my-submissions");
+      } else {
+        // Default to sewing submissions for workers
+        navigate("/my-submissions");
+      }
     } catch (error: unknown) {
       console.error("Error submitting blocker:", error);
       toast({
