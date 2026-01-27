@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays, isToday, parseISO } from "date-fns";
 import { toast } from "sonner";
-import { Loader2, Download, RefreshCw, Scissors, Target, ClipboardCheck, Pencil, Package, Trash2 } from "lucide-react";
+import { Loader2, Download, RefreshCw, Scissors, Target, ClipboardCheck, Pencil, Package, Trash2, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -84,12 +84,14 @@ interface Line {
 
 export default function CuttingAllSubmissions() {
   const { profile } = useAuth();
-  const { canEditSubmission } = useEditPermission();
+  const { canEditSubmission, getTimeUntilCutoff } = useEditPermission();
   const [loading, setLoading] = useState(true);
   const [targets, setTargets] = useState<CuttingTarget[]>([]);
   const [actuals, setActuals] = useState<CuttingActual[]>([]);
   const [lines, setLines] = useState<Line[]>([]);
   const [activeTab, setActiveTab] = useState("actuals");
+
+  const timeUntilCutoff = getTimeUntilCutoff();
   
   // Modals
   const [selectedTarget, setSelectedTarget] = useState<CuttingTarget | null>(null);
@@ -316,6 +318,12 @@ export default function CuttingAllSubmissions() {
             <h1 className="text-xl font-bold">All Cutting Submissions</h1>
             <p className="text-sm text-muted-foreground">View targets and actuals</p>
           </div>
+          {timeUntilCutoff && (
+            <Badge variant="outline" className="gap-1">
+              <Clock className="h-3 w-3" />
+              Edit window: {timeUntilCutoff}
+            </Badge>
+          )}
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => fetchData()}>

@@ -26,6 +26,7 @@ import {
 import { format, isToday, parseISO, startOfWeek, endOfWeek, isWithinInterval } from "date-fns";
 import { FileText, Clock, Target, TrendingUp, Search, Package, Edit2, Eye } from "lucide-react";
 import { FinishingLogDetailModal } from "@/components/FinishingLogDetailModal";
+import { useEditPermission } from "@/hooks/useEditPermission";
 
 interface FinishingDailyLog {
   id: string;
@@ -59,6 +60,7 @@ interface FinishingDailyLog {
 export default function FinishingMySubmissions() {
   const navigate = useNavigate();
   const { profile, user } = useAuth();
+  const { getTimeUntilCutoff } = useEditPermission();
   const [loading, setLoading] = useState(true);
   const [logs, setLogs] = useState<FinishingDailyLog[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -66,6 +68,8 @@ export default function FinishingMySubmissions() {
   const [activeTab, setActiveTab] = useState<"targets" | "outputs">("targets");
   const [selectedLog, setSelectedLog] = useState<FinishingDailyLog | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
+
+  const timeUntilCutoff = getTimeUntilCutoff();
 
   useEffect(() => {
     if (profile?.factory_id && user) {
@@ -208,11 +212,17 @@ export default function FinishingMySubmissions() {
 
   return (
     <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <FileText className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold">My Finishing Submissions</h1>
         </div>
+        {timeUntilCutoff && (
+          <Badge variant="outline" className="gap-1">
+            <Clock className="h-3 w-3" />
+            Edit window: {timeUntilCutoff}
+          </Badge>
+        )}
         <Button onClick={handleNewSubmission}>
           + New {activeTab === "targets" ? "Target" : "Output"}
         </Button>
