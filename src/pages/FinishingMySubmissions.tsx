@@ -112,9 +112,9 @@ export default function FinishingMySubmissions() {
       return isWithinInterval(date, { start: weekStart, end: weekEnd });
     });
 
+    // Total output = Carton only (standard rule: OUTPUT = Carton)
     const totalPcs = logsThisWeek.reduce((sum, log) => {
-      return sum + log.thread_cutting + log.inside_check + log.top_side_check + 
-             log.buttoning + log.iron + log.get_up + log.poly + log.carton;
+      return sum + log.carton;
     }, 0);
 
     const avgPerDay = logsThisWeek.length > 0 

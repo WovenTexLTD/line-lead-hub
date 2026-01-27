@@ -379,18 +379,14 @@ export default function FinishingDailyOutput() {
   }
 
   const calculateTotal = () => {
-    return PROCESS_CATEGORIES.reduce((sum, cat) => {
-      const val = parseInt(processValues[cat.key]) || 0;
-      return sum + val;
-    }, 0);
+    // Total output = Carton only (standard rule: OUTPUT = Carton)
+    return parseInt(processValues.carton) || 0;
   };
 
   const calculateTargetTotal = () => {
+    // Total output = Carton only (standard rule: OUTPUT = Carton)
     if (!targetLog) return 0;
-    return PROCESS_CATEGORIES.reduce((sum, cat) => {
-      const val = (targetLog as any)[cat.key] || 0;
-      return sum + val;
-    }, 0);
+    return (targetLog as any).carton || 0;
   };
 
   const getVariance = (key: ProcessKey): number => {

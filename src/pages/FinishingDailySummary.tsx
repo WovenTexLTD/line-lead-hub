@@ -169,7 +169,8 @@ export default function FinishingDailySummary() {
 
   const calculateTotal = (log: FinishingDailyLog | null) => {
     if (!log) return 0;
-    return PROCESS_KEYS.reduce((sum, key) => sum + ((log as any)[key] || 0), 0);
+    // Total output = Carton only (standard rule: OUTPUT = Carton)
+    return (log as any).carton || 0;
   };
 
   const VarianceCell = ({ target, output }: { target: number; output: number }) => {

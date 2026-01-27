@@ -308,9 +308,9 @@ export default function FinishingDailyTarget() {
   }
 
   const calculateTotal = () => {
-    const poly = parseInt(processValues.poly) || 0;
+    // Total output = Carton only (standard rule: OUTPUT = Carton)
     const carton = parseInt(processValues.carton) || 0;
-    return poly + carton;
+    return carton;
   };
 
   if (loading) {
