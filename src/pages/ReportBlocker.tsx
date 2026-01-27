@@ -70,14 +70,12 @@ export default function ReportBlocker() {
   const [floors, setFloors] = useState<Floor[]>([]);
   const [blockerTypes, setBlockerTypes] = useState<BlockerType[]>([]);
   const [blockerOwnerOptions, setBlockerOwnerOptions] = useState<DropdownOption[]>([]);
-  const [blockerImpactOptions, setBlockerImpactOptions] = useState<DropdownOption[]>([]);
 
   // Form fields
   const [selectedLine, setSelectedLine] = useState("");
   const [selectedPO, setSelectedPO] = useState("");
   const [blockerType, setBlockerType] = useState("");
   const [blockerOwner, setBlockerOwner] = useState("");
-  const [blockerImpact, setBlockerImpact] = useState("");
   const [blockerSeverity, setBlockerSeverity] = useState("");
   const [blockerResolution, setBlockerResolution] = useState<Date | undefined>(new Date());
   const [blockerDescription, setBlockerDescription] = useState("");
@@ -144,7 +142,7 @@ export default function ReportBlocker() {
     }
   }, [selectedLine, selectedPO, workOrders, lines, units, floors, isCuttingOrStorage]);
 
-  // Auto-fill blocker owner/impact when blocker type is selected
+  // Auto-fill blocker owner/severity when blocker type is selected
   useEffect(() => {
     if (blockerType) {
       const bt = blockerTypes.find((b) => b.id === blockerType);
@@ -156,14 +154,15 @@ export default function ReportBlocker() {
           if (ownerOption) setBlockerOwner(ownerOption.id);
         }
         if (bt.default_impact) {
-          const impactOption = blockerImpactOptions.find((o) =>
-            o.label.toLowerCase().includes(bt.default_impact?.toLowerCase() || "")
-          );
-          if (impactOption) setBlockerImpact(impactOption.id);
+          // Map default_impact to severity values
+          const impactLower = bt.default_impact.toLowerCase();
+          if (impactLower === 'low' || impactLower === 'medium' || impactLower === 'high' || impactLower === 'critical') {
+            setBlockerSeverity(impactLower);
+          }
         }
       }
     }
-  }, [blockerType, blockerTypes, blockerOwnerOptions, blockerImpactOptions]);
+  }, [blockerType, blockerTypes, blockerOwnerOptions]);
 
   async function fetchFormData() {
     if (!profile?.factory_id || !user?.id) return;
@@ -177,7 +176,6 @@ export default function ReportBlocker() {
         floorsRes,
         blockerTypesRes,
         blockerOwnerRes,
-        blockerImpactRes,
       ] = await Promise.all([
         supabase
           .from("lines")
@@ -218,12 +216,6 @@ export default function ReportBlocker() {
           .eq("factory_id", profile.factory_id)
           .eq("is_active", true)
           .order("sort_order"),
-        supabase
-          .from("blocker_impact_options")
-          .select("id, label, is_active")
-          .eq("factory_id", profile.factory_id)
-          .eq("is_active", true)
-          .order("sort_order"),
       ]);
 
       const allLines = linesRes.data || [];
@@ -248,7 +240,6 @@ export default function ReportBlocker() {
       setFloors(floorsRes.data || []);
       setBlockerTypes(blockerTypesRes.data || []);
       setBlockerOwnerOptions(blockerOwnerRes.data || []);
-      setBlockerImpactOptions(blockerImpactRes.data || []);
     } catch (error) {
       console.error("Error fetching form data:", error);
     } finally {
@@ -265,7 +256,6 @@ export default function ReportBlocker() {
     if (!blockerType) newErrors.blockerType = "Blocker Type is required";
     if (!blockerOwner) newErrors.blockerOwner = "Blocker Owner is required";
     if (!blockerSeverity) newErrors.blockerSeverity = "Severity is required";
-    if (!blockerImpact) newErrors.blockerImpact = "Blocker Impact is required";
     if (!blockerResolution) newErrors.blockerResolution = "Expected Resolution date is required";
     if (!blockerDescription.trim()) newErrors.blockerDescription = "Description is required";
 
@@ -588,9 +578,9 @@ export default function ReportBlocker() {
               {errors.blockerOwner && <p className="text-xs text-destructive">{errors.blockerOwner}</p>}
             </div>
 
-            {/* Severity */}
+            {/* Blocker Impact/Severity */}
             <div className="space-y-2">
-              <Label>{t('reportBlocker.severity')} *</Label>
+              <Label>{t('sewing.blockerImpact')} *</Label>
               <Select value={blockerSeverity} onValueChange={setBlockerSeverity}>
                 <SelectTrigger className={`h-12 ${errors.blockerSeverity ? "border-destructive" : ""}`}>
                   <SelectValue placeholder={t('reportBlocker.selectSeverity')} />
@@ -603,24 +593,6 @@ export default function ReportBlocker() {
                 </SelectContent>
               </Select>
               {errors.blockerSeverity && <p className="text-xs text-destructive">{errors.blockerSeverity}</p>}
-            </div>
-
-            {/* Blocker Impact */}
-            <div className="space-y-2">
-              <Label>{t('sewing.blockerImpact')} *</Label>
-              <Select value={blockerImpact} onValueChange={setBlockerImpact}>
-                <SelectTrigger className={`h-12 ${errors.blockerImpact ? "border-destructive" : ""}`}>
-                  <SelectValue placeholder={t('reportBlocker.selectBlockerImpact')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {blockerImpactOptions.map((option) => (
-                    <SelectItem key={option.id} value={option.id}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.blockerImpact && <p className="text-xs text-destructive">{errors.blockerImpact}</p>}
             </div>
 
             {/* Expected Resolution Date */}
