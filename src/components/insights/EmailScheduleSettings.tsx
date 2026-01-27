@@ -116,7 +116,7 @@ export function EmailScheduleSettings() {
             is_active: schedule.is_active ?? false,
             send_time: schedule.send_time?.slice(0, 5) || "18:00",
             day_of_week: schedule.day_of_week ?? 0,
-            day_of_month: schedule.day_of_month ?? 1,
+            day_of_month: 1, // Default since not in DB
             last_sent_at: schedule.last_sent_at,
           });
         }
