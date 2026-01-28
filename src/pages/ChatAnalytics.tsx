@@ -34,14 +34,17 @@ import { format } from "date-fns";
 
 interface ChatAnalyticsEntry {
   id: string;
-  question_text: string;
-  answer_length: number;
-  citations_count: number;
-  no_evidence: boolean;
+  message_id: string | null;
+  conversation_id: string | null;
+  factory_id: string | null;
+  question_text: string | null;
+  answer_length: number | null;
+  citations_count: number | null;
+  no_evidence: boolean | null;
   feedback: string | null;
   feedback_comment: string | null;
-  user_role: string;
-  language: string;
+  user_role: string | null;
+  language: string | null;
   created_at: string;
 }
 
@@ -81,16 +84,16 @@ export default function ChatAnalytics() {
 
       if (error) throw error;
 
-      setAnalytics(data || []);
+      setAnalytics((data || []) as ChatAnalyticsEntry[]);
 
       // Calculate summary
       const total = data?.length || 0;
-      const unanswered = data?.filter((d) => d.no_evidence).length || 0;
-      const positive = data?.filter((d) => d.feedback === "thumbs_up").length || 0;
-      const negative = data?.filter((d) => d.feedback === "thumbs_down").length || 0;
+      const unanswered = data?.filter((d: any) => d.no_evidence).length || 0;
+      const positive = data?.filter((d: any) => d.feedback === "thumbs_up").length || 0;
+      const negative = data?.filter((d: any) => d.feedback === "thumbs_down").length || 0;
       const avgCitations =
         total > 0
-          ? data!.reduce((sum, d) => sum + (d.citations_count || 0), 0) / total
+          ? data!.reduce((sum: number, d: any) => sum + (d.citations_count || 0), 0) / total
           : 0;
 
       setSummary({

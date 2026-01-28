@@ -60,17 +60,22 @@ interface KnowledgeDocument {
   description: string | null;
   document_type: string;
   source_url: string | null;
-  file_path: string | null;
   language: string;
   is_global: boolean;
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  factory_id: string | null;
+  created_by: string | null;
   ingestion_status?: {
+    id: string;
+    document_id: string;
     status: string;
-    chunks_processed: number;
-    total_chunks: number;
     error_message: string | null;
+    chunks_created: number;
+    started_at: string | null;
+    completed_at: string | null;
+    created_at: string;
   };
 }
 
@@ -357,14 +362,14 @@ export default function KnowledgeBase() {
         return (
           <Badge variant="default" className="gap-1 bg-green-600">
             <CheckCircle className="h-3 w-3" />
-            {status.chunks_processed} chunks
+            {status.chunks_created} chunks
           </Badge>
         );
       case "processing":
         return (
           <Badge variant="secondary" className="gap-1">
             <Loader2 className="h-3 w-3 animate-spin" />
-            {status.chunks_processed}/{status.total_chunks || "?"}
+            Processing...
           </Badge>
         );
       case "pending":
