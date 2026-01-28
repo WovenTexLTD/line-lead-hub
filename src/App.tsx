@@ -48,6 +48,8 @@ import Billing from "./pages/Billing";
 import BillingPlan from "./pages/BillingPlan";
 import NotFound from "./pages/NotFound";
 import ReportBlocker from "./pages/ReportBlocker";
+import KnowledgeBase from "./pages/KnowledgeBase";
+import ChatAnalytics from "./pages/ChatAnalytics";
 import StorageBinCard from "./pages/StorageBinCard";
 import StorageHistory from "./pages/StorageHistory";
 import StorageDashboard from "./pages/StorageDashboard";
@@ -155,6 +157,8 @@ function AppRoutes() {
         <Route path="/setup/factory" element={<FactorySetup />} />
         <Route path="/setup/work-orders" element={<SubscriptionGate><WorkOrders /></SubscriptionGate>} />
         <Route path="/setup/dropdowns" element={<SubscriptionGate><DropdownSettings /></SubscriptionGate>} />
+        <Route path="/setup/knowledge-base" element={<SubscriptionGate><KnowledgeBase /></SubscriptionGate>} />
+        <Route path="/setup/chat-analytics" element={<SubscriptionGate><ChatAnalytics /></SubscriptionGate>} />
         <Route path="/users" element={<SubscriptionGate><UsersPage /></SubscriptionGate>} />
         <Route path="/submissions" element={<SubscriptionGate><AllSubmissions /></SubscriptionGate>} />
         <Route path="/my-submissions" element={<SubscriptionGate><LegacyMySubmissionsRedirect /></SubscriptionGate>} />

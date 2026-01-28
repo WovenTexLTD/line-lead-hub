@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { TrialExpirationBanner } from "@/components/TrialExpirationBanner";
 import { NetworkStatusIndicator } from "@/components/NetworkStatusIndicator";
 import { DMGWarningModal } from "@/components/DMGWarningModal";
+import { ChatWidget } from "@/components/chat";
 
 export function AppLayout() {
   const { user, loading, factory, profile } = useAuth();
@@ -88,6 +89,9 @@ export function AppLayout() {
           aria-hidden="true"
         />
       </div>
+
+      {/* Chat Assistant Widget */}
+      <ChatWidget />
     </SidebarProvider>
   );
 }

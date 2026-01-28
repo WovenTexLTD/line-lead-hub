@@ -1,0 +1,46 @@
+import { Globe } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+interface LanguageToggleProps {
+  language: "en" | "bn";
+  onToggle: (lang: "en" | "bn") => void;
+}
+
+const LANGUAGES = [
+  { code: "en" as const, label: "English", flag: "🇬🇧" },
+  { code: "bn" as const, label: "বাংলা", flag: "🇧🇩" },
+];
+
+export function LanguageToggle({ language, onToggle }: LanguageToggleProps) {
+  const currentLang = LANGUAGES.find((l) => l.code === language) || LANGUAGES[0];
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1.5">
+          <Globe className="h-3 w-3" />
+          <span>{currentLang.flag}</span>
+          <span>{currentLang.label}</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        {LANGUAGES.map((lang) => (
+          <DropdownMenuItem
+            key={lang.code}
+            onClick={() => onToggle(lang.code)}
+            className="gap-2"
+          >
+            <span>{lang.flag}</span>
+            <span>{lang.label}</span>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
