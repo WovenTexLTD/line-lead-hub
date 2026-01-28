@@ -5,6 +5,7 @@ import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 // Allowed origins for CORS - add your production domains here
 const ALLOWED_ORIGINS = [
   "https://production-portal.lovable.app",
+  "https://portal-woventex.lovable.app",
   "https://productionportal.cloud",
   "https://www.productionportal.cloud",
   "https://woventex.co",
@@ -15,9 +16,16 @@ const ALLOWED_ORIGINS = [
   "http://localhost:8100",  // Ionic dev server
 ];
 
+// Also allow Lovable preview URLs dynamically
+export function isLovablePreviewOrigin(origin: string | null): boolean {
+  if (!origin) return false;
+  return origin.includes('.lovableproject.com') || origin.includes('.lovable.app');
+}
+
 // Check if origin is allowed
 export function isAllowedOrigin(origin: string | null): boolean {
   if (!origin) return false;
+  if (isLovablePreviewOrigin(origin)) return true;
   return ALLOWED_ORIGINS.includes(origin);
 }
 
