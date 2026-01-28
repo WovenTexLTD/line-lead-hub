@@ -97,7 +97,7 @@ serve(async (req) => {
         limit: 10
       });
 
-      const activeSub = subs.data.find(s =>
+      const activeSub = subs.data.find((s: Stripe.Subscription) =>
         s.status === 'active' || s.status === 'trialing'
       );
 
