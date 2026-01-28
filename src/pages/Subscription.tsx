@@ -102,8 +102,18 @@ export default function Subscription() {
   const handleStartTrial = async () => {
     setTrialLoading(true);
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) {
+        navigate('/auth', { replace: true });
+        throw new Error('Session expired. Please sign in again.');
+      }
+
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { tier: 'starter', startTrial: true, interval: billingInterval }
+        body: { tier: 'starter', startTrial: true, interval: billingInterval },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       });
       
       if (error) throw error;
@@ -131,8 +141,18 @@ export default function Subscription() {
     
     setCheckoutLoading(tier.id);
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) {
+        navigate('/auth', { replace: true });
+        throw new Error('Session expired. Please sign in again.');
+      }
+
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { tier: tier.id, interval: billingInterval }
+        body: { tier: tier.id, interval: billingInterval },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       });
       
       if (error) throw error;
