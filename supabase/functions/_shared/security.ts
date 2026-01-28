@@ -5,6 +5,8 @@ import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 // Allowed origins for CORS - add your production domains here
 const ALLOWED_ORIGINS = [
   "https://production-portal.lovable.app",
+  "https://productionportal.cloud",
+  "https://www.productionportal.cloud",
   "https://woventex.co",
   "https://www.woventex.co",
   "capacitor://localhost",  // iOS Capacitor
