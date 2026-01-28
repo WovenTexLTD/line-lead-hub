@@ -80,11 +80,26 @@ export default function Subscription() {
 
   const checkSubscription = async () => {
     if (!user) return;
-    
+
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('check-subscription');
-      
+      // Get the session token to pass explicitly
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+
+      if (!accessToken) {
+        // No valid session yet, show subscription options without status
+        setStatus({ subscribed: false, hasAccess: false, needsFactory: true });
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('check-subscription', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
       if (error) throw error;
       setStatus(data);
     } catch (err) {
@@ -309,9 +324,18 @@ export default function Subscription() {
           )}
 
           <div className="flex flex-wrap gap-3">
-            {status?.hasAccess && (
-              <Button 
-                onClick={() => navigate('/dashboard')} 
+            {status?.hasAccess && status?.needsFactory && (
+              <Button
+                onClick={() => navigate('/setup/factory')}
+              >
+                <ArrowRight className="h-4 w-4 mr-2" />
+                Create Your Factory
+              </Button>
+            )}
+
+            {status?.hasAccess && !status?.needsFactory && (
+              <Button
+                onClick={() => navigate('/dashboard')}
               >
                 <ArrowRight className="h-4 w-4 mr-2" />
                 Go to Dashboard

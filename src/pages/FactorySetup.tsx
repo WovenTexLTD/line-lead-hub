@@ -474,11 +474,34 @@ export default function FactorySetup() {
       }));
       await supabase.from('blocker_impact_options').insert(blockerImpactData);
 
-      toast({ 
-        title: "Factory created!", 
-        description: "Your 14-day free trial has started. Default settings have been added." 
+      // Try to link factory to existing Stripe subscription (if user came from checkout)
+      let subscriptionLinked = false;
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData.session?.access_token;
+
+        if (accessToken) {
+          const { data: linkResult } = await supabase.functions.invoke('link-factory-subscription', {
+            body: { factory_id: factoryId },
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+
+          if (linkResult?.linked) {
+            subscriptionLinked = true;
+            console.log('Factory linked to Stripe subscription:', linkResult);
+          }
+        }
+      } catch (linkError) {
+        console.error('Error linking subscription (non-fatal):', linkError);
+      }
+
+      toast({
+        title: "Factory created!",
+        description: subscriptionLinked
+          ? "Your subscription has been activated. Default settings have been added."
+          : "Your 14-day free trial has started. Default settings have been added."
       });
-      
+
       // Reload the page to refresh auth context
       window.location.reload();
     } catch (error: any) {
