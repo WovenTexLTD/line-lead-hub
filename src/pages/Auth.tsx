@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Factory, ArrowRight, KeyRound } from "lucide-react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
-import { checkRateLimit } from "@/lib/security";
+
 import { getPasswordResetRedirectUrl } from "@/lib/capacitor";
 import logoSvg from "@/assets/logo.svg";
 import i18n from "@/i18n/config";
@@ -277,18 +277,6 @@ export default function Auth() {
     }
 
     setIsLoading(true);
-
-    // Check rate limit before attempting login
-    const rateLimitResult = await checkRateLimit("login", { email: loginEmail });
-    if (!rateLimitResult.allowed) {
-      setIsLoading(false);
-      toast({
-        variant: "destructive",
-        title: "Too many attempts",
-        description: rateLimitResult.error || "Please wait before trying again.",
-      });
-      return;
-    }
 
     const { error } = await signIn(loginEmail, loginPassword);
     setIsLoading(false);
