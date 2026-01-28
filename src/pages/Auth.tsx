@@ -135,15 +135,15 @@ export default function Auth() {
           description: "Your account has been deactivated. Please contact your administrator.",
         });
         signOut();
-      } else if (profile && profile.factory_id === null) {
-        // User was removed from factory
+      } else if (profile && profile.factory_id === null && profile.invitation_status === 'removed') {
+        // User was explicitly removed from a factory (had access before)
         toast({
           variant: "destructive",
           title: "No Factory Access",
           description: "You have been removed from the factory. Please contact your administrator for access.",
         });
         signOut();
-      } else if (profile) {
+      } else if (profile && profile.factory_id === null) {
         // New user without factory - redirect to subscription
         navigate("/subscription", { replace: true });
       }
