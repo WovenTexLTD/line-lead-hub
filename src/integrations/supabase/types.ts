@@ -156,6 +156,161 @@ export type Database = {
           },
         ]
       }
+      chat_analytics: {
+        Row: {
+          answer_length: number | null
+          citations_count: number | null
+          conversation_id: string | null
+          created_at: string | null
+          factory_id: string | null
+          feedback: string | null
+          feedback_comment: string | null
+          id: string
+          language: string | null
+          message_id: string | null
+          no_evidence: boolean | null
+          question_text: string | null
+          user_role: string | null
+        }
+        Insert: {
+          answer_length?: number | null
+          citations_count?: number | null
+          conversation_id?: string | null
+          created_at?: string | null
+          factory_id?: string | null
+          feedback?: string | null
+          feedback_comment?: string | null
+          id?: string
+          language?: string | null
+          message_id?: string | null
+          no_evidence?: boolean | null
+          question_text?: string | null
+          user_role?: string | null
+        }
+        Update: {
+          answer_length?: number | null
+          citations_count?: number | null
+          conversation_id?: string | null
+          created_at?: string | null
+          factory_id?: string | null
+          feedback?: string | null
+          feedback_comment?: string | null
+          id?: string
+          language?: string | null
+          message_id?: string | null
+          no_evidence?: boolean | null
+          question_text?: string | null
+          user_role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_analytics_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "chat_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_analytics_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_analytics_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_conversations: {
+        Row: {
+          created_at: string | null
+          factory_id: string | null
+          id: string
+          is_archived: boolean | null
+          language: string | null
+          title: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          factory_id?: string | null
+          id?: string
+          is_archived?: boolean | null
+          language?: string | null
+          title?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          factory_id?: string | null
+          id?: string
+          is_archived?: boolean | null
+          language?: string | null
+          title?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_conversations_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_messages: {
+        Row: {
+          citations: Json | null
+          content: string
+          conversation_id: string
+          created_at: string | null
+          id: string
+          model: string | null
+          no_evidence: boolean | null
+          role: string
+          tokens_used: number | null
+        }
+        Insert: {
+          citations?: Json | null
+          content: string
+          conversation_id: string
+          created_at?: string | null
+          id?: string
+          model?: string | null
+          no_evidence?: boolean | null
+          role: string
+          tokens_used?: number | null
+        }
+        Update: {
+          citations?: Json | null
+          content?: string
+          conversation_id?: string
+          created_at?: string | null
+          id?: string
+          model?: string | null
+          no_evidence?: boolean | null
+          role?: string
+          tokens_used?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "chat_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cutting_actuals: {
         Row: {
           acknowledged: boolean | null
@@ -476,6 +631,47 @@ export type Database = {
             columns: ["factory_id"]
             isOneToOne: false
             referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_ingestion_queue: {
+        Row: {
+          chunks_created: number | null
+          completed_at: string | null
+          created_at: string | null
+          document_id: string
+          error_message: string | null
+          id: string
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          chunks_created?: number | null
+          completed_at?: string | null
+          created_at?: string | null
+          document_id: string
+          error_message?: string | null
+          id?: string
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          chunks_created?: number | null
+          completed_at?: string | null
+          created_at?: string | null
+          document_id?: string
+          error_message?: string | null
+          id?: string
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_ingestion_queue_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_documents"
             referencedColumns: ["id"]
           },
         ]
@@ -1262,6 +1458,103 @@ export type Database = {
           },
         ]
       }
+      knowledge_chunks: {
+        Row: {
+          chunk_index: number
+          content: string
+          created_at: string | null
+          document_id: string
+          embedding: string | null
+          id: string
+          page_number: number | null
+          section_heading: string | null
+          tokens_count: number | null
+        }
+        Insert: {
+          chunk_index: number
+          content: string
+          created_at?: string | null
+          document_id: string
+          embedding?: string | null
+          id?: string
+          page_number?: number | null
+          section_heading?: string | null
+          tokens_count?: number | null
+        }
+        Update: {
+          chunk_index?: number
+          content?: string
+          created_at?: string | null
+          document_id?: string
+          embedding?: string | null
+          id?: string
+          page_number?: number | null
+          section_heading?: string | null
+          tokens_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_chunks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_documents: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          document_type: string
+          factory_id: string | null
+          id: string
+          is_active: boolean | null
+          is_global: boolean | null
+          language: string | null
+          source_url: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          document_type?: string
+          factory_id?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_global?: boolean | null
+          language?: string | null
+          source_url?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          document_type?: string
+          factory_id?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_global?: boolean | null
+          language?: string | null
+          source_url?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_documents_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lines: {
         Row: {
           created_at: string | null
@@ -1884,6 +2177,27 @@ export type Database = {
           id?: string
           identifier?: string
           last_attempt_at?: string | null
+        }
+        Relationships: []
+      }
+      role_feature_access: {
+        Row: {
+          created_at: string | null
+          feature: string
+          id: string
+          role: string
+        }
+        Insert: {
+          created_at?: string | null
+          feature: string
+          id?: string
+          role: string
+        }
+        Update: {
+          created_at?: string | null
+          feature?: string
+          id?: string
+          role?: string
         }
         Relationships: []
       }
@@ -2629,6 +2943,12 @@ export type Database = {
         Returns: boolean
       }
       get_plan_max_lines: { Args: { _factory_id: string }; Returns: number }
+      get_user_accessible_features: {
+        Args: { p_user_id: string }
+        Returns: {
+          feature: string
+        }[]
+      }
       get_user_factory_id: { Args: { _user_id: string }; Returns: string }
       has_cutting_role: { Args: { user_id: string }; Returns: boolean }
       has_role: {
@@ -2652,6 +2972,23 @@ export type Database = {
           p_user_id?: string
         }
         Returns: undefined
+      }
+      search_knowledge: {
+        Args: {
+          match_count?: number
+          match_threshold?: number
+          p_factory_id?: string
+          p_language?: string
+          query_embedding: string
+        }
+        Returns: {
+          chunk_id: string
+          content: string
+          document_id: string
+          document_title: string
+          section_heading: string
+          similarity: number
+        }[]
       }
       user_belongs_to_factory: {
         Args: { _factory_id: string; _user_id: string }
