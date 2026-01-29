@@ -87,7 +87,7 @@ export async function ingestDocument(
         document_id: documentId,
         chunk_index: chunk.index,
         content: chunk.content,
-        content_tokens: embeddingResult.tokens || 0,
+        tokens_count: embeddingResult.tokens || 0,
         section_heading: chunk.sectionHeading,
         embedding: embeddingStr,
       });

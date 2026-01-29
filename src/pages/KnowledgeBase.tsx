@@ -182,6 +182,7 @@ export default function KnowledgeBase() {
       document_id: documentId,
       status: "processing",
       total_chunks: chunks.length,
+      chunks_created: chunks.length,
       chunks_processed: 0,
       started_at: new Date().toISOString(),
     });
@@ -207,7 +208,7 @@ export default function KnowledgeBase() {
         document_id: documentId,
         chunk_index: chunk.index,
         content: chunk.content,
-        content_tokens: embData.tokens,
+        tokens_count: embData.tokens,
         section_heading: chunk.sectionHeading,
         embedding: embeddingStr,
       });
@@ -226,6 +227,7 @@ export default function KnowledgeBase() {
       .update({
         status: "completed",
         completed_at: new Date().toISOString(),
+        chunks_created: chunks.length,
         chunks_processed: chunks.length,
       })
       .eq("document_id", documentId);
