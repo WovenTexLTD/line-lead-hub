@@ -130,7 +130,7 @@ serve(async (req) => {
     const { embedding } = await generateEmbedding(message);
     const embeddingStr = formatEmbeddingForPgVector(embedding);
 
-    // Search knowledge base
+    // Search knowledge base — primary search with threshold 0.3
     logStep("Searching knowledge base");
     const { data: searchResults, error: searchError } = await supabaseAdmin.rpc(
       "search_knowledge",
@@ -147,8 +147,43 @@ serve(async (req) => {
       logStep("Search error", { error: searchError.message });
     }
 
-    const sources: SourceChunk[] = searchResults || [];
-    logStep("Found sources", { count: sources.length });
+    let sources: SourceChunk[] = searchResults || [];
+
+    // Log detailed search results for debugging
+    if (sources.length > 0) {
+      logStep("Found sources", {
+        count: sources.length,
+        results: sources.map((s) => ({
+          title: s.document_title,
+          similarity: (s.similarity * 100).toFixed(1) + "%",
+          section: s.section_heading || "General",
+        })),
+      });
+    } else {
+      logStep("No sources found at threshold 0.3, trying fallback at 0.15");
+      // Fallback: broader search with very low threshold to surface anything remotely relevant
+      const { data: fallbackResults, error: fallbackError } = await supabaseAdmin.rpc(
+        "search_knowledge",
+        {
+          query_embedding: embeddingStr,
+          match_threshold: 0.15,
+          match_count: 5,
+          p_factory_id: profile?.factory_id,
+          p_language: null,
+        }
+      );
+      if (fallbackError) {
+        logStep("Fallback search error", { error: fallbackError.message });
+      }
+      sources = fallbackResults || [];
+      logStep("Fallback sources", {
+        count: sources.length,
+        results: sources.map((s) => ({
+          title: s.document_title,
+          similarity: (s.similarity * 100).toFixed(1) + "%",
+        })),
+      });
+    }
 
     // Get user's accessible features
     const { data: features } = await supabaseAdmin.rpc("get_user_accessible_features", {

@@ -192,17 +192,24 @@ ${lastUserMessage.content}`,
   const data = await response.json();
   const content = data.content[0].text;
 
-  // Check if response indicates no evidence
+  // Check if response indicates no evidence — use specific phrases to avoid false positives
+  // (e.g. "cannot find" can appear in normal helpful responses like "you cannot find this in settings")
   const noEvidenceIndicators = [
-    "I don't have information",
+    "i don't have information about",
+    "i don't have specific information",
+    "i don't have documentation",
+    "i don't have specific documentation",
     "not in my knowledge base",
-    "cannot find",
-    "no information available",
-    "couldn't find",
+    "no information available in the sources",
     "not available in the sources",
+    "i cannot find any information",
+    "i couldn't find any information",
+    "no relevant sources",
+    "i don't have enough information to answer",
   ];
+  const lowerContent = content.toLowerCase();
   const noEvidence = noEvidenceIndicators.some((indicator) =>
-    content.toLowerCase().includes(indicator.toLowerCase())
+    lowerContent.includes(indicator)
   );
 
   // Extract citations from the response based on which sources were referenced
