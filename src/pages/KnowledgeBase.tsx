@@ -78,6 +78,7 @@ interface KnowledgeDocument {
     completed_at: string | null;
     created_at: string;
   };
+  chunk_count?: number;
 }
 
 const DOCUMENT_TYPES = [
@@ -134,14 +135,27 @@ export default function KnowledgeBase() {
       if (error) throw error;
 
       // Fetch ingestion status for each document
+      const docIds = docs?.map((d) => d.id) || [];
       const { data: queue } = await supabase
         .from("document_ingestion_queue")
         .select("*")
-        .in("document_id", docs?.map((d) => d.id) || []);
+        .in("document_id", docIds);
+
+      // Count actual chunks per document (ground truth)
+      const { data: chunkRows } = await supabase
+        .from("knowledge_chunks")
+        .select("document_id")
+        .in("document_id", docIds);
+
+      const chunkCountMap: Record<string, number> = {};
+      (chunkRows || []).forEach((c) => {
+        chunkCountMap[c.document_id] = (chunkCountMap[c.document_id] || 0) + 1;
+      });
 
       const docsWithStatus = (docs || []).map((doc) => ({
         ...doc,
         ingestion_status: queue?.find((q) => q.document_id === doc.id),
+        chunk_count: chunkCountMap[doc.id] || 0,
       }));
 
       setDocuments(docsWithStatus);
@@ -398,8 +412,18 @@ export default function KnowledgeBase() {
     }
   };
 
-  const getStatusBadge = (status: KnowledgeDocument["ingestion_status"]) => {
+  const getStatusBadge = (doc: KnowledgeDocument) => {
+    const status = doc.ingestion_status;
     if (!status) {
+      // No queue entry — check if chunks exist (old ingestion didn't create queue entries)
+      if (doc.chunk_count && doc.chunk_count > 0) {
+        return (
+          <Badge variant="default" className="gap-1 bg-green-600">
+            <CheckCircle className="h-3 w-3" />
+            {doc.chunk_count} chunks
+          </Badge>
+        );
+      }
       return (
         <Badge variant="outline" className="gap-1">
           <AlertCircle className="h-3 w-3" />
@@ -677,7 +701,7 @@ export default function KnowledgeBase() {
                       {LANGUAGES.find((l) => l.value === doc.language)?.label ||
                         doc.language}
                     </TableCell>
-                    <TableCell>{getStatusBadge(doc.ingestion_status)}</TableCell>
+                    <TableCell>{getStatusBadge(doc)}</TableCell>
                     <TableCell>
                       <Switch
                         checked={doc.is_active}

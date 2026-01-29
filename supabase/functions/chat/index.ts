@@ -136,8 +136,8 @@ serve(async (req) => {
       "search_knowledge",
       {
         query_embedding: embeddingStr,
-        match_threshold: 0.5,
-        match_count: 8,
+        match_threshold: 0.3,
+        match_count: 10,
         p_factory_id: profile?.factory_id,
         p_language: null, // Search all languages, let context decide
       }
