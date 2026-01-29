@@ -93,10 +93,10 @@ async function processIngestion(
     const chunks = chunkText(textContent);
     logStep("Content chunked", { chunkCount: chunks.length });
 
-    // Update queue with total chunks
+    // Update queue with chunk count
     await supabaseAdmin
       .from("document_ingestion_queue")
-      .update({ total_chunks: chunks.length, chunks_created: chunks.length })
+      .update({ chunks_created: 0 })
       .eq("document_id", document_id);
 
     // Process chunks one at a time
@@ -124,7 +124,7 @@ async function processIngestion(
       // Update progress
       await supabaseAdmin
         .from("document_ingestion_queue")
-        .update({ chunks_processed: i + 1 })
+        .update({ chunks_created: i + 1 })
         .eq("document_id", document_id);
     }
 
@@ -135,7 +135,6 @@ async function processIngestion(
         status: "completed",
         completed_at: new Date().toISOString(),
         chunks_created: chunks.length,
-        chunks_processed: chunks.length,
       })
       .eq("document_id", document_id);
 
