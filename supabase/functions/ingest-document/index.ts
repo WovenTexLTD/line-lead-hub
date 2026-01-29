@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { getCorsHeaders } from "../_shared/security.ts";
-import { generateEmbeddings, formatEmbeddingForPgVector } from "../_shared/embeddings.ts";
+import { generateEmbedding, formatEmbeddingForPgVector } from "../_shared/embeddings.ts";
 
 interface IngestRequest {
   document_id: string;
@@ -215,35 +215,35 @@ serve(async (req) => {
       .update({ total_chunks: chunks.length })
       .eq("document_id", document_id);
 
-    // Generate embeddings in batches
-    const chunkContents = chunks.map((c) => c.content);
-    logStep("Generating embeddings");
-    const embeddings = await generateEmbeddings(chunkContents);
-    logStep("Embeddings generated", { count: embeddings.length });
+    // Process chunks one at a time to stay within edge function resource limits.
+    // Each iteration: embed one chunk, insert it, then discard the embedding.
+    logStep("Processing chunks one at a time");
 
-    // Insert chunks with embeddings
-    const chunkInserts = chunks.map((chunk, i) => ({
-      document_id,
-      chunk_index: chunk.index,
-      content: chunk.content,
-      content_tokens: embeddings[i].tokens,
-      section_heading: extractSectionHeading(chunk.content),
-      embedding: formatEmbeddingForPgVector(embeddings[i].embedding),
-    }));
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      logStep("Embedding chunk", { index: i + 1, total: chunks.length });
 
-    // Insert in batches of 100
-    for (let i = 0; i < chunkInserts.length; i += 100) {
-      const batch = chunkInserts.slice(i, i + 100);
-      const { error: insertError } = await supabaseAdmin.from("knowledge_chunks").insert(batch);
+      const embeddingResult = await generateEmbedding(chunk.content);
+
+      const { error: insertError } = await supabaseAdmin
+        .from("knowledge_chunks")
+        .insert({
+          document_id,
+          chunk_index: chunk.index,
+          content: chunk.content,
+          content_tokens: embeddingResult.tokens,
+          section_heading: extractSectionHeading(chunk.content),
+          embedding: formatEmbeddingForPgVector(embeddingResult.embedding),
+        });
 
       if (insertError) {
-        throw new Error(`Failed to insert chunks: ${insertError.message}`);
+        throw new Error(`Failed to insert chunk ${i}: ${insertError.message}`);
       }
 
       // Update progress
       await supabaseAdmin
         .from("document_ingestion_queue")
-        .update({ chunks_processed: Math.min(i + 100, chunkInserts.length) })
+        .update({ chunks_processed: i + 1 })
         .eq("document_id", document_id);
     }
 
