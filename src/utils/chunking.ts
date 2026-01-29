@@ -16,8 +16,9 @@ export function chunkText(text: string): TextChunk[] {
   const chunks: TextChunk[] = [];
   let start = 0;
   let index = 0;
+  const maxChunks = Math.ceil(text.length / (CHUNK_SIZE - CHUNK_OVERLAP)) + 10;
 
-  while (start < text.length) {
+  while (start < text.length && index < maxChunks) {
     let end = Math.min(start + CHUNK_SIZE, text.length);
 
     if (end < text.length) {
@@ -44,10 +45,16 @@ export function chunkText(text: string): TextChunk[] {
       index++;
     }
 
-    // If we've reached the end of the text, stop — no more chunks needed
+    // If we've reached the end of the text, stop
     if (end >= text.length) break;
 
-    start = end - CHUNK_OVERLAP;
+    // Advance start, ensuring we always move forward
+    const newStart = end - CHUNK_OVERLAP;
+    if (newStart <= start) {
+      start = start + 1;
+    } else {
+      start = newStart;
+    }
   }
 
   return chunks;

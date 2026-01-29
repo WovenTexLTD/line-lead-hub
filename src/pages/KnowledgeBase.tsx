@@ -254,6 +254,11 @@ export default function KnowledgeBase() {
     }
 
     setIsSubmitting(true);
+
+    // Capture content before closing dialog to free memory
+    const contentToIngest = formData.content.trim();
+    const docTitle = formData.title.trim();
+
     try {
       // Create document
       const { data: doc, error: docError } = await supabase
@@ -267,24 +272,15 @@ export default function KnowledgeBase() {
           is_global: formData.is_global,
           factory_id: formData.is_global ? null : profile?.factory_id,
           created_by: (await supabase.auth.getUser()).data.user?.id,
-          content: formData.content.trim() || null,
+          content: contentToIngest || null,
         })
         .select("id")
         .single();
 
       if (docError) throw docError;
 
-      // Ingest content client-side, one chunk at a time
-      if (formData.content.trim()) {
-        await ingestClientSide(doc.id, formData.content.trim());
-      }
-
-      toast({
-        title: "Success",
-        description: "Document added and ingested successfully",
-      });
-
-      // Reset form and close dialog
+      // Close dialog and reset form BEFORE ingestion starts
+      // This removes the heavy textarea from the DOM so the browser doesn't choke
       setFormData({
         title: "",
         description: "",
@@ -296,6 +292,16 @@ export default function KnowledgeBase() {
       });
       setIsAddDialogOpen(false);
       fetchDocuments();
+
+      // Now ingest in the background (dialog is closed, UI is free)
+      if (contentToIngest) {
+        toast({ title: "Ingestion started", description: `Processing "${docTitle}"...` });
+        await ingestClientSide(doc.id, contentToIngest);
+        toast({ title: "Success", description: `"${docTitle}" ingested successfully` });
+        fetchDocuments();
+      } else {
+        toast({ title: "Success", description: "Document added (no content to ingest)" });
+      }
     } catch (err) {
       console.error("Error adding document:", err);
       toast({
@@ -303,6 +309,7 @@ export default function KnowledgeBase() {
         title: "Error",
         description: err instanceof Error ? err.message : "Failed to add document",
       });
+      fetchDocuments(); // Refresh to show current state
     } finally {
       setIsSubmitting(false);
       setIngestionProgress("");
