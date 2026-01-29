@@ -224,7 +224,14 @@ export async function initializePushNotifications() {
     }
 
     // Register for push notifications
-    await PushNotifications.register();
+    // Wrapped in try/catch because register() crashes at native level
+    // if google-services.json / Firebase is not configured
+    try {
+      await PushNotifications.register();
+    } catch (registerError) {
+      console.warn('Push notification registration failed (Firebase may not be configured):', registerError);
+      return null;
+    }
 
     // Handle registration success
     PushNotifications.addListener('registration', async (token) => {
