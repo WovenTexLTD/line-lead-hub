@@ -80,128 +80,12 @@ function extractSectionHeading(text: string): string | null {
   return null;
 }
 
-serve(async (req) => {
-  const origin = req.headers.get("origin");
-  const corsHeaders = getCorsHeaders(origin);
-
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  const supabaseAdmin = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-    { auth: { persistSession: false } }
-  );
-
-  let currentDocumentId: string | null = null;
-
+async function processIngestion(
+  supabaseAdmin: any,
+  document_id: string,
+  textContent: string
+) {
   try {
-    logStep("Ingest request received");
-
-    // Authenticate and check admin role
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      throw new Error("No authorization header");
-    }
-
-    const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
-    if (userError) throw new Error(`Auth error: ${userError.message}`);
-
-    const user = userData.user;
-    if (!user) throw new Error("User not authenticated");
-
-    // Check if user is admin/owner
-    const { data: userRoles } = await supabaseAdmin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id);
-
-    const isAdmin = userRoles?.some((r) => r.role === "admin" || r.role === "owner");
-    if (!isAdmin) {
-      throw new Error("Admin access required");
-    }
-
-    logStep("Admin authenticated", { userId: user.id });
-
-    // Parse request
-    const body: IngestRequest = await req.json();
-    const { document_id, content: providedContent } = body;
-
-    if (!document_id) {
-      throw new Error("document_id is required");
-    }
-
-    // Store document_id in outer scope so the error handler can use it
-    // (req.body is already consumed after req.json())
-    currentDocumentId = document_id;
-
-    // Get document info
-    const { data: document, error: docError } = await supabaseAdmin
-      .from("knowledge_documents")
-      .select("*")
-      .eq("id", document_id)
-      .single();
-
-    if (docError || !document) {
-      throw new Error(`Document not found: ${document_id}`);
-    }
-
-    logStep("Document found", { title: document.title, type: document.document_type });
-
-    // Clear any old queue entries for this document, then insert fresh
-    await supabaseAdmin
-      .from("document_ingestion_queue")
-      .delete()
-      .eq("document_id", document_id);
-
-    await supabaseAdmin
-      .from("document_ingestion_queue")
-      .insert({
-        document_id,
-        status: "processing",
-        started_at: new Date().toISOString(),
-      });
-
-    // Get content - priority: provided content > stored content > file storage
-    let textContent = providedContent;
-
-    // If no content provided in request, try to get from document.content column
-    if (!textContent && document.content) {
-      textContent = document.content as string;
-      logStep("Using stored document content", { length: textContent.length });
-    }
-
-    // If still no content, try file storage
-    if (!textContent && document.file_path) {
-      // Download from Supabase Storage
-      const { data: fileData, error: downloadError } = await supabaseAdmin.storage
-        .from("knowledge-docs")
-        .download(document.file_path);
-
-      if (downloadError) {
-        throw new Error(`Failed to download file: ${downloadError.message}`);
-      }
-
-      // For now, only handle text-based files
-      // PDF parsing would require a separate library
-      if (document.file_path.endsWith(".txt") || document.file_path.endsWith(".md")) {
-        textContent = await fileData.text();
-      } else if (document.file_path.endsWith(".pdf")) {
-        // TODO: Implement PDF parsing
-        throw new Error("PDF parsing not yet implemented. Please provide text content directly.");
-      } else {
-        textContent = await fileData.text();
-      }
-    }
-
-    if (!textContent) {
-      throw new Error("No content available for ingestion. Please provide content when adding the document.");
-    }
-
-    logStep("Content loaded", { length: textContent.length });
-
     // Delete existing chunks for this document
     await supabaseAdmin.from("knowledge_chunks").delete().eq("document_id", document_id);
 
@@ -215,10 +99,7 @@ serve(async (req) => {
       .update({ total_chunks: chunks.length })
       .eq("document_id", document_id);
 
-    // Process chunks one at a time to stay within edge function resource limits.
-    // Each iteration: embed one chunk, insert it, then discard the embedding.
-    logStep("Processing chunks one at a time");
-
+    // Process chunks one at a time
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
       logStep("Embedding chunk", { index: i + 1, total: chunks.length });
@@ -258,36 +139,149 @@ serve(async (req) => {
       .eq("document_id", document_id);
 
     logStep("Ingestion completed", { chunksInserted: chunks.length });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logStep("Background ingestion ERROR", { message: errorMessage });
 
+    await supabaseAdmin
+      .from("document_ingestion_queue")
+      .update({
+        status: "failed",
+        error_message: errorMessage,
+      })
+      .eq("document_id", document_id);
+  }
+}
+
+serve(async (req) => {
+  const origin = req.headers.get("origin");
+  const corsHeaders = getCorsHeaders(origin);
+
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  const supabaseAdmin = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    { auth: { persistSession: false } }
+  );
+
+  try {
+    logStep("Ingest request received");
+
+    // Authenticate and check admin role
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      throw new Error("No authorization header");
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
+    if (userError) throw new Error(`Auth error: ${userError.message}`);
+
+    const user = userData.user;
+    if (!user) throw new Error("User not authenticated");
+
+    // Check if user is admin/owner
+    const { data: userRoles } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id);
+
+    const isAdmin = userRoles?.some((r) => r.role === "admin" || r.role === "owner");
+    if (!isAdmin) {
+      throw new Error("Admin access required");
+    }
+
+    logStep("Admin authenticated", { userId: user.id });
+
+    // Parse request
+    const body: IngestRequest = await req.json();
+    const { document_id, content: providedContent } = body;
+
+    if (!document_id) {
+      throw new Error("document_id is required");
+    }
+
+    // Get document info
+    const { data: document, error: docError } = await supabaseAdmin
+      .from("knowledge_documents")
+      .select("*")
+      .eq("id", document_id)
+      .single();
+
+    if (docError || !document) {
+      throw new Error(`Document not found: ${document_id}`);
+    }
+
+    logStep("Document found", { title: document.title, type: document.document_type });
+
+    // Determine content source
+    let textContent = providedContent;
+
+    if (!textContent && document.content) {
+      textContent = document.content as string;
+      logStep("Using stored document content", { length: textContent.length });
+    }
+
+    if (!textContent && document.file_path) {
+      const { data: fileData, error: downloadError } = await supabaseAdmin.storage
+        .from("knowledge-docs")
+        .download(document.file_path);
+
+      if (downloadError) {
+        throw new Error(`Failed to download file: ${downloadError.message}`);
+      }
+
+      if (document.file_path.endsWith(".txt") || document.file_path.endsWith(".md")) {
+        textContent = await fileData.text();
+      } else if (document.file_path.endsWith(".pdf")) {
+        throw new Error("PDF parsing not yet implemented. Please provide text content directly.");
+      } else {
+        textContent = await fileData.text();
+      }
+    }
+
+    if (!textContent) {
+      throw new Error("No content available for ingestion. Please provide content when adding the document.");
+    }
+
+    logStep("Content loaded", { length: textContent.length });
+
+    // Clear any old queue entries and create new one
+    await supabaseAdmin
+      .from("document_ingestion_queue")
+      .delete()
+      .eq("document_id", document_id);
+
+    await supabaseAdmin
+      .from("document_ingestion_queue")
+      .insert({
+        document_id,
+        status: "processing",
+        started_at: new Date().toISOString(),
+      });
+
+    // Use waitUntil to process in background
+    // @ts-ignore - EdgeRuntime is available in Supabase Edge Functions
+    EdgeRuntime.waitUntil(processIngestion(supabaseAdmin, document_id, textContent));
+
+    // Return immediately
     return new Response(
       JSON.stringify({
         success: true,
         document_id,
-        chunks_created: chunks.length,
+        message: "Ingestion started in background. Check document status for progress.",
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
+        status: 202,
       }
     );
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logStep("ERROR", { message: errorMessage });
-
-    // Try to update queue status using the document_id parsed earlier
-    try {
-      if (currentDocumentId) {
-        await supabaseAdmin
-          .from("document_ingestion_queue")
-          .update({
-            status: "failed",
-            error_message: errorMessage,
-          })
-          .eq("document_id", currentDocumentId);
-      }
-    } catch {
-      // Ignore
-    }
 
     return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
