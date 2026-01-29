@@ -45,11 +45,15 @@ export interface Citation {
  */
 export function buildSystemPrompt(
   userRole: string,
-  accessibleFeatures: { feature_category: string; feature_name: string; description: string }[],
+  accessibleFeatures: { feature?: string; feature_category?: string; feature_name?: string; description?: string }[],
   language: string
 ): string {
   const featureList = accessibleFeatures
-    .map((f) => `- ${f.feature_category}/${f.feature_name}: ${f.description}`)
+    .map((f) => {
+      // Handle both schema formats: simple { feature } or detailed { feature_category, feature_name, description }
+      if (f.feature) return `- ${f.feature}`;
+      return `- ${f.feature_category}/${f.feature_name}: ${f.description}`;
+    })
     .join("\n");
 
   const languageInstruction = language === "bn"
