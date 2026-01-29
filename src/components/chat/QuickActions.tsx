@@ -1,5 +1,5 @@
 import { HelpCircle, AlertTriangle, Award, Headphones } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface QuickActionsProps {
   onSelect: (prompt: string) => void;
@@ -11,21 +11,25 @@ const QUICK_ACTIONS = {
     {
       icon: HelpCircle,
       label: "How do I...",
+      hint: "End-of-day reporting",
       prompt: "How do I submit my end-of-day production report?",
     },
     {
       icon: AlertTriangle,
       label: "Troubleshoot",
+      hint: "Form issues & data",
       prompt: "I'm having trouble with the morning targets form. It's not saving my data.",
     },
     {
       icon: Award,
       label: "Certifications",
+      hint: "Factory compliance",
       prompt: "What certifications does the factory have? Are they current?",
     },
     {
       icon: Headphones,
       label: "Contact support",
+      hint: "Technical help",
       prompt: "How can I contact support for help with a technical issue?",
     },
   ],
@@ -33,21 +37,25 @@ const QUICK_ACTIONS = {
     {
       icon: HelpCircle,
       label: "কিভাবে করব...",
+      hint: "রিপোর্ট জমা",
       prompt: "আমি কিভাবে দিনের শেষে প্রোডাকশন রিপোর্ট জমা দেব?",
     },
     {
       icon: AlertTriangle,
       label: "সমস্যা সমাধান",
+      hint: "ফর্ম ও ডাটা",
       prompt: "সকালের টার্গেট ফর্মে সমস্যা হচ্ছে। ডাটা সেভ হচ্ছে না।",
     },
     {
       icon: Award,
       label: "সার্টিফিকেশন",
+      hint: "ফ্যাক্টরি কমপ্লায়েন্স",
       prompt: "ফ্যাক্টরির কি কি সার্টিফিকেশন আছে? সেগুলো কি বর্তমান?",
     },
     {
       icon: Headphones,
       label: "সাপোর্ট",
+      hint: "টেকনিক্যাল সাহায্য",
       prompt: "টেকনিক্যাল সমস্যার জন্য সাপোর্টের সাথে কিভাবে যোগাযোগ করব?",
     },
   ],
@@ -57,18 +65,35 @@ export function QuickActions({ onSelect, language }: QuickActionsProps) {
   const actions = QUICK_ACTIONS[language];
 
   return (
-    <div className="grid grid-cols-2 gap-2 w-full max-w-sm">
+    <div className="grid grid-cols-2 gap-2.5 w-full max-w-sm">
       {actions.map((action, index) => (
-        <Button
+        <button
           key={index}
-          variant="outline"
-          size="sm"
-          className="h-auto py-3 px-3 flex flex-col items-center gap-1 text-center"
           onClick={() => onSelect(action.prompt)}
+          className={cn(
+            "group flex flex-col items-start gap-2 p-3 rounded-xl border bg-card text-left",
+            "shadow-sm hover:shadow-md hover:border-primary/30",
+            "transition-all duration-200 hover:-translate-y-0.5",
+            "animate-in fade-in slide-in-from-bottom-2"
+          )}
+          style={{
+            animationDelay: `${index * 75}ms`,
+            animationFillMode: "both",
+            animationDuration: "400ms",
+          }}
         >
-          <action.icon className="h-5 w-5 text-muted-foreground" />
-          <span className="text-xs font-normal">{action.label}</span>
-        </Button>
+          <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-primary/10 text-primary group-hover:bg-primary/15 transition-colors duration-200">
+            <action.icon className="h-4 w-4" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-foreground leading-tight">
+              {action.label}
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              {action.hint}
+            </p>
+          </div>
+        </button>
       ))}
     </div>
   );

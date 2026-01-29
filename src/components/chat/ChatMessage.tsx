@@ -1,5 +1,13 @@
 import { useState } from "react";
-import { ThumbsUp, ThumbsDown, ExternalLink, FileText, Loader2, AlertTriangle } from "lucide-react";
+import {
+  ThumbsUp,
+  ThumbsDown,
+  ExternalLink,
+  FileText,
+  Loader2,
+  AlertTriangle,
+  Bot,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -24,6 +32,103 @@ interface ChatMessageProps {
   language: "en" | "bn";
 }
 
+// ---------------------------------------------------------------------------
+// Inline markdown: `code`, **bold**, *italic*, [Source: Title]
+// ---------------------------------------------------------------------------
+function formatInline(text: string, lineKey: string): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  const re = /(`([^`]+)`)|(\*\*(.+?)\*\*)|(\*([^*]+?)\*)|(\[Source:\s*([^\]]+)\])/g;
+
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let idx = 0;
+
+  while ((match = re.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+
+    if (match[1]) {
+      parts.push(
+        <code key={`${lineKey}-c${idx}`} className="px-1.5 py-0.5 rounded bg-muted font-mono text-xs">
+          {match[2]}
+        </code>
+      );
+    } else if (match[3]) {
+      parts.push(
+        <strong key={`${lineKey}-b${idx}`} className="font-semibold">{match[4]}</strong>
+      );
+    } else if (match[5]) {
+      parts.push(
+        <em key={`${lineKey}-i${idx}`}>{match[6]}</em>
+      );
+    } else if (match[7]) {
+      parts.push(
+        <span key={`${lineKey}-s${idx}`} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-xs font-medium">
+          <FileText className="h-3 w-3" />{match[8]}
+        </span>
+      );
+    }
+
+    lastIndex = match.index + match[0].length;
+    idx++;
+  }
+
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
+  return parts.length > 0 ? parts : [text];
+}
+
+// ---------------------------------------------------------------------------
+// Block-level markdown: code blocks, headers, bullets, numbered lists, paragraphs
+// ---------------------------------------------------------------------------
+function formatContent(content: string): React.ReactNode[] {
+  const lines = content.split("\n");
+  const elements: React.ReactNode[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Fenced code block
+    if (line.startsWith("```")) {
+      const codeLines: string[] = [];
+      i++;
+      while (i < lines.length && !lines[i].startsWith("```")) {
+        codeLines.push(lines[i]);
+        i++;
+      }
+      i++; // skip closing ```
+      elements.push(
+        <pre key={`cb-${i}`} className="my-2 rounded-lg bg-[hsl(222,47%,11%)] text-[hsl(214,32%,91%)] p-3 overflow-x-auto text-xs font-mono">
+          <code>{codeLines.join("\n")}</code>
+        </pre>
+      );
+      continue;
+    }
+
+    if (line.startsWith("## ")) {
+      elements.push(<h3 key={i} className="font-semibold text-base mt-3 mb-1">{formatInline(line.slice(3), `h3-${i}`)}</h3>);
+    } else if (line.startsWith("# ")) {
+      elements.push(<h2 key={i} className="font-bold text-lg mt-3 mb-1">{formatInline(line.slice(2), `h2-${i}`)}</h2>);
+    } else if (line.startsWith("- ") || line.startsWith("* ")) {
+      elements.push(<li key={i} className="ml-4 list-disc">{formatInline(line.slice(2), `li-${i}`)}</li>);
+    } else if (/^\d+\.\s/.test(line)) {
+      elements.push(<li key={i} className="ml-4 list-decimal">{formatInline(line.replace(/^\d+\.\s/, ""), `ol-${i}`)}</li>);
+    } else if (line.trim()) {
+      elements.push(<p key={i} className="mb-2">{formatInline(line, `p-${i}`)}</p>);
+    } else {
+      elements.push(<br key={i} />);
+    }
+
+    i++;
+  }
+
+  return elements;
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 export function ChatMessage({
   message,
   onFeedback,
@@ -45,104 +150,47 @@ export function ChatMessage({
 
   const handleViewSource = async (citation: ChatCitation) => {
     if (!onViewSource) return;
-
     setLoadingSource(true);
     try {
       const source = await onViewSource(citation.chunkId);
-      if (source) {
-        setSelectedSource(source);
-      }
+      if (source) setSelectedSource(source);
     } finally {
       setLoadingSource(false);
     }
   };
 
-  // Format message content with markdown-like rendering
-  const formatContent = (content: string) => {
-    // Simple markdown parsing for common patterns
-    return content
-      .split("\n")
-      .map((line, i) => {
-        // Headers
-        if (line.startsWith("## ")) {
-          return (
-            <h3 key={i} className="font-semibold text-base mt-3 mb-1">
-              {line.slice(3)}
-            </h3>
-          );
-        }
-        if (line.startsWith("# ")) {
-          return (
-            <h2 key={i} className="font-bold text-lg mt-3 mb-1">
-              {line.slice(2)}
-            </h2>
-          );
-        }
-        // Bullet points
-        if (line.startsWith("- ") || line.startsWith("* ")) {
-          return (
-            <li key={i} className="ml-4 list-disc">
-              {line.slice(2)}
-            </li>
-          );
-        }
-        // Numbered lists
-        if (/^\d+\.\s/.test(line)) {
-          return (
-            <li key={i} className="ml-4 list-decimal">
-              {line.replace(/^\d+\.\s/, "")}
-            </li>
-          );
-        }
-        // Regular paragraphs
-        if (line.trim()) {
-          return (
-            <p key={i} className="mb-2">
-              {line}
-            </p>
-          );
-        }
-        return <br key={i} />;
-      });
-  };
-
   return (
-    <div
-      className={cn(
-        "flex gap-3",
-        isUser ? "flex-row-reverse" : "flex-row"
-      )}
-    >
+    <div className={cn("flex gap-3", isUser ? "flex-row-reverse" : "flex-row")}>
       {/* Avatar */}
       <Avatar className="h-8 w-8 shrink-0">
-        <AvatarFallback className={cn(
-          "text-xs",
-          isUser ? "bg-primary text-primary-foreground" : "bg-muted"
-        )}>
-          {isUser ? "U" : "AI"}
+        <AvatarFallback
+          className={cn(
+            "text-xs font-semibold",
+            isUser
+              ? "bg-primary text-primary-foreground"
+              : "bg-gradient-to-br from-primary to-primary/70 text-primary-foreground"
+          )}
+        >
+          {isUser ? "U" : <Bot className="h-4 w-4" />}
         </AvatarFallback>
       </Avatar>
 
-      {/* Message Content */}
-      <div
-        className={cn(
-          "flex flex-col max-w-[80%]",
-          isUser ? "items-end" : "items-start"
-        )}
-      >
+      {/* Message body */}
+      <div className={cn("flex flex-col max-w-[80%]", isUser ? "items-end" : "items-start")}>
         <div
           className={cn(
-            "rounded-lg px-4 py-2 text-sm",
+            "rounded-2xl px-4 py-2.5 text-sm",
             isUser
-              ? "bg-primary text-primary-foreground"
-              : "bg-muted",
-            isLoading && "animate-pulse"
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "bg-card border shadow-sm",
+            isLoading && "min-w-[60px]"
           )}
         >
           {isLoading ? (
-            <div className="flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span>{language === "bn" ? "চিন্তা করছি..." : "Thinking..."}</span>
+            <div className="flex items-center gap-1.5 py-1 px-1">
+              <div className="h-2 w-2 rounded-full bg-primary/60 animate-bounce [animation-delay:0ms]" />
+              <div className="h-2 w-2 rounded-full bg-primary/60 animate-bounce [animation-delay:150ms]" />
+              <div className="h-2 w-2 rounded-full bg-primary/60 animate-bounce [animation-delay:300ms]" />
             </div>
           ) : (
             <div className="prose prose-sm dark:prose-invert max-w-none">
@@ -151,9 +199,9 @@ export function ChatMessage({
           )}
         </div>
 
-        {/* No Evidence Warning */}
+        {/* No evidence warning */}
         {message.noEvidence && !isUser && (
-          <div className="flex items-center gap-1 mt-1 text-xs text-amber-600 dark:text-amber-400">
+          <div className="flex items-center gap-1 mt-1.5 text-xs text-amber-600 dark:text-amber-400">
             <AlertTriangle className="h-3 w-3" />
             <span>
               {language === "bn"
@@ -170,7 +218,7 @@ export function ChatMessage({
               <Button
                 variant="ghost"
                 size="sm"
-                className="mt-1 h-auto py-1 px-2 text-xs"
+                className="mt-1.5 h-auto py-1 px-2 text-xs text-muted-foreground hover:text-foreground"
               >
                 <FileText className="h-3 w-3 mr-1" />
                 {language === "bn"
@@ -182,42 +230,28 @@ export function ChatMessage({
               {message.citations.map((citation, index) => (
                 <div
                   key={index}
-                  className="flex items-start gap-2 text-xs p-2 bg-muted/50 rounded border"
+                  className="flex items-start gap-2.5 text-xs p-2.5 bg-card rounded-lg border shadow-sm hover:shadow-md transition-shadow duration-200"
                 >
-                  <Badge variant="outline" className="shrink-0 text-[10px]">
-                    {citation.documentType}
-                  </Badge>
+                  <div className="flex items-center justify-center h-7 w-7 rounded-md bg-primary/10 text-primary shrink-0">
+                    <FileText className="h-3.5 w-3.5" />
+                  </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{citation.documentTitle}</p>
+                    <p className="font-medium truncate text-foreground">{citation.documentTitle}</p>
                     {citation.sectionHeading && (
-                      <p className="text-muted-foreground truncate">
-                        {citation.sectionHeading}
-                      </p>
+                      <p className="text-muted-foreground truncate mt-0.5">{citation.sectionHeading}</p>
                     )}
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
+                    <Badge variant="outline" className="text-[10px] h-5">
+                      {citation.documentType}
+                    </Badge>
                     {citation.sourceUrl && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => window.open(citation.sourceUrl!, "_blank")}
-                      >
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => window.open(citation.sourceUrl!, "_blank")}>
                         <ExternalLink className="h-3 w-3" />
                       </Button>
                     )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-2 text-[10px]"
-                      onClick={() => handleViewSource(citation)}
-                      disabled={loadingSource}
-                    >
-                      {loadingSource ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        language === "bn" ? "দেখুন" : "View"
-                      )}
+                    <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => handleViewSource(citation)} disabled={loadingSource}>
+                      {loadingSource ? <Loader2 className="h-3 w-3 animate-spin" /> : language === "bn" ? "দেখুন" : "View"}
                     </Button>
                   </div>
                 </div>
@@ -226,16 +260,13 @@ export function ChatMessage({
           </Collapsible>
         )}
 
-        {/* Feedback Buttons */}
+        {/* Feedback */}
         {!isUser && !isLoading && (
-          <div className="flex items-center gap-1 mt-1">
+          <div className="flex items-center gap-1 mt-1.5">
             <Button
               variant="ghost"
               size="icon"
-              className={cn(
-                "h-6 w-6",
-                feedback === "thumbs_up" && "text-green-600 bg-green-100 dark:bg-green-900/30"
-              )}
+              className={cn("h-6 w-6 rounded-full", feedback === "thumbs_up" && "text-green-600 bg-green-100 dark:bg-green-900/30")}
               onClick={() => handleFeedback("thumbs_up")}
             >
               <ThumbsUp className="h-3 w-3" />
@@ -243,10 +274,7 @@ export function ChatMessage({
             <Button
               variant="ghost"
               size="icon"
-              className={cn(
-                "h-6 w-6",
-                feedback === "thumbs_down" && "text-red-600 bg-red-100 dark:bg-red-900/30"
-              )}
+              className={cn("h-6 w-6 rounded-full", feedback === "thumbs_down" && "text-red-600 bg-red-100 dark:bg-red-900/30")}
               onClick={() => handleFeedback("thumbs_down")}
             >
               <ThumbsDown className="h-3 w-3" />
@@ -255,7 +283,7 @@ export function ChatMessage({
         )}
       </div>
 
-      {/* Source Detail Dialog */}
+      {/* Source detail dialog */}
       <Dialog open={!!selectedSource} onOpenChange={() => setSelectedSource(null)}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
@@ -264,22 +292,14 @@ export function ChatMessage({
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Badge variant="outline">{selectedSource?.document?.document_type}</Badge>
-              {selectedSource?.section_heading && (
-                <span>• {selectedSource.section_heading}</span>
-              )}
-              {selectedSource?.page_number && (
-                <span>• Page {selectedSource.page_number}</span>
-              )}
+              {selectedSource?.section_heading && <span>• {selectedSource.section_heading}</span>}
+              {selectedSource?.page_number && <span>• Page {selectedSource.page_number}</span>}
             </div>
-            <div className="p-4 bg-muted rounded-lg text-sm whitespace-pre-wrap">
+            <div className="p-4 bg-muted rounded-lg text-sm whitespace-pre-wrap font-mono">
               {selectedSource?.content}
             </div>
             {selectedSource?.document?.source_url && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => window.open(selectedSource.document.source_url, "_blank")}
-              >
+              <Button variant="outline" size="sm" onClick={() => window.open(selectedSource.document.source_url, "_blank")}>
                 <ExternalLink className="h-4 w-4 mr-2" />
                 {language === "bn" ? "মূল উৎস দেখুন" : "View Original Source"}
               </Button>

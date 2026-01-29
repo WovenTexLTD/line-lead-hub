@@ -23,10 +23,10 @@ export function LanguageToggle({ language, onToggle }: LanguageToggleProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1.5">
-          <Globe className="h-3 w-3" />
+        <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs gap-1.5 rounded-full hover:bg-muted">
+          <Globe className="h-3.5 w-3.5 text-muted-foreground" />
           <span>{currentLang.flag}</span>
-          <span>{currentLang.label}</span>
+          <span className="font-medium">{currentLang.label}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
