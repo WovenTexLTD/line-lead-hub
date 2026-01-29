@@ -3,6 +3,10 @@
 export const APP_NAME = "ProductionPortal";
 export const APP_DESCRIPTION = "Garment Factory Production Tracking System";
 
+// Dev/test factory — features like Knowledge Base, Chat Analytics, and
+// the AI chat widget are only available for this factory until general release.
+export const DEV_FACTORY_ID_PREFIX = "f7b308bb";
+
 // Role definitions
 export const ROLES = {
   WORKER: 'worker',

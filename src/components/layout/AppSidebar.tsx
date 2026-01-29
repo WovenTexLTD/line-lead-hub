@@ -47,7 +47,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
-import { NAV_ITEMS } from "@/lib/constants";
+import { NAV_ITEMS, DEV_FACTORY_ID_PREFIX } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { openExternalUrl, isTauri } from "@/lib/capacitor";
 import { isRunningFromDMG } from "@/lib/dmg-detection";
@@ -270,6 +270,13 @@ export function AppSidebar() {
       navItems = NAV_ITEMS.worker_finishing;
     }
     // If department is 'both' or undefined, show all worker items
+  }
+
+  // Hide dev-only pages (Knowledge Base, Chat Analytics) for non-dev factories
+  const isDevFactory = profile?.factory_id?.startsWith(DEV_FACTORY_ID_PREFIX);
+  if (!isDevFactory) {
+    const devOnlyPaths = ['/setup/knowledge-base', '/setup/chat-analytics'];
+    navItems = navItems.filter(item => !devOnlyPaths.includes(item.path));
   }
 
   const isActive = (path: string) => location.pathname === path;

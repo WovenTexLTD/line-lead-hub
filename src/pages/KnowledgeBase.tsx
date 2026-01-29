@@ -53,6 +53,7 @@ import {
   Clock,
   XCircle,
 } from "lucide-react";
+import { DEV_FACTORY_ID_PREFIX } from "@/lib/constants";
 
 interface KnowledgeDocument {
   id: string;
@@ -114,12 +115,12 @@ export default function KnowledgeBase() {
     content: "", // Direct text content for ingestion
   });
 
-  // Check admin access
+  // Check admin access + dev factory only
   useEffect(() => {
-    if (!isAdminOrHigher()) {
+    if (!isAdminOrHigher() || !profile?.factory_id?.startsWith(DEV_FACTORY_ID_PREFIX)) {
       navigate("/dashboard");
     }
-  }, [isAdminOrHigher, navigate]);
+  }, [isAdminOrHigher, profile, navigate]);
 
   // Fetch documents
   const fetchDocuments = async () => {

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { DEV_FACTORY_ID_PREFIX } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -57,7 +58,7 @@ interface AnalyticsSummary {
 }
 
 export default function ChatAnalytics() {
-  const { isAdminOrHigher } = useAuth();
+  const { isAdminOrHigher, profile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -66,12 +67,12 @@ export default function ChatAnalytics() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("unanswered");
 
-  // Check admin access
+  // Check admin access + dev factory only
   useEffect(() => {
-    if (!isAdminOrHigher()) {
+    if (!isAdminOrHigher() || !profile?.factory_id?.startsWith(DEV_FACTORY_ID_PREFIX)) {
       navigate("/dashboard");
     }
-  }, [isAdminOrHigher, navigate]);
+  }, [isAdminOrHigher, profile, navigate]);
 
   const fetchAnalytics = async () => {
     setLoading(true);

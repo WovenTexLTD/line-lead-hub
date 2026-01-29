@@ -94,6 +94,8 @@ serve(async (req) => {
     { auth: { persistSession: false } }
   );
 
+  let currentDocumentId: string | null = null;
+
   try {
     logStep("Ingest request received");
 
@@ -131,6 +133,10 @@ serve(async (req) => {
       throw new Error("document_id is required");
     }
 
+    // Store document_id in outer scope so the error handler can use it
+    // (req.body is already consumed after req.json())
+    currentDocumentId = document_id;
+
     // Get document info
     const { data: document, error: docError } = await supabaseAdmin
       .from("knowledge_documents")
@@ -144,10 +150,15 @@ serve(async (req) => {
 
     logStep("Document found", { title: document.title, type: document.document_type });
 
-    // Update queue status
+    // Clear any old queue entries for this document, then insert fresh
     await supabaseAdmin
       .from("document_ingestion_queue")
-      .upsert({
+      .delete()
+      .eq("document_id", document_id);
+
+    await supabaseAdmin
+      .from("document_ingestion_queue")
+      .insert({
         document_id,
         status: "processing",
         started_at: new Date().toISOString(),
@@ -263,22 +274,16 @@ serve(async (req) => {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logStep("ERROR", { message: errorMessage });
 
-    // Try to update queue status
+    // Try to update queue status using the document_id parsed earlier
     try {
-      const body = await req.clone().json();
-      if (body.document_id) {
-        const supabaseAdmin = createClient(
-          Deno.env.get("SUPABASE_URL") ?? "",
-          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-          { auth: { persistSession: false } }
-        );
+      if (currentDocumentId) {
         await supabaseAdmin
           .from("document_ingestion_queue")
           .update({
             status: "failed",
             error_message: errorMessage,
           })
-          .eq("document_id", body.document_id);
+          .eq("document_id", currentDocumentId);
       }
     } catch {
       // Ignore

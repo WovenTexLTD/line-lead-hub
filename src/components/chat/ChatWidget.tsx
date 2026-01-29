@@ -4,12 +4,13 @@ import { Button } from "@/components/ui/button";
 import { ChatPanel } from "./ChatPanel";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
+import { DEV_FACTORY_ID_PREFIX } from "@/lib/constants";
 
 export function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
 
   // Detect mobile
   useEffect(() => {
@@ -28,8 +29,9 @@ export function ChatWidget() {
     }
   }, [isMobile, isOpen]);
 
-  // Don't show if not logged in
+  // Don't show if not logged in or not in dev factory
   if (!user) return null;
+  if (!profile?.factory_id?.startsWith(DEV_FACTORY_ID_PREFIX)) return null;
 
   return (
     <>
