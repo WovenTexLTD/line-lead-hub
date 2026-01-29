@@ -172,28 +172,66 @@ export default function KnowledgeBase() {
     if (!accessToken) throw new Error("Not authenticated");
 
     const chunks = chunkText(content);
-    setIngestionProgress(`0 / ${chunks.length} chunks`);
+    setIngestionProgress(`Chunking: ${chunks.length} pieces`);
 
-    // Use ingest-chunk edge function for each chunk (service role inserts, no RLS issues)
-    for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i];
-      setIngestionProgress(`${i + 1} / ${chunks.length} chunks`);
+    // Clear old queue + chunks for this document
+    await supabase.from("document_ingestion_queue").delete().eq("document_id", documentId);
+    await supabase.from("knowledge_chunks").delete().eq("document_id", documentId);
 
-      const { data, error } = await supabase.functions.invoke("ingest-chunk", {
-        body: {
-          document_id: documentId,
-          chunk_index: chunk.index,
-          content: chunk.content,
-          section_heading: chunk.sectionHeading,
-        },
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
+    // Create queue entry
+    await supabase.from("document_ingestion_queue").insert({
+      document_id: documentId,
+      status: "processing",
+      chunks_created: 0,
+      started_at: new Date().toISOString(),
+    });
 
-      if (error) throw new Error(`Chunk ${i + 1} failed: ${error.message}`);
-      if (data?.error) throw new Error(`Chunk ${i + 1} failed: ${data.error}`);
+    try {
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+        setIngestionProgress(`Embedding chunk ${i + 1} / ${chunks.length}...`);
+
+        // Call ingest-chunk edge function (uses service role for insert)
+        const { data, error } = await supabase.functions.invoke("ingest-chunk", {
+          body: {
+            document_id: documentId,
+            chunk_index: chunk.index,
+            content: chunk.content,
+            section_heading: chunk.sectionHeading,
+          },
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+
+        if (error) throw new Error(`Chunk ${i + 1}: ${error.message}`);
+        if (data?.error) throw new Error(`Chunk ${i + 1}: ${data.error}`);
+
+        // Update queue progress
+        await supabase
+          .from("document_ingestion_queue")
+          .update({ chunks_created: i + 1 })
+          .eq("document_id", documentId);
+      }
+
+      // Mark completed
+      await supabase
+        .from("document_ingestion_queue")
+        .update({
+          status: "completed",
+          completed_at: new Date().toISOString(),
+          chunks_created: chunks.length,
+        })
+        .eq("document_id", documentId);
+
+      setIngestionProgress("");
+    } catch (err) {
+      // Mark failed in queue so it doesn't stay stuck as "processing"
+      const msg = err instanceof Error ? err.message : String(err);
+      await supabase
+        .from("document_ingestion_queue")
+        .update({ status: "failed", error_message: msg })
+        .eq("document_id", documentId);
+      throw err;
     }
-
-    setIngestionProgress("");
   };
 
   const handleSubmit = async () => {
