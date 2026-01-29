@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,7 +51,6 @@ import {
   CheckCircle,
   Clock,
   XCircle,
-  Play,
 } from "lucide-react";
 import { DEV_FACTORY_ID_PREFIX } from "@/lib/constants";
 import { chunkText } from "@/utils/chunking";
@@ -104,8 +103,6 @@ export default function KnowledgeBase() {
   const [loading, setLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [ingestingDocId, setIngestingDocId] = useState<string | null>(null);
-  const [ingestionProgress, setIngestionProgress] = useState("");
 
   // Form state
   const [formData, setFormData] = useState({
@@ -115,7 +112,7 @@ export default function KnowledgeBase() {
     source_url: "",
     language: "en",
     is_global: false,
-    content: "",
+    content: "", // Direct text content for ingestion
   });
 
   // Check admin access + dev factory only
@@ -126,7 +123,8 @@ export default function KnowledgeBase() {
   }, [isAdminOrHigher, profile, navigate]);
 
   // Fetch documents
-  const fetchDocuments = useCallback(async () => {
+  const fetchDocuments = async () => {
+    setLoading(true);
     try {
       const { data: docs, error } = await supabase
         .from("knowledge_documents")
@@ -136,13 +134,10 @@ export default function KnowledgeBase() {
       if (error) throw error;
 
       // Fetch ingestion status for each document
-      const docIds = docs?.map((d) => d.id) || [];
-      const { data: queue } = docIds.length > 0
-        ? await supabase
-            .from("document_ingestion_queue")
-            .select("*")
-            .in("document_id", docIds)
-        : { data: [] };
+      const { data: queue } = await supabase
+        .from("document_ingestion_queue")
+        .select("*")
+        .in("document_id", docs?.map((d) => d.id) || []);
 
       const docsWithStatus = (docs || []).map((doc) => ({
         ...doc,
@@ -157,56 +152,47 @@ export default function KnowledgeBase() {
         title: "Error",
         description: "Failed to load documents",
       });
+    } finally {
+      setLoading(false);
     }
-  }, [toast]);
+  };
 
   useEffect(() => {
-    fetchDocuments().then(() => setLoading(false));
-  }, [fetchDocuments]);
+    fetchDocuments();
+  }, []);
 
-  // ──────────────────────────────────────────────
-  // INGESTION — runs independently from the form
-  // ──────────────────────────────────────────────
-  const runIngestion = useCallback(async (documentId: string, content: string, docTitle: string) => {
-    console.log("[KB] Starting ingestion for", documentId, "content length:", content.length);
-    setIngestingDocId(documentId);
-    setIngestionProgress("Preparing...");
+  // Client-side ingestion: chunk text locally, call generate-embedding edge function
+  // per chunk, insert via service-role edge function. This avoids the edge function
+  // resource limits that kill background processing.
+  const [ingestionProgress, setIngestionProgress] = useState("");
+
+  const ingestClientSide = async (documentId: string, content: string) => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) throw new Error("Not authenticated");
+
+    const chunks = chunkText(content);
+    setIngestionProgress(`Chunking: ${chunks.length} pieces`);
+
+    // Clear old queue + chunks for this document
+    await supabase.from("document_ingestion_queue").delete().eq("document_id", documentId);
+    await supabase.from("knowledge_chunks").delete().eq("document_id", documentId);
+
+    // Create queue entry
+    await supabase.from("document_ingestion_queue").insert({
+      document_id: documentId,
+      status: "processing",
+      chunks_created: 0,
+      started_at: new Date().toISOString(),
+    });
 
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData.session?.access_token;
-      if (!accessToken) throw new Error("Not authenticated");
-
-      // Chunk the text (for-loop based, cannot infinite-loop)
-      console.log("[KB] Chunking text...");
-      const chunks = chunkText(content);
-      console.log("[KB] Created", chunks.length, "chunks");
-
-      if (chunks.length === 0) {
-        throw new Error("No chunks generated from content");
-      }
-
-      setIngestionProgress(`0 / ${chunks.length} chunks`);
-
-      // Clear old queue + chunks
-      await supabase.from("document_ingestion_queue").delete().eq("document_id", documentId);
-      await supabase.from("knowledge_chunks").delete().eq("document_id", documentId);
-
-      // Create queue entry
-      await supabase.from("document_ingestion_queue").insert({
-        document_id: documentId,
-        status: "processing",
-        chunks_created: 0,
-        started_at: new Date().toISOString(),
-      });
-
-      // Process each chunk via the ingest-chunk edge function
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];
-        setIngestionProgress(`${i + 1} / ${chunks.length} chunks`);
-        console.log(`[KB] Processing chunk ${i + 1}/${chunks.length}`);
+        setIngestionProgress(`Embedding chunk ${i + 1} / ${chunks.length}...`);
 
-        const response = await supabase.functions.invoke("ingest-chunk", {
+        // Call ingest-chunk edge function (uses service role for insert)
+        const { data, error } = await supabase.functions.invoke("ingest-chunk", {
           body: {
             document_id: documentId,
             chunk_index: chunk.index,
@@ -216,12 +202,8 @@ export default function KnowledgeBase() {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
 
-        if (response.error) {
-          throw new Error(`Chunk ${i + 1}: ${response.error.message}`);
-        }
-        if (response.data?.error) {
-          throw new Error(`Chunk ${i + 1}: ${response.data.error}`);
-        }
+        if (error) throw new Error(`Chunk ${i + 1}: ${error.message}`);
+        if (data?.error) throw new Error(`Chunk ${i + 1}: ${data.error}`);
 
         // Update queue progress
         await supabase
@@ -240,51 +222,40 @@ export default function KnowledgeBase() {
         })
         .eq("document_id", documentId);
 
-      console.log("[KB] Ingestion completed for", documentId);
-      toast({ title: "Ingestion complete", description: `"${docTitle}" — ${chunks.length} chunks processed` });
+      setIngestionProgress("");
     } catch (err) {
+      // Mark failed in queue so it doesn't stay stuck as "processing"
       const msg = err instanceof Error ? err.message : String(err);
-      console.error("[KB] Ingestion failed:", msg);
-
-      // Mark failed in queue
       await supabase
         .from("document_ingestion_queue")
         .update({ status: "failed", error_message: msg })
         .eq("document_id", documentId);
+      throw err;
+    }
+  };
 
+  const handleSubmit = async () => {
+    if (!formData.title.trim()) {
       toast({
         variant: "destructive",
-        title: "Ingestion failed",
-        description: msg,
+        title: "Error",
+        description: "Title is required",
       });
-    } finally {
-      setIngestingDocId(null);
-      setIngestionProgress("");
-      fetchDocuments();
-    }
-  }, [toast, fetchDocuments]);
-
-  // ──────────────────────────────────────────────
-  // FORM SUBMIT — saves document, then auto-ingests
-  // ──────────────────────────────────────────────
-  const handleSubmit = useCallback(async () => {
-    if (!formData.title.trim()) {
-      toast({ variant: "destructive", title: "Error", description: "Title is required" });
       return;
     }
+
     if (!formData.content.trim() && !formData.source_url.trim()) {
-      toast({ variant: "destructive", title: "Error", description: "Please provide content or a source URL" });
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please provide content or a source URL",
+      });
       return;
     }
 
     setIsSubmitting(true);
-
-    // Capture values before clearing
-    const contentToIngest = formData.content.trim();
-    const docTitle = formData.title.trim();
-
     try {
-      // 1. Create document record
+      // Create document
       const { data: doc, error: docError } = await supabase
         .from("knowledge_documents")
         .insert({
@@ -296,14 +267,24 @@ export default function KnowledgeBase() {
           is_global: formData.is_global,
           factory_id: formData.is_global ? null : profile?.factory_id,
           created_by: (await supabase.auth.getUser()).data.user?.id,
-          content: contentToIngest || null,
+          content: formData.content.trim() || null,
         })
         .select("id")
         .single();
 
       if (docError) throw docError;
 
-      // 2. Close dialog and clear form IMMEDIATELY
+      // Ingest content client-side, one chunk at a time
+      if (formData.content.trim()) {
+        await ingestClientSide(doc.id, formData.content.trim());
+      }
+
+      toast({
+        title: "Success",
+        description: "Document added and ingested successfully",
+      });
+
+      // Reset form and close dialog
       setFormData({
         title: "",
         description: "",
@@ -314,21 +295,7 @@ export default function KnowledgeBase() {
         content: "",
       });
       setIsAddDialogOpen(false);
-      setIsSubmitting(false);
-
-      toast({ title: "Document added", description: "Starting ingestion..." });
-
-      // 3. Refresh the table so the document appears
-      await fetchDocuments();
-
-      // 4. Start ingestion AFTER dialog is fully closed
-      //    setTimeout ensures React has re-rendered and the dialog DOM is gone
-      if (contentToIngest) {
-        const docId = doc.id;
-        setTimeout(() => {
-          runIngestion(docId, contentToIngest, docTitle);
-        }, 100);
-      }
+      fetchDocuments();
     } catch (err) {
       console.error("Error adding document:", err);
       toast({
@@ -336,21 +303,15 @@ export default function KnowledgeBase() {
         title: "Error",
         description: err instanceof Error ? err.message : "Failed to add document",
       });
+    } finally {
       setIsSubmitting(false);
+      setIngestionProgress("");
     }
-  }, [formData, profile, toast, fetchDocuments, runIngestion]);
+  };
 
-  // ──────────────────────────────────────────────
-  // MANUAL INGEST — triggered from table row button
-  // ──────────────────────────────────────────────
-  const handleIngest = useCallback(async (doc: KnowledgeDocument) => {
-    if (ingestingDocId) {
-      toast({ variant: "destructive", title: "Please wait", description: "Another ingestion is in progress" });
-      return;
-    }
-
+  const handleReIngest = async (doc: KnowledgeDocument) => {
     try {
-      // Fetch stored content from the document
+      // Fetch stored content
       const { data: fullDoc, error: fetchErr } = await supabase
         .from("knowledge_documents")
         .select("content")
@@ -363,25 +324,36 @@ export default function KnowledgeBase() {
       if (!content) {
         toast({
           variant: "destructive",
-          title: "No content",
-          description: "This document has no stored content. Delete it and re-add with content.",
+          title: "Error",
+          description: "No stored content. Delete and re-add with content.",
         });
         return;
       }
 
-      runIngestion(doc.id, content, doc.title);
+      toast({ title: "Starting ingestion", description: `Ingesting "${doc.title}"...` });
+
+      setIsSubmitting(true);
+      await ingestClientSide(doc.id, content);
+
+      toast({ title: "Success", description: "Ingestion completed" });
+      fetchDocuments();
     } catch (err) {
-      console.error("Ingest error:", err);
+      console.error("Re-ingestion error:", err);
       toast({
         variant: "destructive",
         title: "Error",
-        description: err instanceof Error ? err.message : "Failed to start ingestion",
+        description: err instanceof Error ? err.message : "Failed to re-ingest document",
       });
+    } finally {
+      setIsSubmitting(false);
+      setIngestionProgress("");
     }
-  }, [ingestingDocId, toast, runIngestion]);
+  };
 
-  const handleDelete = useCallback(async (doc: KnowledgeDocument) => {
-    if (!confirm(`Are you sure you want to delete "${doc.title}"?`)) return;
+  const handleDelete = async (doc: KnowledgeDocument) => {
+    if (!confirm(`Are you sure you want to delete "${doc.title}"?`)) {
+      return;
+    }
 
     try {
       const { error } = await supabase
@@ -391,15 +363,22 @@ export default function KnowledgeBase() {
 
       if (error) throw error;
 
-      toast({ title: "Deleted", description: "Document deleted successfully" });
+      toast({
+        title: "Deleted",
+        description: "Document deleted successfully",
+      });
       fetchDocuments();
     } catch (err) {
       console.error("Delete error:", err);
-      toast({ variant: "destructive", title: "Error", description: "Failed to delete document" });
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete document",
+      });
     }
-  }, [toast, fetchDocuments]);
+  };
 
-  const handleToggleActive = useCallback(async (doc: KnowledgeDocument) => {
+  const handleToggleActive = async (doc: KnowledgeDocument) => {
     try {
       const { error } = await supabase
         .from("knowledge_documents")
@@ -407,25 +386,19 @@ export default function KnowledgeBase() {
         .eq("id", doc.id);
 
       if (error) throw error;
+
       fetchDocuments();
     } catch (err) {
       console.error("Toggle error:", err);
-      toast({ variant: "destructive", title: "Error", description: "Failed to update document" });
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update document",
+      });
     }
-  }, [toast, fetchDocuments]);
+  };
 
-  const getStatusBadge = (doc: KnowledgeDocument) => {
-    // Show live progress for currently-ingesting document
-    if (ingestingDocId === doc.id && ingestionProgress) {
-      return (
-        <Badge variant="secondary" className="gap-1">
-          <Loader2 className="h-3 w-3 animate-spin" />
-          {ingestionProgress}
-        </Badge>
-      );
-    }
-
-    const status = doc.ingestion_status;
+  const getStatusBadge = (status: KnowledgeDocument["ingestion_status"]) => {
     if (!status) {
       return (
         <Badge variant="outline" className="gap-1">
@@ -459,7 +432,7 @@ export default function KnowledgeBase() {
         );
       case "failed":
         return (
-          <Badge variant="destructive" className="gap-1" title={status.error_message || ""}>
+          <Badge variant="destructive" className="gap-1">
             <XCircle className="h-3 w-3" />
             Failed
           </Badge>
@@ -631,12 +604,17 @@ export default function KnowledgeBase() {
                 >
                   Cancel
                 </Button>
-                <Button onClick={handleSubmit} disabled={isSubmitting}>
-                  {isSubmitting && (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <div className="flex flex-col items-end gap-1">
+                  {ingestionProgress && (
+                    <p className="text-xs text-muted-foreground">Processing {ingestionProgress}...</p>
                   )}
-                  Add Document
-                </Button>
+                  <Button onClick={handleSubmit} disabled={isSubmitting}>
+                    {isSubmitting && (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    )}
+                    Add Document
+                  </Button>
+                </div>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -699,7 +677,7 @@ export default function KnowledgeBase() {
                       {LANGUAGES.find((l) => l.value === doc.language)?.label ||
                         doc.language}
                     </TableCell>
-                    <TableCell>{getStatusBadge(doc)}</TableCell>
+                    <TableCell>{getStatusBadge(doc.ingestion_status)}</TableCell>
                     <TableCell>
                       <Switch
                         checked={doc.is_active}
@@ -720,15 +698,10 @@ export default function KnowledgeBase() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleIngest(doc)}
-                          disabled={!!ingestingDocId}
-                          title={doc.ingestion_status?.status === "completed" ? "Re-ingest document" : "Ingest document"}
+                          onClick={() => handleReIngest(doc)}
+                          title="Re-ingest document"
                         >
-                          {doc.ingestion_status?.status === "completed" ? (
-                            <RefreshCw className="h-4 w-4" />
-                          ) : (
-                            <Play className="h-4 w-4" />
-                          )}
+                          <RefreshCw className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
