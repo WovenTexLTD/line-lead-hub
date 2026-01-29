@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/schema.json",
-  "productName": "Production Portal",
+  "productName": "ProductionPortal",
   "version": "1.0.39",
   "identifier": "com.woventex.productionportal",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Production Portal",
+        "title": "ProductionPortal",
         "width": 1280,
         "height": 800,
         "minWidth": 800,
@@ -35,9 +35,9 @@
     "active": true,
     "targets": "all",
     "category": "Business",
-    "shortDescription": "Production Portal",
+    "shortDescription": "ProductionPortal",
     "longDescription": "Enterprise-grade factory production tracking and management platform",
-    "copyright": "© 2024 Production Portal",
+    "copyright": "© 2024 ProductionPortal",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

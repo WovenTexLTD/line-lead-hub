@@ -44,7 +44,7 @@
     "fixErrors": "Please fix the errors below"
   },
   "app": {
-    "name": "Production Portal",
+    "name": "ProductionPortal",
     "description": "Garment Factory Production Tracking System"
   },
   "auth": {

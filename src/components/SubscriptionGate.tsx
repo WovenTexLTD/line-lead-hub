@@ -108,7 +108,7 @@ export function SubscriptionGate({ children }: SubscriptionGateProps) {
         <Card className="max-w-md">
           <CardHeader className="text-center">
             <AlertCircle className="h-12 w-12 mx-auto text-primary mb-4" />
-            <CardTitle>Welcome to Production Portal</CardTitle>
+            <CardTitle>Welcome to ProductionPortal</CardTitle>
             <CardDescription>
               Start your 14-day free trial or subscribe to begin setting up your factory.
             </CardDescription>
@@ -137,7 +137,7 @@ export function SubscriptionGate({ children }: SubscriptionGateProps) {
             <CardTitle>Subscription Required</CardTitle>
             <CardDescription>
               Your subscription has expired or payment has failed. 
-              Please update your billing to continue using Production Portal.
+              Please update your billing to continue using ProductionPortal.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">

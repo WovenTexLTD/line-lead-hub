@@ -62,7 +62,7 @@ export default function Index() {
             <div className="h-10 w-10 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-bold">
               PP
             </div>
-            <span className="text-xl font-bold">Production Portal</span>
+            <span className="text-xl font-bold">ProductionPortal</span>
           </div>
           <Link to="/auth">
             <Button variant="secondary" size="sm">
@@ -178,10 +178,10 @@ export default function Index() {
             <div className="h-8 w-8 rounded bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">
               PP
             </div>
-            <span className="font-semibold">Production Portal</span>
+            <span className="font-semibold">ProductionPortal</span>
           </div>
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} Production Portal. Built for garment factories.
+            © {new Date().getFullYear()} ProductionPortal. Built for garment factories.
           </p>
         </div>
       </footer>

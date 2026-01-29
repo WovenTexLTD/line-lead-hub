@@ -1,6 +1,6 @@
-// Production Portal Constants
+// ProductionPortal Constants
 
-export const APP_NAME = "Production Portal";
+export const APP_NAME = "ProductionPortal";
 export const APP_DESCRIPTION = "Garment Factory Production Tracking System";
 
 // Role definitions

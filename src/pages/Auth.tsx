@@ -343,7 +343,7 @@ export default function Auth() {
     } else {
       toast({
         title: "Account created!",
-        description: "Welcome to Production Portal.",
+        description: "Welcome to ProductionPortal.",
       });
       // New users need to choose subscription/trial
       navigate("/subscription");
@@ -358,11 +358,11 @@ export default function Auth() {
           <div className="flex items-center gap-4 mb-4">
             <img 
               src={logoSvg} 
-              alt="Production Portal" 
+              alt="ProductionPortal" 
               className="h-16 w-16 rounded-xl"
             />
             <div className="text-left">
-              <h1 className="text-2xl font-bold">Production Portal</h1>
+              <h1 className="text-2xl font-bold">ProductionPortal</h1>
               <p className="text-sm text-sidebar-foreground/60">Powered by WovenTex</p>
             </div>
           </div>

@@ -13,7 +13,7 @@ Supabase Edge Functions don't have built-in cron capabilities. We need an extern
 1. Go to https://cron-job.org and create a free account
 
 2. Create a new cron job with these settings:
-   - **Title**: Production Portal Email Scheduler
+   - **Title**: ProductionPortal Email Scheduler
    - **URL**: `https://[your-project-ref].supabase.co/functions/v1/process-scheduled-emails`
    - **Schedule**: Every 5 minutes (`*/5 * * * *`)
    - **Request Method**: POST

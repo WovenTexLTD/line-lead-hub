@@ -73,7 +73,7 @@ export function ChatPanel() {
               <p className="text-sm">
                 {language === "bn"
                   ? "প্রোডাকশন পোর্টাল সম্পর্কে প্রশ্ন করুন"
-                  : "Ask me about Production Portal features, compliance, or troubleshooting"}
+                  : "Ask me about ProductionPortal features, compliance, or troubleshooting"}
               </p>
             </div>
             <QuickActions onSelect={handleQuickAction} language={language} />

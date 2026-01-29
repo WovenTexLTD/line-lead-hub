@@ -4,7 +4,7 @@ const devUrl = process.env.CAPACITOR_DEV_URL;
 
 const config: CapacitorConfig = {
   appId: 'com.woventex.productionportal',
-  appName: 'Production Portal',
+  appName: 'ProductionPortal',
   webDir: 'dist',
   server: devUrl
     ? {

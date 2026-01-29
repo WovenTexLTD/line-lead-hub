@@ -225,7 +225,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
                 </table>
                 
                 <p style="font-size: 13px; color: #6b7280; margin: 0; text-align: center;">
-                  Log in to Production Portal to view details and take action.
+                  Log in to ProductionPortal to view details and take action.
                 </p>
               </div>
             </body>

@@ -321,7 +321,7 @@ export function AppSidebar() {
         <div className="flex items-center gap-3">
           <img 
             src={logoSvg} 
-            alt="Production Portal" 
+            alt="ProductionPortal" 
             className="h-10 w-10 shrink-0 rounded-lg"
           />
           {!collapsed && (

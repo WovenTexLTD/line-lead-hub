@@ -1,6 +1,6 @@
 # Mobile Release Guide (Capacitor + Android)
 
-This guide explains how to build, test, and release the Production Portal mobile app for Android (and optionally iOS).
+This guide explains how to build, test, and release the ProductionPortal mobile app for Android (and optionally iOS).
 
 ## Prerequisites
 

@@ -231,7 +231,7 @@ export default function Billing() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium">Production Portal</p>
+                      <p className="font-medium">ProductionPortal</p>
                       <p className="text-sm text-muted-foreground">
                         {activeSubscription.items[0]?.amount 
                           ? formatCurrency(activeSubscription.items[0].amount, activeSubscription.items[0].currency)

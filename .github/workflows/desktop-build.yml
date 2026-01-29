@@ -185,7 +185,7 @@ jobs:
             "$BACKGROUND_RENDERED"
 
           create-dmg \
-            --volname "Production Portal" \
+            --volname "ProductionPortal" \
             --window-pos 200 120 \
             --window-size ${BG_W} ${BG_H} \
             --icon-size 128 \
@@ -433,7 +433,7 @@ jobs:
           cat > dist/latest.json <<EOF
           {
             "version": "$VERSION",
-            "notes": "Production Portal update",
+            "notes": "ProductionPortal update",
             "pub_date": "$PUB_DATE",
             "platforms": {
               "linux-x86_64": { "url": "$LINUX_URL", "signature": "$LINUX_SIG" },

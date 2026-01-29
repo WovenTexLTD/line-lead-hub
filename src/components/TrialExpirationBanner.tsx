@@ -37,7 +37,7 @@ export function TrialExpirationBanner() {
       <div className="flex items-center gap-3">
         <AlertTriangle className="h-5 w-5 flex-shrink-0" />
         <span className="text-sm font-medium">
-          {message} Subscribe now to continue using Production Portal.
+          {message} Subscribe now to continue using ProductionPortal.
         </span>
       </div>
       <div className="flex items-center gap-2">

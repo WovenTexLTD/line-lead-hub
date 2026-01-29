@@ -1,11 +1,11 @@
-# Production Portal AI Chat Assistant
+# ProductionPortal AI Chat Assistant
 
-This document describes the AI chat assistant feature for Production Portal, including setup, configuration, and how to manage the knowledge base.
+This document describes the AI chat assistant feature for ProductionPortal, including setup, configuration, and how to manage the knowledge base.
 
 ## Overview
 
 The chat assistant helps users with:
-- Understanding how to use Production Portal features
+- Understanding how to use ProductionPortal features
 - Answering questions about factory compliance and certifications
 - Troubleshooting issues
 - Providing links to relevant documentation

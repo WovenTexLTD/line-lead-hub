@@ -439,7 +439,7 @@ export default function KnowledgeBase() {
                       onChange={(e) =>
                         setFormData({ ...formData, title: e.target.value })
                       }
-                      placeholder="e.g., Production Portal User Manual"
+                      placeholder="e.g., ProductionPortal User Manual"
                     />
                   </div>
                   <div className="space-y-2">

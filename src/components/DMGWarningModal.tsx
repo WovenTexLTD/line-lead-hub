@@ -124,7 +124,7 @@ export function DMGWarningModal({
             </DialogTitle>
           </div>
           <DialogDescription className="text-base leading-relaxed">
-            Production Portal must be moved to Applications to enable updates. 
+            ProductionPortal must be moved to Applications to enable updates. 
             Please drag the app into your Applications folder and reopen it.
           </DialogDescription>
         </DialogHeader>
@@ -135,7 +135,7 @@ export function DMGWarningModal({
           </p>
           <ol className="mt-2 space-y-1 text-sm text-muted-foreground list-decimal list-inside">
             <li>Click "Open Applications" below</li>
-            <li>Drag Production Portal into the Applications folder</li>
+            <li>Drag ProductionPortal into the Applications folder</li>
             <li><strong>Eject the disk image</strong> (right-click → Eject, or drag to Trash)</li>
             <li>Open the app from Applications</li>
           </ol>

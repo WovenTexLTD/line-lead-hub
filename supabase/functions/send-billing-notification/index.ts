@@ -56,11 +56,11 @@ serve(async (req) => {
 
     switch (type) {
       case 'trial_expiring':
-        subject = `Your Production Portal trial expires ${daysRemaining === 1 ? 'tomorrow' : `in ${daysRemaining} days`}`;
+        subject = `Your ProductionPortal trial expires ${daysRemaining === 1 ? 'tomorrow' : `in ${daysRemaining} days`}`;
         htmlContent = `
           <h1>Your trial is ending soon</h1>
           <p>Hi there,</p>
-          <p>Your Production Portal trial for <strong>${factoryName || 'your factory'}</strong> will expire ${daysRemaining === 1 ? 'tomorrow' : `in ${daysRemaining} days`}.</p>
+          <p>Your ProductionPortal trial for <strong>${factoryName || 'your factory'}</strong> will expire ${daysRemaining === 1 ? 'tomorrow' : `in ${daysRemaining} days`}.</p>
           <p>To continue using all features without interruption, please subscribe to one of our plans.</p>
           <p style="margin: 24px 0;">
             <a href="${portalUrl}/subscription" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
@@ -68,16 +68,16 @@ serve(async (req) => {
             </a>
           </p>
           <p>If you have any questions, feel free to reach out to our support team.</p>
-          <p>Best regards,<br>The Production Portal Team</p>
+          <p>Best regards,<br>The ProductionPortal Team</p>
         `;
         break;
 
       case 'trial_expired':
-        subject = 'Your Production Portal trial has expired';
+        subject = 'Your ProductionPortal trial has expired';
         htmlContent = `
           <h1>Your trial has ended</h1>
           <p>Hi there,</p>
-          <p>Your Production Portal trial for <strong>${factoryName || 'your factory'}</strong> has expired.</p>
+          <p>Your ProductionPortal trial for <strong>${factoryName || 'your factory'}</strong> has expired.</p>
           <p>Subscribe now to regain access to all features and your data.</p>
           <p style="margin: 24px 0;">
             <a href="${portalUrl}/subscription" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
@@ -85,12 +85,12 @@ serve(async (req) => {
             </a>
           </p>
           <p>Your data is safe and will be available once you subscribe.</p>
-          <p>Best regards,<br>The Production Portal Team</p>
+          <p>Best regards,<br>The ProductionPortal Team</p>
         `;
         break;
 
       case 'payment_failed':
-        subject = 'Action required: Payment failed for Production Portal';
+        subject = 'Action required: Payment failed for ProductionPortal';
         htmlContent = `
           <h1>Payment Failed</h1>
           <p>Hi there,</p>
@@ -102,24 +102,24 @@ serve(async (req) => {
             </a>
           </p>
           <p>If you believe this is an error, please contact our support team.</p>
-          <p>Best regards,<br>The Production Portal Team</p>
+          <p>Best regards,<br>The ProductionPortal Team</p>
         `;
         break;
 
       case 'subscription_canceled':
-        subject = 'Your Production Portal subscription has been canceled';
+        subject = 'Your ProductionPortal subscription has been canceled';
         htmlContent = `
           <h1>Subscription Canceled</h1>
           <p>Hi there,</p>
-          <p>Your Production Portal subscription for <strong>${factoryName || 'your factory'}</strong> has been canceled.</p>
+          <p>Your ProductionPortal subscription for <strong>${factoryName || 'your factory'}</strong> has been canceled.</p>
           <p>We're sorry to see you go! If you change your mind, you can resubscribe at any time.</p>
           <p style="margin: 24px 0;">
             <a href="${portalUrl}/subscription" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
               Resubscribe
             </a>
           </p>
-          <p>Thank you for using Production Portal.</p>
-          <p>Best regards,<br>The Production Portal Team</p>
+          <p>Thank you for using ProductionPortal.</p>
+          <p>Best regards,<br>The ProductionPortal Team</p>
         `;
         break;
 
@@ -128,7 +128,7 @@ serve(async (req) => {
     }
 
     const emailResponse = await resend.emails.send({
-      from: "Production Portal <notifications@resend.dev>",
+      from: "ProductionPortal <notifications@resend.dev>",
       to: [email],
       subject,
       html: htmlContent,

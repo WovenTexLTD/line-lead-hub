@@ -180,8 +180,8 @@ export default function ResetPassword() {
       <div className="gradient-industrial text-sidebar-foreground py-12 px-4">
         <div className="container mx-auto max-w-6xl">
           <div className="flex items-center gap-3 mb-6">
-            <img src={logoSvg} alt="Production Portal" className="h-12 w-12 rounded-xl" />
-            <h1 className="text-2xl font-bold">Production Portal</h1>
+            <img src={logoSvg} alt="ProductionPortal" className="h-12 w-12 rounded-xl" />
+            <h1 className="text-2xl font-bold">ProductionPortal</h1>
           </div>
           <p className="text-lg text-sidebar-foreground/80 max-w-xl">
             Secure password reset.
