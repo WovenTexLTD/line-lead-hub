@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -13,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { type IngestionProgress } from "@/utils/documentIngestion";
 import {
   Card,
   CardContent,
@@ -104,7 +106,7 @@ export default function KnowledgeBase() {
   const [loading, setLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [ingestionProgress, setIngestionProgress] = useState("");
+  const [ingestionProgress, setIngestionProgress] = useState<IngestionProgress | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -171,7 +173,7 @@ export default function KnowledgeBase() {
     if (!accessToken) throw new Error("Not authenticated");
 
     const chunks = chunkText(content);
-    setIngestionProgress(`Chunked into ${chunks.length} pieces. Embedding...`);
+    setIngestionProgress({ total: chunks.length, processed: 0, status: "processing" });
 
     // Clear old queue + chunks
     await supabase.from("document_ingestion_queue").delete().eq("document_id", documentId);
@@ -186,7 +188,7 @@ export default function KnowledgeBase() {
 
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
-      setIngestionProgress(`Processing chunk ${i + 1} of ${chunks.length}...`);
+      setIngestionProgress({ total: chunks.length, processed: i, status: "processing" });
 
       // Call lightweight edge function for one embedding
       const { data: embData, error: embError } = await supabase.functions.invoke(
@@ -228,7 +230,8 @@ export default function KnowledgeBase() {
       })
       .eq("document_id", documentId);
 
-    setIngestionProgress("");
+    setIngestionProgress({ total: chunks.length, processed: chunks.length, status: "completed" });
+  };
   };
 
   const handleSubmit = async () => {
@@ -301,7 +304,7 @@ export default function KnowledgeBase() {
       });
     } finally {
       setIsSubmitting(false);
-      setIngestionProgress("");
+      setIngestionProgress(null);
     }
   };
 
@@ -602,9 +605,17 @@ export default function KnowledgeBase() {
                 >
                   Cancel
                 </Button>
-                <div className="flex flex-col items-end gap-1">
+                <div className="flex flex-col items-end gap-2">
                   {ingestionProgress && (
-                    <p className="text-xs text-muted-foreground">{ingestionProgress}</p>
+                    <div className="w-full min-w-[200px]">
+                      <Progress 
+                        value={(ingestionProgress.processed / Math.max(ingestionProgress.total, 1)) * 100} 
+                        className="h-2"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Processing chunk {ingestionProgress.processed} of {ingestionProgress.total}...
+                      </p>
+                    </div>
                   )}
                   <Button onClick={handleSubmit} disabled={isSubmitting}>
                     {isSubmitting && (
