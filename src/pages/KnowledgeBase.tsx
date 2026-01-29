@@ -266,6 +266,7 @@ export default function KnowledgeBase() {
           is_global: formData.is_global,
           factory_id: formData.is_global ? null : profile?.factory_id,
           created_by: (await supabase.auth.getUser()).data.user?.id,
+          content: formData.content.trim() || null, // Store content for re-ingestion
         })
         .select("id")
         .single();
