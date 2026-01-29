@@ -44,8 +44,10 @@ export function chunkText(text: string): TextChunk[] {
       index++;
     }
 
+    // If we've reached the end of the text, stop — no more chunks needed
+    if (end >= text.length) break;
+
     start = end - CHUNK_OVERLAP;
-    if (start >= text.length) break;
   }
 
   return chunks;
