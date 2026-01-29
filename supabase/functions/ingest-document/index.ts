@@ -17,43 +17,28 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
 };
 
 /**
- * Split text into overlapping chunks
+ * Split text into overlapping chunks.
+ * Uses a for-loop with a guaranteed step size — cannot infinite-loop.
  */
 function chunkText(
   text: string,
   chunkSize: number = CHUNK_SIZE,
   overlap: number = CHUNK_OVERLAP
 ): { content: string; index: number }[] {
+  if (!text || text.trim().length === 0) return [];
+
   const chunks: { content: string; index: number }[] = [];
-  let start = 0;
-  let index = 0;
+  const step = chunkSize - overlap;
 
-  while (start < text.length) {
-    // Find a good break point (end of sentence or paragraph)
-    let end = Math.min(start + chunkSize, text.length);
-
-    if (end < text.length) {
-      // Try to break at paragraph
-      const paragraphBreak = text.lastIndexOf("\n\n", end);
-      if (paragraphBreak > start + chunkSize / 2) {
-        end = paragraphBreak + 2;
-      } else {
-        // Try to break at sentence
-        const sentenceBreak = text.lastIndexOf(". ", end);
-        if (sentenceBreak > start + chunkSize / 2) {
-          end = sentenceBreak + 2;
-        }
-      }
-    }
-
+  for (let start = 0; start < text.length; start += step) {
+    const end = Math.min(start + chunkSize, text.length);
     const chunk = text.slice(start, end).trim();
+
     if (chunk.length > 0) {
-      chunks.push({ content: chunk, index });
-      index++;
+      chunks.push({ content: chunk, index: chunks.length });
     }
 
-    start = end - overlap;
-    if (start >= text.length) break;
+    if (end >= text.length) break;
   }
 
   return chunks;

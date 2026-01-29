@@ -10,51 +10,29 @@ export interface TextChunk {
 }
 
 /**
- * Split text into overlapping chunks with intelligent break points
+ * Split text into overlapping chunks.
+ * Uses a simple for-loop with a guaranteed step size — cannot infinite-loop.
  */
 export function chunkText(text: string): TextChunk[] {
+  if (!text || text.trim().length === 0) return [];
+
   const chunks: TextChunk[] = [];
-  let start = 0;
-  let index = 0;
-  const maxChunks = Math.ceil(text.length / (CHUNK_SIZE - CHUNK_OVERLAP)) + 10;
+  const step = CHUNK_SIZE - CHUNK_OVERLAP; // 800 chars forward per iteration
 
-  while (start < text.length && index < maxChunks) {
-    let end = Math.min(start + CHUNK_SIZE, text.length);
-
-    if (end < text.length) {
-      // Try to break at paragraph
-      const paragraphBreak = text.lastIndexOf("\n\n", end);
-      if (paragraphBreak > start + CHUNK_SIZE / 2) {
-        end = paragraphBreak + 2;
-      } else {
-        // Try to break at sentence
-        const sentenceBreak = text.lastIndexOf(". ", end);
-        if (sentenceBreak > start + CHUNK_SIZE / 2) {
-          end = sentenceBreak + 2;
-        }
-      }
-    }
-
+  for (let start = 0; start < text.length; start += step) {
+    const end = Math.min(start + CHUNK_SIZE, text.length);
     const content = text.slice(start, end).trim();
+
     if (content.length > 0) {
       chunks.push({
         content,
-        index,
+        index: chunks.length,
         sectionHeading: extractSectionHeading(content),
       });
-      index++;
     }
 
-    // If we've reached the end of the text, stop
+    // If we've reached the end, stop
     if (end >= text.length) break;
-
-    // Advance start, ensuring we always move forward
-    const newStart = end - CHUNK_OVERLAP;
-    if (newStart <= start) {
-      start = start + 1;
-    } else {
-      start = newStart;
-    }
   }
 
   return chunks;
