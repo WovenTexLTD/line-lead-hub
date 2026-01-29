@@ -53,6 +53,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { DEV_FACTORY_ID_PREFIX } from "@/lib/constants";
+import { chunkText } from "@/utils/chunking";
 
 interface KnowledgeDocument {
   id: string;
@@ -160,18 +161,39 @@ export default function KnowledgeBase() {
     fetchDocuments();
   }, []);
 
-  // Start ingestion in the backend (avoids freezing the browser + bypasses knowledge_chunks RLS)
-  const startIngestion = async (documentId: string) => {
+  // Client-side ingestion: chunk text locally, call generate-embedding edge function
+  // per chunk, insert via service-role edge function. This avoids the edge function
+  // resource limits that kill background processing.
+  const [ingestionProgress, setIngestionProgress] = useState("");
+
+  const ingestClientSide = async (documentId: string, content: string) => {
     const { data: sessionData } = await supabase.auth.getSession();
     const accessToken = sessionData.session?.access_token;
     if (!accessToken) throw new Error("Not authenticated");
 
-    const { error } = await supabase.functions.invoke("ingest-document", {
-      body: { document_id: documentId },
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
+    const chunks = chunkText(content);
+    setIngestionProgress(`0 / ${chunks.length} chunks`);
 
-    if (error) throw new Error(error.message);
+    // Use ingest-chunk edge function for each chunk (service role inserts, no RLS issues)
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      setIngestionProgress(`${i + 1} / ${chunks.length} chunks`);
+
+      const { data, error } = await supabase.functions.invoke("ingest-chunk", {
+        body: {
+          document_id: documentId,
+          chunk_index: chunk.index,
+          content: chunk.content,
+          section_heading: chunk.sectionHeading,
+        },
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (error) throw new Error(`Chunk ${i + 1} failed: ${error.message}`);
+      if (data?.error) throw new Error(`Chunk ${i + 1} failed: ${data.error}`);
+    }
+
+    setIngestionProgress("");
   };
 
   const handleSubmit = async () => {
@@ -207,23 +229,21 @@ export default function KnowledgeBase() {
           is_global: formData.is_global,
           factory_id: formData.is_global ? null : profile?.factory_id,
           created_by: (await supabase.auth.getUser()).data.user?.id,
-          content: formData.content.trim() || null, // Store content for re-ingestion
+          content: formData.content.trim() || null,
         })
         .select("id")
         .single();
 
       if (docError) throw docError;
 
-      // Ingest content in backend
+      // Ingest content client-side, one chunk at a time
       if (formData.content.trim()) {
-        await startIngestion(doc.id);
+        await ingestClientSide(doc.id, formData.content.trim());
       }
 
       toast({
         title: "Success",
-        description: formData.content.trim()
-          ? "Document added. Ingestion started in background."
-          : "Document added successfully",
+        description: "Document added and ingested successfully",
       });
 
       // Reset form and close dialog
@@ -247,22 +267,37 @@ export default function KnowledgeBase() {
       });
     } finally {
       setIsSubmitting(false);
+      setIngestionProgress("");
     }
   };
 
   const handleReIngest = async (doc: KnowledgeDocument) => {
     try {
-      toast({
-        title: "Starting ingestion",
-        description: `Re-ingesting "${doc.title}"...`,
-      });
+      // Fetch stored content
+      const { data: fullDoc, error: fetchErr } = await supabase
+        .from("knowledge_documents")
+        .select("content")
+        .eq("id", doc.id)
+        .single();
 
-      await startIngestion(doc.id);
+      if (fetchErr) throw fetchErr;
 
-      toast({
-        title: "Success",
-        description: "Ingestion completed",
-      });
+      const content = (fullDoc as any)?.content as string | null;
+      if (!content) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "No stored content. Delete and re-add with content.",
+        });
+        return;
+      }
+
+      toast({ title: "Starting ingestion", description: `Ingesting "${doc.title}"...` });
+
+      setIsSubmitting(true);
+      await ingestClientSide(doc.id, content);
+
+      toast({ title: "Success", description: "Ingestion completed" });
       fetchDocuments();
     } catch (err) {
       console.error("Re-ingestion error:", err);
@@ -271,6 +306,9 @@ export default function KnowledgeBase() {
         title: "Error",
         description: err instanceof Error ? err.message : "Failed to re-ingest document",
       });
+    } finally {
+      setIsSubmitting(false);
+      setIngestionProgress("");
     }
   };
 
@@ -528,12 +566,17 @@ export default function KnowledgeBase() {
                 >
                   Cancel
                 </Button>
-                <Button onClick={handleSubmit} disabled={isSubmitting}>
-                  {isSubmitting && (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <div className="flex flex-col items-end gap-1">
+                  {ingestionProgress && (
+                    <p className="text-xs text-muted-foreground">Processing {ingestionProgress}...</p>
                   )}
-                  Add & Ingest
-                </Button>
+                  <Button onClick={handleSubmit} disabled={isSubmitting}>
+                    {isSubmitting && (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    )}
+                    Add & Ingest
+                  </Button>
+                </div>
               </DialogFooter>
             </DialogContent>
           </Dialog>
