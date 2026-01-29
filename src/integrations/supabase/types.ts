@@ -2995,8 +2995,11 @@ export type Database = {
           content: string
           document_id: string
           document_title: string
+          document_type: string
+          page_number: number
           section_heading: string
           similarity: number
+          source_url: string
         }[]
       }
       user_belongs_to_factory: {
