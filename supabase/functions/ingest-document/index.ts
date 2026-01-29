@@ -96,7 +96,7 @@ async function processIngestion(
     // Update queue with total chunks
     await supabaseAdmin
       .from("document_ingestion_queue")
-      .update({ total_chunks: chunks.length })
+      .update({ total_chunks: chunks.length, chunks_created: chunks.length })
       .eq("document_id", document_id);
 
     // Process chunks one at a time
@@ -112,7 +112,7 @@ async function processIngestion(
           document_id,
           chunk_index: chunk.index,
           content: chunk.content,
-          content_tokens: embeddingResult.tokens,
+          tokens_count: embeddingResult.tokens,
           section_heading: extractSectionHeading(chunk.content),
           embedding: formatEmbeddingForPgVector(embeddingResult.embedding),
         });
@@ -134,6 +134,7 @@ async function processIngestion(
       .update({
         status: "completed",
         completed_at: new Date().toISOString(),
+        chunks_created: chunks.length,
         chunks_processed: chunks.length,
       })
       .eq("document_id", document_id);
