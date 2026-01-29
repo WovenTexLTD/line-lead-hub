@@ -638,6 +638,7 @@ export type Database = {
       document_ingestion_queue: {
         Row: {
           chunks_created: number | null
+          chunks_processed: number | null
           completed_at: string | null
           created_at: string | null
           document_id: string
@@ -645,9 +646,11 @@ export type Database = {
           id: string
           started_at: string | null
           status: string
+          total_chunks: number | null
         }
         Insert: {
           chunks_created?: number | null
+          chunks_processed?: number | null
           completed_at?: string | null
           created_at?: string | null
           document_id: string
@@ -655,9 +658,11 @@ export type Database = {
           id?: string
           started_at?: string | null
           status?: string
+          total_chunks?: number | null
         }
         Update: {
           chunks_created?: number | null
+          chunks_processed?: number | null
           completed_at?: string | null
           created_at?: string | null
           document_id?: string
@@ -665,6 +670,7 @@ export type Database = {
           id?: string
           started_at?: string | null
           status?: string
+          total_chunks?: number | null
         }
         Relationships: [
           {
