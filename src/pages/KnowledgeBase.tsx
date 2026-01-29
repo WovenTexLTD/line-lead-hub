@@ -232,7 +232,6 @@ export default function KnowledgeBase() {
 
     setIngestionProgress({ total: chunks.length, processed: chunks.length, status: "completed" });
   };
-  };
 
   const handleSubmit = async () => {
     if (!formData.title.trim()) {
