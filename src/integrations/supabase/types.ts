@@ -1504,6 +1504,7 @@ export type Database = {
       }
       knowledge_documents: {
         Row: {
+          content: string | null
           created_at: string | null
           created_by: string | null
           description: string | null
@@ -1518,6 +1519,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          content?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
@@ -1532,6 +1534,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          content?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null

@@ -153,9 +153,16 @@ serve(async (req) => {
         started_at: new Date().toISOString(),
       });
 
-    // Get content
+    // Get content - priority: provided content > stored content > file storage
     let textContent = providedContent;
 
+    // If no content provided in request, try to get from document.content column
+    if (!textContent && document.content) {
+      textContent = document.content as string;
+      logStep("Using stored document content", { length: textContent.length });
+    }
+
+    // If still no content, try file storage
     if (!textContent && document.file_path) {
       // Download from Supabase Storage
       const { data: fileData, error: downloadError } = await supabaseAdmin.storage
@@ -179,7 +186,7 @@ serve(async (req) => {
     }
 
     if (!textContent) {
-      throw new Error("No content available for ingestion");
+      throw new Error("No content available for ingestion. Please provide content when adding the document.");
     }
 
     logStep("Content loaded", { length: textContent.length });
