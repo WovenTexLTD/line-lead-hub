@@ -25,11 +25,15 @@ export function ChatPanel() {
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const shouldAutoScroll = useRef(false);
 
-  // Auto-scroll to bottom on new messages
+  // Only auto-scroll when the user sends a message (so their message + loading
+  // dots are visible). Do NOT scroll when the bot response arrives — the user
+  // should see the beginning of the response, not be pushed to the bottom.
   useEffect(() => {
-    if (scrollRef.current) {
+    if (scrollRef.current && shouldAutoScroll.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      shouldAutoScroll.current = false;
     }
   }, [messages]);
 
@@ -44,6 +48,7 @@ export function ChatPanel() {
 
     const message = input;
     setInput("");
+    shouldAutoScroll.current = true;
     await sendMessage(message);
   };
 
@@ -55,15 +60,16 @@ export function ChatPanel() {
   };
 
   const handleQuickAction = (prompt: string) => {
+    shouldAutoScroll.current = true;
     sendMessage(prompt);
   };
 
   const handleSuggestion = (question: string) => {
     if (!question) {
-      // "Other" was clicked — focus the input
       inputRef.current?.focus();
       return;
     }
+    shouldAutoScroll.current = true;
     sendMessage(question);
   };
 

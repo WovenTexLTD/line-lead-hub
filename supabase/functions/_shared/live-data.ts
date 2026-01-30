@@ -238,10 +238,10 @@ async function fetchWorkOrders(
 
     if (poHint) {
       q = q.ilike("po_number", `%${poHint}%`);
-    } else if (buyerHint) {
-      // Search buyer, style, and po_number fields for the hint text
-      q = q.or(`buyer.ilike.%${buyerHint}%,style.ilike.%${buyerHint}%,po_number.ilike.%${buyerHint}%`);
     }
+    // No DB-level buyer filter — return all active work orders and let the LLM
+    // match buyer/style names naturally. The .or() filter breaks with special
+    // characters like & in buyer names (e.g. "C&A").
 
     const { data, error } = await q;
     if (error) throw error;
