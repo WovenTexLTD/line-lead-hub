@@ -253,32 +253,24 @@ async function fetchWorkOrders(
     const { data, error } = await q;
     if (error) throw error;
 
-    // Get cumulative progress from sewing_actuals — need per-line breakdown
-    // because cumulative_good_total is per line, and orders can span multiple lines
+    // Get finished output from finishing_daily_logs (carton column, OUTPUT type)
+    // This matches the frontend WorkOrdersView — single source of truth for production progress
     const progressMap = new Map<string, number>();
     if (data && data.length > 0) {
       const woIds = data.map((wo: any) => wo.id);
-      const { data: actuals } = await sb
-        .from("sewing_actuals")
-        .select("work_order_id, line_id, cumulative_good_total")
+      const { data: finishingLogs } = await sb
+        .from("finishing_daily_logs")
+        .select("work_order_id, carton")
         .eq("factory_id", factoryId)
-        .in("work_order_id", woIds)
-        .order("production_date", { ascending: false });
+        .eq("log_type", "OUTPUT")
+        .in("work_order_id", woIds);
 
-      if (actuals) {
-        // Step 1: For each (work_order, line) pair, keep the highest cumulative total
-        const perLineMax = new Map<string, number>();
-        for (const row of actuals) {
-          const key = `${row.work_order_id}::${row.line_id}`;
-          const existing = perLineMax.get(key) || 0;
-          if ((row.cumulative_good_total || 0) > existing) {
-            perLineMax.set(key, row.cumulative_good_total || 0);
+      if (finishingLogs) {
+        for (const log of finishingLogs) {
+          const woId = log.work_order_id;
+          if (woId) {
+            progressMap.set(woId, (progressMap.get(woId) || 0) + (log.carton || 0));
           }
-        }
-        // Step 2: Sum across all lines for each work order
-        for (const [key, value] of perLineMax) {
-          const woId = key.split("::")[0];
-          progressMap.set(woId, (progressMap.get(woId) || 0) + value);
         }
       }
     }
