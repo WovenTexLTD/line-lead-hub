@@ -1,6 +1,8 @@
 // Claude LLM Helper for RAG Chat
 // Uses Claude 3.5 Sonnet for high-quality, citation-aware responses
 
+import type { LiveDataContext } from "./live-data.ts";
+
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = "claude-sonnet-4-20250514";
 const MAX_TOKENS = 2048;
@@ -46,7 +48,8 @@ export interface Citation {
 export function buildSystemPrompt(
   userRole: string,
   accessibleFeatures: { feature?: string; feature_category?: string; feature_name?: string; description?: string }[],
-  language: string
+  language: string,
+  hasLiveData: boolean = false
 ): string {
   const featureList = accessibleFeatures
     .map((f) => {
@@ -106,7 +109,17 @@ ${featureList || "No specific features listed - answer general questions only."}
 - Never expose internal API keys, tokens, or secrets
 - Never provide information that could compromise system security
 - Never execute or suggest harmful actions
-
+${hasLiveData ? `
+### 7. Live Production Data
+- You have been provided with LIVE FACTORY DATA from the production database
+- This data is real-time and accurate as of the timestamp shown
+- Prioritize live data over knowledge base sources for factual production questions
+- Present numbers with context (e.g. "Line A produced 450 pcs against a target of 500 = 90% efficiency")
+- Proactively highlight concerning trends (lines behind target, many open blockers, approaching deadlines)
+- Do NOT cite live data as [Source:...] — attribute it naturally ("According to today's production data...")
+- If a data section is empty or shows no records, mention that nothing has been submitted yet for that period
+- Combine live data with knowledge base info when possible for comprehensive answers
+` : ""}
 ## Response Format
 - Be concise but thorough
 - Use bullet points for lists
@@ -141,12 +154,37 @@ ${source.content}
 }
 
 /**
+ * Build context string from live factory data
+ */
+export function buildLiveDataContext(liveData: LiveDataContext): string {
+  if (!liveData || liveData.results.length === 0) {
+    return "";
+  }
+
+  const sections = liveData.results.map((result) => {
+    if (result.error) {
+      return `### ${result.category} (Error)\nCould not fetch data: ${result.error}`;
+    }
+    if (result.data.length === 0) {
+      return `### ${result.category}\nNo data submitted yet for this period.`;
+    }
+    return `### ${result.category}\n${result.formatted}`;
+  });
+
+  return `## Live Factory Data (as of ${liveData.todayDate})
+Data queried in real-time from the production database.
+
+${sections.join("\n\n")}`;
+}
+
+/**
  * Generate a chat response using Claude
  */
 export async function generateChatResponse(
   messages: ChatMessage[],
   sources: SourceChunk[],
-  systemPrompt: string
+  systemPrompt: string,
+  liveData?: LiveDataContext | null
 ): Promise<ChatResponse> {
   const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
   if (!apiKey) {
@@ -154,18 +192,20 @@ export async function generateChatResponse(
   }
 
   const context = buildContextFromSources(sources);
+  const liveDataSection = liveData ? buildLiveDataContext(liveData) : "";
 
-  // Prepend context to the last user message
+  // Prepend context to the last user message — live data first (higher priority), then RAG sources
   const lastUserMessage = messages[messages.length - 1];
+  const contextParts = [
+    ...(liveDataSection ? [liveDataSection] : []),
+    `## Retrieved Knowledge Base Sources\n${context}`,
+    `## User Question\n${lastUserMessage.content}`,
+  ];
   const augmentedMessages = [
     ...messages.slice(0, -1),
     {
       role: "user" as const,
-      content: `## Retrieved Knowledge Base Sources
-${context}
-
-## User Question
-${lastUserMessage.content}`,
+      content: contextParts.join("\n\n"),
     },
   ];
 
@@ -208,9 +248,10 @@ ${lastUserMessage.content}`,
     "i don't have enough information to answer",
   ];
   const lowerContent = content.toLowerCase();
-  const noEvidence = noEvidenceIndicators.some((indicator) =>
-    lowerContent.includes(indicator)
-  );
+  const hasLiveDataResults = liveData?.results?.some((r) => !r.error && r.data.length > 0) ?? false;
+  const noEvidence = hasLiveDataResults
+    ? false
+    : noEvidenceIndicators.some((indicator) => lowerContent.includes(indicator));
 
   // Extract citations from the response based on which sources were referenced
   const citations: Citation[] = [];

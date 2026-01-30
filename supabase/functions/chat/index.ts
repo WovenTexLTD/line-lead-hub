@@ -9,6 +9,7 @@ import {
   type ChatMessage,
   type SourceChunk,
 } from "../_shared/llm.ts";
+import { fetchLiveData, type LiveDataContext } from "../_shared/live-data.ts";
 
 interface ChatRequest {
   message: string;
@@ -70,6 +71,17 @@ serve(async (req) => {
       : roles.includes("admin")
         ? "admin"
         : roles[0] || "worker";
+
+    // Get factory timezone for date queries
+    let factoryTimezone: string | null = null;
+    if (profile?.factory_id) {
+      const { data: factoryData } = await supabaseAdmin
+        .from("factory_accounts")
+        .select("timezone")
+        .eq("id", profile.factory_id)
+        .single();
+      factoryTimezone = factoryData?.timezone || null;
+    }
 
     logStep("User context", { roles, primaryRole, factoryId: profile?.factory_id });
 
@@ -185,17 +197,45 @@ serve(async (req) => {
       });
     }
 
+    // Fetch live factory data if the question relates to production data
+    logStep("Checking for live data queries");
+    let liveDataContext: LiveDataContext | null = null;
+    try {
+      liveDataContext = await fetchLiveData(
+        supabaseAdmin,
+        profile?.factory_id,
+        message,
+        factoryTimezone,
+      );
+      if (liveDataContext) {
+        logStep("Live data fetched", {
+          categories: liveDataContext.results.map((r) => r.category),
+          rowCounts: liveDataContext.results.map((r) => ({
+            [r.category]: r.data.length,
+          })),
+        });
+      } else {
+        logStep("No live data categories matched");
+      }
+    } catch (liveDataError) {
+      // Live data errors should never block the chat response
+      logStep("Live data error (non-fatal)", {
+        error: liveDataError instanceof Error ? liveDataError.message : String(liveDataError),
+      });
+    }
+
     // Get user's accessible features
     const { data: features } = await supabaseAdmin.rpc("get_user_accessible_features", {
       p_user_id: user.id,
     });
 
     // Build system prompt
-    const systemPrompt = buildSystemPrompt(primaryRole, features || [], language);
+    const hasLiveData = liveDataContext !== null && liveDataContext.results.length > 0;
+    const systemPrompt = buildSystemPrompt(primaryRole, features || [], language, hasLiveData);
 
     // Generate response
     logStep("Generating response");
-    const response = await generateChatResponse(conversationHistory, sources, systemPrompt);
+    const response = await generateChatResponse(conversationHistory, sources, systemPrompt, liveDataContext);
 
     // Save assistant message
     const { data: assistantMessage } = await supabaseAdmin
