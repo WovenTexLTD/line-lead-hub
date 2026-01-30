@@ -40,6 +40,7 @@ const MAX_ROWS = 20;
 interface Classification {
   categories: LiveDataCategory[];
   poNumberHint: string | null;
+  buyerHint: string | null;
   lineNameHint: string | null;
 }
 
@@ -79,7 +80,7 @@ export function classifyMessage(message: string): Classification {
   }
 
   // Work orders / PO
-  if (/\bpo\b|purchase.?order|work.?order|\border\b|po-|buyer|style|order.?qty|how.?far|ex.?factory|shipment|delivery/i.test(lower)) {
+  if (/\bpo\b|purchase.?order|work.?order|\border\b|po-|buyer|brand|style|order.?qty|how.?far|ex.?factory|shipment|delivery|order.?status|completion|complete/i.test(lower)) {
     cats.add("work_orders");
   }
 
@@ -108,6 +109,12 @@ export function classifyMessage(message: string): Classification {
   const poNumberHint = poMatch ? `PO-${poMatch[1].padStart(3, "0")}` : null;
   if (poNumberHint) cats.add("work_orders");
 
+  // Extract buyer/brand hint — strip stopwords + production keywords, whatever remains is the buyer hint
+  const STOPWORDS = /\b(how|far|are|we|with|the|what|is|status|of|for|on|about|our|my|a|an|any|order|orders|po|purchase|work|buyer|brand|production|update|progress|show|tell|me|get|give|can|you|please|do|does|current|currently|today|now|much|many|complete|completed|completion|done|behind|ahead|sewing|cutting|finishing|all|this|that|which|who|where|when|will|be|been|has|have|had|not|no|or|and|from)\b/gi;
+  const cleaned = message.replace(STOPWORDS, "").replace(/[^a-zA-Z0-9&\s-]/g, "").replace(/\s+/g, " ").trim();
+  const buyerHint = (!poNumberHint && cleaned.length >= 2) ? cleaned : null;
+  if (buyerHint) cats.add("work_orders");
+
   // Extract line name hint
   const lineMatch = lower.match(/line[- ]?([a-z0-9]{1,4})/i);
   const lineNameHint = lineMatch ? lineMatch[0] : null;
@@ -115,6 +122,7 @@ export function classifyMessage(message: string): Classification {
   return {
     categories: Array.from(cats).slice(0, 4),
     poNumberHint,
+    buyerHint,
     lineNameHint,
   };
 }
@@ -218,7 +226,7 @@ async function fetchBlockers(
 }
 
 async function fetchWorkOrders(
-  sb: SupabaseClient, factoryId: string, poHint: string | null,
+  sb: SupabaseClient, factoryId: string, poHint: string | null, buyerHint: string | null,
 ): Promise<LiveDataResult> {
   try {
     let q = sb.from("work_orders")
@@ -230,33 +238,45 @@ async function fetchWorkOrders(
 
     if (poHint) {
       q = q.ilike("po_number", `%${poHint}%`);
+    } else if (buyerHint) {
+      // Search buyer, style, and po_number fields for the hint text
+      q = q.or(`buyer.ilike.%${buyerHint}%,style.ilike.%${buyerHint}%,po_number.ilike.%${buyerHint}%`);
     }
 
     const { data, error } = await q;
     if (error) throw error;
 
-    // Get cumulative progress from sewing_actuals
+    // Get cumulative progress from sewing_actuals — need per-line breakdown
+    // because cumulative_good_total is per line, and orders can span multiple lines
     const progressMap = new Map<string, number>();
     if (data && data.length > 0 && data.length <= 15) {
       const woIds = data.map((wo: any) => wo.id);
       const { data: actuals } = await sb
         .from("sewing_actuals")
-        .select("work_order_id, cumulative_good_total")
+        .select("work_order_id, line_id, cumulative_good_total")
         .eq("factory_id", factoryId)
         .in("work_order_id", woIds)
         .order("production_date", { ascending: false });
 
       if (actuals) {
+        // Step 1: For each (work_order, line) pair, keep the highest cumulative total
+        const perLineMax = new Map<string, number>();
         for (const row of actuals) {
-          const existing = progressMap.get(row.work_order_id) || 0;
+          const key = `${row.work_order_id}::${row.line_id}`;
+          const existing = perLineMax.get(key) || 0;
           if ((row.cumulative_good_total || 0) > existing) {
-            progressMap.set(row.work_order_id, row.cumulative_good_total || 0);
+            perLineMax.set(key, row.cumulative_good_total || 0);
           }
+        }
+        // Step 2: Sum across all lines for each work order
+        for (const [key, value] of perLineMax) {
+          const woId = key.split("::")[0];
+          progressMap.set(woId, (progressMap.get(woId) || 0) + value);
         }
       }
     }
 
-    const label = poHint ? `Work Order: ${poHint}` : "Active Work Orders";
+    const label = poHint ? `Work Order: ${poHint}` : buyerHint ? `Work Orders: ${buyerHint}` : "Active Work Orders";
     return { category: "work_orders", label, data: data || [], summary: fmtWorkOrders(data || [], progressMap), fetchedAt: new Date().toISOString() };
   } catch (err) { return errorResult("work_orders", "Work Orders", err); }
 }
@@ -393,7 +413,10 @@ function fmtWorkOrders(data: any[], progressMap: Map<string, number>): string {
   for (const wo of data) {
     const produced = progressMap.get(wo.id) || 0;
     const orderQty = wo.order_qty || 0;
-    const pct = orderQty > 0 ? Math.round((produced / orderQty) * 100) : 0;
+    const woStatus = (wo.status || "active").toLowerCase();
+    const isComplete = /complete|completed|done|shipped|closed/i.test(woStatus);
+    // Use status field as truth: if marked complete, show 100% regardless of sewing data
+    const pct = isComplete ? 100 : (orderQty > 0 ? Math.min(Math.round((produced / orderQty) * 100), 100) : 0);
     const lineName = wo.lines?.name || wo.lines?.line_id || "Unassigned";
     t += `  - ${wo.po_number} | ${wo.buyer} / ${wo.style}`;
     if (wo.item) t += ` / ${wo.item}`;
@@ -512,13 +535,13 @@ export async function fetchLiveData(
   if (classification.categories.length === 0) return null;
 
   const today = getTodayForFactory(factoryTimezone);
-  console.log(`[LIVE-DATA] Categories: [${classification.categories.join(", ")}], today=${today}, poHint=${classification.poNumberHint}`);
+  console.log(`[LIVE-DATA] Categories: [${classification.categories.join(", ")}], today=${today}, poHint=${classification.poNumberHint}, buyerHint=${classification.buyerHint}`);
 
   const fetchMap: Record<LiveDataCategory, () => Promise<LiveDataResult>> = {
     sewing_output: () => fetchSewingOutput(supabase, factoryId, today),
     sewing_targets: () => fetchSewingTargets(supabase, factoryId, today),
     blockers: () => fetchBlockers(supabase, factoryId),
-    work_orders: () => fetchWorkOrders(supabase, factoryId, classification.poNumberHint),
+    work_orders: () => fetchWorkOrders(supabase, factoryId, classification.poNumberHint, classification.buyerHint),
     cutting: () => fetchCutting(supabase, factoryId, today),
     finishing: () => fetchFinishing(supabase, factoryId, today),
     storage: () => fetchStorage(supabase, factoryId),
