@@ -71,7 +71,7 @@ export function ChatPanel() {
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Messages Area */}
-      <ScrollArea ref={scrollRef} className="flex-1 p-4">
+      <ScrollArea ref={scrollRef} className="flex-1 min-h-0 p-4">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center p-6">
             {/* Bot avatar */}
@@ -98,7 +98,7 @@ export function ChatPanel() {
             <QuickActions onSelect={handleQuickAction} language={language} />
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-4 min-w-0">
             {messages.map((message) => (
               <ChatMessage
                 key={message.id}
