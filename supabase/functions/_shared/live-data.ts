@@ -31,7 +31,7 @@ export interface LiveDataContext {
   todayDate: string;
 }
 
-const MAX_ROWS = 20;
+const MAX_ROWS = 50;
 
 // ---------------------------------------------------------------------------
 // Intent Classifier
