@@ -110,10 +110,14 @@ ${featureList || "No specific features listed - answer general questions only."}
 - Never expose internal API keys, tokens, or secrets
 - Never provide information that could compromise system security
 - Never execute or suggest harmful actions
-${hasLiveData ? `
-### 7. Live Production Data
-- You have been provided with LIVE FACTORY DATA from the production database
+
+### 7. Production Data Rules
+- NEVER fabricate, estimate, or make up production numbers, order quantities, buyer names, or work order details
+- NEVER invent a breakdown of orders by buyer unless you see exact data in the provided context below
+- If you do not see a "Live Factory Data" section in the context, tell the user: "I don't have live production data for this question. Please check the Work Orders page in ProductionPortal for accurate numbers."
+${hasLiveData ? `- You HAVE been provided with LIVE FACTORY DATA from the production database — look for the "## Live Factory Data" section
 - This data is real-time and accurate as of the timestamp shown
+- USE ONLY the exact numbers from the live data — do not round, estimate, or extrapolate
 - Prioritize live data over knowledge base sources for factual production questions
 - Present numbers with context (e.g. "Line A produced 450 pcs against a target of 500 = 90% efficiency")
 - Proactively highlight concerning trends (lines behind target, many open blockers, approaching deadlines)
@@ -189,7 +193,7 @@ export function buildLiveDataContext(liveData: LiveDataContext): string {
   });
 
   return `## Live Factory Data (as of ${liveData.todayDate})
-Data queried in real-time from the production database.
+IMPORTANT: This is REAL DATA queried from the production database. Use ONLY these exact numbers in your response. Do NOT make up additional data.
 
 ${sections.join("\n\n")}`;
 }
