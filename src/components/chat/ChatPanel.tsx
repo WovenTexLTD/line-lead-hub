@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from "react";
 import { Send, Loader2, RotateCcw, AlertCircle, Bot, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useChat } from "@/hooks/useChat";
 import { ChatMessage } from "./ChatMessage";
@@ -69,9 +68,9 @@ export function ChatPanel() {
   };
 
   return (
-    <div className="flex flex-col flex-1 min-h-0">
+    <div className="flex flex-col flex-1 h-full overflow-hidden">
       {/* Messages Area */}
-      <ScrollArea ref={scrollRef} className="flex-1 min-h-0 p-4">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center p-6">
             {/* Bot avatar */}
@@ -98,7 +97,7 @@ export function ChatPanel() {
             <QuickActions onSelect={handleQuickAction} language={language} />
           </div>
         ) : (
-          <div className="space-y-4 min-w-0">
+          <div className="space-y-4">
             {messages.map((message) => (
               <ChatMessage
                 key={message.id}
@@ -111,7 +110,7 @@ export function ChatPanel() {
             ))}
           </div>
         )}
-      </ScrollArea>
+      </div>
 
       {/* Error Display */}
       {error && (
