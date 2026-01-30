@@ -290,8 +290,26 @@ async function fetchWorkOrders(
       }
     }
 
+    // ── Aggregate totals so LLM has exact numbers ──────────────────────────
+    // Compute totals across all fetched work orders (could be filtered by buyer/PO)
+    let aggregateTotals: { activeCount: number; totalQty: number; topBuyers: { buyer: string; qty: number }[] } | null = null;
+    {
+      const activeOrders = (data || []).filter((wo: any) => wo.is_active === true);
+      const totalQty = activeOrders.reduce((s: number, wo: any) => s + (wo.order_qty || 0), 0);
+      const byBuyer: Record<string, number> = {};
+      for (const wo of activeOrders) {
+        const b = wo.buyer || "Unknown";
+        byBuyer[b] = (byBuyer[b] || 0) + (wo.order_qty || 0);
+      }
+      const topBuyers = Object.entries(byBuyer)
+        .map(([buyer, qty]) => ({ buyer, qty }))
+        .sort((a, b) => b.qty - a.qty)
+        .slice(0, 5);
+      aggregateTotals = { activeCount: activeOrders.length, totalQty, topBuyers };
+    }
+
     const label = poHint ? `Work Order: ${poHint}` : buyerHint ? `Work Orders: ${buyerHint}` : "Active Work Orders";
-    return { category: "work_orders", label, data: data || [], summary: fmtWorkOrders(data || [], sewingMap, finishingMap), fetchedAt: new Date().toISOString() };
+    return { category: "work_orders", label, data: data || [], summary: fmtWorkOrders(data || [], sewingMap, finishingMap, aggregateTotals), fetchedAt: new Date().toISOString() };
   } catch (err) { return errorResult("work_orders", "Work Orders", err); }
 }
 
@@ -421,9 +439,29 @@ function fmtBlockers(data: any[]): string {
   return t;
 }
 
-function fmtWorkOrders(data: any[], sewingMap: Map<string, number>, finishingMap: Map<string, number>): string {
+function fmtWorkOrders(
+  data: any[],
+  sewingMap: Map<string, number>,
+  finishingMap: Map<string, number>,
+  agg: { activeCount: number; totalQty: number; topBuyers: { buyer: string; qty: number }[] } | null,
+): string {
   if (!data.length) return "No matching active work orders found.";
-  let t = `Active Work Orders (${data.length}):\n`;
+
+  let t = "";
+  if (agg) {
+    t += `===== AGGREGATE TOTALS (Active Work Orders) =====\n`;
+    t += `Active Orders: ${agg.activeCount}\n`;
+    t += `Total Order Quantity: ${agg.totalQty.toLocaleString()} pcs\n`;
+    if (agg.topBuyers.length) {
+      t += `Top Buyers by Order Qty:\n`;
+      for (const b of agg.topBuyers) {
+        t += `  - ${b.buyer}: ${b.qty.toLocaleString()} pcs\n`;
+      }
+    }
+    t += `=================================================\n\n`;
+  }
+
+  t += `Active Work Orders (${data.length}):\n`;
   for (const wo of data) {
     const sewingOutput = sewingMap.get(wo.id) || 0;
     const finishingOutput = finishingMap.get(wo.id) || 0;
