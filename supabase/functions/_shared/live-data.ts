@@ -253,30 +253,45 @@ async function fetchWorkOrders(
     const { data, error } = await q;
     if (error) throw error;
 
-    // Get finished output from finishing_daily_logs (carton column, OUTPUT type)
-    // This matches the frontend WorkOrdersView — single source of truth for production progress
-    const progressMap = new Map<string, number>();
+    // Fetch both sewing and finishing output in parallel (matches frontend WorkOrdersView)
+    const sewingMap = new Map<string, number>();
+    const finishingMap = new Map<string, number>();
     if (data && data.length > 0) {
       const woIds = data.map((wo: any) => wo.id);
-      const { data: finishingLogs } = await sb
-        .from("finishing_daily_logs")
-        .select("work_order_id, carton")
-        .eq("factory_id", factoryId)
-        .eq("log_type", "OUTPUT")
-        .in("work_order_id", woIds);
+      const [sewingRes, finishingRes] = await Promise.all([
+        // Sewing output from production_updates_sewing
+        sb.from("production_updates_sewing")
+          .select("work_order_id, output_qty")
+          .eq("factory_id", factoryId)
+          .in("work_order_id", woIds),
+        // Finishing output from finishing_daily_logs (carton, OUTPUT type) — source of truth for progress %
+        sb.from("finishing_daily_logs")
+          .select("work_order_id, carton")
+          .eq("factory_id", factoryId)
+          .eq("log_type", "OUTPUT")
+          .in("work_order_id", woIds),
+      ]);
 
-      if (finishingLogs) {
-        for (const log of finishingLogs) {
+      if (sewingRes.data) {
+        for (const row of sewingRes.data) {
+          const woId = row.work_order_id;
+          if (woId) {
+            sewingMap.set(woId, (sewingMap.get(woId) || 0) + (row.output_qty || 0));
+          }
+        }
+      }
+      if (finishingRes.data) {
+        for (const log of finishingRes.data) {
           const woId = log.work_order_id;
           if (woId) {
-            progressMap.set(woId, (progressMap.get(woId) || 0) + (log.carton || 0));
+            finishingMap.set(woId, (finishingMap.get(woId) || 0) + (log.carton || 0));
           }
         }
       }
     }
 
     const label = poHint ? `Work Order: ${poHint}` : buyerHint ? `Work Orders: ${buyerHint}` : "Active Work Orders";
-    return { category: "work_orders", label, data: data || [], summary: fmtWorkOrders(data || [], progressMap), fetchedAt: new Date().toISOString() };
+    return { category: "work_orders", label, data: data || [], summary: fmtWorkOrders(data || [], sewingMap, finishingMap), fetchedAt: new Date().toISOString() };
   } catch (err) { return errorResult("work_orders", "Work Orders", err); }
 }
 
@@ -406,21 +421,22 @@ function fmtBlockers(data: any[]): string {
   return t;
 }
 
-function fmtWorkOrders(data: any[], progressMap: Map<string, number>): string {
+function fmtWorkOrders(data: any[], sewingMap: Map<string, number>, finishingMap: Map<string, number>): string {
   if (!data.length) return "No matching active work orders found.";
   let t = `Active Work Orders (${data.length}):\n`;
   for (const wo of data) {
-    const produced = progressMap.get(wo.id) || 0;
+    const sewingOutput = sewingMap.get(wo.id) || 0;
+    const finishingOutput = finishingMap.get(wo.id) || 0;
     const orderQty = wo.order_qty || 0;
     const woStatus = (wo.status || "active").toLowerCase();
     const isComplete = /complete|completed|done|shipped|closed/i.test(woStatus);
-    // Use status field as truth: if marked complete, show 100% regardless of sewing data
-    const pct = isComplete ? 100 : (orderQty > 0 ? Math.min(Math.round((produced / orderQty) * 100), 100) : 0);
+    // Progress % uses finishing carton output (matches frontend source of truth)
+    const pct = isComplete ? 100 : (orderQty > 0 ? Math.min(Math.round((finishingOutput / orderQty) * 100), 100) : 0);
     const lineName = wo.lines?.name || wo.lines?.line_id || "Unassigned";
     t += `  - ${wo.po_number} | ${wo.buyer} / ${wo.style}`;
     if (wo.item) t += ` / ${wo.item}`;
     if (wo.color) t += ` (${wo.color})`;
-    t += `\n    Order: ${orderQty} pcs | Produced: ${produced} pcs (${pct}%) | Line: ${lineName}\n`;
+    t += `\n    Order: ${orderQty} pcs | Sewing Output: ${sewingOutput} pcs | Finishing Output: ${finishingOutput} pcs (${pct}%) | Line: ${lineName}\n`;
     if (wo.planned_ex_factory) t += `    Planned Ex-Factory: ${wo.planned_ex_factory}`;
     if (wo.actual_ex_factory) t += ` | Actual: ${wo.actual_ex_factory}`;
     if (wo.planned_ex_factory || wo.actual_ex_factory) t += "\n";
