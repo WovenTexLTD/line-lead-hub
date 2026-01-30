@@ -4,17 +4,32 @@ import "./index.css";
 import "./i18n/config";
 import { initializeCapacitor, initializePushNotifications } from "./lib/capacitor";
 
-// Register service worker for PWA
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then((registration) => {
-        console.log('SW registered:', registration.scope);
-      })
-      .catch((error) => {
-        console.log('SW registration failed:', error);
+// Register service worker for PWA (PROD only).
+// In DEV/preview, a Service Worker can cache Vite pre-bundled deps and cause
+// a React instance mismatch (e.g. "Cannot read properties of null (reading 'useEffect')").
+if ("serviceWorker" in navigator) {
+  if (import.meta.env.PROD) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then((registration) => {
+          console.log("SW registered:", registration.scope);
+        })
+        .catch((error) => {
+          console.log("SW registration failed:", error);
+        });
+    });
+  } else {
+    // DEV: ensure any previously installed SW is removed and its caches are cleared.
+    navigator.serviceWorker.getRegistrations().then((regs) => {
+      regs.forEach((r) => r.unregister());
+    });
+    if ("caches" in window) {
+      caches.keys().then((keys) => {
+        keys.forEach((k) => caches.delete(k));
       });
-  });
+    }
+  }
 }
 
 // Initialize Capacitor for native functionality
