@@ -59,6 +59,15 @@ export function ChatPanel() {
     sendMessage(prompt);
   };
 
+  const handleSuggestion = (question: string) => {
+    if (!question) {
+      // "Other" was clicked — focus the input
+      inputRef.current?.focus();
+      return;
+    }
+    sendMessage(question);
+  };
+
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Messages Area */}
@@ -96,6 +105,7 @@ export function ChatPanel() {
                 message={message}
                 onFeedback={submitFeedback}
                 onViewSource={fetchSource}
+                onSendSuggestion={handleSuggestion}
                 language={language}
               />
             ))}

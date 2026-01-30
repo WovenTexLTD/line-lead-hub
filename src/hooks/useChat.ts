@@ -17,6 +17,7 @@ export interface ChatMessage {
   content: string;
   citations?: ChatCitation[];
   noEvidence?: boolean;
+  suggestedQuestions?: string[];
   timestamp: Date;
   isLoading?: boolean;
 }
@@ -123,6 +124,7 @@ export function useChat(): UseChatReturn {
         content: data.message,
         citations: data.citations,
         noEvidence: data.no_evidence,
+        suggestedQuestions: data.suggested_questions,
         timestamp: new Date(),
       };
 

@@ -7,6 +7,8 @@ import {
   Loader2,
   AlertTriangle,
   Bot,
+  MessageCircleQuestion,
+  PenLine,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -29,6 +31,7 @@ interface ChatMessageProps {
   message: ChatMessageType;
   onFeedback?: (messageId: string, feedback: "thumbs_up" | "thumbs_down") => void;
   onViewSource?: (chunkId: string) => Promise<any>;
+  onSendSuggestion?: (question: string) => void;
   language: "en" | "bn";
 }
 
@@ -133,6 +136,7 @@ export function ChatMessage({
   message,
   onFeedback,
   onViewSource,
+  onSendSuggestion,
   language,
 }: ChatMessageProps) {
   const [feedback, setFeedback] = useState<"thumbs_up" | "thumbs_down" | null>(null);
@@ -258,6 +262,34 @@ export function ChatMessage({
               ))}
             </CollapsibleContent>
           </Collapsible>
+        )}
+
+        {/* Suggested Questions */}
+        {message.suggestedQuestions && message.suggestedQuestions.length > 0 && !isUser && !isLoading && (
+          <div className="mt-2.5 space-y-1.5">
+            <div className="flex items-center gap-1 text-[11px] text-muted-foreground font-medium">
+              <MessageCircleQuestion className="h-3 w-3" />
+              {language === "bn" ? "আরও জিজ্ঞাসা করুন" : "You might want to ask"}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {message.suggestedQuestions.map((question, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => onSendSuggestion?.(question)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-left bg-card border rounded-full shadow-sm hover:bg-accent hover:shadow-md hover:border-primary/30 transition-all duration-200 cursor-pointer max-w-full"
+                >
+                  <span className="truncate">{question}</span>
+                </button>
+              ))}
+              <button
+                onClick={() => onSendSuggestion?.("")}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-muted/50 border border-dashed rounded-full hover:bg-accent hover:border-primary/30 transition-all duration-200 cursor-pointer text-muted-foreground"
+              >
+                <PenLine className="h-3 w-3 shrink-0" />
+                {language === "bn" ? "অন্য কিছু" : "Other"}
+              </button>
+            </div>
+          </div>
         )}
 
         {/* Feedback */}

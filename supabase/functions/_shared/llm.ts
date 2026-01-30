@@ -28,6 +28,7 @@ export interface ChatResponse {
   content: string;
   citations: Citation[];
   noEvidence: boolean;
+  suggestedQuestions: string[];
   tokensUsed: number;
   model: string;
 }
@@ -124,7 +125,23 @@ ${hasLiveData ? `
 - Be concise but thorough
 - Use bullet points for lists
 - Include citations inline: [Source: Document Title, Page X] or [Source: Document Title, Section: Y]
-- End with a helpful follow-up question or suggestion when appropriate`;
+
+## Suggested Questions
+At the END of every response, include a block of 2-4 suggested follow-up questions that the user might want to ask next. Use this exact format:
+
+---SUGGESTED_QUESTIONS---
+First suggested question here?
+Second suggested question here?
+Third suggested question here?
+
+Rules for suggested questions:
+- When the user's query is AMBIGUOUS or UNCLEAR, provide clarifying questions that help narrow down what they meant
+- When you answered successfully, provide natural follow-up questions that go deeper or explore related topics
+- When you have no evidence, suggest rephrased or related questions that might find results
+- Keep each question short (under 80 characters), natural, and directly useful
+- Never repeat the user's exact question
+- Tailor questions to the user's role and the factory context
+- ALWAYS include this block — it is mandatory for every response`;
 }
 
 /**
@@ -168,7 +185,7 @@ export function buildLiveDataContext(liveData: LiveDataContext): string {
     if (result.data.length === 0) {
       return `### ${result.category}\nNo data submitted yet for this period.`;
     }
-    return `### ${result.category}\n${result.formatted}`;
+    return `### ${result.category}\n${result.summary}`;
   });
 
   return `## Live Factory Data (as of ${liveData.todayDate})
@@ -230,7 +247,22 @@ export async function generateChatResponse(
   }
 
   const data = await response.json();
-  const content = data.content[0].text;
+  const rawContent = data.content[0].text;
+
+  // Parse out suggested questions block
+  const suggestedQuestionsSeparator = "---SUGGESTED_QUESTIONS---";
+  let content = rawContent;
+  let suggestedQuestions: string[] = [];
+
+  const sqIndex = rawContent.indexOf(suggestedQuestionsSeparator);
+  if (sqIndex !== -1) {
+    content = rawContent.substring(0, sqIndex).trimEnd();
+    const sqBlock = rawContent.substring(sqIndex + suggestedQuestionsSeparator.length).trim();
+    suggestedQuestions = sqBlock
+      .split("\n")
+      .map((q: string) => q.trim())
+      .filter((q: string) => q.length > 0 && q.length < 120);
+  }
 
   // Check if response indicates no evidence — use specific phrases to avoid false positives
   // (e.g. "cannot find" can appear in normal helpful responses like "you cannot find this in settings")
@@ -273,6 +305,7 @@ export async function generateChatResponse(
     content,
     citations,
     noEvidence,
+    suggestedQuestions,
     tokensUsed: data.usage.input_tokens + data.usage.output_tokens,
     model: MODEL,
   };

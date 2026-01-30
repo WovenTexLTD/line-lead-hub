@@ -277,6 +277,7 @@ serve(async (req) => {
         citations: response.citations,
         conversation_id: conversationId,
         no_evidence: response.noEvidence,
+        suggested_questions: response.suggestedQuestions,
         language,
       }),
       {
