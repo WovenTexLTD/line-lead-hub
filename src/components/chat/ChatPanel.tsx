@@ -70,7 +70,7 @@ export function ChatPanel() {
   return (
     <div className="flex flex-col flex-1 h-full overflow-hidden">
       {/* Messages Area */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden p-4">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center p-6">
             {/* Bot avatar */}
