@@ -124,7 +124,7 @@ export function classifyMessage(message: string): Classification {
   const lineNameHint = lineMatch ? lineMatch[0] : null;
 
   return {
-    categories: Array.from(cats).slice(0, 4),
+    categories: Array.from(cats),
     poNumberHint,
     buyerHint,
     lineNameHint,
@@ -547,7 +547,12 @@ export async function fetchLiveData(
   if (!factoryId) return null;
 
   const classification = classifyMessage(message);
-  if (classification.categories.length === 0) return null;
+
+  // Always include core factory data so the LLM has full context
+  const cats = new Set<LiveDataCategory>(classification.categories);
+  cats.add("work_orders");
+  cats.add("lines");
+  classification.categories = Array.from(cats);
 
   const today = getTodayForFactory(factoryTimezone);
   console.log(`[LIVE-DATA] Categories: [${classification.categories.join(", ")}], today=${today}, poHint=${classification.poNumberHint}, buyerHint=${classification.buyerHint}`);
