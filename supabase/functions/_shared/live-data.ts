@@ -256,7 +256,7 @@ async function fetchWorkOrders(
     // Get cumulative progress from sewing_actuals — need per-line breakdown
     // because cumulative_good_total is per line, and orders can span multiple lines
     const progressMap = new Map<string, number>();
-    if (data && data.length > 0 && data.length <= 15) {
+    if (data && data.length > 0) {
       const woIds = data.map((wo: any) => wo.id);
       const { data: actuals } = await sb
         .from("sewing_actuals")
