@@ -114,7 +114,7 @@ export function classifyMessage(message: string): Classification {
   if (poNumberHint) cats.add("work_orders");
 
   // Extract buyer/brand hint — strip stopwords + production keywords, whatever remains is the buyer hint
-  const STOPWORDS = /\b(how|far|are|we|with|the|what|is|status|of|for|on|about|our|my|a|an|any|order|orders|po|purchase|work|buyer|brand|production|update|progress|show|tell|me|get|give|can|you|please|do|does|current|currently|today|now|much|many|complete|completed|completion|done|behind|ahead|sewing|cutting|finishing|all|this|that|which|who|where|when|will|be|been|has|have|had|not|no|or|and|from|s)\b/gi;
+  const STOPWORDS = /\b(how|far|are|we|with|the|what|is|status|of|for|on|about|our|my|a|an|any|order|orders|po|purchase|work|buyer|brand|production|update|progress|show|tell|me|get|give|can|you|please|do|does|current|currently|today|now|much|many|complete|completed|completion|done|behind|ahead|sewing|cutting|finishing|all|this|that|which|who|where|when|will|be|been|has|have|had|not|no|or|and|from|s|total|quantity|pieces|pcs|number|count|output|percent|percentage|report|summary|daily|overall|list|active|inactive|open|factory|line|lines|target|targets|each|every|per|their|them|they|it|its|still|yet|so|but|up|at|in|to|by|i|if|go|going|look|make|should|would|could|need|want|also|just|more|most|there|here|then|than|into|only|these|those|some|being|being|since|until|while|after|before|both|between|own|such|under|over|down|out|off|was|were|did)\b/gi;
   const cleaned = normalized.replace(STOPWORDS, "").replace(/[^a-zA-Z0-9&\s-]/g, "").replace(/\s+/g, " ").trim();
   const buyerHint = (!poNumberHint && cleaned.length >= 2) ? cleaned : null;
   if (buyerHint) cats.add("work_orders");
