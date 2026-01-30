@@ -266,24 +266,24 @@ export function ChatMessage({
 
         {/* Suggested Questions */}
         {message.suggestedQuestions && message.suggestedQuestions.length > 0 && !isUser && !isLoading && (
-          <div className="mt-2.5 space-y-1.5">
+          <div className="mt-2.5 space-y-1.5 w-full">
             <div className="flex items-center gap-1 text-[11px] text-muted-foreground font-medium">
-              <MessageCircleQuestion className="h-3 w-3" />
+              <MessageCircleQuestion className="h-3 w-3 shrink-0" />
               {language === "bn" ? "আরও জিজ্ঞাসা করুন" : "You might want to ask"}
             </div>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-col gap-1.5">
               {message.suggestedQuestions.map((question, idx) => (
                 <button
                   key={idx}
                   onClick={() => onSendSuggestion?.(question)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-left bg-card border rounded-full shadow-sm hover:bg-accent hover:shadow-md hover:border-primary/30 transition-all duration-200 cursor-pointer max-w-full"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-left bg-card border rounded-lg shadow-sm hover:bg-accent hover:shadow-md hover:border-primary/30 transition-all duration-200 cursor-pointer w-full"
                 >
-                  <span className="truncate">{question}</span>
+                  <span className="break-words text-left">{question}</span>
                 </button>
               ))}
               <button
                 onClick={() => onSendSuggestion?.("")}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-muted/50 border border-dashed rounded-full hover:bg-accent hover:border-primary/30 transition-all duration-200 cursor-pointer text-muted-foreground"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-muted/50 border border-dashed rounded-lg hover:bg-accent hover:border-primary/30 transition-all duration-200 cursor-pointer text-muted-foreground w-fit"
               >
                 <PenLine className="h-3 w-3 shrink-0" />
                 {language === "bn" ? "অন্য কিছু" : "Other"}

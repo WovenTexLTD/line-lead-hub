@@ -41,10 +41,10 @@ export function ChatWidget() {
       {isOpen && (
         <div
           className={cn(
-            "fixed z-50 bg-background border flex flex-col overflow-hidden",
+            "fixed z-50 bg-background border flex flex-col",
             isFullscreen
               ? "inset-0"
-              : "bottom-20 right-4 w-[400px] h-[600px] max-h-[80vh] rounded-xl shadow-2xl",
+              : "bottom-20 right-4 w-[400px] h-[600px] max-h-[80vh] rounded-xl shadow-2xl overflow-hidden",
             "animate-in fade-in zoom-in-95 slide-in-from-bottom-4 duration-300"
           )}
         >
