@@ -164,7 +164,7 @@ export function ChatMessage({
   };
 
   return (
-    <div className={cn("flex gap-3", isUser ? "flex-row-reverse" : "flex-row")}>
+    <div className={cn("flex gap-3 min-w-0", isUser ? "flex-row-reverse" : "flex-row")}>
       {/* Avatar */}
       <Avatar className="h-8 w-8 shrink-0">
         <AvatarFallback
@@ -180,7 +180,7 @@ export function ChatMessage({
       </Avatar>
 
       {/* Message body */}
-      <div className={cn("flex flex-col max-w-[80%]", isUser ? "items-end" : "items-start")}>
+      <div className={cn("flex flex-col max-w-[80%] min-w-0", isUser ? "items-end" : "items-start")}>
         <div
           className={cn(
             "rounded-2xl px-4 py-2.5 text-sm",
@@ -197,7 +197,7 @@ export function ChatMessage({
               <div className="h-2 w-2 rounded-full bg-primary/60 animate-bounce [animation-delay:300ms]" />
             </div>
           ) : (
-            <div className="prose prose-sm dark:prose-invert max-w-none">
+            <div className="prose prose-sm dark:prose-invert max-w-none break-words overflow-hidden">
               {formatContent(message.content)}
             </div>
           )}
