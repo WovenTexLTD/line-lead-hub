@@ -45,7 +45,11 @@ interface Classification {
 }
 
 export function classifyMessage(message: string): Classification {
-  const lower = message.toLowerCase();
+  // Normalize smart/curly quotes and apostrophes to ASCII equivalents
+  const normalized = message
+    .replace(/[\u2018\u2019\u2032\u0060]/g, "'")
+    .replace(/[\u201C\u201D\u2033]/g, '"');
+  const lower = normalized.toLowerCase();
   const cats = new Set<LiveDataCategory>();
 
   // Blockers
@@ -80,7 +84,7 @@ export function classifyMessage(message: string): Classification {
   }
 
   // Work orders / PO
-  if (/\bpo\b|purchase.?order|work.?order|\border\b|po-|buyer|brand|style|order.?qty|how.?far|ex.?factory|shipment|delivery|order.?status|completion|complete/i.test(lower)) {
+  if (/\bpo\b|purchase.?order|work.?order|\border\b|\bstatus\b|po-|buyer|brand|style|order.?qty|how.?far|ex.?factory|shipment|delivery|completion|complete/i.test(lower)) {
     cats.add("work_orders");
   }
 
@@ -110,8 +114,8 @@ export function classifyMessage(message: string): Classification {
   if (poNumberHint) cats.add("work_orders");
 
   // Extract buyer/brand hint — strip stopwords + production keywords, whatever remains is the buyer hint
-  const STOPWORDS = /\b(how|far|are|we|with|the|what|is|status|of|for|on|about|our|my|a|an|any|order|orders|po|purchase|work|buyer|brand|production|update|progress|show|tell|me|get|give|can|you|please|do|does|current|currently|today|now|much|many|complete|completed|completion|done|behind|ahead|sewing|cutting|finishing|all|this|that|which|who|where|when|will|be|been|has|have|had|not|no|or|and|from)\b/gi;
-  const cleaned = message.replace(STOPWORDS, "").replace(/[^a-zA-Z0-9&\s-]/g, "").replace(/\s+/g, " ").trim();
+  const STOPWORDS = /\b(how|far|are|we|with|the|what|is|status|of|for|on|about|our|my|a|an|any|order|orders|po|purchase|work|buyer|brand|production|update|progress|show|tell|me|get|give|can|you|please|do|does|current|currently|today|now|much|many|complete|completed|completion|done|behind|ahead|sewing|cutting|finishing|all|this|that|which|who|where|when|will|be|been|has|have|had|not|no|or|and|from|s)\b/gi;
+  const cleaned = normalized.replace(STOPWORDS, "").replace(/[^a-zA-Z0-9&\s-]/g, "").replace(/\s+/g, " ").trim();
   const buyerHint = (!poNumberHint && cleaned.length >= 2) ? cleaned : null;
   if (buyerHint) cats.add("work_orders");
 
@@ -232,16 +236,19 @@ async function fetchWorkOrders(
     let q = sb.from("work_orders")
       .select("id, po_number, buyer, style, item, color, order_qty, smv, target_per_hour, target_per_day, planned_ex_factory, actual_ex_factory, status, is_active, lines(line_id, name)")
       .eq("factory_id", factoryId)
-      .eq("is_active", true)
       .order("created_at", { ascending: false })
       .limit(MAX_ROWS);
 
     if (poHint) {
+      // Specific PO search — include completed/inactive orders too
       q = q.ilike("po_number", `%${poHint}%`);
+    } else if (!buyerHint) {
+      // No specific search — only show active orders to avoid noise
+      q = q.eq("is_active", true);
     }
-    // No DB-level buyer filter — return all active work orders and let the LLM
-    // match buyer/style names naturally. The .or() filter breaks with special
-    // characters like & in buyer names (e.g. "C&A").
+    // When buyerHint is set, fetch ALL orders (active + completed) so the LLM
+    // can match buyer/style names. DB-level buyer filter is skipped because
+    // special characters like & in "C&A" or ' in "Kohl's" break PostgREST filters.
 
     const { data, error } = await q;
     if (error) throw error;
