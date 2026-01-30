@@ -197,7 +197,7 @@ export function ChatMessage({
               <div className="h-2 w-2 rounded-full bg-primary/60 animate-bounce [animation-delay:300ms]" />
             </div>
           ) : (
-            <div className="prose prose-sm dark:prose-invert max-w-none break-words overflow-hidden">
+            <div className="prose prose-sm dark:prose-invert max-w-none break-words [word-break:break-word]">
               {formatContent(message.content)}
             </div>
           )}
