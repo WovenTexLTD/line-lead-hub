@@ -1,4 +1,4 @@
-import { HelpCircle, AlertTriangle, Award, Headphones } from "lucide-react";
+import { HelpCircle, AlertTriangle, Headphones } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface QuickActionsProps {
@@ -21,12 +21,6 @@ const QUICK_ACTIONS = {
       prompt: "I'm having trouble with the morning targets form. It's not saving my data.",
     },
     {
-      icon: Award,
-      label: "Certifications",
-      hint: "Factory compliance",
-      prompt: "What certifications does the factory have? Are they current?",
-    },
-    {
       icon: Headphones,
       label: "Contact support",
       hint: "Technical help",
@@ -45,12 +39,6 @@ const QUICK_ACTIONS = {
       label: "সমস্যা সমাধান",
       hint: "ফর্ম ও ডাটা",
       prompt: "সকালের টার্গেট ফর্মে সমস্যা হচ্ছে। ডাটা সেভ হচ্ছে না।",
-    },
-    {
-      icon: Award,
-      label: "সার্টিফিকেশন",
-      hint: "ফ্যাক্টরি কমপ্লায়েন্স",
-      prompt: "ফ্যাক্টরির কি কি সার্টিফিকেশন আছে? সেগুলো কি বর্তমান?",
     },
     {
       icon: Headphones,
