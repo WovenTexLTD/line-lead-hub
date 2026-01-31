@@ -115,6 +115,16 @@ serve(async (req) => {
       if (convError) throw new Error(`Failed to create conversation: ${convError.message}`);
       conversationId = newConversation.id;
       logStep("Created conversation", { conversationId });
+    } else {
+      // Verify the conversation belongs to this user (prevent cross-factory data access)
+      const { data: convOwner } = await supabaseAdmin
+        .from("chat_conversations")
+        .select("user_id")
+        .eq("id", conversationId)
+        .single();
+      if (!convOwner || convOwner.user_id !== user.id) {
+        throw new Error("Conversation not found");
+      }
     }
 
     // Save user message

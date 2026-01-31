@@ -66,7 +66,8 @@ export function NotificationBell() {
   useEffect(() => {
     if (user) {
       fetchNotifications();
-      subscribeToNotifications();
+      const cleanup = subscribeToNotifications();
+      return cleanup;
     }
   }, [user]);
 
