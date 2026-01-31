@@ -51,38 +51,43 @@ const QUICK_ACTIONS = {
 
 export function QuickActions({ onSelect, language }: QuickActionsProps) {
   const actions = QUICK_ACTIONS[language];
+  const isOddCount = actions.length % 2 !== 0;
 
   return (
     <div className="grid grid-cols-2 gap-2.5 w-full max-w-sm">
-      {actions.map((action, index) => (
-        <button
-          key={index}
-          onClick={() => onSelect(action.prompt)}
-          className={cn(
-            "group flex flex-col items-start gap-2 p-3 rounded-xl border bg-card text-left",
-            "shadow-sm hover:shadow-md hover:border-primary/30",
-            "transition-all duration-200 hover:-translate-y-0.5",
-            "animate-in fade-in slide-in-from-bottom-2"
-          )}
-          style={{
-            animationDelay: `${index * 75}ms`,
-            animationFillMode: "both",
-            animationDuration: "400ms",
-          }}
-        >
-          <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-primary/10 text-primary group-hover:bg-primary/15 transition-colors duration-200">
-            <action.icon className="h-4 w-4" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-foreground leading-tight">
-              {action.label}
-            </p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">
-              {action.hint}
-            </p>
-          </div>
-        </button>
-      ))}
+      {actions.map((action, index) => {
+        const isLastOdd = isOddCount && index === actions.length - 1;
+        return (
+          <button
+            key={index}
+            onClick={() => onSelect(action.prompt)}
+            className={cn(
+              "group flex flex-col items-start gap-2 p-3 rounded-xl border bg-card text-left",
+              "shadow-sm hover:shadow-md hover:border-primary/30",
+              "transition-all duration-200 hover:-translate-y-0.5",
+              "animate-in fade-in slide-in-from-bottom-2",
+              isLastOdd && "col-span-2 justify-self-center max-w-[calc(50%-0.3125rem)]"
+            )}
+            style={{
+              animationDelay: `${index * 75}ms`,
+              animationFillMode: "both",
+              animationDuration: "400ms",
+            }}
+          >
+            <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-primary/10 text-primary group-hover:bg-primary/15 transition-colors duration-200">
+              <action.icon className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground leading-tight">
+                {action.label}
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {action.hint}
+              </p>
+            </div>
+          </button>
+        );
+      })}
     </div>
   );
 }
