@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -18,6 +18,7 @@ export function useSubscription() {
   const [status, setStatus] = useState<SubscriptionStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const hasLoadedOnce = useRef(false);
 
   // Fallback: check subscription status directly from factory data
   const checkFromFactory = useCallback(() => {
@@ -31,7 +32,7 @@ export function useSubscription() {
     }
 
     const now = new Date();
-    
+
     // Check trial status
     if (factory.subscription_status === 'trial' && factory.trial_end_date) {
       const trialEnd = new Date(factory.trial_end_date);
@@ -86,8 +87,11 @@ export function useSubscription() {
       return;
     }
 
-    // Set loading to true at the start to prevent flash of stale data
-    setLoading(true);
+    // Only show loading spinner on the initial check.
+    // Background refreshes update status silently to avoid unmounting pages.
+    if (!hasLoadedOnce.current) {
+      setLoading(true);
+    }
 
     try {
       setError(null);
@@ -98,16 +102,15 @@ export function useSubscription() {
         // No valid session yet, use fallback
         const fallbackStatus = checkFromFactory();
         setStatus(fallbackStatus);
-        setLoading(false);
         return;
       }
-      
+
       const { data, error: fnError } = await supabase.functions.invoke('check-subscription');
-      
+
       if (fnError) {
         throw fnError;
       }
-      
+
       setStatus(data);
     } catch (err) {
       console.error('Error checking subscription:', err);
@@ -116,6 +119,7 @@ export function useSubscription() {
       const fallbackStatus = checkFromFactory();
       setStatus(fallbackStatus);
     } finally {
+      hasLoadedOnce.current = true;
       setLoading(false);
     }
   }, [user, authLoading, checkFromFactory]);
@@ -124,11 +128,11 @@ export function useSubscription() {
     checkSubscription();
   }, [checkSubscription]);
 
-  // Refresh every minute
+  // Refresh silently every 5 minutes (no loading spinner)
   useEffect(() => {
     if (!user) return;
-    
-    const interval = setInterval(checkSubscription, 60000);
+
+    const interval = setInterval(checkSubscription, 300000);
     return () => clearInterval(interval);
   }, [user, checkSubscription]);
 
