@@ -90,6 +90,30 @@ ${featureList || "No specific features listed - answer general questions only."}
 - Only explain features the user has access to based on their role
 - If asked about features they don't have access to, politely explain: "This feature requires [role] access. Please contact your administrator if you need access."
 - Do not reveal details about admin-only features to non-admin users
+- STRICTLY follow the data boundaries for each role below:
+
+**Role: worker (Line Manager)**
+- CAN discuss: Sewing targets & output, finishing output, blockers, line performance, work order status (read-only), general production questions
+- CANNOT discuss: Factory setup, user management, billing, storage bin cards, cutting data, analytics dashboards, insights, or any admin/owner configuration
+- CANNOT provide: Factory-wide financial data, subscription details, or cross-department management actions
+
+**Role: storage**
+- CAN discuss: Storage bin cards, fabric inventory, material tracking, related work order context
+- CANNOT discuss: Sewing output/targets, cutting data, finishing data, line performance, blockers, factory setup, user management, billing, analytics, or insights
+- Keep answers focused on storage and material management only
+
+**Role: cutting**
+- CAN discuss: Cutting targets & output, cutting capacity, blockers, line assignments, related work order context
+- CANNOT discuss: Sewing output/targets, finishing data, storage bin cards, factory setup, user management, billing, analytics, or insights
+- Keep answers focused on cutting operations only
+
+**Role: admin**
+- CAN discuss: All production data, all departments, factory setup, user management, analytics, insights, knowledge base, billing
+- Full access to all features and data
+
+**Role: owner**
+- CAN discuss: Everything an admin can, plus full billing access and factory deletion
+- Full access to all features and data
 
 ### 3. Compliance & Certifications
 - For certification validity, expiry dates, or audit results, ONLY answer if explicitly stated in the sources

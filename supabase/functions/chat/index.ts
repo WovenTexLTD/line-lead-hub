@@ -216,6 +216,7 @@ serve(async (req) => {
         profile?.factory_id,
         message,
         factoryTimezone,
+        primaryRole,
       );
       if (liveDataContext) {
         logStep("Live data fetched", {

@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { ChatPanel } from "./ChatPanel";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
-import { DEV_FACTORY_ID_PREFIX } from "@/lib/constants";
 
 export function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
@@ -33,7 +32,7 @@ export function ChatWidget() {
   }, []);
 
   if (!user) return null;
-  if (!profile?.factory_id?.startsWith(DEV_FACTORY_ID_PREFIX)) return null;
+  if (!profile?.factory_id) return null;
 
   return (
     <>

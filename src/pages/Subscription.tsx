@@ -104,6 +104,8 @@ export default function Subscription() {
       setStatus(data);
     } catch (err) {
       console.error('Error checking subscription:', err);
+      // Set a fallback status so the page still renders subscription options
+      setStatus({ subscribed: false, hasAccess: false, needsFactory: !profile?.factory_id });
       toast({
         variant: "destructive",
         title: "Error",
@@ -222,7 +224,9 @@ export default function Subscription() {
     );
   }
 
-  if (!isAdminOrHigher()) {
+  // Only restrict access for users who already belong to a factory but aren't admin/owner.
+  // New users without a factory_id must be allowed through so they can subscribe.
+  if (profile?.factory_id && !isAdminOrHigher()) {
     return (
       <div className="container max-w-2xl py-8 px-4">
         <Card>

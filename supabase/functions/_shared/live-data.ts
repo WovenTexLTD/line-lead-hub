@@ -1116,6 +1116,36 @@ function fmtLines(lines: any[], actuals: any[], targets: any[], today: string, a
 }
 
 // ---------------------------------------------------------------------------
+// Role → allowed live-data categories
+// ---------------------------------------------------------------------------
+
+const ROLE_ALLOWED_CATEGORIES: Record<string, Set<LiveDataCategory>> = {
+  owner: new Set([
+    "sewing_output", "sewing_targets", "blockers", "work_orders",
+    "cutting", "finishing", "storage", "lines", "factory_summary",
+  ]),
+  admin: new Set([
+    "sewing_output", "sewing_targets", "blockers", "work_orders",
+    "cutting", "finishing", "storage", "lines", "factory_summary",
+  ]),
+  worker: new Set([
+    "sewing_output", "sewing_targets", "blockers", "lines",
+    "work_orders", "finishing", "factory_summary",
+  ]),
+  storage: new Set([
+    "storage", "work_orders",
+  ]),
+  cutting: new Set([
+    "cutting", "blockers", "lines", "work_orders",
+  ]),
+};
+
+/** Return the set of live-data categories the role is permitted to see. */
+function allowedCategoriesForRole(role: string): Set<LiveDataCategory> {
+  return ROLE_ALLOWED_CATEGORIES[role] ?? ROLE_ALLOWED_CATEGORIES["worker"];
+}
+
+// ---------------------------------------------------------------------------
 // Orchestrator — main entry point
 // ---------------------------------------------------------------------------
 
@@ -1124,6 +1154,7 @@ export async function fetchLiveData(
   factoryId: string | null | undefined,
   message: string,
   factoryTimezone: string | null,
+  userRole: string = "worker",
 ): Promise<LiveDataContext | null> {
   if (!factoryId) return null;
 
@@ -1131,16 +1162,18 @@ export async function fetchLiveData(
 
   // Always include core factory data so the LLM has full context
   const cats = new Set<LiveDataCategory>(classification.categories);
-  
-  // Always include factory summary for comprehensive stats
-  cats.add("factory_summary");
-  cats.add("work_orders");
-  cats.add("lines");
-  
-  classification.categories = Array.from(cats);
+
+  // Always include factory summary for comprehensive stats (if the role allows it)
+  const allowed = allowedCategoriesForRole(userRole);
+  if (allowed.has("factory_summary")) cats.add("factory_summary");
+  if (allowed.has("work_orders")) cats.add("work_orders");
+  if (allowed.has("lines")) cats.add("lines");
+
+  // Filter categories to only those the user's role is allowed to access
+  classification.categories = Array.from(cats).filter((cat) => allowed.has(cat));
 
   const today = getTodayForFactory(factoryTimezone);
-  console.log(`[LIVE-DATA] Categories: [${classification.categories.join(", ")}], today=${today}, poHint=${classification.poNumberHint}, buyerHint=${classification.buyerHint}, wantsSummary=${classification.wantsSummary}`);
+  console.log(`[LIVE-DATA] Categories: [${classification.categories.join(", ")}], role=${userRole}, today=${today}, poHint=${classification.poNumberHint}, buyerHint=${classification.buyerHint}, wantsSummary=${classification.wantsSummary}`);
 
   const fetchMap: Record<LiveDataCategory, () => Promise<LiveDataResult>> = {
     sewing_output: () => fetchSewingOutput(supabase, factoryId, today),
