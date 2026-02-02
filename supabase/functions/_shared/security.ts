@@ -33,10 +33,19 @@ export function isAllowedOrigin(origin: string | null): boolean {
 
 // Get CORS headers with dynamic origin validation
 export function getCorsHeaders(origin: string | null): Record<string, string> {
-  const allowedOrigin = isAllowedOrigin(origin) ? origin! : ALLOWED_ORIGINS[0];
+  if (isAllowedOrigin(origin)) {
+    return {
+      "Access-Control-Allow-Origin": origin!,
+      "Access-Control-Allow-Credentials": "true",
+      "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    };
+  }
+  // Fallback to wildcard for unrecognized origins (e.g. desktop apps whose
+  // custom-protocol origins may be serialized as "null" by the webview).
+  // Security is enforced via Bearer-token authentication, not CORS.
   return {
-    "Access-Control-Allow-Origin": allowedOrigin,
-    "Access-Control-Allow-Credentials": "true",
+    "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   };
