@@ -12,6 +12,8 @@ const ALLOWED_ORIGINS = [
   "https://www.woventex.co",
   "capacitor://localhost",  // iOS Capacitor
   "http://localhost",       // Android Capacitor
+  "tauri://localhost",      // Tauri desktop (macOS/Linux)
+  "https://tauri.localhost", // Tauri desktop (Windows)
   "http://localhost:5173",  // Vite dev server
   "http://localhost:8100",  // Ionic dev server
 ];
