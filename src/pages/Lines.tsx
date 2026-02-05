@@ -1,10 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/ui/status-badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -14,6 +21,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Loader2, Rows3, Search, CheckCircle2, XCircle, Clock } from "lucide-react";
+
+interface LineWorkOrder {
+  id: string;
+  po_number: string;
+  is_active: boolean;
+  created_at: string | null;
+}
 
 interface Line {
   id: string;
@@ -26,7 +40,16 @@ interface Line {
   eodSubmitted: boolean;
   sewingOutput: number;
   finishingOutput: number;
-  currentPO: string | null;
+  workOrders: LineWorkOrder[];
+  selectedWoId: string | null;
+}
+
+interface RawData {
+  lines: any[];
+  sewingTargets: any[];
+  sewingActuals: any[];
+  finishingLogs: any[];
+  workOrders: any[];
 }
 
 // Extract number from line_id for proper numerical sorting
@@ -35,11 +58,30 @@ function extractLineNumber(lineId: string): number {
   return match ? parseInt(match[1], 10) : 0;
 }
 
+function loadSelectedPOs(factoryId: string): Record<string, string> {
+  try {
+    const stored = localStorage.getItem(`lines-po-selection-${factoryId}`);
+    return stored ? JSON.parse(stored) : {};
+  } catch {
+    return {};
+  }
+}
+
 export default function Lines() {
   const { profile } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [lines, setLines] = useState<Line[]>([]);
+  const [rawData, setRawData] = useState<RawData | null>(null);
+  const [selectedPOs, setSelectedPOs] = useState<Record<string, string>>(() =>
+    profile?.factory_id ? loadSelectedPOs(profile.factory_id) : {}
+  );
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Reload saved selections when factory_id becomes available
+  useEffect(() => {
+    if (profile?.factory_id) {
+      setSelectedPOs(loadSelectedPOs(profile.factory_id));
+    }
+  }, [profile?.factory_id]);
 
   useEffect(() => {
     if (profile?.factory_id) {
@@ -53,7 +95,6 @@ export default function Lines() {
     const today = new Date().toISOString().split('T')[0];
 
     try {
-      // Fetch all data in parallel
       const [linesRes, sewingTargetsRes, sewingActualsRes, finishingLogsRes, workOrdersRes] = await Promise.all([
         supabase
           .from('lines')
@@ -77,98 +118,141 @@ export default function Lines() {
           .eq('production_date', today),
         supabase
           .from('work_orders')
-          .select('id, line_id, po_number')
+          .select('id, line_id, po_number, is_active, created_at')
           .eq('factory_id', profile.factory_id)
-          .eq('is_active', true),
+          .not('line_id', 'is', null),
       ]);
 
-      const linesData = linesRes.data || [];
-      const sewingTargets = sewingTargetsRes.data || [];
-      const sewingActuals = sewingActualsRes.data || [];
-      const finishingLogs = finishingLogsRes.data || [];
-      const workOrders = workOrdersRes.data || [];
-
-      // Build line → active work order maps
-      const lineToWoId = new Map<string, string>();
-      const lineToPoNumber = new Map<string, string>();
-      workOrders.forEach(wo => {
-        if (wo.line_id) {
-          lineToWoId.set(wo.line_id, wo.id);
-          lineToPoNumber.set(wo.line_id, wo.po_number);
-        }
+      setRawData({
+        lines: linesRes.data || [],
+        sewingTargets: sewingTargetsRes.data || [],
+        sewingActuals: sewingActualsRes.data || [],
+        finishingLogs: finishingLogsRes.data || [],
+        workOrders: workOrdersRes.data || [],
       });
-
-      // Helper: check if a record matches the line's active PO
-      const matchesActivePO = (lineId: string, woId: string | null) => {
-        const activeWoId = lineToWoId.get(lineId);
-        if (!activeWoId) return true; // no active WO — include all
-        return woId === activeWoId;
-      };
-
-      // Build target submitted set (PO-scoped)
-      const targetSubmittedSet = new Set<string>();
-      sewingTargets.forEach(t => {
-        if (matchesActivePO(t.line_id, t.work_order_id)) {
-          targetSubmittedSet.add(t.line_id);
-        }
-      });
-      finishingLogs.filter(l => l.log_type === 'TARGET').forEach(t => {
-        if (matchesActivePO(t.line_id, t.work_order_id)) {
-          targetSubmittedSet.add(t.line_id);
-        }
-      });
-
-      // Build sewing EOD map (PO-scoped)
-      const sewingEodMap = new Map<string, { submitted: boolean; output: number }>();
-      sewingActuals.forEach(u => {
-        if (matchesActivePO(u.line_id, u.work_order_id)) {
-          const existing = sewingEodMap.get(u.line_id) || { submitted: false, output: 0 };
-          sewingEodMap.set(u.line_id, {
-            submitted: true,
-            output: existing.output + (u.good_today || 0),
-          });
-        }
-      });
-
-      // Build finishing EOD map (PO-scoped)
-      const finishingEodMap = new Map<string, { submitted: boolean; output: number }>();
-      finishingLogs.filter(l => l.log_type === 'OUTPUT').forEach(u => {
-        if (matchesActivePO(u.line_id, u.work_order_id)) {
-          const existing = finishingEodMap.get(u.line_id) || { submitted: false, output: 0 };
-          finishingEodMap.set(u.line_id, {
-            submitted: true,
-            output: existing.output + (u.poly || 0) + (u.carton || 0),
-          });
-        }
-      });
-
-      const formattedLines: Line[] = linesData.map(line => {
-        const sewingEod = sewingEodMap.get(line.id);
-        const finishingEod = finishingEodMap.get(line.id);
-        return {
-          id: line.id,
-          line_id: line.line_id,
-          name: line.name,
-          unit_name: line.units?.name || null,
-          floor_name: line.floors?.name || null,
-          is_active: line.is_active,
-          targetSubmitted: targetSubmittedSet.has(line.id),
-          eodSubmitted: !!(sewingEod?.submitted || finishingEod?.submitted),
-          sewingOutput: sewingEod?.output || 0,
-          finishingOutput: finishingEod?.output || 0,
-          currentPO: lineToPoNumber.get(line.id) || null,
-        };
-      });
-
-      // Sort lines numerically by line number
-      formattedLines.sort((a, b) => extractLineNumber(a.line_id) - extractLineNumber(b.line_id));
-
-      setLines(formattedLines);
     } catch (error) {
       console.error('Error fetching lines:', error);
     } finally {
       setLoading(false);
     }
+  }
+
+  // Derive display lines from raw data + selected POs
+  const lines = useMemo(() => {
+    if (!rawData) return [];
+
+    const { lines: linesData, sewingTargets, sewingActuals, finishingLogs, workOrders } = rawData;
+
+    // Group work orders by line_id, sorted: active first, then most recent
+    const lineWoMap = new Map<string, LineWorkOrder[]>();
+    workOrders.forEach((wo: any) => {
+      if (!wo.line_id) return;
+      const list = lineWoMap.get(wo.line_id) || [];
+      list.push({
+        id: wo.id,
+        po_number: wo.po_number,
+        is_active: wo.is_active ?? false,
+        created_at: wo.created_at,
+      });
+      lineWoMap.set(wo.line_id, list);
+    });
+
+    // Sort each group: active first, then by created_at descending
+    lineWoMap.forEach((woList) => {
+      woList.sort((a, b) => {
+        if (a.is_active && !b.is_active) return -1;
+        if (!a.is_active && b.is_active) return 1;
+        return (b.created_at || '').localeCompare(a.created_at || '');
+      });
+    });
+
+    // For each line, determine selected WO
+    const lineSelectedWo = new Map<string, string>();
+    lineWoMap.forEach((woList, lineId) => {
+      const savedWoId = selectedPOs[lineId];
+      if (savedWoId && woList.some(wo => wo.id === savedWoId)) {
+        lineSelectedWo.set(lineId, savedWoId);
+      } else if (woList.length > 0) {
+        lineSelectedWo.set(lineId, woList[0].id); // default: active or most recent
+      }
+    });
+
+    // Helper: check if a record matches the line's selected PO
+    const matchesSelectedPO = (lineId: string, woId: string | null) => {
+      const selectedWoId = lineSelectedWo.get(lineId);
+      if (!selectedWoId) return true; // no WOs for this line — include all
+      return woId === selectedWoId;
+    };
+
+    // Build target submitted set (PO-scoped)
+    const targetSubmittedSet = new Set<string>();
+    sewingTargets.forEach((t: any) => {
+      if (matchesSelectedPO(t.line_id, t.work_order_id)) {
+        targetSubmittedSet.add(t.line_id);
+      }
+    });
+    finishingLogs.filter((l: any) => l.log_type === 'TARGET').forEach((t: any) => {
+      if (matchesSelectedPO(t.line_id, t.work_order_id)) {
+        targetSubmittedSet.add(t.line_id);
+      }
+    });
+
+    // Build sewing EOD map (PO-scoped)
+    const sewingEodMap = new Map<string, { submitted: boolean; output: number }>();
+    sewingActuals.forEach((u: any) => {
+      if (matchesSelectedPO(u.line_id, u.work_order_id)) {
+        const existing = sewingEodMap.get(u.line_id) || { submitted: false, output: 0 };
+        sewingEodMap.set(u.line_id, {
+          submitted: true,
+          output: existing.output + (u.good_today || 0),
+        });
+      }
+    });
+
+    // Build finishing EOD map (PO-scoped)
+    const finishingEodMap = new Map<string, { submitted: boolean; output: number }>();
+    finishingLogs.filter((l: any) => l.log_type === 'OUTPUT').forEach((u: any) => {
+      if (matchesSelectedPO(u.line_id, u.work_order_id)) {
+        const existing = finishingEodMap.get(u.line_id) || { submitted: false, output: 0 };
+        finishingEodMap.set(u.line_id, {
+          submitted: true,
+          output: existing.output + (u.poly || 0) + (u.carton || 0),
+        });
+      }
+    });
+
+    const formattedLines: Line[] = linesData.map((line: any) => {
+      const sewingEod = sewingEodMap.get(line.id);
+      const finishingEod = finishingEodMap.get(line.id);
+      const woList = lineWoMap.get(line.id) || [];
+      return {
+        id: line.id,
+        line_id: line.line_id,
+        name: line.name,
+        unit_name: line.units?.name || null,
+        floor_name: line.floors?.name || null,
+        is_active: line.is_active,
+        targetSubmitted: targetSubmittedSet.has(line.id),
+        eodSubmitted: !!(sewingEod?.submitted || finishingEod?.submitted),
+        sewingOutput: sewingEod?.output || 0,
+        finishingOutput: finishingEod?.output || 0,
+        workOrders: woList,
+        selectedWoId: lineSelectedWo.get(line.id) || null,
+      };
+    });
+
+    formattedLines.sort((a, b) => extractLineNumber(a.line_id) - extractLineNumber(b.line_id));
+    return formattedLines;
+  }, [rawData, selectedPOs]);
+
+  function handlePOChange(lineId: string, woId: string) {
+    setSelectedPOs(prev => {
+      const next = { ...prev, [lineId]: woId };
+      if (profile?.factory_id) {
+        localStorage.setItem(`lines-po-selection-${profile.factory_id}`, JSON.stringify(next));
+      }
+      return next;
+    });
   }
 
   const filteredLines = lines.filter(line =>
@@ -263,8 +347,29 @@ export default function Lines() {
                     <TableCell>{line.unit_name || '-'}</TableCell>
                     <TableCell>{line.floor_name || '-'}</TableCell>
                     <TableCell>
-                      {line.currentPO ? (
-                        <span className="font-mono text-sm">{line.currentPO}</span>
+                      {line.workOrders.length > 1 ? (
+                        <Select
+                          value={line.selectedWoId || undefined}
+                          onValueChange={(v) => handlePOChange(line.id, v)}
+                        >
+                          <SelectTrigger className="h-8 w-[140px] font-mono text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {line.workOrders.map(wo => (
+                              <SelectItem key={wo.id} value={wo.id}>
+                                <span className="font-mono">
+                                  {wo.po_number}
+                                  {wo.is_active && (
+                                    <span className="ml-1 text-success">●</span>
+                                  )}
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : line.workOrders.length === 1 ? (
+                        <span className="font-mono text-sm">{line.workOrders[0].po_number}</span>
                       ) : (
                         <span className="text-muted-foreground">-</span>
                       )}
