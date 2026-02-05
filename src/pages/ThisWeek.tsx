@@ -92,8 +92,8 @@ export default function ThisWeek() {
 
         const [sewingRes, finishingRes, sewingTargetsRes, cuttingTargetsRes, cuttingActualsRes] = await Promise.all([
           supabase
-            .from('production_updates_sewing')
-            .select('output_qty, has_blocker')
+            .from('sewing_actuals')
+            .select('good_today, has_blocker')
             .eq('factory_id', profile.factory_id)
             .eq('production_date', dateStr),
           supabase
@@ -124,15 +124,15 @@ export default function ThisWeek() {
         const cuttingTargetsData = cuttingTargetsRes.data || [];
         const cuttingActualsData = cuttingActualsRes.data || [];
 
-        const daySewingOutput = sewingData.reduce((sum, u) => sum + (u.output_qty || 0), 0);
+        const daySewingOutput = sewingData.reduce((sum, u) => sum + (u.good_today || 0), 0);
         
-        // Finishing target = carton only from TARGET logs
+        // Finishing target = poly + carton from TARGET logs
         const finishingTargetLogs = finishingData.filter(f => f.log_type === 'TARGET');
-        const dayFinishingTarget = finishingTargetLogs.reduce((sum, f) => sum + (f.carton || 0), 0);
-        
-        // Finishing output = carton only from OUTPUT logs
+        const dayFinishingTarget = finishingTargetLogs.reduce((sum, f) => sum + (f.poly || 0) + (f.carton || 0), 0);
+
+        // Finishing output = poly + carton from OUTPUT logs
         const finishingOutputLogs = finishingData.filter(f => f.log_type === 'OUTPUT');
-        const dayFinishingOutput = finishingOutputLogs.reduce((sum, f) => sum + (f.carton || 0), 0);
+        const dayFinishingOutput = finishingOutputLogs.reduce((sum, f) => sum + (f.poly || 0) + (f.carton || 0), 0);
         
         // Cutting data
         const dayCuttingTarget = cuttingTargetsData.reduce((sum, t) => sum + (t.cutting_capacity || 0), 0);
