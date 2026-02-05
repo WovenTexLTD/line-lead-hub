@@ -26,7 +26,7 @@ export default function Index() {
 
   // Redirect authenticated users based on role
   if (user) {
-    if (!profile) return null;
+    if (!profile) return <Navigate to="/auth" replace />;
 
     if (!profile.factory_id) {
       return <Navigate to="/subscription" replace />;

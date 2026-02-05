@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/hooks/useSubscription';
 import { Loader2, AlertCircle, Lock, LogOut, CreditCard } from 'lucide-react';
@@ -38,9 +38,9 @@ export function SubscriptionGate({ children }: SubscriptionGateProps) {
     );
   }
 
-  // Not logged in
+  // Not logged in - redirect to auth
   if (!user) {
-    return null;
+    return <Navigate to="/auth" replace />;
   }
 
   // Invited users don't need their own subscription
