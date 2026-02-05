@@ -110,6 +110,47 @@ interface CuttingTargetFull {
   work_orders: { po_number: string; buyer: string; style: string } | null;
 }
 
+interface SewingTargetRow {
+  id: string;
+  line_id: string;
+  work_order_id: string;
+  production_date: string;
+  per_hour_target: number;
+  manpower_planned: number;
+  ot_hours_planned: number;
+  planned_stage_progress: number;
+  next_milestone: string | null;
+  estimated_ex_factory: string | null;
+  is_late: boolean | null;
+  remarks: string | null;
+  submitted_at: string | null;
+  lines: { line_id: string; name: string | null } | null;
+  work_orders: { po_number: string; buyer: string; style: string } | null;
+}
+
+interface SewingActualRow {
+  id: string;
+  line_id: string;
+  work_order_id: string;
+  production_date: string;
+  good_today: number;
+  reject_today: number;
+  rework_today: number;
+  cumulative_good_total: number;
+  manpower_actual: number;
+  ot_hours_actual: number;
+  actual_stage_progress: number;
+  has_blocker: boolean | null;
+  blocker_description: string | null;
+  blocker_impact: string | null;
+  blocker_owner: string | null;
+  blocker_type_id: string | null;
+  remarks: string | null;
+  submitted_at: string | null;
+  lines: { line_id: string; name: string | null } | null;
+  work_orders: { po_number: string; buyer: string; style: string } | null;
+}
+
 interface StorageTransaction {
   id: string;
   receive_qty: number;
@@ -159,6 +200,8 @@ export default function TodayUpdates() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [sewingUpdates, setSewingUpdates] = useState<SewingUpdate[]>([]);
+  const [sewingTargets, setSewingTargets] = useState<SewingTargetRow[]>([]);
+  const [sewingActuals, setSewingActuals] = useState<SewingActualRow[]>([]);
   const [finishingDailyLogs, setFinishingDailyLogs] = useState<FinishingDailyLog[]>([]);
   const [cuttingActuals, setCuttingActuals] = useState<CuttingActual[]>([]);
   const [cuttingTargets, setCuttingTargets] = useState<CuttingTargetFull[]>([]);
@@ -191,9 +234,21 @@ export default function TodayUpdates() {
     const today = new Date().toISOString().split('T')[0];
 
     try {
-      const [sewingRes, finishingRes, cuttingRes, cuttingTargetsRes, storageRes] = await Promise.all([
+      const [sewingRes, sewingTargetsRes, sewingActualsRes, finishingRes, cuttingRes, cuttingTargetsRes, storageRes] = await Promise.all([
         supabase
           .from('production_updates_sewing')
+          .select('*, lines(line_id, name), work_orders(po_number, buyer, style)')
+          .eq('factory_id', profile.factory_id)
+          .eq('production_date', today)
+          .order('submitted_at', { ascending: false }),
+        supabase
+          .from('sewing_targets')
+          .select('*, lines(line_id, name), work_orders(po_number, buyer, style)')
+          .eq('factory_id', profile.factory_id)
+          .eq('production_date', today)
+          .order('submitted_at', { ascending: false }),
+        supabase
+          .from('sewing_actuals')
           .select('*, lines(line_id, name), work_orders(po_number, buyer, style)')
           .eq('factory_id', profile.factory_id)
           .eq('production_date', today)
@@ -225,6 +280,8 @@ export default function TodayUpdates() {
       ]);
 
       setSewingUpdates(sewingRes.data || []);
+      setSewingTargets(sewingTargetsRes.data as SewingTargetRow[] || []);
+      setSewingActuals(sewingActualsRes.data as SewingActualRow[] || []);
       setFinishingDailyLogs(finishingRes.data as FinishingDailyLog[] || []);
       setCuttingActuals(cuttingRes.data as CuttingActual[] || []);
       setCuttingTargets(cuttingTargetsRes.data as CuttingTargetFull[] || []);
@@ -263,10 +320,82 @@ export default function TodayUpdates() {
     (t.work_orders?.po_number || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const filteredSewingTargets = sewingTargets.filter(t =>
+    (t.lines?.name || t.lines?.line_id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (t.work_orders?.po_number || '').toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const filteredSewingActuals = sewingActuals.filter(a =>
+    (a.lines?.name || a.lines?.line_id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (a.work_orders?.po_number || '').toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   const filteredStorage = (storageTransactions || []).filter(s =>
     (s.storage_bin_cards?.work_orders?.po_number || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (s.storage_bin_cards?.style || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Merge sewing targets and actuals by line+work_order for unified display
+  const mergedSewingData = useMemo(() => {
+    const map = new Map<string, {
+      key: string;
+      line_id: string;
+      line_name: string;
+      work_order_id: string;
+      po_number: string | null;
+      buyer: string | null;
+      style: string | null;
+      target: SewingTargetRow | null;
+      actual: SewingActualRow | null;
+      submitted_at: string | null;
+    }>();
+
+    // Add targets
+    filteredSewingTargets.forEach(target => {
+      const key = `${target.line_id}-${target.work_order_id}`;
+      map.set(key, {
+        key,
+        line_id: target.line_id,
+        line_name: target.lines?.name || target.lines?.line_id || 'Unknown',
+        work_order_id: target.work_order_id,
+        po_number: target.work_orders?.po_number || null,
+        buyer: target.work_orders?.buyer || null,
+        style: target.work_orders?.style || null,
+        target,
+        actual: null,
+        submitted_at: target.submitted_at,
+      });
+    });
+
+    // Add/merge actuals
+    filteredSewingActuals.forEach(actual => {
+      const key = `${actual.line_id}-${actual.work_order_id}`;
+      const existing = map.get(key);
+      if (existing) {
+        existing.actual = actual;
+        if (actual.submitted_at && (!existing.submitted_at || actual.submitted_at > existing.submitted_at)) {
+          existing.submitted_at = actual.submitted_at;
+        }
+      } else {
+        map.set(key, {
+          key,
+          line_id: actual.line_id,
+          line_name: actual.lines?.name || actual.lines?.line_id || 'Unknown',
+          work_order_id: actual.work_order_id,
+          po_number: actual.work_orders?.po_number || null,
+          buyer: actual.work_orders?.buyer || null,
+          style: actual.work_orders?.style || null,
+          target: null,
+          actual,
+          submitted_at: actual.submitted_at,
+        });
+      }
+    });
+
+    return Array.from(map.values()).sort((a, b) =>
+      (b.submitted_at || '').localeCompare(a.submitted_at || '')
+    );
+  }, [filteredSewingTargets, filteredSewingActuals]);
 
   // Merge cutting targets and actuals by line+work_order for unified display
   const mergedCuttingData = useMemo(() => {
@@ -369,7 +498,8 @@ export default function TodayUpdates() {
     );
   }, [filteredFinishing]);
 
-  const totalOutput = sewingUpdates.reduce((sum, u) => sum + (u.output_qty || 0), 0);
+  const totalOutput = sewingUpdates.reduce((sum, u) => sum + (u.output_qty || 0), 0)
+    + sewingActuals.reduce((sum, a) => sum + (a.good_today || 0), 0);
   
   // Total Finishing Output = Total Carton only (from OUTPUT logs)
   const totalFinishingOutput = finishingDailyLogs
@@ -551,7 +681,7 @@ export default function TodayUpdates() {
                   <Factory className="h-4 w-4 text-primary" />
                 </div>
                 <div>
-                  <p className="text-xl font-bold">{sewingUpdates.length}</p>
+                  <p className="text-xl font-bold">{sewingUpdates.length + sewingTargets.length + sewingActuals.length}</p>
                   <p className="text-xs text-muted-foreground">Sewing</p>
                 </div>
               </div>
@@ -621,10 +751,10 @@ export default function TodayUpdates() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
           <TabsList className="w-max min-w-full md:w-auto">
-            <TabsTrigger value="all">All ({sewingUpdates.length + finishingDailyLogs.length + cuttingTargets.length + cuttingActuals.length + (storageTransactions || []).length})</TabsTrigger>
+            <TabsTrigger value="all">All ({sewingUpdates.length + sewingTargets.length + sewingActuals.length + finishingDailyLogs.length + cuttingTargets.length + cuttingActuals.length + (storageTransactions || []).length})</TabsTrigger>
             <TabsTrigger value="storage">Storage ({(storageTransactions || []).length})</TabsTrigger>
             <TabsTrigger value="cutting">Cutting ({cuttingTargets.length + cuttingActuals.length})</TabsTrigger>
-            <TabsTrigger value="sewing">Sewing ({sewingUpdates.length})</TabsTrigger>
+            <TabsTrigger value="sewing">Sewing ({sewingUpdates.length + sewingTargets.length + sewingActuals.length})</TabsTrigger>
             <TabsTrigger value="finishing">Finishing ({finishingDailyLogs.length})</TabsTrigger>
           </TabsList>
         </div>
@@ -681,6 +811,99 @@ export default function TodayUpdates() {
                           </TableCell>
                         </TableRow>
                       ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Sewing Targets & Actuals Table - Merged Format */}
+          {mergedSewingData.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Factory className="h-4 w-4 text-primary" />
+                  Sewing Targets & Actuals
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Time</TableHead>
+                        <TableHead>Line</TableHead>
+                        <TableHead>PO</TableHead>
+                        <TableHead className="text-right">Output</TableHead>
+                        <TableHead className="text-right">Target/hr</TableHead>
+                        <TableHead className="text-right">Manpower</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {mergedSewingData.map((item) => {
+                        const output = item.actual?.good_today;
+                        const target = item.target?.per_hour_target;
+                        const manpower = item.actual?.manpower_actual ?? item.target?.manpower_planned;
+                        const hasBoth = item.actual && item.target;
+                        const hasBlocker = item.actual?.has_blocker;
+                        return (
+                          <TableRow
+                            key={item.key}
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => {
+                              if (item.actual) {
+                                setSelectedSubmission({
+                                  id: item.actual.id,
+                                  type: 'sewing',
+                                  line_name: item.line_name,
+                                  po_number: item.po_number,
+                                  buyer: item.buyer,
+                                  style: item.style,
+                                  output_qty: item.actual.good_today,
+                                  target_qty: item.target?.per_hour_target || null,
+                                  manpower: item.actual.manpower_actual,
+                                  reject_qty: item.actual.reject_today,
+                                  rework_qty: item.actual.rework_today,
+                                  stage_progress: item.actual.actual_stage_progress,
+                                  ot_hours: item.actual.ot_hours_actual,
+                                  ot_manpower: null,
+                                  has_blocker: item.actual.has_blocker || false,
+                                  blocker_description: item.actual.blocker_description,
+                                  blocker_impact: item.actual.blocker_impact,
+                                  blocker_owner: item.actual.blocker_owner,
+                                  blocker_status: null,
+                                  notes: item.actual.remarks,
+                                  submitted_at: item.actual.submitted_at || '',
+                                  production_date: item.actual.production_date,
+                                });
+                                setDetailModalOpen(true);
+                              }
+                            }}
+                          >
+                            <TableCell className="font-mono text-sm">{item.submitted_at ? formatTime(item.submitted_at) : '-'}</TableCell>
+                            <TableCell className="font-medium">{item.line_name}</TableCell>
+                            <TableCell>{item.po_number || '-'}</TableCell>
+                            <TableCell className="text-right font-mono">{output?.toLocaleString() || '-'}</TableCell>
+                            <TableCell className="text-right font-mono text-muted-foreground">{target?.toLocaleString() || '-'}</TableCell>
+                            <TableCell className="text-right font-mono">{manpower || '-'}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1 flex-wrap">
+                                {hasBlocker ? (
+                                  <StatusBadge variant="danger" size="sm">Blocker</StatusBadge>
+                                ) : hasBoth ? (
+                                  <StatusBadge variant="success" size="sm">Complete</StatusBadge>
+                                ) : item.actual ? (
+                                  <StatusBadge variant="warning" size="sm">No Target</StatusBadge>
+                                ) : (
+                                  <StatusBadge variant="info" size="sm">Target Only</StatusBadge>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>
@@ -873,7 +1096,7 @@ export default function TodayUpdates() {
             </Card>
           )}
 
-          {filteredSewing.length === 0 && filteredFinishing.length === 0 && filteredCutting.length === 0 && filteredStorage.length === 0 && (
+          {filteredSewing.length === 0 && mergedSewingData.length === 0 && filteredFinishing.length === 0 && filteredCutting.length === 0 && filteredStorage.length === 0 && (
             <Card>
               <CardContent className="py-12 text-center text-muted-foreground">
                 <p>No updates found for today</p>
@@ -882,8 +1105,69 @@ export default function TodayUpdates() {
           )}
         </TabsContent>
 
-        <TabsContent value="sewing" className="mt-4">
+        <TabsContent value="sewing" className="mt-4 space-y-4">
+          {/* Old sewing updates */}
+          {filteredSewing.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Factory className="h-4 w-4 text-primary" />
+                  Sewing Updates
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Time</TableHead>
+                        <TableHead>Line</TableHead>
+                        <TableHead>PO</TableHead>
+                        <TableHead className="text-right">Output</TableHead>
+                        <TableHead className="text-right">Target</TableHead>
+                        <TableHead className="text-right">Manpower</TableHead>
+                        <TableHead className="text-right">Progress</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredSewing.map((update) => (
+                        <TableRow
+                          key={update.id}
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleSewingClick(update)}
+                        >
+                          <TableCell className="font-mono text-sm">{formatTime(update.submitted_at)}</TableCell>
+                          <TableCell className="font-medium">{update.lines?.name || update.lines?.line_id}</TableCell>
+                          <TableCell>{update.work_orders?.po_number || '-'}</TableCell>
+                          <TableCell className="text-right font-mono font-bold">{update.output_qty.toLocaleString()}</TableCell>
+                          <TableCell className="text-right font-mono">{update.target_qty?.toLocaleString() || '-'}</TableCell>
+                          <TableCell className="text-right">{update.manpower || '-'}</TableCell>
+                          <TableCell className="text-right">{update.stage_progress ? `${update.stage_progress}%` : '-'}</TableCell>
+                          <TableCell>
+                            {update.has_blocker ? (
+                              <StatusBadge variant="danger" size="sm">Blocker</StatusBadge>
+                            ) : (
+                              <StatusBadge variant="success" size="sm">OK</StatusBadge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* New sewing targets & actuals */}
           <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Factory className="h-4 w-4 text-primary" />
+                Sewing Targets & Actuals
+              </CardTitle>
+            </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <Table>
@@ -893,36 +1177,78 @@ export default function TodayUpdates() {
                       <TableHead>Line</TableHead>
                       <TableHead>PO</TableHead>
                       <TableHead className="text-right">Output</TableHead>
-                      <TableHead className="text-right">Target</TableHead>
+                      <TableHead className="text-right">Target/hr</TableHead>
+                      <TableHead className="text-right">Reject</TableHead>
                       <TableHead className="text-right">Manpower</TableHead>
-                      <TableHead className="text-right">Progress</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredSewing.map((update) => (
-                      <TableRow 
-                        key={update.id}
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => handleSewingClick(update)}
-                      >
-                        <TableCell className="font-mono text-sm">{formatTime(update.submitted_at)}</TableCell>
-                        <TableCell className="font-medium">{update.lines?.name || update.lines?.line_id}</TableCell>
-                        <TableCell>{update.work_orders?.po_number || '-'}</TableCell>
-                        <TableCell className="text-right font-mono font-bold">{update.output_qty.toLocaleString()}</TableCell>
-                        <TableCell className="text-right font-mono">{update.target_qty?.toLocaleString() || '-'}</TableCell>
-                        <TableCell className="text-right">{update.manpower || '-'}</TableCell>
-                        <TableCell className="text-right">{update.stage_progress ? `${update.stage_progress}%` : '-'}</TableCell>
-                        <TableCell>
-                          {update.has_blocker ? (
-                            <StatusBadge variant="danger" size="sm">Blocker</StatusBadge>
-                          ) : (
-                            <StatusBadge variant="success" size="sm">OK</StatusBadge>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {filteredSewing.length === 0 && (
+                    {mergedSewingData.map((item) => {
+                      const output = item.actual?.good_today;
+                      const target = item.target?.per_hour_target;
+                      const reject = item.actual?.reject_today;
+                      const manpower = item.actual?.manpower_actual ?? item.target?.manpower_planned;
+                      const hasBoth = item.actual && item.target;
+                      const hasBlocker = item.actual?.has_blocker;
+                      return (
+                        <TableRow
+                          key={item.key}
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => {
+                            if (item.actual) {
+                              setSelectedSubmission({
+                                id: item.actual.id,
+                                type: 'sewing',
+                                line_name: item.line_name,
+                                po_number: item.po_number,
+                                buyer: item.buyer,
+                                style: item.style,
+                                output_qty: item.actual.good_today,
+                                target_qty: item.target?.per_hour_target || null,
+                                manpower: item.actual.manpower_actual,
+                                reject_qty: item.actual.reject_today,
+                                rework_qty: item.actual.rework_today,
+                                stage_progress: item.actual.actual_stage_progress,
+                                ot_hours: item.actual.ot_hours_actual,
+                                ot_manpower: null,
+                                has_blocker: item.actual.has_blocker || false,
+                                blocker_description: item.actual.blocker_description,
+                                blocker_impact: item.actual.blocker_impact,
+                                blocker_owner: item.actual.blocker_owner,
+                                blocker_status: null,
+                                notes: item.actual.remarks,
+                                submitted_at: item.actual.submitted_at || '',
+                                production_date: item.actual.production_date,
+                              });
+                              setDetailModalOpen(true);
+                            }
+                          }}
+                        >
+                          <TableCell className="font-mono text-sm">{item.submitted_at ? formatTime(item.submitted_at) : '-'}</TableCell>
+                          <TableCell className="font-medium">{item.line_name}</TableCell>
+                          <TableCell>{item.po_number || '-'}</TableCell>
+                          <TableCell className="text-right font-mono font-bold">{output?.toLocaleString() || '-'}</TableCell>
+                          <TableCell className="text-right font-mono">{target?.toLocaleString() || '-'}</TableCell>
+                          <TableCell className="text-right font-mono">{reject?.toLocaleString() || '-'}</TableCell>
+                          <TableCell className="text-right">{manpower || '-'}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1 flex-wrap">
+                              {hasBlocker ? (
+                                <StatusBadge variant="danger" size="sm">Blocker</StatusBadge>
+                              ) : hasBoth ? (
+                                <StatusBadge variant="success" size="sm">Complete</StatusBadge>
+                              ) : item.actual ? (
+                                <StatusBadge variant="warning" size="sm">No Target</StatusBadge>
+                              ) : (
+                                <StatusBadge variant="info" size="sm">Target Only</StatusBadge>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                    {filteredSewing.length === 0 && mergedSewingData.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                           No sewing updates today
@@ -1188,19 +1514,26 @@ export default function TodayUpdates() {
         open={exportDialogOpen}
         onOpenChange={setExportDialogOpen}
         data={{
-          sewingTargets: [],
+          sewingTargets: sewingTargets,
           finishingTargets: [],
-          sewingActuals: sewingUpdates.map(u => ({
-            ...u,
-            good_today: u.output_qty,
-            reject_today: u.reject_qty,
-            rework_today: u.rework_qty,
-            cumulative_good_total: u.output_qty,
-            manpower_actual: u.manpower,
-            ot_hours_actual: u.ot_hours,
-            actual_stage_progress: u.stage_progress,
-            remarks: u.notes,
-          })),
+          sewingActuals: [
+            ...sewingUpdates.map(u => ({
+              ...u,
+              good_today: u.output_qty,
+              reject_today: u.reject_qty,
+              rework_today: u.rework_qty,
+              cumulative_good_total: u.output_qty,
+              manpower_actual: u.manpower,
+              ot_hours_actual: u.ot_hours,
+              actual_stage_progress: u.stage_progress,
+              remarks: u.notes,
+            })),
+            ...sewingActuals.map(a => ({
+              ...a,
+              lines: a.lines,
+              work_orders: a.work_orders,
+            })),
+          ],
           finishingActuals: finishingDailyLogs
             .filter(log => log.log_type === 'OUTPUT')
             .map(log => ({
