@@ -182,6 +182,7 @@ type ModalSubmission = {
   rework_qty?: number | null;
   stage_name?: string | null;
   stage_progress?: number | null;
+  next_milestone?: string | null;
   ot_hours?: number | null;
   ot_manpower?: number | null;
   has_blocker: boolean;
@@ -527,6 +528,7 @@ export default function TodayUpdates() {
       rework_qty: update.rework_qty,
       stage_name: null,
       stage_progress: update.stage_progress,
+      next_milestone: null,
       ot_hours: update.ot_hours,
       ot_manpower: update.ot_manpower,
       has_blocker: update.has_blocker,
@@ -871,6 +873,7 @@ export default function TodayUpdates() {
                                 rework_qty: item.actual?.rework_today ?? null,
                                 stage_name: item.actual?.stages?.name || item.target?.stages?.name || null,
                                 stage_progress: item.actual?.actual_stage_progress ?? item.target?.planned_stage_progress ?? null,
+                                next_milestone: item.target?.next_milestone || null,
                                 ot_hours: item.actual?.ot_hours_actual ?? item.target?.ot_hours_planned ?? null,
                                 ot_manpower: null,
                                 has_blocker: item.actual?.has_blocker || false,
