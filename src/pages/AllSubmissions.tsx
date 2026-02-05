@@ -137,6 +137,9 @@ export default function AllSubmissions() {
   const [cuttingActuals, setCuttingActuals] = useState<any[]>([]);
   const [storageBinCards, setStorageBinCards] = useState<any[]>([]);
 
+  // Finishing log counts (reported by FinishingDailySheetsTable)
+  const [finishingLogCounts, setFinishingLogCounts] = useState({ targets: 0, outputs: 0 });
+
   // Modal state
   const [selectedTarget, setSelectedTarget] = useState<any>(null);
   const [selectedActual, setSelectedActual] = useState<any>(null);
@@ -443,8 +446,8 @@ export default function AllSubmissions() {
         </Button>
       </div>
 
-      {/* Category Selection - For Sewing only (finishing has its own tabs via FinishingDailySheetsTable) */}
-      {department === 'sewing' && (
+      {/* Category Selection - For Sewing and Finishing */}
+      {(department === 'sewing' || department === 'finishing') && (
         <div className="flex justify-center gap-2">
           <Button
             variant={category === 'targets' ? 'default' : 'outline'}
@@ -462,7 +465,7 @@ export default function AllSubmissions() {
               variant={category === 'targets' ? 'secondary' : 'outline'}
               className={`ml-0.5 text-xs ${category === 'targets' ? 'bg-primary-foreground/20 text-primary-foreground' : ''}`}
             >
-              {counts.sewingTargets}
+              {department === 'sewing' ? counts.sewingTargets : finishingLogCounts.targets}
             </Badge>
           </Button>
           <Button
@@ -481,7 +484,7 @@ export default function AllSubmissions() {
               variant={category === 'actuals' ? 'secondary' : 'outline'}
               className={`ml-0.5 text-xs ${category === 'actuals' ? 'bg-primary-foreground/20 text-primary-foreground' : ''}`}
             >
-              {counts.sewingActuals}
+              {department === 'sewing' ? counts.sewingActuals : finishingLogCounts.outputs}
             </Badge>
           </Button>
         </div>
@@ -494,6 +497,8 @@ export default function AllSubmissions() {
           dateRange={dateRange}
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
+          activeTab={category === 'targets' ? 'targets' : 'outputs'}
+          onCountsChange={setFinishingLogCounts}
         />
       )}
 

@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -48,6 +47,8 @@ interface FinishingDailySheetsTableProps {
   dateRange: string;
   searchTerm: string;
   onSearchChange: (value: string) => void;
+  activeTab: "targets" | "outputs";
+  onCountsChange?: (counts: { targets: number; outputs: number }) => void;
 }
 
 export function FinishingDailySheetsTable({
@@ -55,10 +56,11 @@ export function FinishingDailySheetsTable({
   dateRange,
   searchTerm,
   onSearchChange,
+  activeTab,
+  onCountsChange,
 }: FinishingDailySheetsTableProps) {
   const [logs, setLogs] = useState<DailyLogRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"targets" | "outputs">("targets");
   const [selectedLog, setSelectedLog] = useState<DailyLogRow | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [pageSize, setPageSize] = useState(25);
@@ -111,6 +113,12 @@ export function FinishingDailySheetsTable({
       }));
 
       setLogs(formatted);
+
+      if (onCountsChange) {
+        const targets = formatted.filter(l => l.log_type === "TARGET").length;
+        const outputs = formatted.filter(l => l.log_type === "OUTPUT").length;
+        onCountsChange({ targets, outputs });
+      }
     } catch (error) {
       console.error("Error fetching logs:", error);
     } finally {
@@ -176,19 +184,6 @@ export function FinishingDailySheetsTable({
 
   return (
     <div className="space-y-4">
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "targets" | "outputs")}>
-        <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="targets" className="flex items-center gap-2">
-            <Target className="h-4 w-4" />
-            Daily Targets
-          </TabsTrigger>
-          <TabsTrigger value="outputs" className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4" />
-            Daily Outputs
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value={activeTab} className="mt-4 space-y-4">
           {/* Stats Cards */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <Card>
@@ -354,9 +349,6 @@ export function FinishingDailySheetsTable({
               />
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
-
       {/* Finishing Log Detail Modal */}
       <FinishingLogDetailModal
         log={selectedLog ? {
