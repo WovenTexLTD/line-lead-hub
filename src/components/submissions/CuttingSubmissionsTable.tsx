@@ -100,9 +100,12 @@ export function CuttingSubmissionsTable({
         targetsMap.set(key, t);
       });
 
+      const matchedTargetKeys = new Set<string>();
+
       const mergedSubmissions: CuttingSubmission[] = (actualsRes.data || []).map(actual => {
         const key = `${actual.production_date}-${actual.line_id}-${actual.work_order_id}`;
         const target = targetsMap.get(key);
+        if (target) matchedTargetKeys.add(key);
         return {
           id: actual.id,
           production_date: actual.production_date,
@@ -131,6 +134,43 @@ export function CuttingSubmissionsTable({
           work_orders: actual.work_orders,
         };
       });
+
+      // Include targets that have no matching actuals
+      (targetsRes.data || []).forEach((target: any) => {
+        const key = `${target.production_date}-${target.line_id}-${target.work_order_id}`;
+        if (!matchedTargetKeys.has(key)) {
+          mergedSubmissions.push({
+            id: target.id,
+            production_date: target.production_date,
+            submitted_at: target.submitted_at,
+            line_id: target.line_id,
+            work_order_id: target.work_order_id,
+            buyer: target.work_orders?.buyer || null,
+            style: target.work_orders?.style || null,
+            po_no: target.work_orders?.po_number || null,
+            colour: null,
+            order_qty: target.order_qty || null,
+            man_power: target.man_power || 0,
+            marker_capacity: target.marker_capacity || 0,
+            lay_capacity: target.lay_capacity || 0,
+            cutting_capacity: target.cutting_capacity || 0,
+            under_qty: target.under_qty || null,
+            day_cutting: 0,
+            total_cutting: null,
+            day_input: 0,
+            total_input: null,
+            balance: null,
+            leftover_recorded: null,
+            leftover_quantity: null,
+            leftover_unit: null,
+            lines: target.lines,
+            work_orders: target.work_orders,
+          });
+        }
+      });
+
+      // Sort by production_date descending
+      mergedSubmissions.sort((a, b) => b.production_date.localeCompare(a.production_date));
 
       setSubmissions(mergedSubmissions);
     } catch (error) {

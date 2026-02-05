@@ -25,7 +25,9 @@ interface DailyLogRow {
   id: string;
   production_date: string;
   line_name: string;
+  line_id: string;
   po_number: string | null;
+  buyer: string | null;
   style: string | null;
   log_type: FinishingLogType;
   thread_cutting: number;
@@ -36,6 +38,7 @@ interface DailyLogRow {
   get_up: number;
   poly: number;
   carton: number;
+  remarks: string | null;
   submitted_at: string;
   is_locked: boolean;
 }
@@ -75,7 +78,7 @@ export function FinishingDailySheetsTable({
         .select(`
           *,
           lines(id, line_id, name),
-          work_orders(po_number, style)
+          work_orders(po_number, buyer, style)
         `)
         .eq("factory_id", factoryId)
         .gte("production_date", startDate.toISOString().split("T")[0])
@@ -89,7 +92,9 @@ export function FinishingDailySheetsTable({
         id: log.id,
         production_date: log.production_date,
         line_name: log.lines?.name || log.lines?.line_id || "Unknown",
+        line_id: log.lines?.line_id || "Unknown",
         po_number: log.work_orders?.po_number || null,
+        buyer: log.work_orders?.buyer || null,
         style: log.work_orders?.style || null,
         log_type: log.log_type,
         thread_cutting: log.thread_cutting || 0,
@@ -100,6 +105,7 @@ export function FinishingDailySheetsTable({
         get_up: log.get_up || 0,
         poly: log.poly || 0,
         carton: log.carton || 0,
+        remarks: log.remarks || null,
         submitted_at: log.submitted_at,
         is_locked: log.is_locked,
       }));
@@ -356,7 +362,7 @@ export function FinishingDailySheetsTable({
         log={selectedLog ? {
           id: selectedLog.id,
           production_date: selectedLog.production_date,
-          line_id: selectedLog.line_name,
+          line_id: selectedLog.line_id,
           work_order_id: null,
           log_type: selectedLog.log_type,
           shift: null,
@@ -368,17 +374,17 @@ export function FinishingDailySheetsTable({
           get_up: selectedLog.get_up,
           poly: selectedLog.poly,
           carton: selectedLog.carton,
-          remarks: null,
+          remarks: selectedLog.remarks,
           submitted_at: selectedLog.submitted_at,
           is_locked: selectedLog.is_locked,
           line: {
-            line_id: selectedLog.line_name,
+            line_id: selectedLog.line_id,
             name: selectedLog.line_name
           },
           work_order: selectedLog.po_number ? {
             po_number: selectedLog.po_number,
             style: selectedLog.style || "",
-            buyer: ""
+            buyer: selectedLog.buyer || ""
           } : null
         } : null}
         open={detailModalOpen}

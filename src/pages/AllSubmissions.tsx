@@ -21,6 +21,7 @@ import { SubmissionDetailModal } from "@/components/SubmissionDetailModal";
 import { TargetDetailModal } from "@/components/TargetDetailModal";
 import { ExportSubmissionsDialog } from "@/components/ExportSubmissionsDialog";
 import { CuttingSubmissionsTable } from "@/components/submissions/CuttingSubmissionsTable";
+import { FinishingDailySheetsTable } from "@/components/submissions/FinishingDailySheetsTable";
 import { StorageSubmissionsTable } from "@/components/submissions/StorageSubmissionsTable";
 import { TablePagination } from "@/components/ui/table-pagination";
 import { usePagination } from "@/hooks/usePagination";
@@ -280,16 +281,12 @@ export default function AllSubmissions() {
     }
   }, [category, finishingTargets, finishingActuals, searchTerm]);
 
-  // Separate pagination for targets and actuals to maintain type safety
+  // Separate pagination for sewing targets and actuals
   const sewingTargetsPagination = usePagination(filterBySearch(sewingTargets), { pageSize });
   const sewingActualsPagination = usePagination(filterBySearch(sewingActuals), { pageSize });
-  const finishingTargetsPagination = usePagination(filterBySearch(finishingTargets), { pageSize });
-  const finishingActualsPagination = usePagination(filterBySearch(finishingActuals), { pageSize });
 
-  // Use the appropriate pagination based on department and category
-  const pagination = department === 'sewing'
-    ? (category === 'targets' ? sewingTargetsPagination : sewingActualsPagination)
-    : (category === 'targets' ? finishingTargetsPagination : finishingActualsPagination);
+  // Use the appropriate pagination based on category
+  const pagination = category === 'targets' ? sewingTargetsPagination : sewingActualsPagination;
   const { currentPage, totalPages, setCurrentPage, goToFirstPage, goToLastPage, goToNextPage, goToPreviousPage, canGoNext, canGoPrevious, startIndex, endIndex } = pagination;
 
   // Summary stats
@@ -446,8 +443,8 @@ export default function AllSubmissions() {
         </Button>
       </div>
 
-      {/* Category Selection - For Sewing and Finishing */}
-      {(department === 'sewing' || department === 'finishing') && (
+      {/* Category Selection - For Sewing only (finishing has its own tabs via FinishingDailySheetsTable) */}
+      {department === 'sewing' && (
         <div className="flex justify-center gap-2">
           <Button
             variant={category === 'targets' ? 'default' : 'outline'}
@@ -465,7 +462,7 @@ export default function AllSubmissions() {
               variant={category === 'targets' ? 'secondary' : 'outline'}
               className={`ml-0.5 text-xs ${category === 'targets' ? 'bg-primary-foreground/20 text-primary-foreground' : ''}`}
             >
-              {department === 'sewing' ? counts.sewingTargets : counts.finishingTargets}
+              {counts.sewingTargets}
             </Badge>
           </Button>
           <Button
@@ -484,156 +481,20 @@ export default function AllSubmissions() {
               variant={category === 'actuals' ? 'secondary' : 'outline'}
               className={`ml-0.5 text-xs ${category === 'actuals' ? 'bg-primary-foreground/20 text-primary-foreground' : ''}`}
             >
-              {department === 'sewing' ? counts.sewingActuals : counts.finishingActuals}
+              {counts.sewingActuals}
             </Badge>
           </Button>
         </div>
       )}
 
-      {/* Finishing uses same view as Sewing */}
-      {department === 'finishing' && (
-        <>
-          {/* Search */}
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by line or PO..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-
-          {/* Data Table */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                {category === 'targets' ? (
-                  <Target className="h-4 w-4 text-primary" />
-                ) : (
-                  <ClipboardCheck className="h-4 w-4 text-primary" />
-                )}
-                Finishing {category === 'targets' ? 'Targets' : 'End of Day'}
-                <Badge variant="secondary" className="ml-2">{finishingData.length}</Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                {category === 'targets' && (
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/50">
-                        <TableHead>Date</TableHead>
-                        <TableHead>Time</TableHead>
-                        <TableHead>Line</TableHead>
-                        <TableHead>PO</TableHead>
-                        <TableHead className="text-right">Target/hr</TableHead>
-                        <TableHead className="text-right">M Power</TableHead>
-                        <TableHead className="text-right">Day Hours</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {finishingTargetsPagination.paginatedData.map((target) => (
-                        <TableRow
-                          key={target.id}
-                          className="cursor-pointer hover:bg-muted/50"
-                          onClick={() => handleTargetClick(target)}
-                        >
-                          <TableCell className="font-mono text-sm">{formatDate(target.production_date)}</TableCell>
-                          <TableCell className="font-mono text-sm text-muted-foreground">{formatTime(target.submitted_at)}</TableCell>
-                          <TableCell className="font-medium">{target.lines?.name || target.lines?.line_id}</TableCell>
-                          <TableCell>{target.work_orders?.po_number || '-'}</TableCell>
-                          <TableCell className="text-right font-mono font-bold">{target.per_hour_target}</TableCell>
-                          <TableCell className="text-right">{target.m_power_planned}</TableCell>
-                          <TableCell className="text-right">{target.day_hour_planned}</TableCell>
-                          <TableCell>
-                            {target.is_late ? (
-                              <StatusBadge variant="warning" size="sm">Late</StatusBadge>
-                            ) : (
-                              <StatusBadge variant="success" size="sm">On Time</StatusBadge>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {finishingTargetsPagination.paginatedData.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                            No finishing targets found
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                )}
-
-                {category === 'actuals' && (
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/50">
-                        <TableHead>Date</TableHead>
-                        <TableHead>Time</TableHead>
-                        <TableHead>Line</TableHead>
-                        <TableHead>PO</TableHead>
-                        <TableHead className="text-right">QC Pass</TableHead>
-                        <TableHead className="text-right">Carton</TableHead>
-                        <TableHead className="text-right">M Power</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {finishingActualsPagination.paginatedData.map((actual) => (
-                        <TableRow
-                          key={actual.id}
-                          className="cursor-pointer hover:bg-muted/50"
-                          onClick={() => handleActualClick(actual)}
-                        >
-                          <TableCell className="font-mono text-sm">{formatDate(actual.production_date)}</TableCell>
-                          <TableCell className="font-mono text-sm text-muted-foreground">{formatTime(actual.submitted_at)}</TableCell>
-                          <TableCell className="font-medium">{actual.lines?.name || actual.lines?.line_id}</TableCell>
-                          <TableCell>{actual.work_orders?.po_number || '-'}</TableCell>
-                          <TableCell className="text-right font-mono font-bold">{actual.day_qc_pass.toLocaleString()}</TableCell>
-                          <TableCell className="text-right font-mono">{actual.day_carton.toLocaleString()}</TableCell>
-                          <TableCell className="text-right">{actual.m_power_actual}</TableCell>
-                          <TableCell>
-                            {actual.has_blocker ? (
-                              <StatusBadge variant="danger" size="sm">Blocker</StatusBadge>
-                            ) : (
-                              <StatusBadge variant="success" size="sm">OK</StatusBadge>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {finishingActualsPagination.paginatedData.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                            No finishing end of day data found
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                )}
-              </div>
-              <TablePagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                startIndex={startIndex}
-                endIndex={endIndex}
-                totalItems={finishingData.length}
-                onPageChange={setCurrentPage}
-                onFirstPage={goToFirstPage}
-                onLastPage={goToLastPage}
-                onNextPage={goToNextPage}
-                onPreviousPage={goToPreviousPage}
-                canGoNext={canGoNext}
-                canGoPrevious={canGoPrevious}
-                pageSize={pageSize}
-                onPageSizeChange={setPageSize}
-              />
-            </CardContent>
-          </Card>
-        </>
+      {/* Finishing daily logs (targets + outputs from finishing_daily_logs table) */}
+      {department === 'finishing' && profile?.factory_id && (
+        <FinishingDailySheetsTable
+          factoryId={profile.factory_id}
+          dateRange={dateRange}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+        />
       )}
 
       {/* Cutting submissions */}
