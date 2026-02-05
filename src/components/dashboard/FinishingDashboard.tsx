@@ -24,6 +24,7 @@ interface DailyLogSummary {
   line_name: string;
   work_order_id: string | null;
   po_number: string | null;
+  buyer: string | null;
   style: string | null;
   log_type: "TARGET" | "OUTPUT";
   thread_cutting: number;
@@ -34,7 +35,9 @@ interface DailyLogSummary {
   get_up: number;
   poly: number;
   carton: number;
+  remarks: string | null;
   submitted_at: string;
+  production_date: string;
 }
 
 interface FinishingStats {
@@ -75,7 +78,7 @@ export function FinishingDashboard() {
       // Fetch today's daily logs from new table
       const { data: logsData } = await supabase
         .from('finishing_daily_logs')
-        .select('*, lines(id, line_id, name), work_orders(po_number, style)')
+        .select('*, lines(id, line_id, name), work_orders(po_number, buyer, style)')
         .eq('factory_id', profile.factory_id)
         .eq('production_date', today)
         .order('submitted_at', { ascending: false });
@@ -87,6 +90,7 @@ export function FinishingDashboard() {
         line_name: log.lines?.name || log.lines?.line_id || 'Unknown',
         work_order_id: log.work_order_id,
         po_number: log.work_orders?.po_number || null,
+        buyer: log.work_orders?.buyer || null,
         style: log.work_orders?.style || null,
         log_type: log.log_type,
         thread_cutting: log.thread_cutting || 0,
@@ -97,7 +101,9 @@ export function FinishingDashboard() {
         get_up: log.get_up || 0,
         poly: log.poly || 0,
         carton: log.carton || 0,
+        remarks: log.remarks || null,
         submitted_at: log.submitted_at,
+        production_date: log.production_date,
       }));
 
       // Calculate stats
@@ -243,7 +249,7 @@ export function FinishingDashboard() {
                       onClick={() => {
                         setSelectedLog({
                           id: log.id,
-                          production_date: new Date().toISOString().split('T')[0],
+                          production_date: log.production_date,
                           line_id: log.line_id,
                           work_order_id: log.work_order_id,
                           log_type: log.log_type,
@@ -256,7 +262,7 @@ export function FinishingDashboard() {
                           get_up: log.get_up,
                           poly: log.poly,
                           carton: log.carton,
-                          remarks: null,
+                          remarks: log.remarks,
                           submitted_at: log.submitted_at,
                           is_locked: false,
                           line: {
@@ -266,7 +272,7 @@ export function FinishingDashboard() {
                           work_order: log.po_number ? {
                             po_number: log.po_number,
                             style: log.style || '',
-                            buyer: '',
+                            buyer: log.buyer || '',
                           } : null,
                         });
                         setDetailModalOpen(true);
