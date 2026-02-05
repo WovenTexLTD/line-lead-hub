@@ -175,7 +175,7 @@ export default function Insights() {
       // Fetch previous period sewing data
       const { data: prevSewingActuals } = await supabase
         .from('sewing_actuals')
-        .select('good_today, manpower_actual, has_blocker')
+        .select('good_today, manpower_actual, has_blocker, production_date')
         .eq('factory_id', profile.factory_id)
         .gte('production_date', prevStartDateStr)
         .lt('production_date', startDateStr);
@@ -382,8 +382,8 @@ export default function Insights() {
         daysWithData: prevDaysWithData,
       });
 
-      const openBlockers = allBlockers.filter(b => b.blocker_status !== 'resolved').length;
-      const resolvedBlockers = allBlockers.filter(b => b.blocker_status === 'resolved').length;
+      const openBlockers = allBlockers.filter(b => (b as any).blocker_status !== 'resolved').length;
+      const resolvedBlockers = allBlockers.filter(b => (b as any).blocker_status === 'resolved').length;
 
       const avgEfficiency = totalSewingTarget > 0 ? (totalSewingOutput / totalSewingTarget) * 100 : 0;
       
