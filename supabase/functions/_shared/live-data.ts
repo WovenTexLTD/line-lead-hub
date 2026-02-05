@@ -254,6 +254,8 @@ interface WorkOrderAggregates {
   totalQty: number;
   totalSewingOutput: number;
   totalFinishingOutput: number;
+  todaySewingOutput: number;
+  todayFinishingOutput: number;
   avgProgress: number;
   topBuyers: { buyer: string; qty: number; orderCount: number }[];
   upcomingExFactory: { po: string; buyer: string; date: string }[];
@@ -404,7 +406,7 @@ function computeBlockerAggregates(data: any[]): BlockerAggregates {
 }
 
 async function fetchWorkOrders(
-  sb: SupabaseClient, factoryId: string, poHint: string | null, buyerHint: string | null,
+  sb: SupabaseClient, factoryId: string, poHint: string | null, buyerHint: string | null, today: string,
 ): Promise<LiveDataResult> {
   try {
     let q = sb.from("work_orders")
@@ -430,17 +432,19 @@ async function fetchWorkOrders(
     // Fetch both sewing and finishing output in parallel (matches frontend WorkOrdersView)
     const sewingMap = new Map<string, number>();
     const finishingMap = new Map<string, number>();
+    const sewingTodayMap = new Map<string, number>();
+    const finishingTodayMap = new Map<string, number>();
     if (data && data.length > 0) {
       const woIds = data.map((wo: any) => wo.id);
       const [sewingRes, finishingRes] = await Promise.all([
-        // Sewing output from production_updates_sewing
-        sb.from("production_updates_sewing")
-          .select("work_order_id, output_qty")
+        // Sewing output from sewing_actuals (source of truth — matches frontend)
+        sb.from("sewing_actuals")
+          .select("work_order_id, good_today, production_date")
           .eq("factory_id", factoryId)
           .in("work_order_id", woIds),
-        // Finishing output from finishing_daily_logs (carton, OUTPUT type) — source of truth for progress %
+        // Finishing output from finishing_daily_logs (poly + carton, OUTPUT type)
         sb.from("finishing_daily_logs")
-          .select("work_order_id, carton")
+          .select("work_order_id, poly, carton, production_date")
           .eq("factory_id", factoryId)
           .eq("log_type", "OUTPUT")
           .in("work_order_id", woIds),
@@ -450,7 +454,10 @@ async function fetchWorkOrders(
         for (const row of sewingRes.data) {
           const woId = row.work_order_id;
           if (woId) {
-            sewingMap.set(woId, (sewingMap.get(woId) || 0) + (row.output_qty || 0));
+            sewingMap.set(woId, (sewingMap.get(woId) || 0) + (row.good_today || 0));
+            if (row.production_date === today) {
+              sewingTodayMap.set(woId, (sewingTodayMap.get(woId) || 0) + (row.good_today || 0));
+            }
           }
         }
       }
@@ -458,17 +465,21 @@ async function fetchWorkOrders(
         for (const log of finishingRes.data) {
           const woId = log.work_order_id;
           if (woId) {
-            finishingMap.set(woId, (finishingMap.get(woId) || 0) + (log.carton || 0));
+            const output = (log.poly || 0) + (log.carton || 0);
+            finishingMap.set(woId, (finishingMap.get(woId) || 0) + output);
+            if (log.production_date === today) {
+              finishingTodayMap.set(woId, (finishingTodayMap.get(woId) || 0) + output);
+            }
           }
         }
       }
     }
 
     // ── Aggregate totals so LLM has exact numbers ──────────────────────────
-    const agg = computeWorkOrderAggregates(data || [], sewingMap, finishingMap);
+    const agg = computeWorkOrderAggregates(data || [], sewingMap, finishingMap, sewingTodayMap, finishingTodayMap);
 
     const label = poHint ? `Work Order: ${poHint}` : buyerHint ? `Work Orders: ${buyerHint}` : "Active Work Orders";
-    return { category: "work_orders", label, data: data || [], summary: fmtWorkOrders(data || [], sewingMap, finishingMap, agg), fetchedAt: new Date().toISOString() };
+    return { category: "work_orders", label, data: data || [], summary: fmtWorkOrders(data || [], sewingMap, finishingMap, sewingTodayMap, finishingTodayMap, agg, today), fetchedAt: new Date().toISOString() };
   } catch (err) { return errorResult("work_orders", "Work Orders", err); }
 }
 
@@ -476,13 +487,17 @@ function computeWorkOrderAggregates(
   data: any[],
   sewingMap: Map<string, number>,
   finishingMap: Map<string, number>,
+  sewingTodayMap: Map<string, number>,
+  finishingTodayMap: Map<string, number>,
 ): WorkOrderAggregates {
   const activeOrders = data.filter((wo: any) => wo.is_active === true);
   const activeCount = activeOrders.length;
   const totalQty = activeOrders.reduce((s: number, wo: any) => s + (wo.order_qty || 0), 0);
-  
+
   let totalSewingOutput = 0;
   let totalFinishingOutput = 0;
+  let todaySewingOutput = 0;
+  let todayFinishingOutput = 0;
   let totalProgress = 0;
   let ordersNearingCompletion = 0;
   let ordersBehindSchedule = 0;
@@ -495,6 +510,8 @@ function computeWorkOrderAggregates(
     const finishingOutput = finishingMap.get(wo.id) || 0;
     totalSewingOutput += sewingOutput;
     totalFinishingOutput += finishingOutput;
+    todaySewingOutput += sewingTodayMap.get(wo.id) || 0;
+    todayFinishingOutput += finishingTodayMap.get(wo.id) || 0;
     
     const orderQty = wo.order_qty || 0;
     const pct = orderQty > 0 ? Math.min(Math.round((finishingOutput / orderQty) * 100), 100) : 0;
@@ -538,6 +555,8 @@ function computeWorkOrderAggregates(
     totalQty,
     totalSewingOutput,
     totalFinishingOutput,
+    todaySewingOutput,
+    todayFinishingOutput,
     avgProgress,
     topBuyers,
     upcomingExFactory: upcomingExFactory.slice(0, 5),
@@ -936,15 +955,20 @@ function fmtWorkOrders(
   data: any[],
   sewingMap: Map<string, number>,
   finishingMap: Map<string, number>,
+  sewingTodayMap: Map<string, number>,
+  finishingTodayMap: Map<string, number>,
   agg: WorkOrderAggregates,
+  today: string,
 ): string {
   if (!data.length) return "No matching active work orders found.";
 
-  let t = `===== WORK ORDER AGGREGATES =====\n`;
+  let t = `===== WORK ORDER AGGREGATES (${today}) =====\n`;
   t += `Active Orders: ${agg.activeCount}\n`;
   t += `Total Order Quantity: ${agg.totalQty.toLocaleString()} pcs\n`;
-  t += `Total Sewing Output: ${agg.totalSewingOutput.toLocaleString()} pcs\n`;
-  t += `Total Finishing Output: ${agg.totalFinishingOutput.toLocaleString()} pcs\n`;
+  t += `Today's Sewing Output: ${agg.todaySewingOutput.toLocaleString()} pcs\n`;
+  t += `Today's Finishing Output: ${agg.todayFinishingOutput.toLocaleString()} pcs\n`;
+  t += `Cumulative Sewing Output: ${agg.totalSewingOutput.toLocaleString()} pcs\n`;
+  t += `Cumulative Finishing Output: ${agg.totalFinishingOutput.toLocaleString()} pcs\n`;
   t += `Average Progress: ${agg.avgProgress}%\n`;
   t += `Orders Nearing Completion (80%+): ${agg.ordersNearingCompletion}\n`;
   t += `Orders Behind Schedule: ${agg.ordersBehindSchedule}\n`;
@@ -966,16 +990,20 @@ function fmtWorkOrders(
   for (const wo of data) {
     const sewingOutput = sewingMap.get(wo.id) || 0;
     const finishingOutput = finishingMap.get(wo.id) || 0;
+    const sewingToday = sewingTodayMap.get(wo.id) || 0;
+    const finishingToday = finishingTodayMap.get(wo.id) || 0;
     const orderQty = wo.order_qty || 0;
     const woStatus = (wo.status || "active").toLowerCase();
     const isComplete = /complete|completed|done|shipped|closed/i.test(woStatus);
-    // Progress % uses finishing carton output (matches frontend source of truth)
+    // Progress % uses finishing output (matches frontend source of truth)
     const pct = isComplete ? 100 : (orderQty > 0 ? Math.min(Math.round((finishingOutput / orderQty) * 100), 100) : 0);
     const lineName = wo.lines?.name || wo.lines?.line_id || "Unassigned";
     t += `  - ${wo.po_number} | ${wo.buyer} / ${wo.style}`;
     if (wo.item) t += ` / ${wo.item}`;
     if (wo.color) t += ` (${wo.color})`;
-    t += `\n    Order: ${orderQty} pcs | Sewing Output: ${sewingOutput} pcs | Finishing Output: ${finishingOutput} pcs (${pct}%) | Line: ${lineName}\n`;
+    t += `\n    Order: ${orderQty} pcs | Line: ${lineName}`;
+    t += `\n    Today's Sewing: ${sewingToday} pcs | Today's Finishing: ${finishingToday} pcs`;
+    t += `\n    Cumulative Sewing: ${sewingOutput} pcs | Cumulative Finishing: ${finishingOutput} pcs (${pct}%)\n`;
     if (wo.planned_ex_factory) t += `    Planned Ex-Factory: ${wo.planned_ex_factory}`;
     if (wo.actual_ex_factory) t += ` | Actual: ${wo.actual_ex_factory}`;
     if (wo.planned_ex_factory || wo.actual_ex_factory) t += "\n";
@@ -1179,7 +1207,7 @@ export async function fetchLiveData(
     sewing_output: () => fetchSewingOutput(supabase, factoryId, today),
     sewing_targets: () => fetchSewingTargets(supabase, factoryId, today),
     blockers: () => fetchBlockers(supabase, factoryId),
-    work_orders: () => fetchWorkOrders(supabase, factoryId, classification.poNumberHint, classification.buyerHint),
+    work_orders: () => fetchWorkOrders(supabase, factoryId, classification.poNumberHint, classification.buyerHint, today),
     cutting: () => fetchCutting(supabase, factoryId, today),
     finishing: () => fetchFinishing(supabase, factoryId, today),
     storage: () => fetchStorage(supabase, factoryId),
