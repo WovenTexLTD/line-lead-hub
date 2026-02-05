@@ -68,16 +68,16 @@ export default function WorkOrdersView() {
       
       // Fetch production data in parallel
       const [sewingRes, finishingLogsRes, ledgerRes] = await Promise.all([
-        // Sewing output (for reference)
+        // Sewing output from end-of-day actuals
         supabase
-          .from('production_updates_sewing')
-          .select('work_order_id, output_qty')
+          .from('sewing_actuals')
+          .select('work_order_id, good_today')
           .eq('factory_id', profile.factory_id)
           .in('work_order_id', workOrderIds),
-        // Finishing daily logs - OUTPUT type, carton only (single source of truth)
+        // Finishing daily logs - OUTPUT type, poly + carton
         supabase
           .from('finishing_daily_logs')
-          .select('work_order_id, carton')
+          .select('work_order_id, poly, carton')
           .eq('factory_id', profile.factory_id)
           .eq('log_type', 'OUTPUT')
           .in('work_order_id', workOrderIds),
@@ -93,14 +93,14 @@ export default function WorkOrdersView() {
       const sewingByWo = new Map<string, number>();
       sewingRes.data?.forEach(u => {
         const current = sewingByWo.get(u.work_order_id || '') || 0;
-        sewingByWo.set(u.work_order_id || '', current + (u.output_qty || 0));
+        sewingByWo.set(u.work_order_id || '', current + (u.good_today || 0));
       });
 
-      // Aggregate carton output by work order (single source of truth for finished goods)
+      // Aggregate finishing output by work order (poly + carton)
       const cartonByWo = new Map<string, number>();
       finishingLogsRes.data?.forEach((log: any) => {
         const current = cartonByWo.get(log.work_order_id || '') || 0;
-        cartonByWo.set(log.work_order_id || '', current + (log.carton || 0));
+        cartonByWo.set(log.work_order_id || '', current + (log.poly || 0) + (log.carton || 0));
       });
 
       // Aggregate ledger consumption by work order

@@ -155,19 +155,34 @@ export default function Insights() {
       prevStartDate.setDate(prevStartDate.getDate() - days);
       const prevStartDateStr = prevStartDate.toISOString().split('T')[0];
 
-      // Fetch sewing data
-      const { data: sewingData } = await supabase
-        .from('production_updates_sewing')
-        .select('*, lines(name, line_id), work_orders(po_number, buyer, style, order_qty), blocker_types(name)')
+      // Fetch sewing actuals (end-of-day output, manpower, blockers)
+      const { data: sewingActualsData } = await supabase
+        .from('sewing_actuals')
+        .select('*, lines(name, line_id), work_orders(po_number, buyer, style, order_qty), blocker_types:blocker_type_id(name)')
         .eq('factory_id', profile.factory_id)
         .gte('production_date', startDateStr)
         .lte('production_date', today)
         .order('production_date', { ascending: true });
 
+      // Fetch sewing targets (morning targets)
+      const { data: sewingTargetsData } = await supabase
+        .from('sewing_targets')
+        .select('production_date, line_id, per_hour_target, manpower_planned, lines(name, line_id)')
+        .eq('factory_id', profile.factory_id)
+        .gte('production_date', startDateStr)
+        .lte('production_date', today);
+
       // Fetch previous period sewing data
-      const { data: prevSewingData } = await supabase
-        .from('production_updates_sewing')
-        .select('output_qty, target_qty, manpower, has_blocker')
+      const { data: prevSewingActuals } = await supabase
+        .from('sewing_actuals')
+        .select('good_today, manpower_actual, has_blocker')
+        .eq('factory_id', profile.factory_id)
+        .gte('production_date', prevStartDateStr)
+        .lt('production_date', startDateStr);
+
+      const { data: prevSewingTargets } = await supabase
+        .from('sewing_targets')
+        .select('per_hour_target')
         .eq('factory_id', profile.factory_id)
         .gte('production_date', prevStartDateStr)
         .lt('production_date', startDateStr);
@@ -189,7 +204,7 @@ export default function Insights() {
         .eq('factory_id', profile.factory_id)
         .eq('log_type', 'OUTPUT')
         .gte('production_date', prevStartDateStr)
-        .lt('production_date', startDateStr);
+        .lte('production_date', startDateStr);
 
       // Fetch work orders for progress tracking
       const { data: workOrders } = await supabase
@@ -200,11 +215,11 @@ export default function Insights() {
 
       // Process daily data
       const dailyMap = new Map<string, DailyData>();
-      
-      sewingData?.forEach(u => {
-        const existing = dailyMap.get(u.production_date) || {
-          date: u.production_date,
-          displayDate: new Date(u.production_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+
+      const getOrCreateDaily = (date: string) => {
+        return dailyMap.get(date) || {
+          date,
+          displayDate: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
           sewingOutput: 0,
           sewingTarget: 0,
           finishingQcPass: 0,
@@ -212,26 +227,28 @@ export default function Insights() {
           blockers: 0,
           manpower: 0,
         };
-        existing.sewingOutput += u.output_qty || 0;
-        existing.sewingTarget += u.target_qty || 0;
+      };
+
+      // Sewing actuals → output, manpower, blockers
+      sewingActualsData?.forEach(u => {
+        const existing = getOrCreateDaily(u.production_date);
+        existing.sewingOutput += u.good_today || 0;
         if (u.has_blocker) existing.blockers += 1;
-        existing.manpower += u.manpower || 0;
+        existing.manpower += u.manpower_actual || 0;
         dailyMap.set(u.production_date, existing);
       });
 
+      // Sewing targets → daily target (per_hour_target * 8)
+      sewingTargetsData?.forEach(t => {
+        const existing = getOrCreateDaily(t.production_date);
+        existing.sewingTarget += (t.per_hour_target || 0) * 8;
+        dailyMap.set(t.production_date, existing);
+      });
+
+      // Finishing daily logs → poly + carton
       finishingDailyLogs?.forEach(u => {
-        const existing = dailyMap.get(u.production_date) || {
-          date: u.production_date,
-          displayDate: new Date(u.production_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          sewingOutput: 0,
-          sewingTarget: 0,
-          finishingQcPass: 0,
-          efficiency: 0,
-          blockers: 0,
-          manpower: 0,
-        };
-        // Total Finishing Output = carton only
-        existing.finishingQcPass += (u.carton || 0);
+        const existing = getOrCreateDaily(u.production_date);
+        existing.finishingQcPass += (u.poly || 0) + (u.carton || 0);
         dailyMap.set(u.production_date, existing);
       });
 
@@ -245,7 +262,9 @@ export default function Insights() {
 
       // Process line performance
       const lineMap = new Map<string, LinePerformance>();
-      sewingData?.forEach(u => {
+
+      // From sewing actuals: output, manpower, blockers
+      sewingActualsData?.forEach(u => {
         const lineId = u.line_id;
         const lineName = u.lines?.name || u.lines?.line_id || 'Unknown';
         const existing = lineMap.get(lineId) || {
@@ -258,11 +277,28 @@ export default function Insights() {
           submissions: 0,
           blockers: 0,
         };
-        existing.totalOutput += u.output_qty || 0;
-        existing.totalTarget += u.target_qty || 0;
-        existing.avgManpower += u.manpower || 0;
+        existing.totalOutput += u.good_today || 0;
+        existing.avgManpower += u.manpower_actual || 0;
         existing.submissions += 1;
         if (u.has_blocker) existing.blockers += 1;
+        lineMap.set(lineId, existing);
+      });
+
+      // From sewing targets: daily target per line
+      sewingTargetsData?.forEach(t => {
+        const lineId = t.line_id;
+        const lineName = t.lines?.name || t.lines?.line_id || 'Unknown';
+        const existing = lineMap.get(lineId) || {
+          lineName,
+          lineId,
+          totalOutput: 0,
+          totalTarget: 0,
+          efficiency: 0,
+          avgManpower: 0,
+          submissions: 0,
+          blockers: 0,
+        };
+        existing.totalTarget += (t.per_hour_target || 0) * 8;
         lineMap.set(lineId, existing);
       });
 
@@ -274,10 +310,10 @@ export default function Insights() {
 
       setLinePerformance(linePerformanceArray);
 
-      // Process blocker breakdown (blockers only come from sewing now)
+      // Process blocker breakdown (from sewing actuals)
       const blockerMap = new Map<string, { count: number; impact: string }>();
       const allBlockers = [
-        ...(sewingData?.filter(u => u.has_blocker) || []),
+        ...(sewingActualsData?.filter(u => u.has_blocker) || []),
       ];
 
       allBlockers.forEach(b => {
@@ -307,10 +343,10 @@ export default function Insights() {
         });
       });
 
-      sewingData?.forEach(u => {
+      sewingActualsData?.forEach(u => {
         if (u.work_order_id && woProgressMap.has(u.work_order_id)) {
           const wo = woProgressMap.get(u.work_order_id)!;
-          wo.totalOutput += u.output_qty || 0;
+          wo.totalOutput += u.good_today || 0;
           wo.progress = wo.orderQty > 0 ? Math.round((wo.totalOutput / wo.orderQty) * 100) : 0;
         }
       });
@@ -322,19 +358,19 @@ export default function Insights() {
 
       setWorkOrderProgress(woProgressArray);
 
-      // Calculate summary - Total Finishing Output = carton only from finishing_daily_logs
-      const totalSewingOutput = sewingData?.reduce((sum, u) => sum + (u.output_qty || 0), 0) || 0;
-      const totalSewingTarget = sewingData?.reduce((sum, u) => sum + (u.target_qty || 0), 0) || 0;
-      const totalFinishingQcPass = finishingDailyLogs?.reduce((sum, u) => sum + (u.carton || 0), 0) || 0;
-      const totalManpower = sewingData?.reduce((sum, u) => sum + (u.manpower || 0), 0) || 0;
-      
-      const prevTotalOutput = prevSewingData?.reduce((sum, u) => sum + (u.output_qty || 0), 0) || 0;
-      const prevTotalTarget = prevSewingData?.reduce((sum, u) => sum + (u.target_qty || 0), 0) || 0;
-      const prevTotalQcPass = prevFinishingDailyLogs?.reduce((sum, u) => sum + (u.carton || 0), 0) || 0;
+      // Calculate summary
+      const totalSewingOutput = sewingActualsData?.reduce((sum, u) => sum + (u.good_today || 0), 0) || 0;
+      const totalSewingTarget = sewingTargetsData?.reduce((sum, t) => sum + ((t.per_hour_target || 0) * 8), 0) || 0;
+      const totalFinishingQcPass = finishingDailyLogs?.reduce((sum, u) => sum + (u.poly || 0) + (u.carton || 0), 0) || 0;
+      const totalManpower = sewingActualsData?.reduce((sum, u) => sum + (u.manpower_actual || 0), 0) || 0;
+
+      const prevTotalOutput = prevSewingActuals?.reduce((sum, u) => sum + (u.good_today || 0), 0) || 0;
+      const prevTotalTarget = prevSewingTargets?.reduce((sum, t) => sum + ((t.per_hour_target || 0) * 8), 0) || 0;
+      const prevTotalQcPass = prevFinishingDailyLogs?.reduce((sum, u) => sum + (u.poly || 0) + (u.carton || 0), 0) || 0;
       const prevEfficiency = prevTotalTarget > 0 ? (prevTotalOutput / prevTotalTarget) * 100 : 0;
-      const prevTotalBlockers = prevSewingData?.filter(u => u.has_blocker).length || 0;
-      const prevTotalManpower = prevSewingData?.reduce((sum, u) => sum + (u.manpower || 0), 0) || 0;
-      const prevDaysWithData = new Set(prevSewingData?.map(u => u.output_qty) || []).size;
+      const prevTotalBlockers = prevSewingActuals?.filter(u => u.has_blocker).length || 0;
+      const prevTotalManpower = prevSewingActuals?.reduce((sum, u) => sum + (u.manpower_actual || 0), 0) || 0;
+      const prevDaysWithData = new Set(prevSewingActuals?.map(u => u.production_date) || []).size;
 
       // Set previous period data for comparison
       setPreviousPeriodData({
@@ -342,7 +378,7 @@ export default function Insights() {
         totalQcPass: prevTotalQcPass,
         avgEfficiency: Math.round(prevEfficiency),
         totalBlockers: prevTotalBlockers,
-        avgManpower: prevSewingData && prevSewingData.length > 0 ? Math.round(prevTotalManpower / prevSewingData.length) : 0,
+        avgManpower: prevSewingActuals && prevSewingActuals.length > 0 ? Math.round(prevTotalManpower / prevSewingActuals.length) : 0,
         daysWithData: prevDaysWithData,
       });
 
@@ -368,7 +404,7 @@ export default function Insights() {
         totalBlockers: allBlockers.length,
         openBlockers,
         resolvedBlockers,
-        avgManpower: sewingData && sewingData.length > 0 ? Math.round(totalManpower / sewingData.length) : 0,
+        avgManpower: sewingActualsData && sewingActualsData.length > 0 ? Math.round(totalManpower / sewingActualsData.length) : 0,
         daysWithData: dailyDataArray.length,
         topPerformingLine: linePerformanceArray[0]?.lineName || null,
         worstPerformingLine: linePerformanceArray[linePerformanceArray.length - 1]?.lineName || null,
