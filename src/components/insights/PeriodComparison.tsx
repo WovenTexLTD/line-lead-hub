@@ -55,7 +55,7 @@ export function PeriodComparison({ currentPeriod, previousPeriod, periodDays }: 
 
   const metrics = [
     {
-      label: "Total Output",
+      label: "Total Sewing Output",
       icon: TrendingUp,
       current: currentPeriod.totalOutput,
       previous: previousPeriod.totalOutput,
@@ -63,7 +63,7 @@ export function PeriodComparison({ currentPeriod, previousPeriod, periodDays }: 
       format: (v: number) => v.toLocaleString(),
     },
     {
-      label: "Total QC Pass",
+      label: "Total Finishing Output",
       icon: Package,
       current: currentPeriod.totalQcPass,
       previous: previousPeriod.totalQcPass,

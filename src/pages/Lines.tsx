@@ -24,7 +24,8 @@ interface Line {
   is_active: boolean;
   targetSubmitted: boolean;
   eodSubmitted: boolean;
-  todayOutput: number;
+  sewingOutput: number;
+  finishingOutput: number;
   currentPO: string | null;
 }
 
@@ -52,82 +53,98 @@ export default function Lines() {
     const today = new Date().toISOString().split('T')[0];
 
     try {
-      // Fetch lines with unit and floor info
-      const { data: linesData } = await supabase
-        .from('lines')
-        .select('*, units(name), floors(name)')
-        .eq('factory_id', profile.factory_id)
-        .order('line_id');
+      // Fetch all data in parallel
+      const [linesRes, sewingTargetsRes, sewingActualsRes, finishingLogsRes, workOrdersRes] = await Promise.all([
+        supabase
+          .from('lines')
+          .select('*, units(name), floors(name)')
+          .eq('factory_id', profile.factory_id)
+          .order('line_id'),
+        supabase
+          .from('sewing_targets')
+          .select('line_id, work_order_id')
+          .eq('factory_id', profile.factory_id)
+          .eq('production_date', today),
+        supabase
+          .from('sewing_actuals')
+          .select('line_id, work_order_id, good_today')
+          .eq('factory_id', profile.factory_id)
+          .eq('production_date', today),
+        supabase
+          .from('finishing_daily_logs')
+          .select('line_id, work_order_id, log_type, poly, carton')
+          .eq('factory_id', profile.factory_id)
+          .eq('production_date', today),
+        supabase
+          .from('work_orders')
+          .select('id, line_id, po_number')
+          .eq('factory_id', profile.factory_id)
+          .eq('is_active', true),
+      ]);
 
-      // Fetch today's targets (sewing + finishing)
-      const { data: sewingTargets } = await supabase
-        .from('sewing_targets')
-        .select('line_id')
-        .eq('factory_id', profile.factory_id)
-        .eq('production_date', today);
+      const linesData = linesRes.data || [];
+      const sewingTargets = sewingTargetsRes.data || [];
+      const sewingActuals = sewingActualsRes.data || [];
+      const finishingLogs = finishingLogsRes.data || [];
+      const workOrders = workOrdersRes.data || [];
 
-      const { data: finishingTargets } = await supabase
-        .from('finishing_targets')
-        .select('line_id')
-        .eq('factory_id', profile.factory_id)
-        .eq('production_date', today);
-
-      // Fetch today's EOD actuals (sewing + finishing)
-      const { data: sewingActuals } = await supabase
-        .from('sewing_actuals')
-        .select('line_id, good_today, work_orders(po_number)')
-        .eq('factory_id', profile.factory_id)
-        .eq('production_date', today);
-
-      const { data: finishingActuals } = await supabase
-        .from('finishing_actuals')
-        .select('line_id, day_qc_pass, work_orders(po_number)')
-        .eq('factory_id', profile.factory_id)
-        .eq('production_date', today);
-
-      // Fetch current work orders assigned to lines
-      const { data: workOrders } = await supabase
-        .from('work_orders')
-        .select('id, line_id, po_number')
-        .eq('factory_id', profile.factory_id)
-        .eq('is_active', true);
-
-      // Build sets for target submissions
-      const targetSubmittedSet = new Set<string>();
-      sewingTargets?.forEach(t => targetSubmittedSet.add(t.line_id));
-      finishingTargets?.forEach(t => targetSubmittedSet.add(t.line_id));
-
-      // Build map for EOD submissions with output
-      const eodMap = new Map<string, { submitted: boolean; output: number; po: string | null }>();
-      
-      sewingActuals?.forEach(u => {
-        const existing = eodMap.get(u.line_id) || { submitted: false, output: 0, po: null };
-        eodMap.set(u.line_id, {
-          submitted: true,
-          output: existing.output + (u.good_today || 0),
-          po: u.work_orders?.po_number || existing.po,
-        });
-      });
-
-      finishingActuals?.forEach(u => {
-        const existing = eodMap.get(u.line_id) || { submitted: false, output: 0, po: null };
-        eodMap.set(u.line_id, {
-          submitted: true,
-          output: existing.output + (u.day_qc_pass || 0),
-          po: u.work_orders?.po_number || existing.po,
-        });
-      });
-
-      // Map work orders to lines
-      const workOrderMap = new Map<string, string>();
-      workOrders?.forEach(wo => {
+      // Build line → active work order maps
+      const lineToWoId = new Map<string, string>();
+      const lineToPoNumber = new Map<string, string>();
+      workOrders.forEach(wo => {
         if (wo.line_id) {
-          workOrderMap.set(wo.line_id, wo.po_number);
+          lineToWoId.set(wo.line_id, wo.id);
+          lineToPoNumber.set(wo.line_id, wo.po_number);
         }
       });
 
-      const formattedLines: Line[] = (linesData || []).map(line => {
-        const eodData = eodMap.get(line.id);
+      // Helper: check if a record matches the line's active PO
+      const matchesActivePO = (lineId: string, woId: string | null) => {
+        const activeWoId = lineToWoId.get(lineId);
+        if (!activeWoId) return true; // no active WO — include all
+        return woId === activeWoId;
+      };
+
+      // Build target submitted set (PO-scoped)
+      const targetSubmittedSet = new Set<string>();
+      sewingTargets.forEach(t => {
+        if (matchesActivePO(t.line_id, t.work_order_id)) {
+          targetSubmittedSet.add(t.line_id);
+        }
+      });
+      finishingLogs.filter(l => l.log_type === 'TARGET').forEach(t => {
+        if (matchesActivePO(t.line_id, t.work_order_id)) {
+          targetSubmittedSet.add(t.line_id);
+        }
+      });
+
+      // Build sewing EOD map (PO-scoped)
+      const sewingEodMap = new Map<string, { submitted: boolean; output: number }>();
+      sewingActuals.forEach(u => {
+        if (matchesActivePO(u.line_id, u.work_order_id)) {
+          const existing = sewingEodMap.get(u.line_id) || { submitted: false, output: 0 };
+          sewingEodMap.set(u.line_id, {
+            submitted: true,
+            output: existing.output + (u.good_today || 0),
+          });
+        }
+      });
+
+      // Build finishing EOD map (PO-scoped)
+      const finishingEodMap = new Map<string, { submitted: boolean; output: number }>();
+      finishingLogs.filter(l => l.log_type === 'OUTPUT').forEach(u => {
+        if (matchesActivePO(u.line_id, u.work_order_id)) {
+          const existing = finishingEodMap.get(u.line_id) || { submitted: false, output: 0 };
+          finishingEodMap.set(u.line_id, {
+            submitted: true,
+            output: existing.output + (u.poly || 0) + (u.carton || 0),
+          });
+        }
+      });
+
+      const formattedLines: Line[] = linesData.map(line => {
+        const sewingEod = sewingEodMap.get(line.id);
+        const finishingEod = finishingEodMap.get(line.id);
         return {
           id: line.id,
           line_id: line.line_id,
@@ -136,9 +153,10 @@ export default function Lines() {
           floor_name: line.floors?.name || null,
           is_active: line.is_active,
           targetSubmitted: targetSubmittedSet.has(line.id),
-          eodSubmitted: eodData?.submitted || false,
-          todayOutput: eodData?.output || 0,
-          currentPO: workOrderMap.get(line.id) || eodData?.po || null,
+          eodSubmitted: !!(sewingEod?.submitted || finishingEod?.submitted),
+          sewingOutput: sewingEod?.output || 0,
+          finishingOutput: finishingEod?.output || 0,
+          currentPO: lineToPoNumber.get(line.id) || null,
         };
       });
 
@@ -228,7 +246,8 @@ export default function Lines() {
                   <TableHead>Current PO</TableHead>
                   <TableHead className="text-center">Target Status</TableHead>
                   <TableHead className="text-center">EOD Status</TableHead>
-                  <TableHead className="text-right">Today's Output</TableHead>
+                  <TableHead className="text-right">Sewing</TableHead>
+                  <TableHead className="text-right">Finishing</TableHead>
                   <TableHead className="text-center">Active</TableHead>
                 </TableRow>
               </TableHeader>
@@ -285,7 +304,10 @@ export default function Lines() {
                       )}
                     </TableCell>
                     <TableCell className="text-right font-mono font-bold">
-                      {line.todayOutput > 0 ? line.todayOutput.toLocaleString() : '-'}
+                      {line.sewingOutput > 0 ? line.sewingOutput.toLocaleString() : '-'}
+                    </TableCell>
+                    <TableCell className="text-right font-mono font-bold">
+                      {line.finishingOutput > 0 ? line.finishingOutput.toLocaleString() : '-'}
                     </TableCell>
                     <TableCell className="text-center">
                       {line.is_active ? (
@@ -298,7 +320,7 @@ export default function Lines() {
                 ))}
                 {filteredLines.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                       No lines found
                     </TableCell>
                   </TableRow>
