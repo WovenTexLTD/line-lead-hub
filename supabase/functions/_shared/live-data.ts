@@ -160,16 +160,44 @@ export function classifyMessage(message: string): Classification {
 export function getTodayForFactory(timezone: string | null): string {
   const tz = timezone || "Asia/Dhaka";
   const now = new Date();
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: tz,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(now);
-
-  const y = parts.find((p) => p.type === "year")!.value;
-  const m = parts.find((p) => p.type === "month")!.value;
-  const d = parts.find((p) => p.type === "day")!.value;
+  
+  // Use toLocaleDateString with explicit locale and options for reliable formatting
+  // The "sv-SE" locale naturally produces YYYY-MM-DD format
+  try {
+    const dateStr = now.toLocaleDateString("sv-SE", { timeZone: tz });
+    // Validate format YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      return dateStr;
+    }
+  } catch (e) {
+    console.warn("[getTodayForFactory] toLocaleDateString failed:", e);
+  }
+  
+  // Fallback: manually calculate offset for Asia/Dhaka (UTC+6)
+  // This is more reliable in edge environments
+  const utcNow = now.getTime() + (now.getTimezoneOffset() * 60000);
+  let offsetHours = 6; // Default to Asia/Dhaka (UTC+6)
+  
+  // Map common factory timezones to their UTC offsets
+  const tzOffsets: Record<string, number> = {
+    "Asia/Dhaka": 6,
+    "Asia/Kolkata": 5.5,
+    "Asia/Ho_Chi_Minh": 7,
+    "Asia/Bangkok": 7,
+    "Asia/Jakarta": 7,
+    "Asia/Shanghai": 8,
+    "UTC": 0,
+  };
+  
+  if (tz in tzOffsets) {
+    offsetHours = tzOffsets[tz];
+  }
+  
+  const localTime = new Date(utcNow + (offsetHours * 3600000));
+  const y = localTime.getUTCFullYear();
+  const m = String(localTime.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(localTime.getUTCDate()).padStart(2, "0");
+  
   return `${y}-${m}-${d}`;
 }
 
