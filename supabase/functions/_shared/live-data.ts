@@ -129,9 +129,9 @@ export function classifyMessage(message: string): Classification {
     wantsSummary = true;
   }
 
-  // Extract PO number hint
-  const poMatch = lower.match(/po[- ]?(\d{2,6})/i);
-  const poNumberHint = poMatch ? `PO-${poMatch[1].padStart(3, "0")}` : null;
+  // Extract PO number hint (supports alphanumeric POs like A80704, PO-12345, etc.)
+  const poMatch = lower.match(/po[- ]?([a-z]?\d{3,6})/i);
+  const poNumberHint = poMatch ? poMatch[1].toUpperCase() : null;
   if (poNumberHint) cats.add("work_orders");
 
   // Extract buyer/brand hint — strip stopwords + production keywords, whatever remains is the buyer hint
@@ -437,27 +437,32 @@ async function fetchWorkOrders(
     if (data && data.length > 0) {
       const woIds = data.map((wo: any) => wo.id);
       const [sewingRes, finishingRes] = await Promise.all([
-        // Sewing output from sewing_actuals (source of truth — matches frontend)
+        // Sewing output from sewing_actuals — filter by today (matches Lines page query).
+        // Uses cumulative_good_total for all-time totals instead of fetching every
+        // historical row (which can exceed Supabase's default 1000-row limit).
         sb.from("sewing_actuals")
-          .select("work_order_id, good_today, production_date")
+          .select("work_order_id, good_today, cumulative_good_total")
           .eq("factory_id", factoryId)
+          .eq("production_date", today)
           .in("work_order_id", woIds),
         // Finishing output from finishing_daily_logs (poly + carton, OUTPUT type)
+        // No cumulative column available, so fetch all dates with explicit limit.
         sb.from("finishing_daily_logs")
           .select("work_order_id, poly, carton, production_date")
           .eq("factory_id", factoryId)
           .eq("log_type", "OUTPUT")
-          .in("work_order_id", woIds),
+          .in("work_order_id", woIds)
+          .limit(5000),
       ]);
 
       if (sewingRes.data) {
         for (const row of sewingRes.data) {
           const woId = row.work_order_id;
           if (woId) {
-            sewingMap.set(woId, (sewingMap.get(woId) || 0) + (row.good_today || 0));
-            if (row.production_date === today) {
-              sewingTodayMap.set(woId, (sewingTodayMap.get(woId) || 0) + (row.good_today || 0));
-            }
+            sewingTodayMap.set(woId, (sewingTodayMap.get(woId) || 0) + (row.good_today || 0));
+            // cumulative_good_total includes today; fall back to good_today when not set
+            const cum = row.cumulative_good_total || 0;
+            sewingMap.set(woId, (sewingMap.get(woId) || 0) + (cum > 0 ? cum : (row.good_today || 0)));
           }
         }
       }
