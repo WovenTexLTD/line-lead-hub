@@ -20,6 +20,7 @@ interface SewingTargetFields {
   type: 'sewing';
   manpower_planned?: number | null;
   ot_hours_planned?: number | null;
+  stage_name?: string | null;
   planned_stage_progress?: number | null;
   next_milestone?: string | null;
   estimated_ex_factory?: string | null;
@@ -138,10 +139,20 @@ export function TargetDetailModal({ target, open, onOpenChange }: TargetDetailMo
           {/* Sewing specific fields */}
           {isSewing && (
             <>
-              {(target as any).next_milestone && (
-                <div className="p-3 bg-muted/50 rounded-lg">
-                  <p className="text-sm font-medium mb-1">Next Milestone</p>
-                  <p className="text-sm">{(target as any).next_milestone}</p>
+              {((target as any).stage_name || (target as any).next_milestone) && (
+                <div className="p-3 bg-primary/10 rounded-lg flex gap-6">
+                  {(target as any).stage_name && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Planned Stage</p>
+                      <p className="font-semibold">{(target as any).stage_name}</p>
+                    </div>
+                  )}
+                  {(target as any).next_milestone && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Next Milestone</p>
+                      <p className="font-semibold">{(target as any).next_milestone}</p>
+                    </div>
+                  )}
                 </div>
               )}
               {(target as any).estimated_ex_factory && (

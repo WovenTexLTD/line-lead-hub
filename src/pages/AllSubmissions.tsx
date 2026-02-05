@@ -39,6 +39,7 @@ interface SewingTarget {
   submitted_at: string;
   production_date: string;
   is_late: boolean | null;
+  stages: { name: string } | null;
   lines: { line_id: string; name: string | null } | null;
   work_orders: { po_number: string; buyer: string; style: string; order_qty: number } | null;
 }
@@ -76,6 +77,7 @@ interface SewingActual {
   remarks: string | null;
   submitted_at: string;
   production_date: string;
+  stages: { name: string } | null;
   lines: { line_id: string; name: string | null } | null;
   work_orders: { po_number: string; buyer: string; style: string; order_qty: number } | null;
 }
@@ -167,7 +169,7 @@ export default function AllSubmissions() {
       ] = await Promise.all([
         supabase
           .from('sewing_targets')
-          .select('*, lines(line_id, name), work_orders(po_number, buyer, style, order_qty)')
+          .select('*, stages:planned_stage_id(name), lines(line_id, name), work_orders(po_number, buyer, style, order_qty)')
           .eq('factory_id', profile.factory_id)
           .gte('production_date', startDate.toISOString().split('T')[0])
           .lte('production_date', endDate.toISOString().split('T')[0])
@@ -183,7 +185,7 @@ export default function AllSubmissions() {
           .order('submitted_at', { ascending: false }),
         supabase
           .from('sewing_actuals')
-          .select('*, lines(line_id, name), work_orders(po_number, buyer, style, order_qty)')
+          .select('*, stages:actual_stage_id(name), lines(line_id, name), work_orders(po_number, buyer, style, order_qty)')
           .eq('factory_id', profile.factory_id)
           .gte('production_date', startDate.toISOString().split('T')[0])
           .lte('production_date', endDate.toISOString().split('T')[0])
@@ -304,6 +306,7 @@ export default function AllSubmissions() {
     setSelectedTarget({
       ...target,
       type: department,
+      stage_name: 'stages' in target ? target.stages?.name || null : null,
     });
     setTargetModalOpen(true);
   };
@@ -329,7 +332,9 @@ export default function AllSubmissions() {
         reject_qty: (actual as SewingActual).reject_today,
         rework_qty: (actual as SewingActual).rework_today,
         manpower: (actual as SewingActual).manpower_actual,
+        stage_name: (actual as SewingActual).stages?.name || null,
         stage_progress: (actual as SewingActual).actual_stage_progress,
+        next_milestone: null,
         ot_hours: (actual as SewingActual).ot_hours_actual,
       }),
       ...(department === 'finishing' && {

@@ -57,6 +57,7 @@ interface TargetSubmission {
   ot_hours_planned?: number | null;
   day_hour_planned?: number | null;
   day_over_time_planned?: number | null;
+  stage_name?: string | null;
   planned_stage_progress?: number | null;
   next_milestone?: string | null;
   estimated_ex_factory?: string | null;
@@ -88,6 +89,7 @@ interface EndOfDaySubmission {
   manpower?: number | null;
   reject_qty?: number | null;
   rework_qty?: number | null;
+  stage_name?: string | null;
   stage_progress?: number | null;
   ot_hours?: number | null;
   ot_manpower?: number | null;
@@ -279,7 +281,7 @@ export default function Dashboard() {
       // Fetch sewing targets
       const { data: sewingTargetsData, count: sewingTargetsCount } = await supabase
         .from('sewing_targets')
-        .select('*, lines(id, line_id, name), work_orders(po_number, buyer, style)', { count: 'exact' })
+        .select('*, stages:planned_stage_id(name), lines(id, line_id, name), work_orders(po_number, buyer, style)', { count: 'exact' })
         .eq('factory_id', profile.factory_id)
         .eq('production_date', today)
         .order('submitted_at', { ascending: false });
@@ -295,7 +297,7 @@ export default function Dashboard() {
       // Fetch sewing end of day (actuals) - from sewing_actuals table
       const { data: sewingActualsData, count: sewingCount } = await supabase
         .from('sewing_actuals')
-        .select('*, lines(id, line_id, name), work_orders(po_number, buyer, style)', { count: 'exact' })
+        .select('*, stages:actual_stage_id(name), lines(id, line_id, name), work_orders(po_number, buyer, style)', { count: 'exact' })
         .eq('factory_id', profile.factory_id)
         .eq('production_date', today)
         .order('submitted_at', { ascending: false });
@@ -381,6 +383,7 @@ export default function Dashboard() {
         per_hour_target: t.per_hour_target,
         manpower_planned: t.manpower_planned,
         ot_hours_planned: t.ot_hours_planned,
+        stage_name: t.stages?.name || null,
         planned_stage_progress: t.planned_stage_progress,
         next_milestone: t.next_milestone,
         estimated_ex_factory: t.estimated_ex_factory,
@@ -441,6 +444,7 @@ export default function Dashboard() {
           manpower: u.manpower_actual,
           reject_qty: u.reject_today,
           rework_qty: u.rework_today,
+          stage_name: u.stages?.name || null,
           stage_progress: u.actual_stage_progress,
           ot_hours: u.ot_hours_actual,
           ot_manpower: null, // Not in sewing_actuals
@@ -859,6 +863,7 @@ export default function Dashboard() {
                             manpower: update.manpower,
                             reject_qty: update.reject_qty,
                             rework_qty: update.rework_qty,
+                            stage_name: update.stage_name || null,
                             stage_progress: update.stage_progress,
                             ot_hours: update.ot_hours,
                             ot_manpower: update.ot_manpower,
