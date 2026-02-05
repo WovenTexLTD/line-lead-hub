@@ -21,6 +21,7 @@ interface SewingSubmission {
   manpower: number | null;
   reject_qty: number | null;
   rework_qty: number | null;
+  stage_name?: string | null;
   stage_progress: number | null;
   ot_hours: number | null;
   ot_manpower: number | null;
@@ -208,6 +209,12 @@ export function SubmissionDetailModal({ submission, open, onOpenChange, onDelete
               <div className="grid grid-cols-2 gap-3">
                 {isSewing ? (
                   <>
+                    {(submission as SewingSubmission).stage_name && (
+                      <div className="col-span-2 p-2 bg-primary/10 rounded-lg">
+                        <p className="text-xs text-muted-foreground">Planned Stage</p>
+                        <p className="font-semibold">{(submission as SewingSubmission).stage_name}</p>
+                      </div>
+                    )}
                     <MetricCard label="Output" value={(submission as SewingSubmission).output_qty} />
                     <MetricCard label="Target" value={(submission as SewingSubmission).target_qty} />
                     <MetricCard label="Manpower" value={(submission as SewingSubmission).manpower} />

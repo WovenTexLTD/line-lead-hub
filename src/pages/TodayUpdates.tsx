@@ -124,6 +124,7 @@ interface SewingTargetRow {
   is_late: boolean | null;
   remarks: string | null;
   submitted_at: string | null;
+  stages: { name: string } | null;
   lines: { line_id: string; name: string | null } | null;
   work_orders: { po_number: string; buyer: string; style: string } | null;
 }
@@ -147,6 +148,7 @@ interface SewingActualRow {
   blocker_type_id: string | null;
   remarks: string | null;
   submitted_at: string | null;
+  stages: { name: string } | null;
   lines: { line_id: string; name: string | null } | null;
   work_orders: { po_number: string; buyer: string; style: string } | null;
 }
@@ -178,6 +180,7 @@ type ModalSubmission = {
   manpower?: number | null;
   reject_qty?: number | null;
   rework_qty?: number | null;
+  stage_name?: string | null;
   stage_progress?: number | null;
   ot_hours?: number | null;
   ot_manpower?: number | null;
@@ -243,13 +246,13 @@ export default function TodayUpdates() {
           .order('submitted_at', { ascending: false }),
         supabase
           .from('sewing_targets')
-          .select('*, lines(line_id, name), work_orders(po_number, buyer, style)')
+          .select('*, stages:planned_stage_id(name), lines(line_id, name), work_orders(po_number, buyer, style)')
           .eq('factory_id', profile.factory_id)
           .eq('production_date', today)
           .order('submitted_at', { ascending: false }),
         supabase
           .from('sewing_actuals')
-          .select('*, lines(line_id, name), work_orders(po_number, buyer, style)')
+          .select('*, stages:actual_stage_id(name), lines(line_id, name), work_orders(po_number, buyer, style)')
           .eq('factory_id', profile.factory_id)
           .eq('production_date', today)
           .order('submitted_at', { ascending: false }),
@@ -522,6 +525,7 @@ export default function TodayUpdates() {
       manpower: update.manpower,
       reject_qty: update.reject_qty,
       rework_qty: update.rework_qty,
+      stage_name: null,
       stage_progress: update.stage_progress,
       ot_hours: update.ot_hours,
       ot_manpower: update.ot_manpower,
@@ -865,6 +869,7 @@ export default function TodayUpdates() {
                                 manpower: item.actual?.manpower_actual ?? item.target?.manpower_planned ?? null,
                                 reject_qty: item.actual?.reject_today ?? null,
                                 rework_qty: item.actual?.rework_today ?? null,
+                                stage_name: item.actual?.stages?.name || item.target?.stages?.name || null,
                                 stage_progress: item.actual?.actual_stage_progress ?? item.target?.planned_stage_progress ?? null,
                                 ot_hours: item.actual?.ot_hours_actual ?? item.target?.ot_hours_planned ?? null,
                                 ot_manpower: null,
@@ -1206,6 +1211,7 @@ export default function TodayUpdates() {
                               manpower: item.actual?.manpower_actual ?? item.target?.manpower_planned ?? null,
                               reject_qty: item.actual?.reject_today ?? null,
                               rework_qty: item.actual?.rework_today ?? null,
+                              stage_name: item.actual?.stages?.name || item.target?.stages?.name || null,
                               stage_progress: item.actual?.actual_stage_progress ?? item.target?.planned_stage_progress ?? null,
                               ot_hours: item.actual?.ot_hours_actual ?? item.target?.ot_hours_planned ?? null,
                               ot_manpower: null,
