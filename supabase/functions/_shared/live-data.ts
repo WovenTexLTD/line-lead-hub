@@ -1,7 +1,7 @@
 // Live factory data queries for the chatbot
 // Classifies user messages → fetches relevant production data → formats for LLM context
 
-import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import type { SupabaseClient } from "npm:@supabase/supabase-js@2.57.2";
 
 // ---------------------------------------------------------------------------
 // Types
