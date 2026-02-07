@@ -264,8 +264,11 @@ export function ExtrasLedgerModal({
                 Cancel
               </Button>
               <Button type="submit" className="flex-1" disabled={submitting}>
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Add Entry
+                {submitting ? (
+                  <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Submitting...</>
+                ) : (
+                  'Add Entry'
+                )}
               </Button>
             </div>
           </form>

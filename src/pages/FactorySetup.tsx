@@ -1059,8 +1059,11 @@ export default function FactorySetup() {
               onClick={handleSaveStorageSettings} 
               disabled={isSavingStorage}
             >
-              {isSavingStorage && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Save
+              {isSavingStorage ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
+              ) : (
+                'Save'
+              )}
             </Button>
           </div>
         </CardContent>
@@ -1249,8 +1252,11 @@ export default function FactorySetup() {
               onClick={handleBulkAddLines}
               disabled={isBulkAdding || bulkLineCount < 1 || !bulkUnitId || !bulkFloorId || !bulkLineNamePattern.trim()}
             >
-              {isBulkAdding && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Create {bulkLineCount} Lines
+              {isBulkAdding ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Creating...</>
+              ) : (
+                `Create ${bulkLineCount} Lines`
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1294,8 +1300,11 @@ function UnitForm({ initialData, onSave, onCancel, isSaving }: { initialData?: U
       <DialogFooter>
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
         <Button onClick={handleSave} disabled={isSaving}>
-          {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          Save
+          {isSaving ? (
+            <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
+          ) : (
+            'Save'
+          )}
         </Button>
       </DialogFooter>
     </div>
@@ -1349,8 +1358,11 @@ function FloorForm({ initialData, units, onSave, onCancel, isSaving }: { initial
       <DialogFooter>
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
         <Button onClick={handleSave} disabled={isSaving}>
-          {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          Save
+          {isSaving ? (
+            <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
+          ) : (
+            'Save'
+          )}
         </Button>
       </DialogFooter>
     </div>
@@ -1441,8 +1453,11 @@ function LineForm({ initialData, units, floors, onSave, onCancel, isSaving }: { 
       <DialogFooter>
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
         <Button onClick={handleSave} disabled={isSaving}>
-          {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          Save
+          {isSaving ? (
+            <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
+          ) : (
+            'Save'
+          )}
         </Button>
       </DialogFooter>
     </div>
@@ -1490,8 +1505,11 @@ function StageForm({ initialData, onSave, onCancel, isSaving }: { initialData?: 
       <DialogFooter>
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
         <Button onClick={handleSave} disabled={isSaving}>
-          {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          Save
+          {isSaving ? (
+            <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
+          ) : (
+            'Save'
+          )}
         </Button>
       </DialogFooter>
     </div>
@@ -1557,8 +1575,11 @@ function BlockerTypeForm({ initialData, onSave, onCancel, isSaving }: { initialD
       <DialogFooter>
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
         <Button onClick={handleSave} disabled={isSaving}>
-          {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          Save
+          {isSaving ? (
+            <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
+          ) : (
+            'Save'
+          )}
         </Button>
       </DialogFooter>
     </div>

@@ -3,6 +3,29 @@ import App from "./App.tsx";
 import "./index.css";
 import "./i18n/config";
 import { initializeCapacitor, initializePushNotifications } from "./lib/capacitor";
+import { logError } from "./lib/error-logger";
+
+// Global error handlers — catch unhandled errors and log to Supabase
+window.onerror = (message, source, lineno, colno, error) => {
+  logError({
+    message: typeof message === 'string' ? message : 'Unknown error',
+    stack: error?.stack,
+    source: 'window.onerror',
+    severity: 'error',
+    metadata: { fileSource: source, lineno, colno },
+  });
+};
+
+window.onunhandledrejection = (event: PromiseRejectionEvent) => {
+  const error = event.reason;
+  logError({
+    message: error?.message ?? String(error),
+    stack: error?.stack,
+    source: 'unhandledrejection',
+    severity: 'error',
+    metadata: { reason: String(error) },
+  });
+};
 
 // Register service worker for PWA (PROD only).
 // In DEV/preview, a Service Worker can cache Vite pre-bundled deps and cause

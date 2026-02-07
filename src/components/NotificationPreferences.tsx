@@ -276,8 +276,11 @@ export function NotificationPreferences() {
 
         <div className="flex justify-end pt-4 border-t">
           <Button onClick={saveAllPreferences} disabled={saving}>
-            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Save Preferences
+            {saving ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
+            ) : (
+              'Save Preferences'
+            )}
           </Button>
         </div>
       </CardContent>

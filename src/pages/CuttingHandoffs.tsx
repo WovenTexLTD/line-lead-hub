@@ -92,10 +92,16 @@ export default function CuttingHandoffs() {
         .eq("factory_id", profile.factory_id);
 
       if (error) throw error;
-      setUserLineIds((data || []).map(a => a.line_id));
+      const lineIds = (data || []).map(a => a.line_id);
+      setUserLineIds(lineIds);
+      // Only stop loading here if user has no line assignments and is not admin
+      // (fetchHandoffs won't be called, so we need to stop loading ourselves)
+      if (!isAdminOrHigher() && lineIds.length === 0) {
+        setLoading(false);
+      }
+      // Otherwise, loading stays true until fetchHandoffs completes
     } catch (error) {
       console.error("Error fetching user line assignments:", error);
-    } finally {
       setLoading(false);
     }
   }

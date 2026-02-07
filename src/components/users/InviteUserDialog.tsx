@@ -402,8 +402,11 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Invite User
+              {loading ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Inviting...</>
+              ) : (
+                'Invite User'
+              )}
             </Button>
           </DialogFooter>
         </form>

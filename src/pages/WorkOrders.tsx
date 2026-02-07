@@ -929,8 +929,11 @@ export default function WorkOrders() {
               Cancel
             </Button>
             <Button onClick={handleSave} disabled={isSaving}>
-              {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {dialogMode === 'create' ? 'Create' : 'Save'}
+              {isSaving ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
+              ) : (
+                dialogMode === 'create' ? 'Create' : 'Save'
+              )}
             </Button>
           </div>
         </DialogContent>
@@ -1040,8 +1043,11 @@ export default function WorkOrders() {
                   Cancel
                 </Button>
                 <Button onClick={confirmImport} disabled={isImporting}>
-                  {isImporting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Import {previewData.totalRows} Work Order{previewData.totalRows !== 1 ? 's' : ''}
+                  {isImporting ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Importing...</>
+                  ) : (
+                    `Import ${previewData.totalRows} Work Order${previewData.totalRows !== 1 ? 's' : ''}`
+                  )}
                 </Button>
               </div>
             </div>

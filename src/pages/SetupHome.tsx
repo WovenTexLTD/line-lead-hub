@@ -8,8 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  Loader2, 
+import {
+  Loader2,
   Settings,
   Rows3,
   ClipboardList,
@@ -20,7 +20,8 @@ import {
   ChevronRight,
   AlertTriangle,
   Factory,
-  Mail
+  Mail,
+  Bug
 } from "lucide-react";
 import { EmailScheduleSettings } from "@/components/insights/EmailScheduleSettings";
 
@@ -214,6 +215,13 @@ export default function SetupHome() {
       href: '/setup/dropdowns',
       stats: 'Configure form dropdowns',
     },
+    {
+      title: 'Error Logs',
+      description: 'View and manage application error logs',
+      icon: Bug,
+      href: '/setup/error-logs',
+      stats: 'Monitor app errors',
+    },
   ];
 
   return (
@@ -365,8 +373,11 @@ export default function SetupHome() {
             </div>
           </div>
           <Button onClick={handleSaveSettings} disabled={isSavingCutoff}>
-            {isSavingCutoff && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Save Settings
+            {isSavingCutoff ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
+            ) : (
+              'Save Settings'
+            )}
           </Button>
         </CardContent>
       </Card>

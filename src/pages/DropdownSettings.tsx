@@ -714,8 +714,11 @@ export default function DropdownSettings() {
               Cancel
             </Button>
             <Button onClick={handleSave} disabled={isSaving}>
-              {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {dialogMode === 'create' ? 'Create' : 'Save'}
+              {isSaving ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
+              ) : (
+                dialogMode === 'create' ? 'Create' : 'Save'
+              )}
             </Button>
           </div>
         </DialogContent>

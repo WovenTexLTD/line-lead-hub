@@ -406,8 +406,11 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
               Cancel
             </Button>
             <Button onClick={handleSave} disabled={loading || isOwnerOrHigher}>
-              {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Save Changes
+              {loading ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
+              ) : (
+                'Save Changes'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -428,8 +431,11 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
               onClick={handleRemoveAccess}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Remove Access
+              {loading ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Removing...</>
+              ) : (
+                'Remove Access'
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

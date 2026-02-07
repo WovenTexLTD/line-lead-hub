@@ -332,8 +332,11 @@ export function SubmissionDetailModal({ submission, open, onOpenChange, onDelete
               disabled={deleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Delete
+              {deleting ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Deleting...</>
+              ) : (
+                'Delete'
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

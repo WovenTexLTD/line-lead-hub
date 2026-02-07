@@ -29,6 +29,7 @@ import {
   Scissors,
   RefreshCw,
   Loader2,
+  Bug,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -83,6 +84,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Crosshair,
   ClipboardCheck,
   Scissors,
+  Bug,
 };
 
 const navLabelKeys: Record<string, string> = {

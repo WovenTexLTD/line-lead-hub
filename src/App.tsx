@@ -59,6 +59,7 @@ import CuttingEndOfDay from "./pages/CuttingEndOfDay";
 import CuttingSummary from "./pages/CuttingSummary";
 import CuttingAllSubmissions from "./pages/CuttingAllSubmissions";
 import CuttingHandoffs from "./pages/CuttingHandoffs";
+import ErrorLogs from "./pages/ErrorLogs";
 const queryClient = new QueryClient();
 
 function AppRoutes() {
@@ -159,6 +160,7 @@ function AppRoutes() {
         <Route path="/setup/dropdowns" element={<SubscriptionGate><DropdownSettings /></SubscriptionGate>} />
         <Route path="/setup/knowledge-base" element={<SubscriptionGate><KnowledgeBase /></SubscriptionGate>} />
         <Route path="/setup/chat-analytics" element={<SubscriptionGate><ChatAnalytics /></SubscriptionGate>} />
+        <Route path="/setup/error-logs" element={<SubscriptionGate><ErrorLogs /></SubscriptionGate>} />
         <Route path="/users" element={<SubscriptionGate><UsersPage /></SubscriptionGate>} />
         <Route path="/submissions" element={<SubscriptionGate><AllSubmissions /></SubscriptionGate>} />
         <Route path="/my-submissions" element={<SubscriptionGate><LegacyMySubmissionsRedirect /></SubscriptionGate>} />

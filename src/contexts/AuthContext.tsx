@@ -3,6 +3,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import type { AppRole } from '@/lib/constants';
+import { setErrorLoggerUserContext } from '@/lib/error-logger';
 
 const profileSchema = z.object({
   id: z.string(),
@@ -87,6 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setProfile(null);
           setRoles([]);
           setFactory(null);
+          setErrorLoggerUserContext(null, null);
           setLoading(false);
         }
       }
@@ -127,7 +129,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (profileData) {
         if (profileData.invitation_status === 'pending') {
-          await supabase
+          // Fire-and-forget: don't block on invitation status update
+          supabase
             .from('profiles')
             .update({ invitation_status: 'active' })
             .eq('id', userId);
@@ -140,14 +143,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         setProfile(profileResult.data);
+        setErrorLoggerUserContext(userId, profileResult.data.factory_id);
 
-        const { data: rolesData } = await supabase
-          .from('user_roles')
-          .select('role, factory_id')
-          .eq('user_id', userId);
+        // Fetch roles and factory in parallel (both only need userId/factory_id from profile)
+        const [rolesResponse, factoryResponse] = await Promise.all([
+          supabase
+            .from('user_roles')
+            .select('role, factory_id')
+            .eq('user_id', userId),
+          profileResult.data.factory_id
+            ? supabase
+                .from('factory_accounts')
+                .select('*')
+                .eq('id', profileResult.data.factory_id)
+                .maybeSingle()
+            : Promise.resolve({ data: null }),
+        ]);
 
-        if (rolesData) {
-          const rolesResult = z.array(userRoleSchema).safeParse(rolesData);
+        if (rolesResponse.data) {
+          const rolesResult = z.array(userRoleSchema).safeParse(rolesResponse.data);
           if (rolesResult.success) {
             const filtered = rolesResult.data.filter((r) => {
               if (profileResult.data.factory_id) return r.factory_id === profileResult.data.factory_id;
@@ -159,20 +173,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        if (profileResult.data.factory_id) {
-          const { data: factoryData } = await supabase
-            .from('factory_accounts')
-            .select('*')
-            .eq('id', profileResult.data.factory_id)
-            .maybeSingle();
-
-          if (factoryData) {
-            const factoryResult = factorySchema.safeParse(factoryData);
-            if (factoryResult.success) {
-              setFactory(factoryResult.data);
-            } else {
-              console.error('Invalid factory data:', factoryResult.error);
-            }
+        if (factoryResponse.data) {
+          const factoryResult = factorySchema.safeParse(factoryResponse.data);
+          if (factoryResult.success) {
+            setFactory(factoryResult.data);
+          } else {
+            console.error('Invalid factory data:', factoryResult.error);
           }
         }
       }
@@ -215,6 +221,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
     setRoles([]);
     setFactory(null);
+    setErrorLoggerUserContext(null, null);
     
     // Then attempt to sign out from Supabase (may fail if session already expired)
     try {
