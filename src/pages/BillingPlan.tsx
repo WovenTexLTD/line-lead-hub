@@ -34,6 +34,7 @@ import {
   Percent,
   AlertTriangle
 } from "lucide-react";
+import { useSubscription } from "@/hooks/useSubscription";
 import { ActiveLinesMeter } from "@/components/ActiveLinesMeter";
 import { useActiveLines } from "@/hooks/useActiveLines";
 import { 
@@ -62,6 +63,8 @@ export default function BillingPlan() {
   const [billingInterval, setBillingInterval] = useState<BillingInterval>('month');
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
+
+  const { isTrial, status: subStatus } = useSubscription();
 
   const currentTier = mapLegacyTier(factory?.subscription_tier || 'starter');
   const currentPlan = PLAN_TIERS[currentTier];
@@ -296,6 +299,29 @@ export default function BillingPlan() {
           Manage your subscription and active line usage
         </p>
       </div>
+
+      {/* Trial countdown banner */}
+      {isTrial && subStatus?.daysRemaining != null && (
+        <Card className="mb-6 border-amber-500/50 bg-amber-50/50 dark:bg-amber-950/20">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-amber-500/20 flex items-center justify-center shrink-0">
+                  <CreditCard className="h-5 w-5 text-amber-600" />
+                </div>
+                <div>
+                  <p className="font-semibold text-amber-800 dark:text-amber-200">
+                    {subStatus.daysRemaining} {subStatus.daysRemaining === 1 ? 'day' : 'days'} left on your trial
+                  </p>
+                  <p className="text-sm text-amber-700 dark:text-amber-300">
+                    Subscribe to a plan below to keep access after your trial ends.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Current Status Overview */}
       <div className="grid md:grid-cols-2 gap-6 mb-8">
