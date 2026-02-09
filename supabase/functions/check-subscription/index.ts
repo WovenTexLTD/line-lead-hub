@@ -408,7 +408,11 @@ serve(async (req) => {
     }
 
     if (factory.subscription_status === 'trialing') {
-      logStep("Access granted from DB status", { status: factory.subscription_status });
+      const trialEnd = factory.trial_end_date ? new Date(factory.trial_end_date) : null;
+      const daysRemaining = trialEnd && trialEnd > now
+        ? Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        : null;
+      logStep("Access granted from DB status", { status: factory.subscription_status, daysRemaining });
       return new Response(JSON.stringify({
         subscribed: true,
         hasAccess: true,
@@ -416,6 +420,8 @@ serve(async (req) => {
         currentTier: factory.subscription_tier || 'starter',
         maxLines: factory.max_lines || 30,
         factoryName: factory.name,
+        ...(daysRemaining !== null && { daysRemaining }),
+        ...(factory.trial_end_date && { trialEndDate: factory.trial_end_date }),
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,

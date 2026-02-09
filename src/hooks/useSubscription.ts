@@ -61,10 +61,16 @@ export function useSubscription() {
 
     // Check trialing status (Stripe trial)
     if (factory.subscription_status === 'trialing') {
+      const trialEnd = factory.trial_end_date ? new Date(factory.trial_end_date) : null;
+      const daysRemaining = trialEnd && trialEnd > now
+        ? Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        : undefined;
       return {
         subscribed: true,
         hasAccess: true,
         isTrial: true,
+        ...(daysRemaining !== undefined && { daysRemaining }),
+        ...(factory.trial_end_date && { trialEndDate: factory.trial_end_date }),
       };
     }
 

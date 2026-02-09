@@ -301,7 +301,7 @@ export default function BillingPlan() {
       </div>
 
       {/* Trial countdown banner */}
-      {isTrial && subStatus?.daysRemaining != null && (
+      {isTrial && (
         <Card className="mb-6 border-amber-500/50 bg-amber-50/50 dark:bg-amber-950/20">
           <CardContent className="p-4">
             <div className="flex items-center justify-between gap-4">
@@ -311,7 +311,9 @@ export default function BillingPlan() {
                 </div>
                 <div>
                   <p className="font-semibold text-amber-800 dark:text-amber-200">
-                    {subStatus.daysRemaining} {subStatus.daysRemaining === 1 ? 'day' : 'days'} left on your trial
+                    {subStatus?.daysRemaining != null
+                      ? `${subStatus.daysRemaining} ${subStatus.daysRemaining === 1 ? 'day' : 'days'} left on your trial`
+                      : "You're currently on a trial"}
                   </p>
                   <p className="text-sm text-amber-700 dark:text-amber-300">
                     Subscribe to a plan below to keep access after your trial ends.
