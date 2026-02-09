@@ -559,6 +559,7 @@ export default function AllSubmissions() {
                         <TableHead>Time</TableHead>
                         <TableHead>Line</TableHead>
                         <TableHead>PO</TableHead>
+                        <TableHead>Buyer</TableHead>
                         <TableHead className="text-right">Target/hr</TableHead>
                         <TableHead className="text-right">Manpower</TableHead>
                         <TableHead className="text-right">Progress</TableHead>
@@ -576,6 +577,7 @@ export default function AllSubmissions() {
                           <TableCell className="font-mono text-sm text-muted-foreground">{formatTime(target.submitted_at)}</TableCell>
                           <TableCell className="font-medium">{target.lines?.name || target.lines?.line_id}</TableCell>
                           <TableCell>{target.work_orders?.po_number || '-'}</TableCell>
+                          <TableCell>{target.work_orders?.buyer || '-'}</TableCell>
                           <TableCell className="text-right font-mono font-bold">{target.per_hour_target}</TableCell>
                           <TableCell className="text-right">{target.manpower_planned}</TableCell>
                           <TableCell className="text-right">{target.planned_stage_progress}%</TableCell>
@@ -590,7 +592,7 @@ export default function AllSubmissions() {
                       ))}
                       {sewingTargetsPagination.paginatedData.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                             No sewing targets found
                           </TableCell>
                         </TableRow>
@@ -607,6 +609,7 @@ export default function AllSubmissions() {
                         <TableHead>Time</TableHead>
                         <TableHead>Line</TableHead>
                         <TableHead>PO</TableHead>
+                        <TableHead>Buyer</TableHead>
                         <TableHead className="text-right">Good Today</TableHead>
                         <TableHead className="text-right">Cumulative</TableHead>
                         <TableHead className="text-right">Manpower</TableHead>
@@ -624,6 +627,7 @@ export default function AllSubmissions() {
                           <TableCell className="font-mono text-sm text-muted-foreground">{formatTime(actual.submitted_at)}</TableCell>
                           <TableCell className="font-medium">{actual.lines?.name || actual.lines?.line_id}</TableCell>
                           <TableCell>{actual.work_orders?.po_number || '-'}</TableCell>
+                          <TableCell>{actual.work_orders?.buyer || '-'}</TableCell>
                           <TableCell className="text-right font-mono font-bold">{actual.good_today.toLocaleString()}</TableCell>
                           <TableCell className="text-right font-mono">{actual.cumulative_good_total.toLocaleString()}</TableCell>
                           <TableCell className="text-right">{actual.manpower_actual}</TableCell>
@@ -638,7 +642,7 @@ export default function AllSubmissions() {
                       ))}
                       {sewingActualsPagination.paginatedData.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                             No sewing end of day data found
                           </TableCell>
                         </TableRow>

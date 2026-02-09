@@ -263,6 +263,7 @@ export function FinishingDailySheetsTable({
                       <TableHead>Date</TableHead>
                       <TableHead>Line</TableHead>
                       <TableHead>PO / Style</TableHead>
+                      <TableHead>Buyer</TableHead>
                       <TableHead className="text-right">Poly</TableHead>
                       <TableHead className="text-right">Carton</TableHead>
                       <TableHead>Status</TableHead>
@@ -294,6 +295,7 @@ export function FinishingDailySheetsTable({
                               <p className="text-xs text-muted-foreground">{log.style || "-"}</p>
                             </div>
                           </TableCell>
+                          <TableCell>{log.buyer || "-"}</TableCell>
                           <TableCell className="text-right">
                             <span className="font-mono font-bold text-success">
                               {log.poly.toLocaleString()}
@@ -322,7 +324,7 @@ export function FinishingDailySheetsTable({
                       ))}
                       {paginatedData.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                          <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
                             <Package className="h-12 w-12 mx-auto mb-3 opacity-30" />
                             <p>No {activeTab === "targets" ? "targets" : "outputs"} found</p>
                           </TableCell>

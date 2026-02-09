@@ -301,6 +301,7 @@ export function CuttingSubmissionsTable({
                   <TableHead>Date</TableHead>
                   <TableHead>Line</TableHead>
                   <TableHead>PO</TableHead>
+                  <TableHead>Buyer</TableHead>
                   <TableHead className="text-right">Order Qty</TableHead>
                   <TableHead className="text-right">Target</TableHead>
                   <TableHead className="text-right">Actual</TableHead>
@@ -311,7 +312,7 @@ export function CuttingSubmissionsTable({
               <TableBody>
                 {paginatedData.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                       No cutting submissions found
                     </TableCell>
                   </TableRow>
@@ -331,6 +332,7 @@ export function CuttingSubmissionsTable({
                           <Badge variant="outline">{s.lines?.name || s.lines?.line_id || "—"}</Badge>
                         </TableCell>
                         <TableCell>{s.work_orders?.po_number || s.po_no || "—"}</TableCell>
+                        <TableCell>{s.work_orders?.buyer || s.buyer || "—"}</TableCell>
                         <TableCell className="text-right">{s.order_qty?.toLocaleString() || "—"}</TableCell>
                         <TableCell className="text-right font-mono text-muted-foreground">
                           {s.cutting_capacity > 0 ? s.cutting_capacity.toLocaleString() : "—"}
