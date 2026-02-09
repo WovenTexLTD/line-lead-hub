@@ -278,7 +278,8 @@ export async function initializePushNotifications() {
 async function savePushToken(token: string) {
   try {
     const { supabase } = await import('@/integrations/supabase/client');
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data } = await supabase.auth.getUser();
+    const user = data?.user;
 
     if (user) {
       // Store token - you may want to create a separate table for push tokens

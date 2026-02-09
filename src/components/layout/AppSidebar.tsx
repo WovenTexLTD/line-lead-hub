@@ -48,6 +48,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSubscription } from "@/hooks/useSubscription";
 import { NAV_ITEMS, DEV_FACTORY_ID_PREFIX } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { openExternalUrl, isTauri } from "@/lib/capacitor";
@@ -135,6 +136,7 @@ interface NavItem {
 export function AppSidebar() {
   const { t } = useTranslation();
   const { profile, roles, factory, signOut } = useAuth();
+  const { isTrial, status } = useSubscription();
   const location = useLocation();
   const { state, toggleSidebar } = useSidebar();
   const collapsed = state === "collapsed";
@@ -274,10 +276,10 @@ export function AppSidebar() {
     // If department is 'both' or undefined, show all worker items
   }
 
-  // Hide dev-only pages (Knowledge Base, Chat Analytics) for non-dev factories
+  // Hide dev-only pages (Knowledge Base, Chat Analytics, Error Logs) for non-dev factories
   const isDevFactory = profile?.factory_id?.startsWith(DEV_FACTORY_ID_PREFIX);
   if (!isDevFactory) {
-    const devOnlyPaths = ['/setup/knowledge-base', '/setup/chat-analytics'];
+    const devOnlyPaths = ['/setup/knowledge-base', '/setup/chat-analytics', '/setup/error-logs'];
     navItems = navItems.filter(item => !devOnlyPaths.includes(item.path));
   }
 
@@ -467,6 +469,44 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
+      {/* Trial countdown badge */}
+      {isTrial && status?.daysRemaining != null && (
+        <div className={cn("border-t border-sidebar-border", collapsed ? "p-2" : "px-4 py-3")}>
+          <Link
+            to="/subscription"
+            className={cn(
+              "block rounded-lg transition-colors",
+              collapsed
+                ? "flex items-center justify-center"
+                : "p-3 bg-amber-500/10 hover:bg-amber-500/20"
+            )}
+          >
+            {collapsed ? (
+              <div className="relative" title={`${status.daysRemaining} days left on trial`}>
+                <CreditCard className="h-5 w-5 text-amber-500" />
+                <span className="absolute -top-1 -right-1.5 h-4 min-w-[16px] flex items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white px-0.5">
+                  {status.daysRemaining}
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-lg bg-amber-500/20 flex items-center justify-center shrink-0">
+                  <CreditCard className="h-4 w-4 text-amber-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">
+                    {status.daysRemaining} {status.daysRemaining === 1 ? 'day' : 'days'} left
+                  </p>
+                  <p className="text-xs text-sidebar-foreground/60">
+                    Upgrade to keep access
+                  </p>
+                </div>
+              </div>
+            )}
+          </Link>
+        </div>
+      )}
 
       <SidebarFooter className={cn("border-t border-sidebar-border", collapsed ? "p-2" : "p-4")}>
         {/* Version and Update */}

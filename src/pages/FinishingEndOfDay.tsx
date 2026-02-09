@@ -237,7 +237,7 @@ export default function FinishingEndOfDay() {
       }
     } catch (error: any) {
       console.error("Error submitting actuals:", error);
-      toast.error(error.message || t("forms.actualsSubmitError"));
+      toast.error(error?.message || t("forms.actualsSubmitError"));
     } finally {
       setSubmitting(false);
     }

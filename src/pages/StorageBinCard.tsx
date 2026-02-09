@@ -2,13 +2,15 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Package, Search, Plus, Save, AlertTriangle, Unlock, ChevronDown, ChevronUp } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
 import { format } from "date-fns";
+import { useOfflineSubmission } from "@/hooks/useOfflineSubmission";
 import {
   Command,
   CommandEmpty,
@@ -81,8 +83,9 @@ interface NewTransaction {
 export default function StorageBinCard() {
   const navigate = useNavigate();
   const { user, profile, isStorageUser, isAdminOrHigher } = useAuth();
-  const { toast } = useToast();
-  
+
+  const { submit: offlineSubmit } = useOfflineSubmission();
+
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [headerSaving, setHeaderSaving] = useState(false);
@@ -218,11 +221,7 @@ export default function StorageBinCard() {
       }
     } catch (error) {
       console.error("Error loading bin card:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load bin card",
-        variant: "destructive",
-      });
+      toast.error("Error", { description: "Failed to load bin card" });
     } finally {
       setLoading(false);
     }
@@ -281,17 +280,10 @@ export default function StorageBinCard() {
       if (error) throw error;
 
       setBinCard({ ...binCard, is_header_locked: true });
-      toast({
-        title: "Header saved",
-        description: "Bin card header has been saved and locked.",
-      });
+      toast.success("Header saved", { description: "Bin card header has been saved and locked." });
     } catch (error) {
       console.error("Error saving header:", error);
-      toast({
-        title: "Error",
-        description: "Failed to save header",
-        variant: "destructive",
-      });
+      toast.error("Error", { description: "Failed to save header" });
     } finally {
       setHeaderSaving(false);
     }
@@ -310,14 +302,10 @@ export default function StorageBinCard() {
       if (error) throw error;
 
       setBinCard({ ...binCard, is_header_locked: false });
-      toast({ title: "Header unlocked", description: "Header is now editable." });
+      toast.success("Header unlocked", { description: "Header is now editable." });
     } catch (error) {
       console.error("Error unlocking header:", error);
-      toast({
-        title: "Error",
-        description: "Failed to unlock header",
-        variant: "destructive",
-      });
+      toast.error("Error", { description: "Failed to unlock header" });
     } finally {
       setHeaderSaving(false);
     }
@@ -327,20 +315,12 @@ export default function StorageBinCard() {
     if (!binCard || !profile?.factory_id) return;
     
     if (wouldGoNegative && !isAdminOrHigher()) {
-      toast({
-        title: "Invalid transaction",
-        description: "Balance cannot go negative. Reduce issue quantity.",
-        variant: "destructive",
-      });
+      toast.error("Invalid transaction", { description: "Balance cannot go negative. Reduce issue quantity." });
       return;
     }
     
     if (previewReceive === 0 && previewIssue === 0) {
-      toast({
-        title: "Invalid transaction",
-        description: "Enter a receive or issue quantity.",
-        variant: "destructive",
-      });
+      toast.error("Invalid transaction", { description: "Enter a receive or issue quantity." });
       return;
     }
     
@@ -359,23 +339,32 @@ export default function StorageBinCard() {
         submitted_by: user?.id,
       };
       
-      const { error } = await supabase
-        .from("storage_bin_card_transactions")
-        .insert(newTransaction);
-      
-      if (error) throw error;
-      
+      const result = await offlineSubmit("storage_bin_cards", "storage_bin_card_transactions", newTransaction as Record<string, unknown>, {
+        showSuccessToast: false,
+        showQueuedToast: true,
+      });
+
+      if (result.queued) {
+        setNewTxn({ receive_qty: "", issue_qty: "", remarks: "" });
+        navigate("/storage/history");
+        return;
+      }
+
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
       // Reload transactions
       await loadTransactions(binCard.id);
 
       // Reset form
       setNewTxn({ receive_qty: "", issue_qty: "", remarks: "" });
 
-      toast({ title: "Transaction saved", description: "Entry has been recorded." });
+      toast.success("Transaction saved", { description: "Entry has been recorded." });
       navigate("/storage/history");
     } catch (error) {
       console.error("Error saving transaction:", error);
-      toast({ title: "Error", description: "Failed to save transaction", variant: "destructive" });
+      toast.error("Error", { description: "Failed to save transaction" });
     } finally {
       setSaving(false);
     }
@@ -383,17 +372,12 @@ export default function StorageBinCard() {
 
   if (!canAccess) {
     return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-6 text-center">
-            <AlertTriangle className="mx-auto h-12 w-12 text-muted-foreground" />
-            <h3 className="mt-4 font-semibold">Access Denied</h3>
-            <p className="text-sm text-muted-foreground">
-              You need the Storage role to access this page.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <EmptyState
+        icon={AlertTriangle}
+        title="Access Denied"
+        description="You need the Storage role to access this page."
+        iconClassName="text-warning"
+      />
     );
   }
 

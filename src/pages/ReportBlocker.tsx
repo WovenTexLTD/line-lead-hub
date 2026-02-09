@@ -8,12 +8,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Loader2, AlertTriangle, ArrowLeft, CalendarIcon, Factory } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useOfflineSubmission } from "@/hooks/useOfflineSubmission";
 
 interface Line {
   id: string;
@@ -59,7 +61,8 @@ export default function ReportBlocker() {
   const { t, i18n } = useTranslation();
   const { profile, user, factory, hasRole, isAdminOrHigher } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
+
+  const { submit: offlineSubmit } = useOfflineSubmission();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -267,7 +270,7 @@ export default function ReportBlocker() {
     e.preventDefault();
 
     if (!validateForm()) {
-      toast({ variant: "destructive", title: t('common.fillRequiredFields') });
+      toast.error(t('common.fillRequiredFields'));
       return;
     }
 
@@ -330,13 +333,36 @@ export default function ReportBlocker() {
       }
 
       const table = updateType === "sewing" ? "production_updates_sewing" : "production_updates_finishing";
-      const { error } = await supabase.from(table).insert(insertData as never);
+      const formType = updateType === "sewing" ? "production_updates_sewing" as const : "production_updates_finishing" as const;
 
-      if (error) throw error;
+      const result = await offlineSubmit(formType, table, insertData as Record<string, unknown>, {
+        showSuccessToast: false,
+        showQueuedToast: true,
+      });
+
+      if (result.queued) {
+        // Navigate away - notification won't fire for offline submissions
+        if (isAdminOrHigher()) {
+          navigate("/blockers");
+        } else if (hasRole("cutting")) {
+          navigate("/cutting/submissions");
+        } else if (hasRole("storage")) {
+          navigate("/submissions?department=storage");
+        } else if (updateType === "finishing" || profile?.department === "finishing") {
+          navigate("/finishing/my-submissions");
+        } else {
+          navigate("/my-submissions");
+        }
+        return;
+      }
+
+      if (!result.success) {
+        throw new Error(result.error);
+      }
 
       // Get the blocker type name for notification
       const blockerTypeName = blockerTypes.find(bt => bt.id === blockerType)?.name || "Unknown";
-      
+
       // Get the line name for notification
       const lineName = isCuttingOrStorage
         ? (lines.find(l => l.id === workOrder?.line_id)?.name || lines.find(l => l.id === workOrder?.line_id)?.line_id || "Unknown")
@@ -364,10 +390,7 @@ export default function ReportBlocker() {
         console.error("Error calling notify-blocker function:", err);
       });
 
-      toast({
-        title: t('reportBlocker.blockerReported'),
-        description: t('reportBlocker.blockerReportedDesc'),
-      });
+      toast.success(t('reportBlocker.blockerReported'), { description: t('reportBlocker.blockerReportedDesc') });
 
       // Navigate users to their respective submission pages based on role/department
       if (isAdminOrHigher()) {
@@ -384,11 +407,7 @@ export default function ReportBlocker() {
       }
     } catch (error: unknown) {
       console.error("Error submitting blocker:", error);
-      toast({
-        variant: "destructive",
-        title: t('common.submissionFailed'),
-        description: error instanceof Error ? error.message : t('common.pleaseTryAgain'),
-      });
+      toast.error(t('common.submissionFailed'), { description: error instanceof Error ? error.message : t('common.pleaseTryAgain') });
     } finally {
       setIsSubmitting(false);
     }
@@ -404,20 +423,12 @@ export default function ReportBlocker() {
 
   if (!profile?.factory_id) {
     return (
-      <div className="flex min-h-[400px] items-center justify-center p-4">
-        <Card className="max-w-md">
-          <CardContent className="pt-6 text-center">
-            <Factory className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h2 className="text-lg font-semibold mb-2">{t('common.noFactoryAssigned')}</h2>
-            <p className="text-muted-foreground text-sm">
-              {t('common.needFactoryAssigned')}
-            </p>
-            <Button variant="outline" className="mt-4" onClick={() => navigate(-1)}>
-              {t('reportBlocker.goBack')}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <EmptyState
+        icon={Factory}
+        title={t('common.noFactoryAssigned')}
+        description={t('common.needFactoryAssigned')}
+        action={{ label: t('reportBlocker.goBack'), onClick: () => navigate(-1) }}
+      />
     );
   }
 

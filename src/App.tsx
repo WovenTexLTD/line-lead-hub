@@ -60,7 +60,14 @@ import CuttingSummary from "./pages/CuttingSummary";
 import CuttingAllSubmissions from "./pages/CuttingAllSubmissions";
 import CuttingHandoffs from "./pages/CuttingHandoffs";
 import ErrorLogs from "./pages/ErrorLogs";
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: true,
+      staleTime: 1000 * 30, // 30s — prevents hammering on rapid tab switches
+    },
+  },
+});
 
 function AppRoutes() {
   const { loading } = useContext(AuthContext)!;

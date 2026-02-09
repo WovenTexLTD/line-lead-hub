@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2, Package, Search, FileText, AlertTriangle, CalendarIcon, X } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
 import { format } from "date-fns";
 import {
   Table,
@@ -183,17 +184,12 @@ export default function StorageHistory() {
 
   if (!canAccess) {
     return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-6 text-center">
-            <AlertTriangle className="mx-auto h-12 w-12 text-muted-foreground" />
-            <h3 className="mt-4 font-semibold">Access Denied</h3>
-            <p className="text-sm text-muted-foreground">
-              You need the Storage role to access this page.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <EmptyState
+        icon={AlertTriangle}
+        title="Access Denied"
+        description="You need the Storage role to access this page."
+        iconClassName="text-warning"
+      />
     );
   }
 

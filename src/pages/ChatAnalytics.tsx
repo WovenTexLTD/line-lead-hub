@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import {
   Loader2,
   RefreshCw,
@@ -60,8 +60,6 @@ interface AnalyticsSummary {
 export default function ChatAnalytics() {
   const { isAdminOrHigher, profile } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
-
   const [analytics, setAnalytics] = useState<ChatAnalyticsEntry[]>([]);
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -106,11 +104,7 @@ export default function ChatAnalytics() {
       });
     } catch (err) {
       console.error("Error fetching analytics:", err);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to load analytics",
-      });
+      toast.error("Error", { description: "Failed to load analytics" });
     } finally {
       setLoading(false);
     }

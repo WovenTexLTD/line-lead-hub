@@ -2,12 +2,12 @@ import { useState, useEffect } from "react";
 import { openExternalUrl } from "@/lib/capacitor";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFn, networkErrorMessage } from "@/lib/network-utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -52,7 +52,7 @@ import { Label } from "@/components/ui/label";
 export default function BillingPlan() {
   const { user, factory, isAdminOrHigher, signOut } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
+
   const [searchParams] = useSearchParams();
   const { status: lineStatus, loading: linesLoading, refresh: refetchLines } = useActiveLines();
   
@@ -74,9 +74,8 @@ export default function BillingPlan() {
     const interval = searchParams.get('interval');
     
     if (payment === 'success') {
-      toast({
-        title: "Payment Successful!",
-        description: tier 
+      toast.success("Payment Successful!", {
+        description: tier
           ? `You've been upgraded to the ${PLAN_TIERS[tier as PlanTier]?.name || tier} plan${interval === 'year' ? ' (Yearly)' : ''}.`
           : "Your subscription is now active.",
       });
@@ -85,14 +84,10 @@ export default function BillingPlan() {
       // Refetch subscription status
       refetchLines();
     } else if (payment === 'cancelled') {
-      toast({
-        variant: "destructive",
-        title: "Payment Cancelled",
-        description: "You can try again whenever you're ready.",
-      });
+      toast.error("Payment Cancelled", { description: "You can try again whenever you're ready." });
       navigate('/billing-plan', { replace: true });
     }
-  }, [searchParams, toast, navigate, refetchLines]);
+  }, [searchParams, navigate, refetchLines]);
 
   const handleSubscribe = async (tier: PlanTier) => {
     if (tier === 'enterprise') {
@@ -102,12 +97,10 @@ export default function BillingPlan() {
 
     setCheckoutLoading(tier);
     try {
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { tier, interval: billingInterval }
-      });
-      
+      const { data, error } = await invokeEdgeFn('create-checkout', { tier, interval: billingInterval });
+
       if (error) throw error;
-      
+
       if (data.url) {
         await openExternalUrl(data.url);
       } else if (data.error) {
@@ -115,11 +108,7 @@ export default function BillingPlan() {
       }
     } catch (err: any) {
       console.error('Error creating checkout:', err);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: err.message || "Failed to start checkout. Please try again.",
-      });
+      toast.error("Error", { description: networkErrorMessage(err) });
     } finally {
       setCheckoutLoading(null);
     }
@@ -136,9 +125,7 @@ export default function BillingPlan() {
 
     setCheckoutLoading(tier);
     try {
-      const { data, error } = await supabase.functions.invoke('change-subscription', {
-        body: { newTier: tier, billingInterval }
-      });
+      const { data, error } = await invokeEdgeFn('change-subscription', { newTier: tier, billingInterval });
 
       if (error) throw error;
 
@@ -160,8 +147,7 @@ export default function BillingPlan() {
               // Date parsing failed, use fallback
             }
           }
-          toast({
-            title: "Downgrade Scheduled",
+          toast.success("Downgrade Scheduled", {
             description: data.message || `Your plan will change to ${PLAN_TIERS[tier].name} on ${scheduledDate}. You'll keep your current features until then.`,
           });
         }
@@ -170,11 +156,7 @@ export default function BillingPlan() {
       }
     } catch (err: any) {
       console.error('Error changing plan:', err);
-      toast({
-        variant: "destructive",
-        title: "Plan Change Failed",
-        description: err.message || "Failed to change plan. Please try again or contact support.",
-      });
+      toast.error("Plan Change Failed", { description: networkErrorMessage(err) });
     } finally {
       setCheckoutLoading(null);
     }
@@ -183,17 +165,12 @@ export default function BillingPlan() {
   const handleStartTrial = async (tier: PlanTier = 'starter') => {
     setCheckoutLoading(tier);
     try {
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { tier, startTrial: true, interval: billingInterval }
-      });
-      
+      const { data, error } = await invokeEdgeFn('create-checkout', { tier, startTrial: true, interval: billingInterval });
+
       if (error) throw error;
       
       if (data.success && data.trial) {
-        toast({
-          title: "Trial Started!",
-          description: `Your 14-day trial of the ${PLAN_TIERS[tier].name} plan has begun.`,
-        });
+        toast.success("Trial Started!", { description: `Your 14-day trial of the ${PLAN_TIERS[tier].name} plan has begun.` });
         refetchLines();
         if (data.redirectUrl) {
           navigate(data.redirectUrl);
@@ -205,11 +182,7 @@ export default function BillingPlan() {
       }
     } catch (err: any) {
       console.error('Error starting trial:', err);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: err.message || "Failed to start trial. Please try again.",
-      });
+      toast.error("Error", { description: networkErrorMessage(err) });
     } finally {
       setCheckoutLoading(null);
     }
@@ -220,7 +193,7 @@ export default function BillingPlan() {
   const handleManageBilling = async () => {
     setPortalLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('customer-portal');
+      const { data, error } = await invokeEdgeFn('customer-portal');
 
       if (error) throw error;
 
@@ -228,21 +201,14 @@ export default function BillingPlan() {
         await openExternalUrl(data.url);
       } else if (data.redirectTo) {
         // No billing account - redirect to subscription page
-        toast({
-          title: "No Billing Account",
-          description: data.message || "Please subscribe to a plan first.",
-        });
+        toast.success("No Billing Account", { description: data.message || "Please subscribe to a plan first." });
         navigate(data.redirectTo);
       } else if (data.error) {
         throw new Error(data.error);
       }
     } catch (err: any) {
       console.error('Error opening portal:', err);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: err.message || "Failed to open billing portal. Please try again.",
-      });
+      toast.error("Error", { description: networkErrorMessage(err) });
     } finally {
       setPortalLoading(false);
     }
@@ -255,15 +221,12 @@ export default function BillingPlan() {
   const handleCancelSubscription = async () => {
     setCancelLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('cancel-subscription');
-      
+      const { data, error } = await invokeEdgeFn('cancel-subscription');
+
       if (error) throw error;
       
       if (data.success) {
-        toast({
-          title: "Subscription cancelled",
-          description: "Access removed. You will be signed out.",
-        });
+        toast.success("Subscription cancelled", { description: "Access removed. You will be signed out." });
         
         // Sign out and redirect to login
         setTimeout(async () => {
@@ -275,11 +238,7 @@ export default function BillingPlan() {
       }
     } catch (err: any) {
       console.error('Error cancelling subscription:', err);
-      toast({
-        variant: "destructive",
-        title: "Cancellation Failed",
-        description: err.message || "Failed to cancel subscription. Please try again or contact support.",
-      });
+      toast.error("Cancellation Failed", { description: networkErrorMessage(err) });
     } finally {
       setCancelLoading(false);
       setCancelDialogOpen(false);

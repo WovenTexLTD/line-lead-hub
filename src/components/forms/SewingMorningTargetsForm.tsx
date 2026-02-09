@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { z } from "zod";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -17,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { format } from "date-fns";
+import { useOfflineSubmission } from "@/hooks/useOfflineSubmission";
 
 interface Line {
   id: string;
@@ -61,6 +63,7 @@ interface DropdownOption {
 export default function SewingMorningTargetsForm() {
   const navigate = useNavigate();
   const { user, profile, factory, isAdminOrHigher } = useAuth();
+  const { submit: offlineSubmit } = useOfflineSubmission();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -159,20 +162,39 @@ export default function SewingMorningTargetsForm() {
     }
   }
 
+  const formSchema = z.object({
+    line: z.string().min(1, "Line is required"),
+    workOrder: z.string().min(1, "PO is required"),
+    perHourTarget: z.number().int().positive("Per hour target is required"),
+    manpowerPlanned: z.number().int().positive("Manpower is required"),
+    otHoursPlanned: z.number().min(0, "OT hours must be 0 or more"),
+    plannedStage: z.string().min(1, "Stage is required"),
+    plannedStageProgress: z.string().min(1, "Stage progress is required"),
+    nextMilestone: z.string().min(1, "Next milestone is required"),
+  });
+
   function validateForm(): boolean {
-    const newErrors: Record<string, string> = {};
+    const result = formSchema.safeParse({
+      line: selectedLineId,
+      workOrder: selectedWorkOrderId,
+      perHourTarget: parseInt(perHourTarget) || 0,
+      manpowerPlanned: parseInt(manpowerPlanned) || 0,
+      otHoursPlanned: otHoursPlanned === "" ? -1 : parseFloat(otHoursPlanned),
+      plannedStage: plannedStageId,
+      plannedStageProgress: plannedStageProgress,
+      nextMilestone: nextMilestone,
+    });
 
-    if (!selectedLineId) newErrors.line = "Line is required";
-    if (!selectedWorkOrderId) newErrors.workOrder = "PO is required";
-    if (!perHourTarget || parseInt(perHourTarget) <= 0) newErrors.perHourTarget = "Per hour target is required";
-    if (!manpowerPlanned || parseInt(manpowerPlanned) <= 0) newErrors.manpowerPlanned = "Manpower is required";
-    if (otHoursPlanned === "" || parseFloat(otHoursPlanned) < 0) newErrors.otHoursPlanned = "OT hours must be 0 or more";
-    if (!plannedStageId) newErrors.plannedStage = "Stage is required";
-    if (!plannedStageProgress) newErrors.plannedStageProgress = "Stage progress is required";
-    if (!nextMilestone) newErrors.nextMilestone = "Next milestone is required";
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    if (!result.success) {
+      const newErrors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        if (err.path[0]) newErrors[err.path[0] as string] = err.message;
+      });
+      setErrors(newErrors);
+      return false;
+    }
+    setErrors({});
+    return true;
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -223,19 +245,31 @@ export default function SewingMorningTargetsForm() {
         is_late: isLate,
       };
 
-      const { error } = await supabase.from("sewing_targets").insert(insertData as any);
+      const result = await offlineSubmit("sewing_targets", "sewing_targets", insertData as Record<string, unknown>, {
+        showSuccessToast: false,
+        showQueuedToast: true,
+      });
 
-      if (error) {
-        if (error.code === "23505") {
+      if (result.queued) {
+        if (isAdminOrHigher()) {
+          navigate("/dashboard");
+        } else {
+          navigate("/my-submissions");
+        }
+        return;
+      }
+
+      if (!result.success) {
+        if (result.error?.includes("duplicate") || result.error?.includes("23505")) {
           toast.error("Target already submitted for this line and PO today");
         } else {
-          throw error;
+          throw new Error(result.error);
         }
         return;
       }
 
       toast.success("Sewing targets submitted successfully!");
-      
+
       if (isAdminOrHigher()) {
         navigate("/dashboard");
       } else {
@@ -243,7 +277,7 @@ export default function SewingMorningTargetsForm() {
       }
     } catch (error: any) {
       console.error("Error submitting targets:", error);
-      toast.error(error.message || "Failed to submit targets");
+      toast.error(error?.message || "Failed to submit targets");
     } finally {
       setSubmitting(false);
     }

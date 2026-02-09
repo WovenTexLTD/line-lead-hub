@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/hooks/useSubscription';
-import { Loader2, AlertCircle, Lock, LogOut, CreditCard } from 'lucide-react';
+import { invokeEdgeFn } from '@/lib/network-utils';
+import { openExternalUrl } from '@/lib/capacitor';
+import { Loader2, AlertCircle, AlertTriangle, Lock, LogOut, CreditCard, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
@@ -11,12 +14,32 @@ interface SubscriptionGateProps {
 
 export function SubscriptionGate({ children }: SubscriptionGateProps) {
   const { user, profile, loading: authLoading, roles, hasRole, signOut } = useAuth();
-  const { hasAccess, needsFactory, needsPayment, loading: subLoading, isTrial, status } = useSubscription();
+  const { hasAccess, needsFactory, needsPayment, loading: subLoading, isTrial, isPastDue, status } = useSubscription();
   const navigate = useNavigate();
+  const [portalLoading, setPortalLoading] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
+  };
+
+  const handleUpdatePaymentMethod = async () => {
+    setPortalLoading(true);
+    try {
+      const { data, error } = await invokeEdgeFn('customer-portal');
+      if (error) throw error;
+      if (data.url) {
+        await openExternalUrl(data.url);
+      } else if (data.redirectTo) {
+        navigate(data.redirectTo);
+      }
+    } catch (err) {
+      console.error('Error opening billing portal:', err);
+      // Fallback to billing page
+      navigate('/billing-plan');
+    } finally {
+      setPortalLoading(false);
+    }
   };
 
   // If user was invited to an existing factory (has factory_id but is not the owner), 
@@ -127,7 +150,41 @@ export function SubscriptionGate({ children }: SubscriptionGateProps) {
     );
   }
 
-  // No access - needs payment
+  // No access - past due (payment failed, grace period expired)
+  if (!hasAccess && isPastDue) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center p-4">
+        <Card className="max-w-md">
+          <CardHeader className="text-center">
+            <AlertTriangle className="h-12 w-12 mx-auto text-amber-500 mb-4" />
+            <CardTitle>Payment Failed</CardTitle>
+            <CardDescription>
+              Your recent payment couldn't be processed. Please update your payment method to restore access.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            <Button onClick={handleUpdatePaymentMethod} disabled={portalLoading} className="w-full">
+              {portalLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <CreditCard className="h-4 w-4 mr-2" />
+              )}
+              Update Payment Method
+            </Button>
+            <Button onClick={() => navigate('/billing-plan')} variant="outline" className="w-full">
+              View Billing
+            </Button>
+            <Button onClick={handleSignOut} variant="ghost" className="w-full">
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // No access - needs payment (expired/canceled)
   if (!hasAccess && needsPayment) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center p-4">
@@ -136,8 +193,8 @@ export function SubscriptionGate({ children }: SubscriptionGateProps) {
             <Lock className="h-12 w-12 mx-auto text-destructive mb-4" />
             <CardTitle>Subscription Required</CardTitle>
             <CardDescription>
-              Your subscription has expired or payment has failed. 
-              Please update your billing to continue using ProductionPortal.
+              Your subscription has expired.
+              Please renew to continue using ProductionPortal.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
@@ -151,6 +208,37 @@ export function SubscriptionGate({ children }: SubscriptionGateProps) {
           </CardContent>
         </Card>
       </div>
+    );
+  }
+
+  // Has access but payment failed - show warning banner
+  if (hasAccess && isPastDue) {
+    return (
+      <>
+        <div className="bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800 px-4 py-3">
+          <div className="flex items-center justify-between gap-4 max-w-5xl mx-auto">
+            <div className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-200">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>Payment failed. Please update your payment method to avoid losing access.</span>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleUpdatePaymentMethod}
+              disabled={portalLoading}
+              className="shrink-0 border-amber-300 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-200 dark:hover:bg-amber-900"
+            >
+              {portalLoading ? (
+                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+              ) : (
+                <ExternalLink className="h-3 w-3 mr-1" />
+              )}
+              Update Payment
+            </Button>
+          </div>
+        </div>
+        {children}
+      </>
     );
   }
 

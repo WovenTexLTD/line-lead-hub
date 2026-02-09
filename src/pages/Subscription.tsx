@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFn, networkErrorMessage } from "@/lib/network-utils";
 import { openExternalUrl } from "@/lib/capacitor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { 
@@ -48,7 +49,7 @@ export default function Subscription() {
   const { user, profile, isAdminOrHigher, signOut } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { toast } = useToast();
+
   
   const [loading, setLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
@@ -61,18 +62,11 @@ export default function Subscription() {
     const payment = searchParams.get('payment');
     const interval = searchParams.get('interval');
     if (payment === 'success') {
-      toast({
-        title: "Payment successful!",
-        description: `Your subscription is now active${interval === 'year' ? ' (Yearly)' : ''}.`,
-      });
+      toast.success("Payment successful!", { description: `Your subscription is now active${interval === 'year' ? ' (Yearly)' : ''}.` });
     } else if (payment === 'cancelled') {
-      toast({
-        variant: "destructive",
-        title: "Payment cancelled",
-        description: "You can try again when you're ready.",
-      });
+      toast.error("Payment cancelled", { description: "You can try again when you're ready." });
     }
-  }, [searchParams, toast]);
+  }, [searchParams]);
 
   useEffect(() => {
     checkSubscription();
@@ -94,10 +88,8 @@ export default function Subscription() {
         return;
       }
 
-      const { data, error } = await supabase.functions.invoke('check-subscription', {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
+      const { data, error } = await invokeEdgeFn('check-subscription', undefined, {
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
 
       if (error) throw error;
@@ -106,11 +98,7 @@ export default function Subscription() {
       console.error('Error checking subscription:', err);
       // Set a fallback status so the page still renders subscription options
       setStatus({ subscribed: false, hasAccess: false, needsFactory: !profile?.factory_id });
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to check subscription status.",
-      });
+      toast.error("Error", { description: networkErrorMessage(err) });
     } finally {
       setLoading(false);
     }
@@ -126,25 +114,19 @@ export default function Subscription() {
         throw new Error('Session expired. Please sign in again.');
       }
 
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { tier: 'starter', startTrial: true, interval: billingInterval },
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      
+      const { data, error } = await invokeEdgeFn('create-checkout',
+        { tier: 'starter', startTrial: true, interval: billingInterval },
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      );
+
       if (error) throw error;
-      
+
       if (data.url) {
         await openExternalUrl(data.url);
       }
     } catch (err) {
       console.error('Error starting trial:', err);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to start trial. Please try again.",
-      });
+      toast.error("Error", { description: networkErrorMessage(err) });
     } finally {
       setTrialLoading(false);
     }
@@ -165,25 +147,19 @@ export default function Subscription() {
         throw new Error('Session expired. Please sign in again.');
       }
 
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { tier: tier.id, interval: billingInterval },
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      
+      const { data, error } = await invokeEdgeFn('create-checkout',
+        { tier: tier.id, interval: billingInterval },
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      );
+
       if (error) throw error;
-      
+
       if (data.url) {
         await openExternalUrl(data.url);
       }
     } catch (err) {
       console.error('Error creating checkout:', err);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to create checkout session. Please try again.",
-      });
+      toast.error("Error", { description: networkErrorMessage(err) });
     } finally {
       setCheckoutLoading(null);
     }
@@ -192,20 +168,16 @@ export default function Subscription() {
   const handleManageSubscription = async () => {
     setPortalLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('customer-portal');
-      
+      const { data, error } = await invokeEdgeFn('customer-portal');
+
       if (error) throw error;
-      
+
       if (data.url) {
         await openExternalUrl(data.url);
       }
     } catch (err) {
       console.error('Error opening portal:', err);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to open billing portal. Please try again.",
-      });
+      toast.error("Error", { description: networkErrorMessage(err) });
     } finally {
       setPortalLoading(false);
     }

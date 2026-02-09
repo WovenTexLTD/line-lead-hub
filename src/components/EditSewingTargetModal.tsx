@@ -65,7 +65,7 @@ export function EditSewingTargetModal({ target, open, onOpenChange, onSaved }: E
       onSaved();
     } catch (error: any) {
       console.error('Error updating target:', error);
-      toast.error(error.message || "Failed to update target");
+      toast.error(error?.message || "Failed to update target");
     } finally {
       setSaving(false);
     }

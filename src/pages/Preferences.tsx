@@ -11,7 +11,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Loader2, Settings2, Bell, Palette, Globe, Sun, Moon, Monitor, AlertTriangle } from "lucide-react";
 
 type Language = 'en' | 'bn';
@@ -24,7 +24,7 @@ const LANGUAGES = [
 export default function Preferences() {
   const { t, i18n } = useTranslation();
   const { profile, loading, factory, isAdminOrHigher } = useAuth();
-  const { toast } = useToast();
+
   const { theme, setTheme } = useTheme();
   const [language, setLanguage] = useState<Language>(() => {
     return (localStorage.getItem('app-language') as Language) || 'en';

@@ -65,7 +65,7 @@ export function EditStorageTransactionModal({ transaction, open, onOpenChange, o
       onSaved();
     } catch (error: any) {
       console.error('Error updating transaction:', error);
-      toast.error(error.message || "Failed to update transaction");
+      toast.error(error?.message || "Failed to update transaction");
     } finally {
       setSaving(false);
     }

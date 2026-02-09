@@ -11,8 +11,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Loader2, Package, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
+import { useOfflineSubmission } from "@/hooks/useOfflineSubmission";
 
 interface Line {
   id: string;
@@ -73,7 +75,8 @@ export default function FinishingUpdate() {
   const { t, i18n } = useTranslation();
   const { profile, user, hasRole, isAdminOrHigher } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
+
+  const { submit: offlineSubmit } = useOfflineSubmission();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -295,7 +298,7 @@ export default function FinishingUpdate() {
     e.preventDefault();
 
     if (!validateForm()) {
-      toast({ variant: "destructive", title: "Please fix the errors below" });
+      toast.error("Please fix the errors below");
       return;
     }
 
@@ -339,16 +342,27 @@ export default function FinishingUpdate() {
         manpower: parseInt(mPower) || 0,
       };
 
-      const { error } = await supabase.from('production_updates_finishing').insert(insertData);
-
-      if (error) throw error;
-
-      toast({
-        title: "Update submitted!",
-        description: "Your finishing daily update has been recorded.",
+      const result = await offlineSubmit("production_updates_finishing", "production_updates_finishing", insertData as Record<string, unknown>, {
+        showSuccessToast: false,
+        showQueuedToast: true,
       });
 
-      // Navigate workers to my-submissions, others can stay and add more
+      if (result.queued) {
+        const isWorker = hasRole('worker') && !isAdminOrHigher();
+        if (isWorker) {
+          navigate('/my-submissions');
+        } else {
+          resetForm();
+        }
+        return;
+      }
+
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      toast.success("Update submitted!", { description: "Your finishing daily update has been recorded." });
+
       const isWorker = hasRole('worker') && !isAdminOrHigher();
       if (isWorker) {
         navigate('/my-submissions');
@@ -357,11 +371,7 @@ export default function FinishingUpdate() {
       }
     } catch (error: any) {
       console.error('Error submitting update:', error);
-      toast({
-        variant: "destructive",
-        title: "Submission failed",
-        description: error.message || "Please try again.",
-      });
+      toast.error("Submission failed", { description: error?.message || "Please try again." });
     } finally {
       setIsSubmitting(false);
     }
@@ -397,20 +407,12 @@ export default function FinishingUpdate() {
 
   if (!profile?.factory_id) {
     return (
-      <div className="flex min-h-[400px] items-center justify-center p-4">
-        <Card className="max-w-md">
-          <CardContent className="pt-6 text-center">
-            <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h2 className="text-lg font-semibold mb-2">{t('common.noFactoryAssigned')}</h2>
-            <p className="text-muted-foreground text-sm">
-              {t('common.needFactoryAssigned')}
-            </p>
-            <Button variant="outline" className="mt-4" onClick={() => navigate('/dashboard')}>
-              {t('common.goToDashboard')}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <EmptyState
+        icon={Package}
+        title={t('common.noFactoryAssigned')}
+        description={t('common.needFactoryAssigned')}
+        action={{ label: t('common.goToDashboard'), onClick: () => navigate('/dashboard') }}
+      />
     );
   }
 

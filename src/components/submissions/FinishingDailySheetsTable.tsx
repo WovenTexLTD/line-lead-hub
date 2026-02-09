@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,10 +13,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, Package, Search, ClipboardList, Eye, Target, TrendingUp } from "lucide-react";
+import { Package, Search, ClipboardList, Eye, Target, TrendingUp, Download, X } from "lucide-react";
+import { TableSkeleton, StatsCardsSkeleton } from "@/components/ui/table-skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
 import { FinishingLogDetailModal } from "@/components/FinishingLogDetailModal";
 import { TablePagination } from "@/components/ui/table-pagination";
 import { usePagination } from "@/hooks/usePagination";
+import { useSortableTable } from "@/hooks/useSortableTable";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import type { Database } from "@/integrations/supabase/types";
 
 type FinishingLogType = Database["public"]["Enums"]["finishing_log_type"];
@@ -63,6 +68,7 @@ export function FinishingDailySheetsTable({
   const [loading, setLoading] = useState(true);
   const [selectedLog, setSelectedLog] = useState<DailyLogRow | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [pageSize, setPageSize] = useState(25);
   useEffect(() => {
     fetchLogs();
@@ -135,10 +141,13 @@ export function FinishingDailySheetsTable({
       return (
         log.line_name.toLowerCase().includes(search) ||
         (log.po_number?.toLowerCase() || "").includes(search) ||
-        (log.style?.toLowerCase() || "").includes(search)
+        (log.style?.toLowerCase() || "").includes(search) ||
+        (log.buyer?.toLowerCase() || "").includes(search)
       );
     });
   }, [logs, activeTab, searchTerm]);
+
+  const { sortedData, sortConfig, requestSort } = useSortableTable(filteredLogs, { column: "production_date", direction: "desc" });
 
   const {
     currentPage,
@@ -153,7 +162,7 @@ export function FinishingDailySheetsTable({
     canGoPrevious,
     startIndex,
     endIndex,
-  } = usePagination(filteredLogs, { pageSize });
+  } = usePagination(sortedData, { pageSize });
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       month: "short",
@@ -174,10 +183,67 @@ export function FinishingDailySheetsTable({
   const totalPoly = tabLogs.reduce((sum, l) => sum + l.poly, 0);
   const totalCarton = tabLogs.reduce((sum, l) => sum + l.carton, 0);
 
+  const allPageSelected = paginatedData.length > 0 && paginatedData.every(l => selectedIds.has(l.id));
+  const somePageSelected = paginatedData.some(l => selectedIds.has(l.id));
+
+  function toggleSelectAll() {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (allPageSelected) {
+        paginatedData.forEach(l => next.delete(l.id));
+      } else {
+        paginatedData.forEach(l => next.add(l.id));
+      }
+      return next;
+    });
+  }
+
+  function toggleSelectRow(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function exportSelectedCsv() {
+    const rows = sortedData.filter(l => selectedIds.has(l.id));
+    const headers = ["Date", "Line", "PO", "Buyer", "Style", "Type", "Thread Cutting", "Inside Check", "Top Side Check", "Buttoning", "Iron", "Get Up", "Poly", "Carton"];
+    const csvRows = [headers.join(",")];
+    rows.forEach(l => {
+      csvRows.push([
+        l.production_date,
+        `"${l.line_name}"`,
+        `"${l.po_number || ""}"`,
+        `"${l.buyer || ""}"`,
+        `"${l.style || ""}"`,
+        l.log_type,
+        l.thread_cutting,
+        l.inside_check,
+        l.top_side_check,
+        l.buttoning,
+        l.iron,
+        l.get_up,
+        l.poly,
+        l.carton,
+      ].join(","));
+    });
+    const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `finishing-${activeTab}-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${rows.length} rows`);
+  }
+
   if (loading) {
     return (
-      <div className="flex min-h-[300px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="space-y-4">
+        <StatsCardsSkeleton count={3} />
+        <TableSkeleton columns={8} rows={6} headers={["Date", "Line", "PO / Style", "Buyer", "Poly", "Carton", "Status", ""]} />
       </div>
     );
   }
@@ -233,7 +299,7 @@ export function FinishingDailySheetsTable({
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by line, PO, or style..."
+              placeholder="Search by line, PO, buyer, or style..."
               value={searchTerm}
               onChange={(e) => onSearchChange(e.target.value)}
               className="pl-9"
@@ -256,30 +322,58 @@ export function FinishingDailySheetsTable({
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
+              {selectedIds.size > 0 && (
+                <div className="flex items-center gap-3 px-4 py-2 bg-primary/5 border-b">
+                  <span className="text-sm font-medium">{selectedIds.size} selected</span>
+                  <Button variant="outline" size="sm" onClick={exportSelectedCsv}>
+                    <Download className="h-3.5 w-3.5 mr-1" />
+                    Export CSV
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
+                    <X className="h-3.5 w-3.5 mr-1" />
+                    Clear
+                  </Button>
+                </div>
+              )}
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
-                      <TableHead>Date</TableHead>
-                      <TableHead>Line</TableHead>
+                      <TableHead className="w-[40px]">
+                        <Checkbox
+                          checked={allPageSelected}
+                          onCheckedChange={toggleSelectAll}
+                          aria-label="Select all"
+                          {...(somePageSelected && !allPageSelected ? { "data-state": "indeterminate" } : {})}
+                        />
+                      </TableHead>
+                      <SortableTableHead column="production_date" sortConfig={sortConfig} onSort={requestSort}>Date</SortableTableHead>
+                      <SortableTableHead column="line_name" sortConfig={sortConfig} onSort={requestSort}>Line</SortableTableHead>
                       <TableHead>PO / Style</TableHead>
-                      <TableHead>Buyer</TableHead>
-                      <TableHead className="text-right">Poly</TableHead>
-                      <TableHead className="text-right">Carton</TableHead>
+                      <SortableTableHead column="buyer" sortConfig={sortConfig} onSort={requestSort}>Buyer</SortableTableHead>
+                      <SortableTableHead column="poly" sortConfig={sortConfig} onSort={requestSort} className="text-right">Poly</SortableTableHead>
+                      <SortableTableHead column="carton" sortConfig={sortConfig} onSort={requestSort} className="text-right">Carton</SortableTableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="w-[60px]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                       {paginatedData.map((log) => (
-                        <TableRow 
-                          key={log.id} 
-                          className="hover:bg-muted/50 cursor-pointer"
+                        <TableRow
+                          key={log.id}
+                          className={`hover:bg-muted/50 cursor-pointer ${selectedIds.has(log.id) ? "bg-primary/5" : ""}`}
                           onClick={() => {
                             setSelectedLog(log);
                             setDetailModalOpen(true);
                           }}
                         >
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            <Checkbox
+                              checked={selectedIds.has(log.id)}
+                              onCheckedChange={() => toggleSelectRow(log.id)}
+                              aria-label={`Select row`}
+                            />
+                          </TableCell>
                           <TableCell>
                             <div>
                               <p className="font-mono text-sm">{formatDate(log.production_date)}</p>
@@ -324,7 +418,7 @@ export function FinishingDailySheetsTable({
                       ))}
                       {paginatedData.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
+                          <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
                             <Package className="h-12 w-12 mx-auto mb-3 opacity-30" />
                             <p>No {activeTab === "targets" ? "targets" : "outputs"} found</p>
                           </TableCell>

@@ -64,6 +64,67 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
 };
 
 /**
+ * Logs a webhook processing error to app_error_logs and creates
+ * in-app notifications for factory admin/owner users.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function logWebhookError(
+  supabaseAdmin: any,
+  params: {
+    message: string;
+    eventType: string;
+    eventId: string;
+    factoryId?: string;
+    stack?: string;
+    metadata?: Record<string, unknown>;
+  }
+) {
+  // Log to app_error_logs
+  try {
+    await supabaseAdmin.from('app_error_logs').insert({
+      message: params.message,
+      stack: params.stack || null,
+      source: 'stripe-webhook',
+      severity: 'error',
+      factory_id: params.factoryId || null,
+      metadata: {
+        event_type: params.eventType,
+        event_id: params.eventId,
+        ...params.metadata,
+      },
+    });
+  } catch (e) {
+    console.error('[STRIPE-WEBHOOK] Failed to log error to database:', e);
+  }
+
+  // Create in-app notifications for factory admins/owners
+  if (params.factoryId) {
+    try {
+      const { data: admins } = await supabaseAdmin
+        .from('user_roles')
+        .select('user_id')
+        .eq('factory_id', params.factoryId)
+        .in('role', ['owner', 'admin']);
+
+      if (admins && admins.length > 0) {
+        const notifications = admins.map((admin: { user_id: string }) => ({
+          factory_id: params.factoryId,
+          user_id: admin.user_id,
+          type: 'webhook_error',
+          title: 'Billing Processing Error',
+          message: params.message,
+          data: { event_type: params.eventType, event_id: params.eventId },
+        }));
+
+        await supabaseAdmin.from('notifications').insert(notifications);
+      }
+    } catch (e) {
+      console.error('[STRIPE-WEBHOOK] Failed to create admin notifications:', e);
+    }
+  }
+}
+
+/**
  * Finds factory by various methods: subscription ID, customer ID, or metadata
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -205,6 +266,17 @@ serve(async (req) => {
           factoryId = userProfile?.factory_id;
         }
 
+        if (!factoryId) {
+          logStep("Factory not found for checkout session", { sessionId: session.id });
+          await logWebhookError(supabaseAdmin, {
+            message: `Checkout completed but no factory found. Customer: ${session.customer}, Session: ${session.id}`,
+            eventType: event.type,
+            eventId: event.id,
+            metadata: { sessionId: session.id, customerId: session.customer },
+          });
+          break;
+        }
+
         if (factoryId && session.subscription) {
           // Derive tier from the actual subscription
           let tier = session.metadata?.tier || 'starter';
@@ -255,7 +327,18 @@ serve(async (req) => {
           factoryIdFromMetadata: subscription.metadata?.factory_id,
         });
 
-        if (factory) {
+        if (!factory) {
+          logStep("Factory not found for subscription update");
+          await logWebhookError(supabaseAdmin, {
+            message: `Subscription updated but no factory found. Subscription: ${subscription.id}, Status: ${subscription.status}`,
+            eventType: event.type,
+            eventId: event.id,
+            metadata: { subscriptionId: subscription.id, status: subscription.status },
+          });
+          break;
+        }
+
+        {
           const status = subscription.status === 'active' ? 'active' :
                         subscription.status === 'trialing' ? 'trialing' :
                         subscription.status === 'past_due' ? 'past_due' :
@@ -296,6 +379,12 @@ serve(async (req) => {
 
         if (!factory) {
           logStep("Factory not found for deleted subscription");
+          await logWebhookError(supabaseAdmin, {
+            message: `Subscription deleted but no factory found. Subscription: ${subscription.id}`,
+            eventType: event.type,
+            eventId: event.id,
+            metadata: { subscriptionId: subscription.id },
+          });
           break;
         }
 
@@ -352,6 +441,16 @@ serve(async (req) => {
                 pending_plan_change: null,
               })
               .eq('id', factory.id);
+
+            // Alert admins: downgrade failed, subscription canceled
+            await logWebhookError(supabaseAdmin, {
+              message: `Plan downgrade failed — subscription has been canceled. Intended tier: ${pendingDowngradeTier}. Error: ${errorMessage}`,
+              eventType: event.type,
+              eventId: event.id,
+              factoryId: factory.id,
+              stack: err instanceof Error ? err.stack : undefined,
+              metadata: { subscriptionId: subscription.id, intendedTier: pendingDowngradeTier },
+            });
           }
         } else {
           // Regular cancellation (not a downgrade)
@@ -388,8 +487,15 @@ serve(async (req) => {
                 }),
               });
             }
-          } catch {
+          } catch (notifErr) {
             logStep("Failed to send cancellation notification");
+            await logWebhookError(supabaseAdmin, {
+              message: `Failed to send subscription cancellation notification for factory ${factory.name || factory.id}`,
+              eventType: event.type,
+              eventId: event.id,
+              factoryId: factory.id,
+              metadata: { error: notifErr instanceof Error ? notifErr.message : String(notifErr) },
+            });
           }
         }
         break;
@@ -406,6 +512,17 @@ serve(async (req) => {
           subscriptionId: invoice.subscription as string,
           customerId: invoice.customer as string,
         });
+
+        if (!factory) {
+          logStep("Factory not found for failed payment");
+          await logWebhookError(supabaseAdmin, {
+            message: `Payment failed but no factory found. Invoice: ${invoice.id}, Customer: ${invoice.customer}`,
+            eventType: event.type,
+            eventId: event.id,
+            metadata: { invoiceId: invoice.id, customerId: invoice.customer },
+          });
+          break;
+        }
 
         if (factory) {
           await supabaseAdmin
@@ -440,8 +557,15 @@ serve(async (req) => {
                 }),
               });
             }
-          } catch {
+          } catch (notifErr) {
             logStep("Failed to send payment failed notification");
+            await logWebhookError(supabaseAdmin, {
+              message: `Failed to send payment failure notification for factory ${factory.name || factory.id}`,
+              eventType: event.type,
+              eventId: event.id,
+              factoryId: factory.id,
+              metadata: { error: notifErr instanceof Error ? notifErr.message : String(notifErr) },
+            });
           }
         }
         break;
@@ -458,6 +582,17 @@ serve(async (req) => {
           subscriptionId: invoice.subscription as string,
           customerId: invoice.customer as string,
         });
+
+        if (!factory) {
+          logStep("Factory not found for successful payment");
+          await logWebhookError(supabaseAdmin, {
+            message: `Payment succeeded but no factory found. Invoice: ${invoice.id}, Customer: ${invoice.customer}`,
+            eventType: event.type,
+            eventId: event.id,
+            metadata: { invoiceId: invoice.id, customerId: invoice.customer },
+          });
+          break;
+        }
 
         if (factory) {
           const updates: Record<string, unknown> = {
@@ -493,7 +628,17 @@ serve(async (req) => {
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
     logStep("ERROR", { message: errorMessage });
+
+    // Log unhandled webhook errors to database for admin visibility
+    await logWebhookError(supabaseAdmin, {
+      message: `Webhook processing failed: ${errorMessage}`,
+      eventType: 'unknown',
+      eventId: 'unknown',
+      stack: errorStack,
+    });
+
     return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { "Content-Type": "application/json" },
       status: 400,

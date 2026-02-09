@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import logoSvg from "@/assets/logo.svg";
 import i18n from "@/i18n/config";
@@ -23,7 +23,7 @@ const resetSchema = z.object({
 export default function ResetPassword() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { toast } = useToast();
+
 
   const hashParams = useMemo(() => {
     const hash = location.hash.startsWith("#") ? location.hash.slice(1) : location.hash;
@@ -97,7 +97,7 @@ export default function ResetPassword() {
 
       const getSessionOnce = async () => {
         const { data } = await supabase.auth.getSession();
-        return data.session;
+        return data?.session ?? null;
       };
 
       let session = await getSessionOnce();
@@ -149,11 +149,7 @@ export default function ResetPassword() {
     if (error) {
       // Invalid/expired links often end up here because there is no valid session.
       setIsInvalidLink(true);
-      toast({
-        variant: "destructive",
-        title: "Unable to reset password",
-        description: "This reset link is invalid or expired. Please request a new one.",
-      });
+      toast.error("Unable to reset password", { description: "This reset link is invalid or expired. Please request a new one." });
       return;
     }
 
@@ -164,10 +160,7 @@ export default function ResetPassword() {
     // Security: sign out after reset so the user must re-authenticate with the new password.
     await supabase.auth.signOut();
 
-    toast({
-      title: "Password updated",
-      description: "Please sign in with your new password.",
-    });
+    toast.success("Password updated", { description: "Please sign in with your new password." });
 
     // Clear hash to avoid re-entering recovery mode.
     window.history.replaceState(null, "", window.location.pathname);

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import {
   Loader2,
   Settings,
@@ -24,6 +24,7 @@ import {
   Bug
 } from "lucide-react";
 import { EmailScheduleSettings } from "@/components/insights/EmailScheduleSettings";
+import { EmptyState } from "@/components/EmptyState";
 
 interface FactoryStats {
   linesCount: number;
@@ -37,7 +38,7 @@ interface FactoryStats {
 export default function SetupHome() {
   const { profile, factory, isAdminOrHigher } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
+
   
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<FactoryStats>({
@@ -139,9 +140,9 @@ export default function SetupHome() {
         .eq('id', profile.factory_id);
       
       if (error) throw error;
-      toast({ title: "Settings updated" });
+      toast.success("Settings updated");
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Error", description: error.message });
+      toast.error("Error", { description: error?.message ?? "An error occurred" });
     } finally {
       setIsSavingCutoff(false);
     }
@@ -157,39 +158,24 @@ export default function SetupHome() {
 
   if (!profile?.factory_id) {
     return (
-      <div className="flex min-h-[400px] items-center justify-center p-4">
-        <Card className="max-w-md">
-          <CardContent className="pt-6 text-center">
-            <Factory className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h2 className="text-lg font-semibold mb-2">No Factory Assigned</h2>
-            <p className="text-muted-foreground text-sm mb-4">
-              Create your factory to get started.
-            </p>
-            <Button onClick={() => navigate('/setup/factory')}>
-              Create Factory
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <EmptyState
+        icon={Factory}
+        title="No Factory Assigned"
+        description="Create your factory to get started."
+        action={{ label: "Create Factory", onClick: () => navigate('/setup/factory') }}
+      />
     );
   }
 
   if (!isAdminOrHigher()) {
     return (
-      <div className="flex min-h-[400px] items-center justify-center p-4">
-        <Card className="max-w-md">
-          <CardContent className="pt-6 text-center">
-            <AlertTriangle className="h-12 w-12 text-warning mx-auto mb-4" />
-            <h2 className="text-lg font-semibold mb-2">Access Denied</h2>
-            <p className="text-muted-foreground text-sm">
-              You need admin permissions to access factory setup.
-            </p>
-            <Button variant="outline" className="mt-4" onClick={() => navigate('/dashboard')}>
-              Go to Dashboard
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <EmptyState
+        icon={AlertTriangle}
+        title="Access Denied"
+        description="You need admin permissions to access factory setup."
+        iconClassName="text-warning"
+        action={{ label: "Go to Dashboard", onClick: () => navigate('/dashboard') }}
+      />
     );
   }
 

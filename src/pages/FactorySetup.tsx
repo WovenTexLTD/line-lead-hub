@@ -13,7 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { 
   Loader2, 
   Settings, 
@@ -36,6 +36,7 @@ import { BLOCKER_IMPACTS, BLOCKER_IMPACT_LABELS, DEFAULT_STAGES, DEFAULT_BLOCKER
 import { ActiveLinesMeter } from "@/components/ActiveLinesMeter";
 import { useActiveLines } from "@/hooks/useActiveLines";
 import { EmailScheduleSettings } from "@/components/insights/EmailScheduleSettings";
+import { EmptyState } from "@/components/EmptyState";
 
 const unitSchema = z.object({
   code: z.string().min(1, "Code is required").max(20, "Code too long"),
@@ -118,7 +119,7 @@ interface BlockerType {
 export default function FactorySetup() {
   const { profile, isAdminOrHigher, user, factory } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
+
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("units");
 
@@ -257,7 +258,7 @@ export default function FactorySetup() {
           error = res.error;
         }
         if (error) throw error;
-        toast({ title: "Created successfully" });
+        toast.success("Created successfully");
       } else {
         let error: any = null;
         if (activeTab === 'units') {
@@ -277,13 +278,13 @@ export default function FactorySetup() {
           error = res.error;
         }
         if (error) throw error;
-        toast({ title: "Updated successfully" });
+        toast.success("Updated successfully");
       }
 
       setIsDialogOpen(false);
       fetchAllData();
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Error", description: error.message });
+      toast.error("Error", { description: error?.message ?? "An error occurred" });
     } finally {
       setIsSaving(false);
     }
@@ -319,10 +320,10 @@ export default function FactorySetup() {
         error = res.error;
       }
       if (error) throw error;
-      toast({ title: "Deleted successfully" });
+      toast.success("Deleted successfully");
       fetchAllData();
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Error", description: error.message });
+      toast.error("Error", { description: error?.message ?? "An error occurred" });
     }
   }
 
@@ -330,11 +331,7 @@ export default function FactorySetup() {
     try {
       // For lines: check plan limits before activating
       if (activeTab === 'lines' && !currentValue && !canActivateMore) {
-        toast({ 
-          variant: "destructive", 
-          title: "Plan limit reached", 
-          description: "Upgrade your plan to activate more production lines." 
-        });
+        toast.error("Plan limit reached", { description: "Upgrade your plan to activate more production lines." });
         return;
       }
 
@@ -363,13 +360,9 @@ export default function FactorySetup() {
     } catch (error: any) {
       // Check for plan limit error from trigger
       if (error.message?.includes('Plan limit reached') || error.message?.includes('limit')) {
-        toast({ 
-          variant: "destructive", 
-          title: "Plan limit reached",
-          description: "Upgrade your plan to activate more production lines." 
-        });
+        toast.error("Plan limit reached", { description: "Upgrade your plan to activate more production lines." });
       } else {
-        toast({ variant: "destructive", title: "Error", description: error.message });
+        toast.error("Error", { description: error?.message ?? "An error occurred" });
       }
     }
   }
@@ -495,8 +488,7 @@ export default function FactorySetup() {
         console.error('Error linking subscription (non-fatal):', linkError);
       }
 
-      toast({
-        title: "Factory created!",
+      toast.success("Factory created!", {
         description: subscriptionLinked
           ? "Your subscription has been activated. Default settings have been added."
           : "Your 14-day free trial has started. Default settings have been added."
@@ -506,7 +498,7 @@ export default function FactorySetup() {
       window.location.reload();
     } catch (error: any) {
       console.error('Error creating factory:', error);
-      toast({ variant: "destructive", title: "Error", description: error.message });
+      toast.error("Error", { description: error?.message ?? "An error occurred" });
     } finally {
       setIsCreatingFactory(false);
     }
@@ -517,11 +509,11 @@ export default function FactorySetup() {
 
     // Validate required fields
     if (!bulkUnitId) {
-      toast({ variant: "destructive", title: "Error", description: "Unit is required" });
+      toast.error("Error", { description: "Unit is required" });
       return;
     }
     if (!bulkFloorId) {
-      toast({ variant: "destructive", title: "Error", description: "Floor is required" });
+      toast.error("Error", { description: "Floor is required" });
       return;
     }
 
@@ -535,11 +527,7 @@ export default function FactorySetup() {
       const linesToCreate = Math.min(bulkLineCount, availableSlots);
 
       if (linesToCreate <= 0) {
-        toast({
-          variant: "destructive",
-          title: "Plan limit reached",
-          description: "Upgrade your plan to add more production lines."
-        });
+        toast.error("Plan limit reached", { description: "Upgrade your plan to add more production lines." });
         return;
       }
 
@@ -584,8 +572,7 @@ export default function FactorySetup() {
       const { error } = await supabase.from('lines').insert(newLines);
       if (error) throw error;
 
-      toast({
-        title: `${linesToCreate} lines created`,
+      toast.success(`${linesToCreate} lines created`, {
         description: linesToCreate < bulkLineCount
           ? `Only ${linesToCreate} lines added due to plan limits.`
           : `Lines L${bulkStartNumber} to L${bulkStartNumber + linesToCreate - 1} created.`
@@ -595,7 +582,7 @@ export default function FactorySetup() {
       fetchAllData();
       refreshLineStatus();
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Error", description: error.message });
+      toast.error("Error", { description: error?.message ?? "An error occurred" });
     } finally {
       setIsBulkAdding(false);
     }
@@ -611,9 +598,9 @@ export default function FactorySetup() {
         .eq('id', profile.factory_id);
       
       if (error) throw error;
-      toast({ title: "Storage settings saved" });
+      toast.success("Storage settings saved");
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Error", description: error.message });
+      toast.error("Error", { description: error?.message ?? "An error occurred" });
     } finally {
       setIsSavingStorage(false);
     }
@@ -629,12 +616,12 @@ export default function FactorySetup() {
         .eq('id', profile.factory_id);
       
       if (error) throw error;
-      toast({ title: "Factory name updated" });
+      toast.success("Factory name updated");
       setIsEditingFactoryName(false);
       // Reload to update auth context
       window.location.reload();
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Error", description: error.message });
+      toast.error("Error", { description: error?.message ?? "An error occurred" });
     } finally {
       setIsSavingFactoryName(false);
     }
@@ -712,20 +699,13 @@ export default function FactorySetup() {
 
   if (!isAdminOrHigher()) {
     return (
-      <div className="flex min-h-[400px] items-center justify-center p-4">
-        <Card className="max-w-md">
-          <CardContent className="pt-6 text-center">
-            <AlertTriangle className="h-12 w-12 text-warning mx-auto mb-4" />
-            <h2 className="text-lg font-semibold mb-2">Access Denied</h2>
-            <p className="text-muted-foreground text-sm">
-              You need admin permissions to access factory setup.
-            </p>
-            <Button variant="outline" className="mt-4" onClick={() => navigate('/dashboard')}>
-              Go to Dashboard
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <EmptyState
+        icon={AlertTriangle}
+        title="Access Denied"
+        description="You need admin permissions to access factory setup."
+        iconClassName="text-warning"
+        action={{ label: "Go to Dashboard", onClick: () => navigate('/dashboard') }}
+      />
     );
   }
 

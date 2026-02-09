@@ -2,7 +2,10 @@ import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays } from "date-fns";
 import { toast } from "sonner";
-import { Loader2, Search, Scissors, Package } from "lucide-react";
+import { Search, Scissors, Package, Download, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { TableSkeleton, StatsCardsSkeleton } from "@/components/ui/table-skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,6 +19,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { TablePagination } from "@/components/ui/table-pagination";
 import { usePagination } from "@/hooks/usePagination";
+import { useSortableTable } from "@/hooks/useSortableTable";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import {
   Dialog,
   DialogContent,
@@ -67,6 +72,7 @@ export function CuttingSubmissionsTable({
   const [loading, setLoading] = useState(true);
   const [submissions, setSubmissions] = useState<CuttingSubmission[]>([]);
   const [selectedSubmission, setSelectedSubmission] = useState<CuttingSubmission | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [pageSize, setPageSize] = useState(25);
   useEffect(() => {
     fetchData();
@@ -191,6 +197,8 @@ export function CuttingSubmissionsTable({
     );
   }, [submissions, searchTerm]);
 
+  const { sortedData, sortConfig, requestSort } = useSortableTable(filteredSubmissions, { column: "production_date", direction: "desc" });
+
   const {
     currentPage,
     totalPages,
@@ -204,7 +212,7 @@ export function CuttingSubmissionsTable({
     canGoPrevious,
     startIndex,
     endIndex,
-  } = usePagination(filteredSubmissions, { pageSize });
+  } = usePagination(sortedData, { pageSize });
   const stats = useMemo(() => {
     const today = format(new Date(), "yyyy-MM-dd");
     const todaySubmissions = submissions.filter(s => s.production_date === today);
@@ -232,10 +240,64 @@ export function CuttingSubmissionsTable({
     };
   }, [submissions]);
 
+  const allPageSelected = paginatedData.length > 0 && paginatedData.every(s => selectedIds.has(s.id));
+  const somePageSelected = paginatedData.some(s => selectedIds.has(s.id));
+
+  function toggleSelectAll() {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (allPageSelected) {
+        paginatedData.forEach(s => next.delete(s.id));
+      } else {
+        paginatedData.forEach(s => next.add(s.id));
+      }
+      return next;
+    });
+  }
+
+  function toggleSelectRow(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function exportSelectedCsv() {
+    const rows = sortedData.filter(s => selectedIds.has(s.id));
+    const headers = ["Date", "Line", "PO", "Buyer", "Order Qty", "Target", "Day Cutting", "Total Cutting", "Day Input", "Total Input", "Balance"];
+    const csvRows = [headers.join(",")];
+    rows.forEach(s => {
+      csvRows.push([
+        s.production_date,
+        `"${s.lines?.name || s.lines?.line_id || ""}"`,
+        `"${s.work_orders?.po_number || s.po_no || ""}"`,
+        `"${s.work_orders?.buyer || s.buyer || ""}"`,
+        s.order_qty ?? "",
+        s.cutting_capacity || "",
+        s.day_cutting,
+        s.total_cutting ?? "",
+        s.day_input,
+        s.total_input ?? "",
+        s.balance ?? "",
+      ].join(","));
+    });
+    const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `cutting-submissions-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${rows.length} rows`);
+  }
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      <div className="space-y-4">
+        <StatsCardsSkeleton count={4} />
+        <TableSkeleton columns={9} rows={6} headers={["Date", "Line", "PO", "Buyer", "Order Qty", "Target", "Actual", "%", "Balance"]} />
       </div>
     );
   }
@@ -294,25 +356,46 @@ export function CuttingSubmissionsTable({
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-3 px-4 py-2 bg-primary/5 border-b">
+              <span className="text-sm font-medium">{selectedIds.size} selected</span>
+              <Button variant="outline" size="sm" onClick={exportSelectedCsv}>
+                <Download className="h-3.5 w-3.5 mr-1" />
+                Export CSV
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
+                <X className="h-3.5 w-3.5 mr-1" />
+                Clear
+              </Button>
+            </div>
+          )}
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
-                  <TableHead>Date</TableHead>
-                  <TableHead>Line</TableHead>
+                  <TableHead className="w-[40px]">
+                    <Checkbox
+                      checked={allPageSelected}
+                      onCheckedChange={toggleSelectAll}
+                      aria-label="Select all"
+                      {...(somePageSelected && !allPageSelected ? { "data-state": "indeterminate" } : {})}
+                    />
+                  </TableHead>
+                  <SortableTableHead column="production_date" sortConfig={sortConfig} onSort={requestSort}>Date</SortableTableHead>
+                  <SortableTableHead column="lines.name" sortConfig={sortConfig} onSort={requestSort}>Line</SortableTableHead>
                   <TableHead>PO</TableHead>
-                  <TableHead>Buyer</TableHead>
-                  <TableHead className="text-right">Order Qty</TableHead>
-                  <TableHead className="text-right">Target</TableHead>
-                  <TableHead className="text-right">Actual</TableHead>
+                  <SortableTableHead column="work_orders.buyer" sortConfig={sortConfig} onSort={requestSort}>Buyer</SortableTableHead>
+                  <SortableTableHead column="order_qty" sortConfig={sortConfig} onSort={requestSort} className="text-right">Order Qty</SortableTableHead>
+                  <SortableTableHead column="cutting_capacity" sortConfig={sortConfig} onSort={requestSort} className="text-right">Target</SortableTableHead>
+                  <SortableTableHead column="day_cutting" sortConfig={sortConfig} onSort={requestSort} className="text-right">Actual</SortableTableHead>
                   <TableHead className="text-right">%</TableHead>
-                  <TableHead className="text-right">Balance</TableHead>
+                  <SortableTableHead column="balance" sortConfig={sortConfig} onSort={requestSort} className="text-right">Balance</SortableTableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {paginatedData.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
                       No cutting submissions found
                     </TableCell>
                   </TableRow>
@@ -322,9 +405,16 @@ export function CuttingSubmissionsTable({
                     return (
                       <TableRow
                         key={s.id}
-                        className="cursor-pointer hover:bg-muted/50"
+                        className={`cursor-pointer hover:bg-muted/50 ${selectedIds.has(s.id) ? "bg-primary/5" : ""}`}
                         onClick={() => setSelectedSubmission(s)}
                       >
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={selectedIds.has(s.id)}
+                            onCheckedChange={() => toggleSelectRow(s.id)}
+                            aria-label={`Select row`}
+                          />
+                        </TableCell>
                         <TableCell className="font-mono text-sm">
                           {format(new Date(s.production_date), "MMM d")}
                         </TableCell>

@@ -52,6 +52,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { DEV_FACTORY_ID_PREFIX } from "@/lib/constants";
+import { EmptyState } from "@/components/EmptyState";
 
 interface ErrorLog {
   id: string;
@@ -190,26 +192,30 @@ export default function ErrorLogs() {
     };
   }, [logs, totalCount]);
 
+  // Check if dev factory
+  const isDevFactory = profile?.factory_id?.startsWith(DEV_FACTORY_ID_PREFIX);
+
+  if (!isDevFactory) {
+    return (
+      <EmptyState
+        icon={AlertTriangle}
+        title="Access Denied"
+        description="Error logs are only available for development factories."
+        iconClassName="text-warning"
+        action={{ label: "Go to Dashboard", onClick: () => navigate("/dashboard") }}
+      />
+    );
+  }
+
   if (!isAdminOrHigher()) {
     return (
-      <div className="flex min-h-[400px] items-center justify-center p-4">
-        <Card className="max-w-md">
-          <CardContent className="pt-6 text-center">
-            <AlertTriangle className="h-12 w-12 text-warning mx-auto mb-4" />
-            <h2 className="text-lg font-semibold mb-2">Access Denied</h2>
-            <p className="text-muted-foreground text-sm">
-              You need admin permissions to view error logs.
-            </p>
-            <Button
-              variant="outline"
-              className="mt-4"
-              onClick={() => navigate("/dashboard")}
-            >
-              Go to Dashboard
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <EmptyState
+        icon={AlertTriangle}
+        title="Access Denied"
+        description="You need admin permissions to view error logs."
+        iconClassName="text-warning"
+        action={{ label: "Go to Dashboard", onClick: () => navigate("/dashboard") }}
+      />
     );
   }
 

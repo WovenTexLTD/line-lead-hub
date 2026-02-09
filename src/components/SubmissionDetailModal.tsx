@@ -121,7 +121,7 @@ export function SubmissionDetailModal({ submission, open, onOpenChange, onDelete
       onDeleted?.();
     } catch (error: any) {
       console.error('Error deleting submission:', error);
-      toast.error(error.message || "Failed to delete submission");
+      toast.error(error?.message || "Failed to delete submission");
     } finally {
       setDeleting(false);
     }

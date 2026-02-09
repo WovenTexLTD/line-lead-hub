@@ -38,6 +38,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { format } from "date-fns";
+import { useOfflineSubmission } from "@/hooks/useOfflineSubmission";
 
 interface WorkOrder {
   id: string;
@@ -82,6 +83,7 @@ export default function CuttingEndOfDay() {
   const [searchParams] = useSearchParams();
   const { i18n } = useTranslation();
   const { user, profile, factory, isAdminOrHigher } = useAuth();
+  const { submit: offlineSubmit } = useOfflineSubmission();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -408,16 +410,26 @@ export default function CuttingEndOfDay() {
         if (error) throw error;
         toast.success("Cutting actuals updated successfully!");
       } else {
-        const { error } = await supabase
-          .from("cutting_actuals")
-          .insert(actualData as any);
+        const result = await offlineSubmit("cutting_actuals", "cutting_actuals", actualData as Record<string, unknown>, {
+          showSuccessToast: false,
+          showQueuedToast: true,
+        });
 
-        if (error) {
-          if (error.code === "23505") {
+        if (result.queued) {
+          if (isAdminOrHigher()) {
+            navigate("/dashboard");
+          } else {
+            navigate("/cutting/submissions");
+          }
+          return;
+        }
+
+        if (!result.success) {
+          if (result.error?.includes("duplicate") || result.error?.includes("23505")) {
             toast.error("Actuals already submitted for this line/PO today");
             return;
           }
-          throw error;
+          throw new Error(result.error);
         }
         toast.success("Cutting end-of-day actuals submitted successfully!");
       }
@@ -429,7 +441,7 @@ export default function CuttingEndOfDay() {
       }
     } catch (error: any) {
       console.error("Error submitting:", error);
-      toast.error(error.message || "Submission failed");
+      toast.error(error?.message || "Submission failed");
     } finally {
       setSubmitting(false);
     }

@@ -382,7 +382,7 @@ export default function FinishingDailyOutput() {
       }
     } catch (error: any) {
       console.error("Error submitting output:", error);
-      toast.error(error.message || "Failed to submit output");
+      toast.error(error?.message || "Failed to submit output");
     } finally {
       setSubmitting(false);
     }

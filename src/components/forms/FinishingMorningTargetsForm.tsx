@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { z } from "zod";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -17,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { format } from "date-fns";
+import { useOfflineSubmission } from "@/hooks/useOfflineSubmission";
 
 interface Line {
   id: string;
@@ -50,6 +52,7 @@ interface Floor {
 export default function FinishingMorningTargetsForm() {
   const navigate = useNavigate();
   const { user, profile, factory, isAdminOrHigher } = useAuth();
+  const { submit: offlineSubmit } = useOfflineSubmission();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -136,18 +139,35 @@ export default function FinishingMorningTargetsForm() {
     }
   }
 
+  const formSchema = z.object({
+    line: z.string().min(1, "Line is required"),
+    workOrder: z.string().min(1, "PO is required"),
+    perHourTarget: z.number().int().positive("Per hour target is required"),
+    mPowerPlanned: z.number().int().positive("M Power is required"),
+    dayHourPlanned: z.number().min(0, "Day hours is required"),
+    dayOverTimePlanned: z.number().min(0, "OT hours must be 0 or more"),
+  });
+
   function validateForm(): boolean {
-    const newErrors: Record<string, string> = {};
+    const result = formSchema.safeParse({
+      line: selectedLineId,
+      workOrder: selectedWorkOrderId,
+      perHourTarget: parseInt(perHourTarget) || 0,
+      mPowerPlanned: parseInt(mPowerPlanned) || 0,
+      dayHourPlanned: parseFloat(dayHourPlanned) || -1,
+      dayOverTimePlanned: dayOverTimePlanned === "" ? -1 : parseFloat(dayOverTimePlanned),
+    });
 
-    if (!selectedLineId) newErrors.line = "Line is required";
-    if (!selectedWorkOrderId) newErrors.workOrder = "PO is required";
-    if (!perHourTarget || parseInt(perHourTarget) <= 0) newErrors.perHourTarget = "Per hour target is required";
-    if (!mPowerPlanned || parseInt(mPowerPlanned) <= 0) newErrors.mPowerPlanned = "M Power is required";
-    if (!dayHourPlanned || parseFloat(dayHourPlanned) < 0) newErrors.dayHourPlanned = "Day hours is required";
-    if (dayOverTimePlanned === "" || parseFloat(dayOverTimePlanned) < 0) newErrors.dayOverTimePlanned = "OT hours must be 0 or more";
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    if (!result.success) {
+      const newErrors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        if (err.path[0]) newErrors[err.path[0] as string] = err.message;
+      });
+      setErrors(newErrors);
+      return false;
+    }
+    setErrors({});
+    return true;
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -195,19 +215,31 @@ export default function FinishingMorningTargetsForm() {
         is_late: isLate,
       };
 
-      const { error } = await supabase.from("finishing_targets").insert(insertData as any);
+      const result = await offlineSubmit("finishing_targets", "finishing_targets", insertData as Record<string, unknown>, {
+        showSuccessToast: false,
+        showQueuedToast: true,
+      });
 
-      if (error) {
-        if (error.code === "23505") {
+      if (result.queued) {
+        if (isAdminOrHigher()) {
+          navigate("/dashboard");
+        } else {
+          navigate("/my-submissions");
+        }
+        return;
+      }
+
+      if (!result.success) {
+        if (result.error?.includes("duplicate") || result.error?.includes("23505")) {
           toast.error("Target already submitted for this line and PO today");
         } else {
-          throw error;
+          throw new Error(result.error);
         }
         return;
       }
 
       toast.success("Finishing targets submitted successfully!");
-      
+
       if (isAdminOrHigher()) {
         navigate("/dashboard");
       } else {
@@ -215,7 +247,7 @@ export default function FinishingMorningTargetsForm() {
       }
     } catch (error: any) {
       console.error("Error submitting targets:", error);
-      toast.error(error.message || "Failed to submit targets");
+      toast.error(error?.message || "Failed to submit targets");
     } finally {
       setSubmitting(false);
     }

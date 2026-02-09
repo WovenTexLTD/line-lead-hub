@@ -36,6 +36,7 @@ const factorySchema = z.object({
   logo_url: z.string().nullable(),
   max_lines: z.number().nullable(),
   low_stock_threshold: z.number(),
+  payment_failed_at: z.string().nullable().optional(),
 });
 
 type Profile = z.infer<typeof profileSchema>;
@@ -106,9 +107,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
+    // Re-validate session when tab becomes visible (handles sign-out in other tabs)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== 'visible' || !isMounted) return;
+
+      supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+        if (!isMounted) return;
+
+        if (!currentSession && lastFetchedUserId.current) {
+          // Session was removed in another tab — clear local state
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setRoles([]);
+          setFactory(null);
+          setErrorLoggerUserContext(null, null);
+          lastFetchedUserId.current = null;
+        } else if (currentSession?.user?.id && currentSession.user.id !== lastFetchedUserId.current) {
+          // Session user changed — re-fetch user data
+          setSession(currentSession);
+          setUser(currentSession.user);
+          fetchUserData(currentSession.user.id);
+        }
+      });
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
       isMounted = false;
       subscription.unsubscribe();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 

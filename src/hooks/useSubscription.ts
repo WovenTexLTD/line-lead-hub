@@ -11,6 +11,8 @@ interface SubscriptionStatus {
   subscriptionEnd?: string;
   needsPayment?: boolean;
   needsFactory?: boolean;
+  isPastDue?: boolean;
+  paymentFailedAt?: string;
 }
 
 export function useSubscription() {
@@ -66,6 +68,22 @@ export function useSubscription() {
       };
     }
 
+    // Past due: grant grace period access
+    if (factory.subscription_status === 'past_due') {
+      const GRACE_PERIOD_DAYS = 7;
+      const paymentFailedAt = factory.payment_failed_at ? new Date(factory.payment_failed_at) : null;
+      const withinGrace = paymentFailedAt &&
+        (Date.now() - paymentFailedAt.getTime()) < GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000;
+
+      return {
+        subscribed: false,
+        hasAccess: !!withinGrace,
+        isPastDue: true,
+        needsPayment: !withinGrace,
+        paymentFailedAt: factory.payment_failed_at ?? undefined,
+      };
+    }
+
     // No valid subscription
     return {
       subscribed: false,
@@ -98,7 +116,7 @@ export function useSubscription() {
 
       // Verify we have a valid session before calling the edge function
       const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session) {
+      if (!sessionData?.session) {
         // No valid session yet, use fallback
         const fallbackStatus = checkFromFactory();
         setStatus(fallbackStatus);
@@ -145,5 +163,6 @@ export function useSubscription() {
     isTrial: status?.isTrial ?? false,
     needsPayment: status?.needsPayment ?? false,
     needsFactory: status?.needsFactory ?? false,
+    isPastDue: status?.isPastDue ?? false,
   };
 }

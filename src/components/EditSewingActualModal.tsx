@@ -70,7 +70,7 @@ export function EditSewingActualModal({ submission, open, onOpenChange, onSaved 
       onSaved();
     } catch (error: any) {
       console.error('Error updating submission:', error);
-      toast.error(error.message || "Failed to update submission");
+      toast.error(error?.message || "Failed to update submission");
     } finally {
       setSaving(false);
     }

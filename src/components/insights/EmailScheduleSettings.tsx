@@ -196,7 +196,7 @@ export function EmailScheduleSettings() {
       toast.success("Test email sent! Check your inbox.");
     } catch (error: any) {
       console.error("Error sending test email:", error);
-      toast.error(error.message || "Failed to send test email");
+      toast.error(error?.message || "Failed to send test email");
     } finally {
       setSending(false);
     }

@@ -39,7 +39,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import {
   Loader2,
   Plus,
@@ -98,8 +98,6 @@ const LANGUAGES = [
 export default function KnowledgeBase() {
   const { profile, isAdminOrHigher } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
-
   const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -161,11 +159,7 @@ export default function KnowledgeBase() {
       setDocuments(docsWithStatus);
     } catch (err) {
       console.error("Error fetching documents:", err);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to load documents",
-      });
+      toast.error("Error", { description: "Failed to load documents" });
     } finally {
       setLoading(false);
     }
@@ -250,20 +244,12 @@ export default function KnowledgeBase() {
 
   const handleSubmit = async () => {
     if (!formData.title.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Title is required",
-      });
+      toast.error("Error", { description: "Title is required" });
       return;
     }
 
     if (!formData.content.trim() && !formData.source_url.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Please provide content or a source URL",
-      });
+      toast.error("Error", { description: "Please provide content or a source URL" });
       return;
     }
 
@@ -293,10 +279,7 @@ export default function KnowledgeBase() {
         await ingestClientSide(doc.id, formData.content.trim());
       }
 
-      toast({
-        title: "Success",
-        description: "Document added and ingested successfully",
-      });
+      toast.success("Document added and ingested successfully");
 
       // Reset form and close dialog
       setFormData({
@@ -312,11 +295,7 @@ export default function KnowledgeBase() {
       fetchDocuments();
     } catch (err) {
       console.error("Error adding document:", err);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: err instanceof Error ? err.message : "Failed to add document",
-      });
+      toast.error("Error", { description: err instanceof Error ? err.message : "Failed to add document" });
     } finally {
       setIsSubmitting(false);
       setIngestionProgress("");
@@ -336,28 +315,20 @@ export default function KnowledgeBase() {
 
       const content = (fullDoc as any)?.content as string | null;
       if (!content) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "No stored content. Delete and re-add with content.",
-        });
+        toast.error("Error", { description: "No stored content. Delete and re-add with content." });
         return;
       }
 
-      toast({ title: "Starting ingestion", description: `Ingesting "${doc.title}"...` });
+      toast.info("Starting ingestion", { description: `Ingesting "${doc.title}"...` });
 
       setIsSubmitting(true);
       await ingestClientSide(doc.id, content);
 
-      toast({ title: "Success", description: "Ingestion completed" });
+      toast.success("Ingestion completed");
       fetchDocuments();
     } catch (err) {
       console.error("Re-ingestion error:", err);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: err instanceof Error ? err.message : "Failed to re-ingest document",
-      });
+      toast.error("Error", { description: err instanceof Error ? err.message : "Failed to re-ingest document" });
     } finally {
       setIsSubmitting(false);
       setIngestionProgress("");
@@ -377,18 +348,11 @@ export default function KnowledgeBase() {
 
       if (error) throw error;
 
-      toast({
-        title: "Deleted",
-        description: "Document deleted successfully",
-      });
+      toast.success("Document deleted successfully");
       fetchDocuments();
     } catch (err) {
       console.error("Delete error:", err);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to delete document",
-      });
+      toast.error("Error", { description: "Failed to delete document" });
     }
   };
 
@@ -404,11 +368,7 @@ export default function KnowledgeBase() {
       fetchDocuments();
     } catch (err) {
       console.error("Toggle error:", err);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to update document",
-      });
+      toast.error("Error", { description: "Failed to update document" });
     }
   };
 

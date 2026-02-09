@@ -157,7 +157,7 @@ serve(async (req) => {
     // Get factory subscription status
     const { data: factory } = await supabaseClient
       .from('factory_accounts')
-      .select('subscription_status, trial_end_date, stripe_customer_id, stripe_subscription_id, subscription_tier, max_lines, name')
+      .select('subscription_status, trial_end_date, stripe_customer_id, stripe_subscription_id, subscription_tier, max_lines, name, payment_failed_at')
       .eq('id', profile.factory_id)
       .single();
 
@@ -252,46 +252,101 @@ serve(async (req) => {
       
       logStep("Found Stripe customers by email", { count: customers.data.length, ids: customers.data.map((c: Stripe.Customer) => c.id) });
       
-      // Check all customers for an active subscription
+      // Check all customers for an active or past_due subscription
+      let pastDueSub: Stripe.Subscription | null = null;
       for (const customer of customers.data) {
         const subs = await stripe.subscriptions.list({ customer: customer.id, status: 'all', limit: 10 });
         const activeSub = subs.data.find((s: Stripe.Subscription) => s.status === 'active' || s.status === 'trialing');
-        
+
         if (activeSub) {
-          logStep("Active subscription found", { 
-            customerId: customer.id, 
-            subscriptionId: activeSub.id, 
-            status: activeSub.status 
+          logStep("Active subscription found", {
+            customerId: customer.id,
+            subscriptionId: activeSub.id,
+            status: activeSub.status
           });
           return activeSub;
         }
+
+        // Track past_due as fallback (recoverable subscription)
+        if (!pastDueSub) {
+          const pdSub = subs.data.find((s: Stripe.Subscription) => s.status === 'past_due');
+          if (pdSub) pastDueSub = pdSub;
+        }
       }
-      
-      logStep("No active subscriptions found across all customers");
+
+      // Return past_due subscription if no active one found
+      if (pastDueSub) {
+        logStep("Past due subscription found (no active)", {
+          subscriptionId: pastDueSub.id,
+          status: pastDueSub.status,
+        });
+        return pastDueSub;
+      }
+
+      logStep("No active or past_due subscriptions found across all customers");
       return null;
+    };
+
+    const GRACE_PERIOD_DAYS = 7;
+
+    const respondWithPastDueSubscription = (paymentFailedAt: string | null) => {
+      const failedAt = paymentFailedAt ? new Date(paymentFailedAt) : null;
+      const withinGrace = failedAt &&
+        (now.getTime() - failedAt.getTime()) < GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000;
+
+      logStep("Past due subscription", { paymentFailedAt, withinGrace });
+
+      return new Response(JSON.stringify({
+        subscribed: false,
+        hasAccess: !!withinGrace,
+        isPastDue: true,
+        needsPayment: !withinGrace,
+        paymentFailedAt,
+        gracePeriodDays: GRACE_PERIOD_DAYS,
+        currentTier: factory.subscription_tier || 'starter',
+        maxLines: factory.max_lines || 30,
+        factoryName: factory.name,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
     };
 
     // IMPORTANT: Always check for active subscription by email first
     // This catches cases where customer ID in DB doesn't match the one with active subscription
     try {
-      const activeSubByEmail = await tryFindSubscriptionByCustomerEmail();
-      if (activeSubByEmail) {
-        const currentCustomerId = typeof activeSubByEmail.customer === 'string' 
-          ? activeSubByEmail.customer 
-          : activeSubByEmail.customer.id;
-        
+      const subByEmail = await tryFindSubscriptionByCustomerEmail();
+      if (subByEmail) {
+        const currentCustomerId = typeof subByEmail.customer === 'string'
+          ? subByEmail.customer
+          : subByEmail.customer.id;
+
         // Check if we need to sync the Stripe IDs
-        if (factory.stripe_customer_id !== currentCustomerId || 
-            factory.stripe_subscription_id !== activeSubByEmail.id) {
+        if (factory.stripe_customer_id !== currentCustomerId ||
+            factory.stripe_subscription_id !== subByEmail.id) {
           logStep("Syncing mismatched Stripe IDs", {
             oldCustomerId: factory.stripe_customer_id,
             newCustomerId: currentCustomerId,
             oldSubId: factory.stripe_subscription_id,
-            newSubId: activeSubByEmail.id,
+            newSubId: subByEmail.id,
           });
         }
-        
-        return await respondWithActiveSubscription(activeSubByEmail);
+
+        if (subByEmail.status === 'past_due') {
+          // Sync status to DB
+          await supabaseClient
+            .from('factory_accounts')
+            .update({
+              stripe_customer_id: currentCustomerId,
+              stripe_subscription_id: subByEmail.id,
+              subscription_status: 'past_due',
+              payment_failed_at: factory.payment_failed_at || new Date().toISOString(),
+            })
+            .eq('id', profile.factory_id);
+          return respondWithPastDueSubscription(factory.payment_failed_at);
+        }
+
+        return await respondWithActiveSubscription(subByEmail);
       }
     } catch (err) {
       logStep("Error checking subscription by email", { error: String(err) });
@@ -308,6 +363,18 @@ serve(async (req) => {
 
         if (subscription.status === 'active' || subscription.status === 'trialing') {
           return await respondWithActiveSubscription(subscription);
+        }
+
+        if (subscription.status === 'past_due') {
+          // Sync status and return grace period response
+          await supabaseClient
+            .from('factory_accounts')
+            .update({
+              subscription_status: 'past_due',
+              payment_failed_at: factory.payment_failed_at || new Date().toISOString(),
+            })
+            .eq('id', profile.factory_id);
+          return respondWithPastDueSubscription(factory.payment_failed_at);
         }
 
         // Subscription not active - update status
@@ -382,6 +449,11 @@ serve(async (req) => {
         .update({ subscription_status: 'expired' })
         .eq('id', profile.factory_id);
       logStep("Trial expired");
+    }
+
+    // Past due: grant grace period access
+    if (factory.subscription_status === 'past_due') {
+      return respondWithPastDueSubscription(factory.payment_failed_at);
     }
 
     // No active subscription or trial

@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Loader2, Factory, ArrowRight, KeyRound } from "lucide-react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,7 +45,7 @@ export default function Auth() {
   const { signIn, signUp, signOut, user, profile, hasRole, isAdminOrHigher, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { toast } = useToast();
+
 
   // Force English language on Auth page since it doesn't support translations
   useEffect(() => {
@@ -129,18 +129,14 @@ export default function Auth() {
         navigate(isWorker ? "/sewing/morning-targets" : "/dashboard", { replace: true });
       } else if (profile && !profile.is_active) {
         // User account is deactivated
-        toast({
-          variant: "destructive",
-          title: "Account Deactivated",
-          description: "Your account has been deactivated. Please contact your administrator.",
-        });
+        toast.error("Account Deactivated", { description: "Your account has been deactivated. Please contact your administrator." });
         signOut();
       } else if (profile && profile.factory_id === null) {
         // User without factory - redirect to subscription (covers both new users and removed users)
         navigate("/subscription", { replace: true });
       }
     }
-  }, [authLoading, user, profile, navigate, isPasswordResetMode, hasRole, isAdminOrHigher, isForcedPasswordReset, toast, signOut]);
+  }, [authLoading, user, profile, navigate, isPasswordResetMode, hasRole, isAdminOrHigher, isForcedPasswordReset, signOut]);
 
   // Login form state
   const [loginEmail, setLoginEmail] = useState("");
@@ -168,10 +164,7 @@ export default function Auth() {
     const resetSuccess = params.get("reset") === "success";
 
     if (resetSuccess) {
-      toast({
-        title: "Password updated",
-        description: "Please sign in with your new password.",
-      });
+      toast.success("Password updated", { description: "Please sign in with your new password." });
     }
 
     if (shouldOpenForgot) {
@@ -182,17 +175,13 @@ export default function Auth() {
     if (resetSuccess || shouldOpenForgot) {
       navigate("/auth", { replace: true });
     }
-  }, [location.search, navigate, toast]);
+  }, [location.search, navigate]);
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!forgotPasswordEmail || !z.string().email().safeParse(forgotPasswordEmail).success) {
-      toast({
-        variant: "destructive",
-        title: "Invalid email",
-        description: "Please enter a valid email address.",
-      });
+      toast.error("Invalid email", { description: "Please enter a valid email address." });
       return;
     }
 
@@ -203,16 +192,9 @@ export default function Auth() {
     setForgotPasswordLoading(false);
 
     if (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message,
-      });
+      toast.error("Error", { description: error.message });
     } else {
-      toast({
-        title: "Check your email",
-        description: "We've sent you a password reset link.",
-      });
+      toast.success("Check your email", { description: "We've sent you a password reset link." });
       setForgotPasswordOpen(false);
       setForgotPasswordEmail("");
     }
@@ -240,16 +222,9 @@ export default function Auth() {
     setResetPasswordLoading(false);
 
     if (error) {
-      toast({
-        variant: "destructive",
-        title: "Error updating password",
-        description: error.message,
-      });
+      toast.error("Error updating password", { description: error.message });
     } else {
-      toast({
-        title: "Password updated!",
-        description: "Your password has been successfully updated.",
-      });
+      toast.success("Password updated!", { description: "Your password has been successfully updated." });
       setIsPasswordResetMode(false);
       setNewPassword("");
       setConfirmNewPassword("");
@@ -282,18 +257,13 @@ export default function Auth() {
     setIsLoading(false);
 
     if (error) {
-      toast({
-        variant: "destructive",
-        title: "Login failed",
+      toast.error("Login failed", {
         description: error.message === "Invalid login credentials"
           ? "Invalid email or password. Please try again."
           : error.message,
       });
     } else {
-      toast({
-        title: "Welcome back!",
-        description: "You have successfully logged in.",
-      });
+      toast.success("Welcome back!", { description: "You have successfully logged in." });
       // Navigation will happen via the redirect useEffect once profile/roles are loaded
     }
   };
@@ -326,25 +296,14 @@ export default function Auth() {
 
     if (error) {
       if (error.message.includes("already registered")) {
-        toast({
-          variant: "destructive",
-          title: "Account exists",
-          description: "An account with this email already exists. Please log in instead.",
-        });
+        toast.error("Account exists", { description: "An account with this email already exists. Please log in instead." });
         setActiveTab("login");
         setLoginEmail(signupEmail);
       } else {
-        toast({
-          variant: "destructive",
-          title: "Signup failed",
-          description: error.message,
-        });
+        toast.error("Signup failed", { description: error.message });
       }
     } else {
-      toast({
-        title: "Account created!",
-        description: "Welcome to ProductionPortal.",
-      });
+      toast.success("Account created!", { description: "Welcome to ProductionPortal." });
       // New users need to choose subscription/trial
       navigate("/subscription");
     }

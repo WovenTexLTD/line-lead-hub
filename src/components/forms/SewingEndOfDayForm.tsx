@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { z } from "zod";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -18,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { format } from "date-fns";
+import { useOfflineSubmission } from "@/hooks/useOfflineSubmission";
 
 interface Line {
   id: string;
@@ -63,6 +65,7 @@ export default function SewingEndOfDayForm() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { user, profile, isAdminOrHigher } = useAuth();
+  const { submit: offlineSubmit } = useOfflineSubmission();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -163,21 +166,42 @@ export default function SewingEndOfDayForm() {
   }
 
   function validateForm(): boolean {
-    const newErrors: Record<string, string> = {};
+    const formSchema = z.object({
+      line: z.string().min(1, t("forms.lineRequired")),
+      workOrder: z.string().min(1, t("forms.poRequired")),
+      goodToday: z.number().int().min(0, t("forms.goodOutputRequired")),
+      rejectToday: z.number().int().min(0, t("forms.rejectRequired")),
+      reworkToday: z.number().int().min(0, t("forms.reworkRequired")),
+      cumulativeGoodTotal: z.number().int().min(0, t("forms.cumulativeRequired")),
+      manpowerActual: z.number().int().positive(t("forms.manpowerRequired")),
+      otHoursActual: z.number().min(0, t("forms.otHoursRequired")),
+      actualStage: z.string().min(1, t("forms.stageRequired")),
+      actualStageProgress: z.string().min(1, t("forms.progressRequired")),
+    });
 
-    if (!selectedLineId) newErrors.line = t("forms.lineRequired");
-    if (!selectedWorkOrderId) newErrors.workOrder = t("forms.poRequired");
-    if (!goodToday || parseInt(goodToday) < 0) newErrors.goodToday = t("forms.goodOutputRequired");
-    if (!rejectToday || parseInt(rejectToday) < 0) newErrors.rejectToday = t("forms.rejectRequired");
-    if (!reworkToday || parseInt(reworkToday) < 0) newErrors.reworkToday = t("forms.reworkRequired");
-    if (!cumulativeGoodTotal || parseInt(cumulativeGoodTotal) < 0) newErrors.cumulativeGoodTotal = t("forms.cumulativeRequired");
-    if (!manpowerActual || parseInt(manpowerActual) <= 0) newErrors.manpowerActual = t("forms.manpowerRequired");
-    if (otHoursActual === "" || parseFloat(otHoursActual) < 0) newErrors.otHoursActual = t("forms.otHoursRequired");
-    if (!actualStageId) newErrors.actualStage = t("forms.stageRequired");
-    if (!actualStageProgress) newErrors.actualStageProgress = t("forms.progressRequired");
+    const result = formSchema.safeParse({
+      line: selectedLineId,
+      workOrder: selectedWorkOrderId,
+      goodToday: goodToday ? parseInt(goodToday) : -1,
+      rejectToday: rejectToday ? parseInt(rejectToday) : -1,
+      reworkToday: reworkToday ? parseInt(reworkToday) : -1,
+      cumulativeGoodTotal: cumulativeGoodTotal ? parseInt(cumulativeGoodTotal) : -1,
+      manpowerActual: parseInt(manpowerActual) || 0,
+      otHoursActual: otHoursActual === "" ? -1 : parseFloat(otHoursActual),
+      actualStage: actualStageId,
+      actualStageProgress: actualStageProgress,
+    });
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    if (!result.success) {
+      const newErrors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        if (err.path[0]) newErrors[err.path[0] as string] = err.message;
+      });
+      setErrors(newErrors);
+      return false;
+    }
+    setErrors({});
+    return true;
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -219,19 +243,31 @@ export default function SewingEndOfDayForm() {
         remarks: remarks || null,
       };
 
-      const { error } = await supabase.from("sewing_actuals").insert(insertData as any);
+      const result = await offlineSubmit("sewing_actuals", "sewing_actuals", insertData as Record<string, unknown>, {
+        showSuccessToast: false,
+        showQueuedToast: true,
+      });
 
-      if (error) {
-        if (error.code === "23505") {
+      if (result.queued) {
+        if (isAdminOrHigher()) {
+          navigate("/dashboard");
+        } else {
+          navigate("/my-submissions");
+        }
+        return;
+      }
+
+      if (!result.success) {
+        if (result.error?.includes("duplicate") || result.error?.includes("23505")) {
           toast.error(t("common.submissionFailed"));
         } else {
-          throw error;
+          throw new Error(result.error);
         }
         return;
       }
 
       toast.success(t("common.submissionSuccess"));
-      
+
       if (isAdminOrHigher()) {
         navigate("/dashboard");
       } else {

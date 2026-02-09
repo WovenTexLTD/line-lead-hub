@@ -16,7 +16,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, Factory, Package, Search, Download, RefreshCw, FileText, Calendar, Target, ClipboardCheck, Scissors } from "lucide-react";
+import { Factory, Package, Search, Download, RefreshCw, FileText, Calendar, Target, ClipboardCheck, Scissors } from "lucide-react";
+import { TableSkeleton, StatsCardsSkeleton } from "@/components/ui/table-skeleton";
 import { SubmissionDetailModal } from "@/components/SubmissionDetailModal";
 import { TargetDetailModal } from "@/components/TargetDetailModal";
 import { ExportSubmissionsDialog } from "@/components/ExportSubmissionsDialog";
@@ -25,6 +26,8 @@ import { FinishingDailySheetsTable } from "@/components/submissions/FinishingDai
 import { StorageSubmissionsTable } from "@/components/submissions/StorageSubmissionsTable";
 import { TablePagination } from "@/components/ui/table-pagination";
 import { usePagination } from "@/hooks/usePagination";
+import { useSortableTable } from "@/hooks/useSortableTable";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import { toast } from "sonner";
 
 // Types for targets
@@ -258,11 +261,13 @@ export default function AllSubmissions() {
   };
 
   // Filter functions
-  const filterBySearch = <T extends { lines?: { line_id: string; name: string | null } | null; work_orders?: { po_number: string } | null }>(items: T[]) => {
+  const filterBySearch = <T extends { lines?: { line_id: string; name: string | null } | null; work_orders?: { po_number: string; buyer?: string } | null }>(items: T[]) => {
     if (!searchTerm) return items;
+    const term = searchTerm.toLowerCase();
     return items.filter(item =>
-      (item.lines?.name || item.lines?.line_id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.work_orders?.po_number || '').toLowerCase().includes(searchTerm.toLowerCase())
+      (item.lines?.name || item.lines?.line_id || '').toLowerCase().includes(term) ||
+      (item.work_orders?.po_number || '').toLowerCase().includes(term) ||
+      (item.work_orders?.buyer || '').toLowerCase().includes(term)
     );
   };
 
@@ -284,9 +289,11 @@ export default function AllSubmissions() {
     }
   }, [category, finishingTargets, finishingActuals, searchTerm]);
 
-  // Separate pagination for sewing targets and actuals
-  const sewingTargetsPagination = usePagination(filterBySearch(sewingTargets), { pageSize });
-  const sewingActualsPagination = usePagination(filterBySearch(sewingActuals), { pageSize });
+  // Sort and paginate sewing targets
+  const { sortedData: sortedSewingTargets, sortConfig: sewingTargetsSortConfig, requestSort: requestSewingTargetsSort } = useSortableTable(filterBySearch(sewingTargets), { column: "production_date", direction: "desc" });
+  const { sortedData: sortedSewingActuals, sortConfig: sewingActualsSortConfig, requestSort: requestSewingActualsSort } = useSortableTable(filterBySearch(sewingActuals), { column: "production_date", direction: "desc" });
+  const sewingTargetsPagination = usePagination(sortedSewingTargets, { pageSize });
+  const sewingActualsPagination = usePagination(sortedSewingActuals, { pageSize });
 
   // Use the appropriate pagination based on category
   const pagination = category === 'targets' ? sewingTargetsPagination : sewingActualsPagination;
@@ -363,8 +370,18 @@ export default function AllSubmissions() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="p-4 lg:p-6 space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <FileText className="h-6 w-6 text-primary" />
+            All Submissions
+          </h1>
+          <p className="text-muted-foreground">
+            View and export historical targets and end of day data
+          </p>
+        </div>
+        <StatsCardsSkeleton count={4} />
+        <TableSkeleton columns={9} rows={8} />
       </div>
     );
   }
@@ -529,7 +546,7 @@ export default function AllSubmissions() {
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by line or PO..."
+              placeholder="Search by line, PO, or buyer..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-9"
@@ -555,14 +572,14 @@ export default function AllSubmissions() {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/50">
-                        <TableHead>Date</TableHead>
+                        <SortableTableHead column="production_date" sortConfig={sewingTargetsSortConfig} onSort={requestSewingTargetsSort}>Date</SortableTableHead>
                         <TableHead>Time</TableHead>
-                        <TableHead>Line</TableHead>
+                        <SortableTableHead column="lines.name" sortConfig={sewingTargetsSortConfig} onSort={requestSewingTargetsSort}>Line</SortableTableHead>
                         <TableHead>PO</TableHead>
-                        <TableHead>Buyer</TableHead>
-                        <TableHead className="text-right">Target/hr</TableHead>
-                        <TableHead className="text-right">Manpower</TableHead>
-                        <TableHead className="text-right">Progress</TableHead>
+                        <SortableTableHead column="work_orders.buyer" sortConfig={sewingTargetsSortConfig} onSort={requestSewingTargetsSort}>Buyer</SortableTableHead>
+                        <SortableTableHead column="per_hour_target" sortConfig={sewingTargetsSortConfig} onSort={requestSewingTargetsSort} className="text-right">Target/hr</SortableTableHead>
+                        <SortableTableHead column="manpower_planned" sortConfig={sewingTargetsSortConfig} onSort={requestSewingTargetsSort} className="text-right">Manpower</SortableTableHead>
+                        <SortableTableHead column="planned_stage_progress" sortConfig={sewingTargetsSortConfig} onSort={requestSewingTargetsSort} className="text-right">Progress</SortableTableHead>
                         <TableHead>Status</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -605,14 +622,14 @@ export default function AllSubmissions() {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/50">
-                        <TableHead>Date</TableHead>
+                        <SortableTableHead column="production_date" sortConfig={sewingActualsSortConfig} onSort={requestSewingActualsSort}>Date</SortableTableHead>
                         <TableHead>Time</TableHead>
-                        <TableHead>Line</TableHead>
+                        <SortableTableHead column="lines.name" sortConfig={sewingActualsSortConfig} onSort={requestSewingActualsSort}>Line</SortableTableHead>
                         <TableHead>PO</TableHead>
-                        <TableHead>Buyer</TableHead>
-                        <TableHead className="text-right">Good Today</TableHead>
-                        <TableHead className="text-right">Cumulative</TableHead>
-                        <TableHead className="text-right">Manpower</TableHead>
+                        <SortableTableHead column="work_orders.buyer" sortConfig={sewingActualsSortConfig} onSort={requestSewingActualsSort}>Buyer</SortableTableHead>
+                        <SortableTableHead column="good_today" sortConfig={sewingActualsSortConfig} onSort={requestSewingActualsSort} className="text-right">Good Today</SortableTableHead>
+                        <SortableTableHead column="cumulative_good_total" sortConfig={sewingActualsSortConfig} onSort={requestSewingActualsSort} className="text-right">Cumulative</SortableTableHead>
+                        <SortableTableHead column="manpower_actual" sortConfig={sewingActualsSortConfig} onSort={requestSewingActualsSort} className="text-right">Manpower</SortableTableHead>
                         <TableHead>Status</TableHead>
                       </TableRow>
                     </TableHeader>

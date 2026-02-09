@@ -2,7 +2,10 @@ import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays } from "date-fns";
 import { toast } from "sonner";
-import { Loader2, Search, Package } from "lucide-react";
+import { Search, Package, Download, X } from "lucide-react";
+import { TableSkeleton, StatsCardsSkeleton } from "@/components/ui/table-skeleton";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -17,6 +20,8 @@ import { Badge } from "@/components/ui/badge";
 import { StorageBinCardDetailModal } from "@/components/StorageBinCardDetailModal";
 import { TablePagination } from "@/components/ui/table-pagination";
 import { usePagination } from "@/hooks/usePagination";
+import { useSortableTable } from "@/hooks/useSortableTable";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
 
 interface BinCard {
   id: string;
@@ -60,6 +65,7 @@ export function StorageSubmissionsTable({
   const [binCardTransactions, setBinCardTransactions] = useState<any[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [pageSize, setPageSize] = useState(25);
   useEffect(() => {
     fetchData();
@@ -158,6 +164,8 @@ export function StorageSubmissionsTable({
     );
   }, [binCards, searchTerm]);
 
+  const { sortedData, sortConfig, requestSort } = useSortableTable(filteredCards);
+
   const {
     currentPage,
     totalPages,
@@ -171,7 +179,7 @@ export function StorageSubmissionsTable({
     canGoPrevious,
     startIndex,
     endIndex,
-  } = usePagination(filteredCards, { pageSize });
+  } = usePagination(sortedData, { pageSize });
 
   const stats = useMemo(() => {
     const totalBalance = binCards.reduce((sum, c) => sum + (c.latestBalance || 0), 0);
@@ -228,10 +236,61 @@ export function StorageSubmissionsTable({
     }
   };
 
+  const allPageSelected = paginatedData.length > 0 && paginatedData.every(c => selectedIds.has(c.id));
+  const somePageSelected = paginatedData.some(c => selectedIds.has(c.id));
+
+  function toggleSelectAll() {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (allPageSelected) {
+        paginatedData.forEach(c => next.delete(c.id));
+      } else {
+        paginatedData.forEach(c => next.add(c.id));
+      }
+      return next;
+    });
+  }
+
+  function toggleSelectRow(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function exportSelectedCsv() {
+    const rows = sortedData.filter(c => selectedIds.has(c.id));
+    const headers = ["Created", "PO Number", "Buyer", "Style", "Description", "Received", "Issued", "Balance"];
+    const csvRows = [headers.join(",")];
+    rows.forEach(c => {
+      csvRows.push([
+        format(new Date(c.created_at), "yyyy-MM-dd"),
+        `"${c.work_orders.po_number}"`,
+        `"${c.work_orders.buyer}"`,
+        `"${c.work_orders.style}"`,
+        `"${c.description || ""}"`,
+        c.totalReceived ?? 0,
+        c.totalIssued ?? 0,
+        c.latestBalance ?? "",
+      ].join(","));
+    });
+    const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `storage-bin-cards-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${rows.length} rows`);
+  }
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      <div className="space-y-4">
+        <StatsCardsSkeleton count={4} />
+        <TableSkeleton columns={7} rows={6} headers={["Created", "PO Number", "Buyer", "Style", "Received", "Issued", "Balance"]} />
       </div>
     );
   }
@@ -287,23 +346,44 @@ export function StorageSubmissionsTable({
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-3 px-4 py-2 bg-primary/5 border-b">
+              <span className="text-sm font-medium">{selectedIds.size} selected</span>
+              <Button variant="outline" size="sm" onClick={exportSelectedCsv}>
+                <Download className="h-3.5 w-3.5 mr-1" />
+                Export CSV
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
+                <X className="h-3.5 w-3.5 mr-1" />
+                Clear
+              </Button>
+            </div>
+          )}
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
-                  <TableHead>Created</TableHead>
-                  <TableHead>PO Number</TableHead>
-                  <TableHead>Buyer</TableHead>
-                  <TableHead>Style</TableHead>
-                  <TableHead className="text-right">Received</TableHead>
-                  <TableHead className="text-right">Issued</TableHead>
-                  <TableHead className="text-right">Balance</TableHead>
+                  <TableHead className="w-[40px]">
+                    <Checkbox
+                      checked={allPageSelected}
+                      onCheckedChange={toggleSelectAll}
+                      aria-label="Select all"
+                      {...(somePageSelected && !allPageSelected ? { "data-state": "indeterminate" } : {})}
+                    />
+                  </TableHead>
+                  <SortableTableHead column="created_at" sortConfig={sortConfig} onSort={requestSort}>Created</SortableTableHead>
+                  <SortableTableHead column="work_orders.po_number" sortConfig={sortConfig} onSort={requestSort}>PO Number</SortableTableHead>
+                  <SortableTableHead column="work_orders.buyer" sortConfig={sortConfig} onSort={requestSort}>Buyer</SortableTableHead>
+                  <SortableTableHead column="work_orders.style" sortConfig={sortConfig} onSort={requestSort}>Style</SortableTableHead>
+                  <SortableTableHead column="totalReceived" sortConfig={sortConfig} onSort={requestSort} className="text-right">Received</SortableTableHead>
+                  <SortableTableHead column="totalIssued" sortConfig={sortConfig} onSort={requestSort} className="text-right">Issued</SortableTableHead>
+                  <SortableTableHead column="latestBalance" sortConfig={sortConfig} onSort={requestSort} className="text-right">Balance</SortableTableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {paginatedData.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                       No bin cards found
                     </TableCell>
                   </TableRow>
@@ -311,9 +391,16 @@ export function StorageSubmissionsTable({
                   paginatedData.map((card) => (
                     <TableRow
                       key={card.id}
-                      className="cursor-pointer hover:bg-muted/50"
+                      className={`cursor-pointer hover:bg-muted/50 ${selectedIds.has(card.id) ? "bg-primary/5" : ""}`}
                       onClick={() => handleCardClick(card)}
                     >
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={selectedIds.has(card.id)}
+                          onCheckedChange={() => toggleSelectRow(card.id)}
+                          aria-label={`Select row`}
+                        />
+                      </TableCell>
                       <TableCell className="font-mono text-sm">
                         {format(new Date(card.created_at), "MMM d")}
                       </TableCell>

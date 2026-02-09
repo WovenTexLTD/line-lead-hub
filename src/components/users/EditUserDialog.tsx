@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { mutateWithRetry, invokeEdgeFn, networkErrorMessage } from "@/lib/network-utils";
 import {
   Dialog,
   DialogContent,
@@ -150,46 +151,41 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
 
     try {
       // Update role - first delete existing, then insert new
-      const { error: deleteRoleError } = await supabase
-        .from('user_roles')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('factory_id', profile.factory_id);
+      const { error: deleteRoleError } = await mutateWithRetry(() =>
+        supabase.from('user_roles').delete().eq('user_id', user.id).eq('factory_id', profile.factory_id)
+      );
 
       if (deleteRoleError) {
         console.error("Delete role error:", deleteRoleError);
       }
 
-      const { error: insertRoleError } = await supabase
-        .from('user_roles')
-        .insert({
+      const { error: insertRoleError } = await mutateWithRetry(() =>
+        supabase.from('user_roles').insert({
           user_id: user.id,
           role: formData.role,
           factory_id: profile.factory_id,
-        });
+        })
+      );
 
       if (insertRoleError) {
-        toast.error("Failed to update role");
+        toast.error(networkErrorMessage(insertRoleError));
         return;
       }
 
       // Update profile with active status
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ is_active: formData.isActive })
-        .eq('id', user.id);
+      const { error: profileError } = await mutateWithRetry(() =>
+        supabase.from('profiles').update({ is_active: formData.isActive }).eq('id', user.id)
+      );
 
       if (profileError) {
-        toast.error("Failed to update profile");
+        toast.error(networkErrorMessage(profileError));
         return;
       }
 
       // Update line assignments - delete all existing, then insert new
-      const { error: deleteLineError } = await supabase
-        .from('user_line_assignments')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('factory_id', profile.factory_id);
+      const { error: deleteLineError } = await mutateWithRetry(() =>
+        supabase.from('user_line_assignments').delete().eq('user_id', user.id).eq('factory_id', profile.factory_id)
+      );
 
       if (deleteLineError) {
         console.error("Delete line assignments error:", deleteLineError);
@@ -202,9 +198,9 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
           factory_id: profile.factory_id,
         }));
 
-        const { error: insertLineError } = await supabase
-          .from('user_line_assignments')
-          .insert(lineAssignments);
+        const { error: insertLineError } = await mutateWithRetry(() =>
+          supabase.from('user_line_assignments').insert(lineAssignments)
+        );
 
         if (insertLineError) {
           console.error("Insert line assignments error:", insertLineError);
@@ -216,7 +212,7 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
       onOpenChange(false);
     } catch (error) {
       console.error("Error updating user:", error);
-      toast.error("Failed to update user");
+      toast.error(networkErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -228,12 +224,10 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke("remove-user-access", {
-        body: { userId: user.id },
-      });
+      const { data, error } = await invokeEdgeFn("remove-user-access", { userId: user.id });
 
       if (error) {
-        toast.error(error.message || "Failed to remove user access");
+        toast.error(networkErrorMessage(error));
         return;
       }
 
@@ -248,7 +242,7 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
       setShowDeleteConfirm(false);
     } catch (error) {
       console.error("Error removing user:", error);
-      toast.error("Failed to remove user");
+      toast.error(networkErrorMessage(error));
     } finally {
       setLoading(false);
     }

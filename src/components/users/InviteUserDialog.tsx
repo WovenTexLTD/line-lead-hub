@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFn, networkErrorMessage } from "@/lib/network-utils";
 import {
   Dialog,
   DialogContent,
@@ -133,26 +134,24 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
 
     try {
       // Use edge function to create user (doesn't affect current session)
-      const { data, error } = await supabase.functions.invoke('admin-invite-user', {
-        body: {
-          email: formData.email,
-          fullName: formData.fullName,
-          factoryId: profile.factory_id,
-          role: formData.role,
-          department: formData.role === 'worker' ? formData.department : null,
-          // Storage and cutting roles get all lines automatically, workers get selected lines
-          lineIds: formData.role === 'worker' 
-            ? selectedLineIds 
-            : ['storage', 'cutting'].includes(formData.role) 
-              ? lines.map(l => l.id) 
-              : [],
-          temporaryPassword: useTemporaryPassword ? temporaryPassword : undefined,
-        },
+      const { data, error } = await invokeEdgeFn('admin-invite-user', {
+        email: formData.email,
+        fullName: formData.fullName,
+        factoryId: profile.factory_id,
+        role: formData.role,
+        department: formData.role === 'worker' ? formData.department : null,
+        // Storage and cutting roles get all lines automatically, workers get selected lines
+        lineIds: formData.role === 'worker'
+          ? selectedLineIds
+          : ['storage', 'cutting'].includes(formData.role)
+            ? lines.map(l => l.id)
+            : [],
+        temporaryPassword: useTemporaryPassword ? temporaryPassword : undefined,
       });
 
       if (error) {
         console.error("Invite error:", error);
-        toast.error(error.message || "Failed to invite user");
+        toast.error(networkErrorMessage(error));
         return;
       }
 
@@ -169,13 +168,11 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
           .eq('id', profile.factory_id)
           .single();
 
-        await supabase.functions.invoke('send-welcome-email', {
-          body: {
-            email: formData.email,
-            fullName: formData.fullName,
-            resetLink: `${window.location.origin}/reset-password`,
-            factoryName: factoryData?.name,
-          },
+        await invokeEdgeFn('send-welcome-email', {
+          email: formData.email,
+          fullName: formData.fullName,
+          resetLink: `${window.location.origin}/reset-password`,
+          factoryName: factoryData?.name,
         });
       } catch (emailErr) {
         console.error("Welcome email error:", emailErr);

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { mutateWithRetry, networkErrorMessage } from "@/lib/network-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { 
   Loader2, 
   ClipboardList, 
@@ -31,6 +32,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { EmptyState } from "@/components/EmptyState";
 
 interface WorkOrder {
   id: string;
@@ -91,7 +93,7 @@ const getStatusColor = (status: string) => {
 export default function WorkOrders() {
   const { profile, isAdminOrHigher } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [loading, setLoading] = useState(true);
@@ -311,30 +313,29 @@ export default function WorkOrders() {
       let workOrderId: string;
       
       if (dialogMode === 'create') {
-        const { data: insertedData, error } = await supabase
-          .from('work_orders')
-          .insert([insertData])
-          .select('id')
-          .single();
+        const { data: insertedData, error } = await mutateWithRetry(() =>
+          supabase.from('work_orders').insert([insertData]).select('id').single()
+        );
         if (error) throw error;
         workOrderId = insertedData.id;
-        toast({ title: "Work order created" });
+        toast.success("Work order created");
       } else if (editingItem) {
-        const { error } = await supabase.from('work_orders').update(insertData).eq('id', editingItem.id);
+        const { error } = await mutateWithRetry(() =>
+          supabase.from('work_orders').update(insertData).eq('id', editingItem.id)
+        );
         if (error) throw error;
         workOrderId = editingItem.id;
-        toast({ title: "Work order updated" });
+        toast.success("Work order updated");
       } else {
         throw new Error("No work order to update");
       }
-      
+
       // Update line assignments
       // First, delete existing assignments
-      await supabase
-        .from('work_order_line_assignments')
-        .delete()
-        .eq('work_order_id', workOrderId);
-      
+      await mutateWithRetry(() =>
+        supabase.from('work_order_line_assignments').delete().eq('work_order_id', workOrderId)
+      );
+
       // Then insert new assignments
       if (selectedLineIds.length > 0) {
         const assignments = selectedLineIds.map(lineId => ({
@@ -342,19 +343,19 @@ export default function WorkOrders() {
           line_id: lineId,
           factory_id: profile.factory_id,
         }));
-        
-        const { error: assignError } = await supabase
-          .from('work_order_line_assignments')
-          .insert(assignments);
-        
+
+        const { error: assignError } = await mutateWithRetry(() =>
+          supabase.from('work_order_line_assignments').insert(assignments)
+        );
+
         if (assignError) throw assignError;
       }
-      
+
       setIsDialogOpen(false);
       fetchWorkOrders();
       fetchLineAssignments();
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Error", description: error.message });
+      toast.error("Error", { description: networkErrorMessage(error) });
     } finally {
       setIsSaving(false);
     }
@@ -382,10 +383,10 @@ export default function WorkOrders() {
     try {
       const { error } = await supabase.from('work_orders').delete().eq('id', id);
       if (error) throw error;
-      toast({ title: "Work order deleted" });
+      toast.success("Work order deleted");
       fetchWorkOrders();
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Error", description: error.message });
+      toast.error("Error", { description: error?.message ?? "An error occurred" });
     }
   }
 
@@ -395,7 +396,7 @@ export default function WorkOrders() {
       if (error) throw error;
       fetchWorkOrders();
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Error", description: error.message });
+      toast.error("Error", { description: error?.message ?? "An error occurred" });
     }
   }
 
@@ -514,7 +515,7 @@ export default function WorkOrders() {
     const text = await file.text();
     const csvLines = text.split('\n').filter(l => l.trim());
     if (csvLines.length < 2) {
-      toast({ variant: "destructive", title: "Invalid CSV", description: "File must have headers and at least one data row." });
+      toast.error("Invalid CSV", { description: "File must have headers and at least one data row." });
       return;
     }
     
@@ -527,7 +528,7 @@ export default function WorkOrders() {
     const parsedRows = parseCSVToRows(text);
     
     if (parsedRows.length === 0) {
-      toast({ variant: "destructive", title: "No valid rows found", description: "Make sure your CSV has columns like OrderLineID/po_number, Brand Name/buyer, etc." });
+      toast.error("No valid rows found", { description: "Make sure your CSV has columns like OrderLineID/po_number, Brand Name/buyer, etc." });
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
@@ -555,12 +556,12 @@ export default function WorkOrders() {
       const { error } = await supabase.from('work_orders').insert(allRows);
       if (error) throw error;
       
-      toast({ title: `Imported ${allRows.length} work orders` });
+      toast.success(`Imported ${allRows.length} work orders`);
       setIsPreviewOpen(false);
       setPreviewData(null);
       fetchWorkOrders();
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Import failed", description: error.message });
+      toast.error("Import failed", { description: error?.message ?? "An error occurred" });
     } finally {
       setIsImporting(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -590,39 +591,24 @@ export default function WorkOrders() {
 
   if (!profile?.factory_id) {
     return (
-      <div className="flex min-h-[400px] items-center justify-center p-4">
-        <Card className="max-w-md">
-          <CardContent className="pt-6 text-center">
-            <ClipboardList className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h2 className="text-lg font-semibold mb-2">No Factory Assigned</h2>
-            <p className="text-muted-foreground text-sm">
-              You need to be assigned to a factory first.
-            </p>
-            <Button variant="outline" className="mt-4" onClick={() => navigate('/setup')}>
-              Go to Setup
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <EmptyState
+        icon={ClipboardList}
+        title="No Factory Assigned"
+        description="You need to be assigned to a factory first."
+        action={{ label: "Go to Setup", onClick: () => navigate('/setup') }}
+      />
     );
   }
 
   if (!isAdminOrHigher()) {
     return (
-      <div className="flex min-h-[400px] items-center justify-center p-4">
-        <Card className="max-w-md">
-          <CardContent className="pt-6 text-center">
-            <AlertTriangle className="h-12 w-12 text-warning mx-auto mb-4" />
-            <h2 className="text-lg font-semibold mb-2">Access Denied</h2>
-            <p className="text-muted-foreground text-sm">
-              You need admin permissions to manage work orders.
-            </p>
-            <Button variant="outline" className="mt-4" onClick={() => navigate('/dashboard')}>
-              Go to Dashboard
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <EmptyState
+        icon={AlertTriangle}
+        title="Access Denied"
+        description="You need admin permissions to manage work orders."
+        iconClassName="text-warning"
+        action={{ label: "Go to Dashboard", onClick: () => navigate('/dashboard') }}
+      />
     );
   }
 

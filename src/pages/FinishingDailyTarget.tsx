@@ -311,7 +311,7 @@ export default function FinishingDailyTarget() {
       }
     } catch (error: any) {
       console.error("Error submitting targets:", error);
-      toast.error(error.message || "Failed to submit targets");
+      toast.error(error?.message || "Failed to submit targets");
     } finally {
       setSubmitting(false);
     }
