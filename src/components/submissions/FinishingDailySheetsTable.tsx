@@ -2,6 +2,9 @@ import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { formatShortDate, formatTime } from "@/lib/date-utils";
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+} from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -171,6 +174,27 @@ export function FinishingDailySheetsTable({
   const totalPoly = tabLogs.reduce((sum, l) => sum + l.poly, 0);
   const totalCarton = tabLogs.reduce((sum, l) => sum + l.carton, 0);
 
+  // Daily output trend chart data
+  const finishingDailyTrend = useMemo(() => {
+    const outputLogs = logs.filter(l => l.log_type === "OUTPUT");
+    if (outputLogs.length === 0) return [];
+    const byDate: Record<string, { carton: number; poly: number }> = {};
+    for (const l of outputLogs) {
+      const d = l.production_date;
+      if (!byDate[d]) byDate[d] = { carton: 0, poly: 0 };
+      byDate[d].carton += l.carton || 0;
+      byDate[d].poly += l.poly || 0;
+    }
+    return Object.entries(byDate)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, vals]) => ({
+        date,
+        displayDate: new Date(date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        carton: vals.carton,
+        poly: vals.poly,
+      }));
+  }, [logs]);
+
   const allPageSelected = paginatedData.length > 0 && paginatedData.every(l => selectedIds.has(l.id));
   const somePageSelected = paginatedData.some(l => selectedIds.has(l.id));
 
@@ -282,6 +306,58 @@ export function FinishingDailySheetsTable({
               </CardContent>
             </Card>
           </div>
+
+          {/* Daily Output Trend Chart */}
+          {finishingDailyTrend.length > 1 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-primary" />
+                  Daily Output Trend
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pb-4">
+                <ResponsiveContainer width="100%" height={200}>
+                  <AreaChart data={finishingDailyTrend}>
+                    <defs>
+                      <linearGradient id="colorFinishingCarton" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="displayDate" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
+                    <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} width={40} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                      }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="carton"
+                      name="Carton"
+                      stroke="hsl(var(--primary))"
+                      fill="url(#colorFinishingCarton)"
+                      strokeWidth={2}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="poly"
+                      name="Poly"
+                      stroke="hsl(var(--destructive))"
+                      fill="hsl(var(--destructive))"
+                      fillOpacity={0.1}
+                      strokeWidth={1.5}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Search */}
           <div className="relative max-w-md">
