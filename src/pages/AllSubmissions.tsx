@@ -590,7 +590,7 @@ export default function AllSubmissions() {
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                   <p className="text-xs text-muted-foreground">{sewingKpiStats.metric1Label}</p>
                 </div>
-                <div className="text-2xl font-bold text-accent-foreground">{sewingKpiStats.metric1.toLocaleString()}</div>
+                <div className="text-2xl font-bold text-primary">{sewingKpiStats.metric1.toLocaleString()}</div>
               </CardContent>
             </Card>
             <Card>
@@ -599,7 +599,7 @@ export default function AllSubmissions() {
                   <Package className="h-4 w-4 text-muted-foreground" />
                   <p className="text-xs text-muted-foreground">{sewingKpiStats.metric2Label}</p>
                 </div>
-                <div className="text-2xl font-bold text-accent-foreground">{sewingKpiStats.metric2.toLocaleString()}</div>
+                <div className="text-2xl font-bold text-primary">{sewingKpiStats.metric2.toLocaleString()}</div>
               </CardContent>
             </Card>
             <Card>
