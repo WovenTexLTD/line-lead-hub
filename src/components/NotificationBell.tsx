@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Bell, Check, AlertTriangle, Info, CheckCircle2, Clock, Trash2 } from "lucide-react";
+import { Bell, Check, AlertTriangle, Info, CheckCircle2, Clock, Trash2, Settings, Scissors } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 
@@ -53,6 +53,18 @@ export function NotificationBell() {
         }
         return "/insights";
       }
+
+      case "blocker_on_my_line":
+        return "/blockers";
+
+      case "late_submission":
+        return "/today-updates";
+
+      case "daily_summary":
+        return "/insights";
+
+      case "cutting_handoff":
+        return "/today-updates";
 
       case "target_reminder":
         return "/morning-targets";
@@ -155,11 +167,24 @@ export function NotificationBell() {
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case "blocker":
+      case "critical_blocker":
+      case "blocker_on_my_line":
         return <AlertTriangle className="h-4 w-4 text-warning" />;
       case "success":
+      case "blocker_resolved":
+      case "target_achieved":
         return <CheckCircle2 className="h-4 w-4 text-success" />;
       case "reminder":
+      case "shift_reminder":
         return <Clock className="h-4 w-4 text-info" />;
+      case "late_submission":
+        return <Clock className="h-4 w-4 text-destructive" />;
+      case "low_efficiency":
+        return <Info className="h-4 w-4 text-warning" />;
+      case "daily_summary":
+        return <Info className="h-4 w-4 text-primary" />;
+      case "cutting_handoff":
+        return <Scissors className="h-4 w-4 text-primary" />;
       default:
         return <Info className="h-4 w-4 text-muted-foreground" />;
     }
@@ -180,17 +205,31 @@ export function NotificationBell() {
       <DropdownMenuContent align="end" className="w-80">
         <DropdownMenuLabel className="flex items-center justify-between">
           <span>Notifications</span>
-          {unreadCount > 0 && (
+          <div className="flex items-center gap-1">
+            {unreadCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-auto py-1 px-2 text-xs"
+                onClick={markAllAsRead}
+              >
+                <Check className="h-3 w-3 mr-1" />
+                Mark all read
+              </Button>
+            )}
             <Button
               variant="ghost"
-              size="sm"
-              className="h-auto py-1 px-2 text-xs"
-              onClick={markAllAsRead}
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => {
+                setOpen(false);
+                setTimeout(() => navigate("/preferences#notifications"), 0);
+              }}
+              title="Notification settings"
             >
-              <Check className="h-3 w-3 mr-1" />
-              Mark all read
+              <Settings className="h-3.5 w-3.5 text-muted-foreground" />
             </Button>
-          )}
+          </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <ScrollArea className="h-[300px]">

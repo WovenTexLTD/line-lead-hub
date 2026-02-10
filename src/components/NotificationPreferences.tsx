@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Bell, Mail, AlertTriangle, TrendingDown, Info, Loader2, CheckCircle, FileText, Target, Calendar, Clock } from "lucide-react";
+import { Bell, Mail, AlertTriangle, TrendingDown, Info, Loader2, CheckCircle, FileText, Target, Calendar, Clock, Scissors } from "lucide-react";
 import { toast } from "sonner";
 
 interface NotificationPreference {
@@ -54,6 +54,27 @@ const ALL_NOTIFICATION_TYPES: NotificationType[] = [
     description: "Get notified about work order status changes",
     icon: FileText,
     roles: ["supervisor", "admin", "owner", "superadmin"], // Management only
+  },
+  {
+    type: "blocker_on_my_line",
+    label: "Blockers on My Line",
+    description: "Get notified when any blocker is reported on your assigned line",
+    icon: AlertTriangle,
+    roles: ["worker", "supervisor", "admin", "owner", "superadmin", "storage", "cutting"], // Everyone
+  },
+  {
+    type: "late_submission",
+    label: "Late Submissions",
+    description: "Get notified when lines haven't submitted by the cutoff time",
+    icon: Clock,
+    roles: ["supervisor", "admin", "owner", "superadmin"], // Management only
+  },
+  {
+    type: "cutting_handoff",
+    label: "Cutting Handoff",
+    description: "Get notified when cutting submits material for your sewing line",
+    icon: Scissors,
+    roles: ["worker", "supervisor", "admin", "owner", "superadmin"], // Sewing roles
   },
   {
     type: "target_achieved",
