@@ -13,7 +13,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Loader2, Settings2, Bell, Palette, Globe, Sun, Moon, Monitor, AlertTriangle, User, KeyRound, Eye, EyeOff } from "lucide-react";
+import { Loader2, Settings2, Bell, Palette, Globe, Sun, Moon, Monitor, AlertTriangle, User, KeyRound, Eye, EyeOff, Pencil, ChevronDown } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 type Language = 'en' | 'bn';
 
@@ -46,6 +51,8 @@ export default function Preferences() {
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [editingPassword, setEditingPassword] = useState(false);
 
   // Initialize profile fields when profile loads
   useEffect(() => {
@@ -173,133 +180,174 @@ export default function Preferences() {
         </div>
       </div>
 
-      {/* Profile Section */}
+      {/* Profile & Security Section */}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
             <User className="h-5 w-5 text-muted-foreground" />
-            <CardTitle>Profile</CardTitle>
+            <CardTitle>Profile & Security</CardTitle>
           </div>
           <CardDescription>
-            Update your name and contact information
+            Your account information
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              value={user?.email || ''}
-              disabled
-              className="bg-muted"
-            />
-            <p className="text-xs text-muted-foreground">Email cannot be changed</p>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="fullName">Full Name</Label>
-            <Input
-              id="fullName"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Your full name"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="phone">Phone</Label>
-            <Input
-              id="phone"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="Phone number (optional)"
-            />
-          </div>
-          <Button onClick={handleSaveProfile} disabled={profileSaving || !fullName.trim()}>
-            {profileSaving ? (
-              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
-            ) : (
-              'Save Profile'
+          {/* Read-only summary */}
+          <div className="grid gap-3 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Name</span>
+              <span className="font-medium">{profile?.full_name}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Email</span>
+              <span className="font-medium">{user?.email}</span>
+            </div>
+            {profile?.phone && (
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Phone</span>
+                <span className="font-medium">{profile.phone}</span>
+              </div>
             )}
-          </Button>
-        </CardContent>
-      </Card>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Password</span>
+              <span className="font-medium">••••••••</span>
+            </div>
+          </div>
 
-      {/* Password Section */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <KeyRound className="h-5 w-5 text-muted-foreground" />
-            <CardTitle>Change Password</CardTitle>
-          </div>
-          <CardDescription>
-            Update your account password
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="currentPassword">Current Password</Label>
-            <div className="relative">
-              <Input
-                id="currentPassword"
-                type={showCurrentPassword ? "text" : "password"}
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="Enter current password"
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="absolute right-0 top-0 h-full px-3"
-                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-              >
-                {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          {/* Edit Profile collapsible */}
+          <Collapsible open={editingProfile} onOpenChange={setEditingProfile}>
+            <CollapsibleTrigger asChild>
+              <Button variant="outline" size="sm" className="w-full">
+                <Pencil className="h-3.5 w-3.5 mr-2" />
+                Edit Profile
+                <ChevronDown className={`h-3.5 w-3.5 ml-auto transition-transform ${editingProfile ? 'rotate-180' : ''}`} />
               </Button>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="newPassword">New Password</Label>
-            <div className="relative">
-              <Input
-                id="newPassword"
-                type={showNewPassword ? "text" : "password"}
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="At least 8 characters"
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="absolute right-0 top-0 h-full px-3"
-                onClick={() => setShowNewPassword(!showNewPassword)}
-              >
-                {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-4 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="fullName">Full Name</Label>
+                <Input
+                  id="fullName"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Your full name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone</Label>
+                <Input
+                  id="phone"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="Phone number (optional)"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={handleSaveProfile} disabled={profileSaving || !fullName.trim()}>
+                  {profileSaving ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
+                  ) : (
+                    'Save'
+                  )}
+                </Button>
+                <Button variant="ghost" onClick={() => {
+                  setEditingProfile(false);
+                  setFullName(profile?.full_name || '');
+                  setPhone(profile?.phone || '');
+                }}>
+                  Cancel
+                </Button>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+
+          {/* Change Password collapsible */}
+          <Collapsible open={editingPassword} onOpenChange={setEditingPassword}>
+            <CollapsibleTrigger asChild>
+              <Button variant="outline" size="sm" className="w-full">
+                <KeyRound className="h-3.5 w-3.5 mr-2" />
+                Change Password
+                <ChevronDown className={`h-3.5 w-3.5 ml-auto transition-transform ${editingPassword ? 'rotate-180' : ''}`} />
               </Button>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm New Password</Label>
-            <Input
-              id="confirmPassword"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Re-enter new password"
-            />
-            {confirmPassword && newPassword !== confirmPassword && (
-              <p className="text-xs text-destructive">Passwords don't match</p>
-            )}
-          </div>
-          <Button
-            onClick={handleChangePassword}
-            disabled={passwordSaving || !currentPassword || !newPassword || newPassword !== confirmPassword}
-          >
-            {passwordSaving ? (
-              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Updating...</>
-            ) : (
-              'Update Password'
-            )}
-          </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-4 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="currentPassword">Current Password</Label>
+                <div className="relative">
+                  <Input
+                    id="currentPassword"
+                    type={showCurrentPassword ? "text" : "password"}
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="Enter current password"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  >
+                    {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="newPassword">New Password</Label>
+                <div className="relative">
+                  <Input
+                    id="newPassword"
+                    type={showNewPassword ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="At least 8 characters"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                  >
+                    {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Re-enter new password"
+                />
+                {confirmPassword && newPassword !== confirmPassword && (
+                  <p className="text-xs text-destructive">Passwords don't match</p>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleChangePassword}
+                  disabled={passwordSaving || !currentPassword || !newPassword || newPassword !== confirmPassword}
+                >
+                  {passwordSaving ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Updating...</>
+                  ) : (
+                    'Update Password'
+                  )}
+                </Button>
+                <Button variant="ghost" onClick={() => {
+                  setEditingPassword(false);
+                  setCurrentPassword('');
+                  setNewPassword('');
+                  setConfirmPassword('');
+                }}>
+                  Cancel
+                </Button>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </CardContent>
       </Card>
 
