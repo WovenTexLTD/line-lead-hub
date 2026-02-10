@@ -290,11 +290,10 @@ export default function AllSubmissions() {
 
   const counts = getCounts();
 
-  // Sewing KPI stats from loaded data
+  // Sewing KPI stats
   const sewingKpiStats = useMemo(() => {
-    const data = category === 'targets' ? sewingTargets : sewingActuals;
     if (category === 'targets') {
-      const targets = data as SewingTarget[];
+      const targets = sewingTargets as SewingTarget[];
       const totalManpower = targets.reduce((s, t) => s + (t.manpower_planned || 0), 0);
       const avgTarget = targets.length > 0
         ? Math.round(targets.reduce((s, t) => s + t.per_hour_target, 0) / targets.length)
@@ -302,7 +301,7 @@ export default function AllSubmissions() {
       const uniqueLines = new Set(targets.map(t => t.lines?.name || t.lines?.line_id)).size;
       return { count: targets.length, metric1: avgTarget, metric1Label: 'Avg Target/hr', metric2: totalManpower, metric2Label: 'Total Manpower', metric3: uniqueLines, metric3Label: 'Lines' };
     } else {
-      const actuals = data as SewingActual[];
+      const actuals = sewingActuals as SewingActual[];
       const totalOutput = actuals.reduce((s, a) => s + (a.good_today || 0), 0);
       const totalRejects = actuals.reduce((s, a) => s + (a.reject_today || 0), 0);
       const avgOutput = actuals.length > 0 ? Math.round(totalOutput / actuals.length) : 0;
@@ -591,7 +590,7 @@ export default function AllSubmissions() {
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                   <p className="text-xs text-muted-foreground">{sewingKpiStats.metric1Label}</p>
                 </div>
-                <div className="text-2xl font-bold text-blue-600">{sewingKpiStats.metric1.toLocaleString()}</div>
+                <div className="text-2xl font-bold text-accent-foreground">{sewingKpiStats.metric1.toLocaleString()}</div>
               </CardContent>
             </Card>
             <Card>
@@ -600,7 +599,7 @@ export default function AllSubmissions() {
                   <Package className="h-4 w-4 text-muted-foreground" />
                   <p className="text-xs text-muted-foreground">{sewingKpiStats.metric2Label}</p>
                 </div>
-                <div className="text-2xl font-bold text-green-600">{sewingKpiStats.metric2.toLocaleString()}</div>
+                <div className="text-2xl font-bold text-accent-foreground">{sewingKpiStats.metric2.toLocaleString()}</div>
               </CardContent>
             </Card>
             <Card>
