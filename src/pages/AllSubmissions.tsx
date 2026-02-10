@@ -5,7 +5,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -17,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Factory, Package, Search, Download, RefreshCw, FileText, Calendar, Target, ClipboardCheck, Scissors, TrendingUp, AlertTriangle } from "lucide-react";
+import { Factory, Package, Search, Download, RefreshCw, FileText, Calendar, Target, ClipboardCheck, Scissors, TrendingUp, AlertTriangle, X } from "lucide-react";
 import { TableSkeleton, StatsCardsSkeleton } from "@/components/ui/table-skeleton";
 import { SubmissionDetailModal } from "@/components/SubmissionDetailModal";
 import { TargetDetailModal } from "@/components/TargetDetailModal";
@@ -29,8 +28,10 @@ import { TablePagination } from "@/components/ui/table-pagination";
 import { usePagination } from "@/hooks/usePagination";
 import { useSortableTable } from "@/hooks/useSortableTable";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { formatShortDate, formatTime } from "@/lib/date-utils";
+import { format } from "date-fns";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
@@ -155,26 +156,7 @@ export default function AllSubmissions() {
   const [actualModalOpen, setActualModalOpen] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [pageSize, setPageSize] = useState(25);
-
-  // Sewing row selection
-  const [sewingSelectedIds, setSewingSelectedIds] = useState<Set<string>>(new Set());
-
-  const toggleSewingSelect = (id: string) => {
-    setSewingSelectedIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  };
-
-  const toggleSewingSelectAll = (ids: string[]) => {
-    setSewingSelectedIds(prev => {
-      const allSelected = ids.every(id => prev.has(id));
-      if (allSelected) return new Set();
-      return new Set(ids);
-    });
-  };
-
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   useEffect(() => {
     if (profile?.factory_id) {
       fetchSubmissions();
@@ -311,10 +293,11 @@ export default function AllSubmissions() {
 
   const counts = getCounts();
 
-  // Sewing KPI stats
+  // Sewing KPI stats from loaded data
   const sewingKpiStats = useMemo(() => {
+    const data = category === 'targets' ? sewingTargets : sewingActuals;
     if (category === 'targets') {
-      const targets = sewingTargets as SewingTarget[];
+      const targets = data as SewingTarget[];
       const totalManpower = targets.reduce((s, t) => s + (t.manpower_planned || 0), 0);
       const avgTarget = targets.length > 0
         ? Math.round(targets.reduce((s, t) => s + t.per_hour_target, 0) / targets.length)
@@ -322,7 +305,7 @@ export default function AllSubmissions() {
       const uniqueLines = new Set(targets.map(t => t.lines?.name || t.lines?.line_id)).size;
       return { count: targets.length, metric1: avgTarget, metric1Label: 'Avg Target/hr', metric2: totalManpower, metric2Label: 'Total Manpower', metric3: uniqueLines, metric3Label: 'Lines' };
     } else {
-      const actuals = sewingActuals as SewingActual[];
+      const actuals = data as SewingActual[];
       const totalOutput = actuals.reduce((s, a) => s + (a.good_today || 0), 0);
       const totalRejects = actuals.reduce((s, a) => s + (a.reject_today || 0), 0);
       const avgOutput = actuals.length > 0 ? Math.round(totalOutput / actuals.length) : 0;
@@ -349,6 +332,86 @@ export default function AllSubmissions() {
         rejects: vals.rejects,
       }));
   }, [sewingActuals]);
+
+  // Sewing checkbox selection helpers
+  const sewingPaginatedData = category === 'targets' ? sewingTargetsPagination.paginatedData : sewingActualsPagination.paginatedData;
+  const sewingSortedData = category === 'targets' ? sortedSewingTargets : sortedSewingActuals;
+  const allPageSelected = sewingPaginatedData.length > 0 && sewingPaginatedData.every(r => selectedIds.has(r.id));
+  const somePageSelected = sewingPaginatedData.some(r => selectedIds.has(r.id));
+
+  function toggleSelectAll() {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (allPageSelected) {
+        sewingPaginatedData.forEach(r => next.delete(r.id));
+      } else {
+        sewingPaginatedData.forEach(r => next.add(r.id));
+      }
+      return next;
+    });
+  }
+
+  function toggleSelectRow(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function exportSelectedCsv() {
+    if (category === 'targets') {
+      const rows = sewingSortedData.filter(r => selectedIds.has(r.id)) as SewingTarget[];
+      const headers = ["Date", "Line", "PO", "Buyer", "Target/hr", "Manpower", "Progress %", "Stage", "Status"];
+      const csvRows = [headers.join(",")];
+      rows.forEach(r => {
+        csvRows.push([
+          r.production_date,
+          `"${r.lines?.name || r.lines?.line_id || ""}"`,
+          `"${r.work_orders?.po_number || ""}"`,
+          `"${r.work_orders?.buyer || ""}"`,
+          r.per_hour_target,
+          r.manpower_planned,
+          r.planned_stage_progress,
+          `"${r.stages?.name || ""}"`,
+          r.is_late ? "Late" : "On Time",
+        ].join(","));
+      });
+      downloadCsv(csvRows, `sewing-targets-${format(new Date(), "yyyy-MM-dd")}.csv`, rows.length);
+    } else {
+      const rows = sewingSortedData.filter(r => selectedIds.has(r.id)) as SewingActual[];
+      const headers = ["Date", "Line", "PO", "Buyer", "Good Today", "Cumulative", "Rejects", "Rework", "Manpower", "OT Hours", "Blocker"];
+      const csvRows = [headers.join(",")];
+      rows.forEach(r => {
+        csvRows.push([
+          r.production_date,
+          `"${r.lines?.name || r.lines?.line_id || ""}"`,
+          `"${r.work_orders?.po_number || ""}"`,
+          `"${r.work_orders?.buyer || ""}"`,
+          r.good_today,
+          r.cumulative_good_total,
+          r.reject_today,
+          r.rework_today,
+          r.manpower_actual,
+          r.ot_hours_actual,
+          r.has_blocker ? "Yes" : "No",
+        ].join(","));
+      });
+      downloadCsv(csvRows, `sewing-actuals-${format(new Date(), "yyyy-MM-dd")}.csv`, rows.length);
+    }
+  }
+
+  function downloadCsv(csvRows: string[], filename: string, count: number) {
+    const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${count} rows`);
+  }
 
   const handleTargetClick = (target: SewingTarget | FinishingTarget) => {
     setSelectedTarget({
@@ -509,7 +572,7 @@ export default function AllSubmissions() {
         <div className="flex justify-center gap-2">
           <Button
             variant={category === 'targets' ? 'default' : 'outline'}
-            onClick={() => setCategory('targets')}
+            onClick={() => { setCategory('targets'); setSelectedIds(new Set()); }}
             size="sm"
             className={`gap-1.5 ${
               category === 'targets'
@@ -528,7 +591,7 @@ export default function AllSubmissions() {
           </Button>
           <Button
             variant={category === 'actuals' ? 'default' : 'outline'}
-            onClick={() => setCategory('actuals')}
+            onClick={() => { setCategory('actuals'); setSelectedIds(new Set()); }}
             size="sm"
             className={`gap-1.5 ${
               category === 'actuals'
@@ -611,7 +674,7 @@ export default function AllSubmissions() {
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                   <p className="text-xs text-muted-foreground">{sewingKpiStats.metric1Label}</p>
                 </div>
-                <div className="text-2xl font-bold text-primary">{sewingKpiStats.metric1.toLocaleString()}</div>
+                <div className="text-2xl font-bold text-blue-600">{sewingKpiStats.metric1.toLocaleString()}</div>
               </CardContent>
             </Card>
             <Card>
@@ -620,7 +683,7 @@ export default function AllSubmissions() {
                   <Package className="h-4 w-4 text-muted-foreground" />
                   <p className="text-xs text-muted-foreground">{sewingKpiStats.metric2Label}</p>
                 </div>
-                <div className="text-2xl font-bold text-primary">{sewingKpiStats.metric2.toLocaleString()}</div>
+                <div className="text-2xl font-bold text-green-600">{sewingKpiStats.metric2.toLocaleString()}</div>
               </CardContent>
             </Card>
             <Card>
@@ -706,15 +769,30 @@ export default function AllSubmissions() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
+              {selectedIds.size > 0 && (
+                <div className="flex items-center gap-3 px-4 py-2 bg-primary/5 border-b">
+                  <span className="text-sm font-medium">{selectedIds.size} selected</span>
+                  <Button variant="outline" size="sm" onClick={exportSelectedCsv}>
+                    <Download className="h-3.5 w-3.5 mr-1" />
+                    Export CSV
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
+                    <X className="h-3.5 w-3.5 mr-1" />
+                    Clear
+                  </Button>
+                </div>
+              )}
               <div className="overflow-x-auto">
                 {category === 'targets' && (
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/50">
-                        <TableHead className="w-10">
+                        <TableHead className="w-[40px]">
                           <Checkbox
-                            checked={sewingTargetsPagination.paginatedData.length > 0 && sewingTargetsPagination.paginatedData.every(t => sewingSelectedIds.has(t.id))}
-                            onCheckedChange={() => toggleSewingSelectAll(sewingTargetsPagination.paginatedData.map(t => t.id))}
+                            checked={allPageSelected}
+                            onCheckedChange={toggleSelectAll}
+                            aria-label="Select all"
+                            {...(somePageSelected && !allPageSelected ? { "data-state": "indeterminate" } : {})}
                           />
                         </TableHead>
                         <SortableTableHead column="production_date" sortConfig={sewingTargetsSortConfig} onSort={requestSewingTargetsSort}>Date</SortableTableHead>
@@ -732,13 +810,14 @@ export default function AllSubmissions() {
                       {sewingTargetsPagination.paginatedData.map((target) => (
                         <TableRow
                           key={target.id}
-                          className={`cursor-pointer hover:bg-muted/50 ${sewingSelectedIds.has(target.id) ? 'bg-muted/30' : ''}`}
+                          className={`cursor-pointer hover:bg-muted/50 ${selectedIds.has(target.id) ? "bg-primary/5" : ""}`}
                           onClick={() => handleTargetClick(target)}
                         >
                           <TableCell onClick={(e) => e.stopPropagation()}>
                             <Checkbox
-                              checked={sewingSelectedIds.has(target.id)}
-                              onCheckedChange={() => toggleSewingSelect(target.id)}
+                              checked={selectedIds.has(target.id)}
+                              onCheckedChange={() => toggleSelectRow(target.id)}
+                              aria-label="Select row"
                             />
                           </TableCell>
                           <TableCell className="font-mono text-sm">{formatShortDate(target.production_date)}</TableCell>
@@ -773,10 +852,12 @@ export default function AllSubmissions() {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/50">
-                        <TableHead className="w-10">
+                        <TableHead className="w-[40px]">
                           <Checkbox
-                            checked={sewingActualsPagination.paginatedData.length > 0 && sewingActualsPagination.paginatedData.every(a => sewingSelectedIds.has(a.id))}
-                            onCheckedChange={() => toggleSewingSelectAll(sewingActualsPagination.paginatedData.map(a => a.id))}
+                            checked={allPageSelected}
+                            onCheckedChange={toggleSelectAll}
+                            aria-label="Select all"
+                            {...(somePageSelected && !allPageSelected ? { "data-state": "indeterminate" } : {})}
                           />
                         </TableHead>
                         <SortableTableHead column="production_date" sortConfig={sewingActualsSortConfig} onSort={requestSewingActualsSort}>Date</SortableTableHead>
@@ -794,13 +875,14 @@ export default function AllSubmissions() {
                       {sewingActualsPagination.paginatedData.map((actual) => (
                         <TableRow
                           key={actual.id}
-                          className={`cursor-pointer hover:bg-muted/50 ${sewingSelectedIds.has(actual.id) ? 'bg-muted/30' : ''}`}
+                          className={`cursor-pointer hover:bg-muted/50 ${selectedIds.has(actual.id) ? "bg-primary/5" : ""}`}
                           onClick={() => handleActualClick(actual)}
                         >
                           <TableCell onClick={(e) => e.stopPropagation()}>
                             <Checkbox
-                              checked={sewingSelectedIds.has(actual.id)}
-                              onCheckedChange={() => toggleSewingSelect(actual.id)}
+                              checked={selectedIds.has(actual.id)}
+                              onCheckedChange={() => toggleSelectRow(actual.id)}
+                              aria-label="Select row"
                             />
                           </TableCell>
                           <TableCell className="font-mono text-sm">{formatShortDate(actual.production_date)}</TableCell>
