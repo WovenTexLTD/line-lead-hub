@@ -16,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Factory, Package, Search, Download, RefreshCw, FileText, Calendar, Target, ClipboardCheck, Scissors } from "lucide-react";
+import { Factory, Package, Search, Download, RefreshCw, FileText, Calendar, Target, ClipboardCheck, Scissors, TrendingUp } from "lucide-react";
 import { TableSkeleton, StatsCardsSkeleton } from "@/components/ui/table-skeleton";
 import { SubmissionDetailModal } from "@/components/SubmissionDetailModal";
 import { TargetDetailModal } from "@/components/TargetDetailModal";
@@ -29,6 +29,10 @@ import { usePagination } from "@/hooks/usePagination";
 import { useSortableTable } from "@/hooks/useSortableTable";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import { toast } from "sonner";
+import { formatShortDate, formatTime } from "@/lib/date-utils";
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+} from "recharts";
 
 // Types for targets
 interface SewingTarget {
@@ -246,20 +250,6 @@ export default function AllSubmissions() {
     }
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-    });
-  };
-
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
   // Filter functions
   const filterBySearch = <T extends { lines?: { line_id: string; name: string | null } | null; work_orders?: { po_number: string; buyer?: string } | null }>(items: T[]) => {
     if (!searchTerm) return items;
@@ -280,15 +270,6 @@ export default function AllSubmissions() {
     }
   }, [category, sewingTargets, sewingActuals, searchTerm]);
 
-  // Get current finishing data based on category
-  const finishingData = useMemo(() => {
-    if (category === 'targets') {
-      return filterBySearch(finishingTargets);
-    } else {
-      return filterBySearch(finishingActuals);
-    }
-  }, [category, finishingTargets, finishingActuals, searchTerm]);
-
   // Sort and paginate sewing targets
   const { sortedData: sortedSewingTargets, sortConfig: sewingTargetsSortConfig, requestSort: requestSewingTargetsSort } = useSortableTable(filterBySearch(sewingTargets), { column: "production_date", direction: "desc" });
   const { sortedData: sortedSewingActuals, sortConfig: sewingActualsSortConfig, requestSort: requestSewingActualsSort } = useSortableTable(filterBySearch(sewingActuals), { column: "production_date", direction: "desc" });
@@ -308,6 +289,26 @@ export default function AllSubmissions() {
   });
 
   const counts = getCounts();
+
+  // Build daily output trend from sewing actuals
+  const sewingDailyTrend = useMemo(() => {
+    if (sewingActuals.length === 0) return [];
+    const byDate: Record<string, { output: number; rejects: number }> = {};
+    for (const a of sewingActuals) {
+      const d = a.production_date;
+      if (!byDate[d]) byDate[d] = { output: 0, rejects: 0 };
+      byDate[d].output += a.good_today || 0;
+      byDate[d].rejects += a.reject_today || 0;
+    }
+    return Object.entries(byDate)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, vals]) => ({
+        date,
+        displayDate: new Date(date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        output: vals.output,
+        rejects: vals.rejects,
+      }));
+  }, [sewingActuals]);
 
   const handleTargetClick = (target: SewingTarget | FinishingTarget) => {
     setSelectedTarget({
@@ -553,6 +554,58 @@ export default function AllSubmissions() {
             />
           </div>
 
+          {/* Daily Output Trend Chart */}
+          {sewingDailyTrend.length > 1 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-primary" />
+                  Daily Output Trend
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pb-4">
+                <ResponsiveContainer width="100%" height={200}>
+                  <AreaChart data={sewingDailyTrend}>
+                    <defs>
+                      <linearGradient id="colorSewingOutput" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="displayDate" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
+                    <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} width={40} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                      }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="output"
+                      name="Output"
+                      stroke="hsl(var(--primary))"
+                      fill="url(#colorSewingOutput)"
+                      strokeWidth={2}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="rejects"
+                      name="Rejects"
+                      stroke="hsl(var(--destructive))"
+                      fill="hsl(var(--destructive))"
+                      fillOpacity={0.1}
+                      strokeWidth={1.5}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Data Table */}
           <Card>
             <CardHeader className="pb-3">
@@ -590,7 +643,7 @@ export default function AllSubmissions() {
                           className="cursor-pointer hover:bg-muted/50"
                           onClick={() => handleTargetClick(target)}
                         >
-                          <TableCell className="font-mono text-sm">{formatDate(target.production_date)}</TableCell>
+                          <TableCell className="font-mono text-sm">{formatShortDate(target.production_date)}</TableCell>
                           <TableCell className="font-mono text-sm text-muted-foreground">{formatTime(target.submitted_at)}</TableCell>
                           <TableCell className="font-medium">{target.lines?.name || target.lines?.line_id}</TableCell>
                           <TableCell>{target.work_orders?.po_number || '-'}</TableCell>
@@ -640,7 +693,7 @@ export default function AllSubmissions() {
                           className="cursor-pointer hover:bg-muted/50"
                           onClick={() => handleActualClick(actual)}
                         >
-                          <TableCell className="font-mono text-sm">{formatDate(actual.production_date)}</TableCell>
+                          <TableCell className="font-mono text-sm">{formatShortDate(actual.production_date)}</TableCell>
                           <TableCell className="font-mono text-sm text-muted-foreground">{formatTime(actual.submitted_at)}</TableCell>
                           <TableCell className="font-medium">{actual.lines?.name || actual.lines?.line_id}</TableCell>
                           <TableCell>{actual.work_orders?.po_number || '-'}</TableCell>

@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { EditSubmissionModal } from "./EditSubmissionModal";
+import { formatDate, formatDateTime } from "@/lib/date-utils";
 
 interface SewingSubmission {
   id: string;
@@ -87,19 +88,6 @@ export function SubmissionDetailModal({ submission, open, onOpenChange, onDelete
   const [deleting, setDeleting] = useState(false);
 
   if (!submission) return null;
-
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString('en-US', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    });
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      dateStyle: 'medium',
-    });
-  };
 
   const isSewing = submission.type === 'sewing';
   const isAdmin = isAdminOrHigher();

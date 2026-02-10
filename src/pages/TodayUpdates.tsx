@@ -18,6 +18,7 @@ import {
 import { Loader2, Factory, Package, Search, Download, RefreshCw, Scissors, Archive, CalendarDays } from "lucide-react";
 import { SubmissionDetailModal } from "@/components/SubmissionDetailModal";
 import { CuttingDetailModal } from "@/components/CuttingDetailModal";
+import { formatTime } from "@/lib/date-utils";
 import { CuttingTargetDetailModal } from "@/components/CuttingTargetDetailModal";
 import { StorageBinCardDetailModal } from "@/components/StorageBinCardDetailModal";
 import { FinishingLogDetailModal } from "@/components/FinishingLogDetailModal";
@@ -296,13 +297,6 @@ export default function TodayUpdates() {
       setLoading(false);
     }
   }
-
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
 
   const filteredSewing = sewingUpdates.filter(u => 
     (u.lines?.name || u.lines?.line_id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||

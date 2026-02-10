@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { formatShortDate, formatTime } from "@/lib/date-utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -163,19 +164,6 @@ export function FinishingDailySheetsTable({
     startIndex,
     endIndex,
   } = usePagination(sortedData, { pageSize });
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
 
   // Stats based on active tab
   const tabLogs = logs.filter(l => activeTab === "targets" ? l.log_type === "TARGET" : l.log_type === "OUTPUT");
@@ -376,7 +364,7 @@ export function FinishingDailySheetsTable({
                           </TableCell>
                           <TableCell>
                             <div>
-                              <p className="font-mono text-sm">{formatDate(log.production_date)}</p>
+                              <p className="font-mono text-sm">{formatShortDate(log.production_date)}</p>
                               <p className="text-xs text-muted-foreground">{formatTime(log.submitted_at)}</p>
                             </div>
                           </TableCell>

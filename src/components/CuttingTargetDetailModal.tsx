@@ -5,8 +5,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Target } from "lucide-react";
-import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import { formatDate, formatDateTime } from "@/lib/date-utils";
 
 interface CuttingTargetDetailModalProps {
   target: {
@@ -34,23 +34,6 @@ interface CuttingTargetDetailModalProps {
 
 export function CuttingTargetDetailModal({ target, open, onOpenChange }: CuttingTargetDetailModalProps) {
   if (!target) return null;
-
-  const formatDate = (dateStr: string) => {
-    try {
-      return format(new Date(dateStr), "MMM d, yyyy");
-    } catch {
-      return dateStr;
-    }
-  };
-
-  const formatDateTime = (dateStr: string | null) => {
-    if (!dateStr) return "-";
-    try {
-      return format(new Date(dateStr), "MMM d, yyyy 'at' h:mm a");
-    } catch {
-      return dateStr;
-    }
-  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -142,7 +125,7 @@ export function CuttingTargetDetailModal({ target, open, onOpenChange }: Cutting
 
           {/* Submitted Info */}
           <p className="text-xs text-muted-foreground">
-            Submitted: {formatDateTime(target.submitted_at)}
+            Submitted: {target.submitted_at ? formatDateTime(target.submitted_at) : "-"}
           </p>
         </div>
       </DialogContent>

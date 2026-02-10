@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { format } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Loader2, Calendar, TrendingUp, TrendingDown, Minus, Factory, Package, ChevronLeft, ChevronRight, Scissors } from "lucide-react";
@@ -74,7 +75,7 @@ export default function ThisWeek() {
         if (date > today) {
           days.push({
             date: dateStr,
-            dayName: date.toLocaleDateString('en-US', { weekday: 'short' }),
+            dayName: format(date, "EEE"),
             sewingTarget: 0,
             sewingOutput: 0,
             finishingTarget: 0,
@@ -167,7 +168,7 @@ export default function ThisWeek() {
 
         days.push({
           date: dateStr,
-          dayName: date.toLocaleDateString('en-US', { weekday: 'short' }),
+          dayName: format(date, "EEE"),
           sewingTarget: daySewingTarget,
           sewingOutput: daySewingOutput,
           finishingTarget: dayFinishingTarget,
@@ -233,8 +234,7 @@ export default function ThisWeek() {
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekStart.getDate() + 6);
     
-    const formatDate = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    return `${formatDate(weekStart)} - ${formatDate(weekEnd)}`;
+    return `${format(weekStart, "MMM d")} - ${format(weekEnd, "MMM d")}`;
   };
 
   const isCurrentWeek = weekOffset === 0;

@@ -1,17 +1,44 @@
-import { Outlet, Navigate } from "react-router-dom";
+import { Outlet, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { useAuth } from "@/contexts/AuthContext";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw, AlertTriangle, Home } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { Button } from "@/components/ui/button";
 import { TrialExpirationBanner } from "@/components/TrialExpirationBanner";
 import { NetworkStatusIndicator } from "@/components/NetworkStatusIndicator";
 import { DMGWarningModal } from "@/components/DMGWarningModal";
 import { ChatWidget } from "@/components/chat";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+
+function PageErrorFallback() {
+  const navigate = useNavigate();
+  return (
+    <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+      <div className="h-16 w-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+        <AlertTriangle className="h-8 w-8 text-destructive" />
+      </div>
+      <h2 className="text-xl font-semibold mb-2">Something went wrong</h2>
+      <p className="text-sm text-muted-foreground mb-6 max-w-sm">
+        This page crashed unexpectedly. You can reload or go back to the dashboard.
+      </p>
+      <div className="flex gap-3">
+        <Button variant="outline" onClick={() => navigate("/dashboard")}>
+          <Home className="h-4 w-4 mr-2" />
+          Dashboard
+        </Button>
+        <Button onClick={() => window.location.reload()}>
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Reload Page
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 export function AppLayout() {
   const { user, loading, factory, profile } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -76,7 +103,9 @@ export function AppLayout() {
             {/* Main content - single scroll container */}
             <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden bg-background">
               <div className="w-full px-4 md:px-6 pb-6">
-                <Outlet />
+                <ErrorBoundary key={location.pathname} fallback={<PageErrorFallback />}>
+                  <Outlet />
+                </ErrorBoundary>
               </div>
             </main>
           </div>

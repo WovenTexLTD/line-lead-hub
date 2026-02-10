@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Factory, ArrowLeft, CheckCircle, Upload, X, Image as ImageIcon, Calendar as CalendarIcon } from "lucide-react";
+import { Loader2, Factory, ArrowLeft, CheckCircle, Upload, X, Image as ImageIcon, Calendar as CalendarIcon, ClipboardList, TrendingUp, Package, AlertTriangle } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -122,6 +122,9 @@ export default function SewingUpdate() {
   const [remarks, setRemarks] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // KPI stats
+  const [kpiStats, setKpiStats] = useState({ submissions: 0, avgOutput: 0, totalOutput: 0, totalRejects: 0 });
+
   // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -231,6 +234,25 @@ export default function SewingUpdate() {
       setStages(stagesRes.data || []);
       setStageProgressOptions(stageProgressRes.data || []);
       setNextMilestoneOptions(nextMilestoneRes.data || []);
+
+      // Fetch today's KPI stats
+      const today = new Date().toISOString().split('T')[0];
+      const { data: todayData } = await supabase
+        .from('production_updates_sewing')
+        .select('output_qty, reject_qty')
+        .eq('factory_id', profile.factory_id)
+        .eq('production_date', today);
+
+      if (todayData && todayData.length > 0) {
+        const totalOutput = todayData.reduce((sum, r) => sum + (r.output_qty || 0), 0);
+        const totalRejects = todayData.reduce((sum, r) => sum + (r.reject_qty || 0), 0);
+        setKpiStats({
+          submissions: todayData.length,
+          avgOutput: Math.round(totalOutput / todayData.length),
+          totalOutput,
+          totalRejects,
+        });
+      }
     } catch (error) {
       console.error('Error fetching form data:', error);
     } finally {
@@ -388,6 +410,48 @@ export default function SewingUpdate() {
             </p>
           </div>
         </div>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <Card>
+          <CardContent className="pt-4 pb-3 px-4">
+            <div className="flex items-center gap-2 mb-1">
+              <ClipboardList className="h-4 w-4 text-muted-foreground" />
+              <p className="text-xs text-muted-foreground">Today's Submissions</p>
+            </div>
+            <div className="text-2xl font-bold text-primary">{kpiStats.submissions}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-3 px-4">
+            <div className="flex items-center gap-2 mb-1">
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <p className="text-xs text-muted-foreground">Avg Output</p>
+            </div>
+            <div className="text-2xl font-bold text-blue-600">{kpiStats.avgOutput.toLocaleString()}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-3 px-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Package className="h-4 w-4 text-muted-foreground" />
+              <p className="text-xs text-muted-foreground">Total Output</p>
+            </div>
+            <div className="text-2xl font-bold text-green-600">{kpiStats.totalOutput.toLocaleString()}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-3 px-4">
+            <div className="flex items-center gap-2 mb-1">
+              <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+              <p className="text-xs text-muted-foreground">Total Rejects</p>
+            </div>
+            <div className={`text-2xl font-bold ${kpiStats.totalRejects > 0 ? 'text-amber-500' : 'text-muted-foreground'}`}>
+              {kpiStats.totalRejects.toLocaleString()}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">

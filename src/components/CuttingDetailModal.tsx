@@ -5,8 +5,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Scissors, Package, ImageIcon } from "lucide-react";
-import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import { formatDate, formatDateTime } from "@/lib/date-utils";
 
 interface CuttingDetailModalProps {
   cutting: {
@@ -44,22 +44,6 @@ interface CuttingDetailModalProps {
 export function CuttingDetailModal({ cutting, open, onOpenChange }: CuttingDetailModalProps) {
   if (!cutting) return null;
 
-  const formatDate = (dateStr: string) => {
-    try {
-      return format(new Date(dateStr), "MMM d, yyyy");
-    } catch {
-      return dateStr;
-    }
-  };
-
-  const formatDateTime = (dateStr: string | null) => {
-    if (!dateStr) return "-";
-    try {
-      return format(new Date(dateStr), "MMM d, yyyy 'at' h:mm a");
-    } catch {
-      return dateStr;
-    }
-  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

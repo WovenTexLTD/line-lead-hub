@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Loader2, Download, FileSpreadsheet, Factory, Package, Scissors } from "lucide-react";
 import { toast } from "sonner";
+import { formatDate, formatTime } from "@/lib/date-utils";
 
 interface ExportData {
   sewingTargets: any[];
@@ -43,21 +44,6 @@ export function ExportSubmissionsDialog({
   const [includeFinishing, setIncludeFinishing] = useState(true);
   const [includeCutting, setIncludeCutting] = useState(true);
   const [includeStorage, setIncludeStorage] = useState(true);
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  };
-
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
 
   const getExportCounts = () => {
     let total = 0;

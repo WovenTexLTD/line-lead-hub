@@ -19,6 +19,7 @@ import { Loader2, ClipboardList, Search, Calendar, Package, TrendingUp, Archive 
 import { OutputExtrasCard, calculateOutputExtras, getProductionStatus, getStatusBadge, type OutputExtrasData } from "@/components/OutputExtrasCard";
 import { ExtrasLedgerModal } from "@/components/ExtrasLedgerModal";
 import { ExtrasOverviewModal } from "@/components/ExtrasOverviewModal";
+import { formatShortDate } from "@/lib/date-utils";
 
 interface WorkOrder {
   id: string;
@@ -144,11 +145,6 @@ export default function WorkOrdersView() {
   const totalProduced = workOrders.reduce((sum, wo) => sum + wo.produced_qty, 0);
   const totalCartonOutput = workOrders.reduce((sum, wo) => sum + wo.totalCartonOutput, 0);
   const totalExtras = workOrders.reduce((sum, wo) => sum + Math.max(wo.totalCartonOutput - wo.order_qty, 0), 0);
-
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  };
 
   const getStatusVariant = (status: string | null) => {
     switch (status) {
@@ -314,7 +310,7 @@ export default function WorkOrdersView() {
                       <TableCell>
                         <div className="flex items-center gap-1 text-sm">
                           <Calendar className="h-3 w-3 text-muted-foreground" />
-                          {formatDate(wo.planned_ex_factory)}
+                          {wo.planned_ex_factory ? formatShortDate(wo.planned_ex_factory) : '-'}
                         </div>
                       </TableCell>
                     </TableRow>

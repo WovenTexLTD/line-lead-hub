@@ -1,6 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Clock, CalendarDays, Crosshair, Users } from "lucide-react";
+import { formatDate, formatDateTime } from "@/lib/date-utils";
 
 interface TargetBase {
   id: string;
@@ -43,19 +44,6 @@ interface TargetDetailModalProps {
 
 export function TargetDetailModal({ target, open, onOpenChange }: TargetDetailModalProps) {
   if (!target) return null;
-
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString('en-US', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    });
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      dateStyle: 'medium',
-    });
-  };
 
   const isSewing = target.type === 'sewing';
 
