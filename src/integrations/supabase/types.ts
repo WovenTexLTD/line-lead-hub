@@ -14,6 +14,59 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_error_logs: {
+        Row: {
+          acknowledged: boolean
+          created_at: string
+          factory_id: string | null
+          id: string
+          message: string
+          metadata: Json | null
+          severity: string
+          source: string | null
+          stack: string | null
+          url: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          acknowledged?: boolean
+          created_at?: string
+          factory_id?: string | null
+          id?: string
+          message: string
+          metadata?: Json | null
+          severity?: string
+          source?: string | null
+          stack?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          acknowledged?: boolean
+          created_at?: string
+          factory_id?: string | null
+          id?: string
+          message?: string
+          metadata?: Json | null
+          severity?: string
+          source?: string | null
+          stack?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_error_logs_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           action: string
