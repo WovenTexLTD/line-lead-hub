@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -154,6 +155,26 @@ export default function AllSubmissions() {
   const [actualModalOpen, setActualModalOpen] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [pageSize, setPageSize] = useState(25);
+
+  // Sewing row selection
+  const [sewingSelectedIds, setSewingSelectedIds] = useState<Set<string>>(new Set());
+
+  const toggleSewingSelect = (id: string) => {
+    setSewingSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSewingSelectAll = (ids: string[]) => {
+    setSewingSelectedIds(prev => {
+      const allSelected = ids.every(id => prev.has(id));
+      if (allSelected) return new Set();
+      return new Set(ids);
+    });
+  };
+
   useEffect(() => {
     if (profile?.factory_id) {
       fetchSubmissions();
@@ -690,6 +711,12 @@ export default function AllSubmissions() {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/50">
+                        <TableHead className="w-10">
+                          <Checkbox
+                            checked={sewingTargetsPagination.paginatedData.length > 0 && sewingTargetsPagination.paginatedData.every(t => sewingSelectedIds.has(t.id))}
+                            onCheckedChange={() => toggleSewingSelectAll(sewingTargetsPagination.paginatedData.map(t => t.id))}
+                          />
+                        </TableHead>
                         <SortableTableHead column="production_date" sortConfig={sewingTargetsSortConfig} onSort={requestSewingTargetsSort}>Date</SortableTableHead>
                         <TableHead>Time</TableHead>
                         <SortableTableHead column="lines.name" sortConfig={sewingTargetsSortConfig} onSort={requestSewingTargetsSort}>Line</SortableTableHead>
@@ -705,9 +732,15 @@ export default function AllSubmissions() {
                       {sewingTargetsPagination.paginatedData.map((target) => (
                         <TableRow
                           key={target.id}
-                          className="cursor-pointer hover:bg-muted/50"
+                          className={`cursor-pointer hover:bg-muted/50 ${sewingSelectedIds.has(target.id) ? 'bg-muted/30' : ''}`}
                           onClick={() => handleTargetClick(target)}
                         >
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            <Checkbox
+                              checked={sewingSelectedIds.has(target.id)}
+                              onCheckedChange={() => toggleSewingSelect(target.id)}
+                            />
+                          </TableCell>
                           <TableCell className="font-mono text-sm">{formatShortDate(target.production_date)}</TableCell>
                           <TableCell className="font-mono text-sm text-muted-foreground">{formatTime(target.submitted_at)}</TableCell>
                           <TableCell className="font-medium">{target.lines?.name || target.lines?.line_id}</TableCell>
@@ -727,7 +760,7 @@ export default function AllSubmissions() {
                       ))}
                       {sewingTargetsPagination.paginatedData.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                             No sewing targets found
                           </TableCell>
                         </TableRow>
@@ -740,6 +773,12 @@ export default function AllSubmissions() {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/50">
+                        <TableHead className="w-10">
+                          <Checkbox
+                            checked={sewingActualsPagination.paginatedData.length > 0 && sewingActualsPagination.paginatedData.every(a => sewingSelectedIds.has(a.id))}
+                            onCheckedChange={() => toggleSewingSelectAll(sewingActualsPagination.paginatedData.map(a => a.id))}
+                          />
+                        </TableHead>
                         <SortableTableHead column="production_date" sortConfig={sewingActualsSortConfig} onSort={requestSewingActualsSort}>Date</SortableTableHead>
                         <TableHead>Time</TableHead>
                         <SortableTableHead column="lines.name" sortConfig={sewingActualsSortConfig} onSort={requestSewingActualsSort}>Line</SortableTableHead>
@@ -755,9 +794,15 @@ export default function AllSubmissions() {
                       {sewingActualsPagination.paginatedData.map((actual) => (
                         <TableRow
                           key={actual.id}
-                          className="cursor-pointer hover:bg-muted/50"
+                          className={`cursor-pointer hover:bg-muted/50 ${sewingSelectedIds.has(actual.id) ? 'bg-muted/30' : ''}`}
                           onClick={() => handleActualClick(actual)}
                         >
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            <Checkbox
+                              checked={sewingSelectedIds.has(actual.id)}
+                              onCheckedChange={() => toggleSewingSelect(actual.id)}
+                            />
+                          </TableCell>
                           <TableCell className="font-mono text-sm">{formatShortDate(actual.production_date)}</TableCell>
                           <TableCell className="font-mono text-sm text-muted-foreground">{formatTime(actual.submitted_at)}</TableCell>
                           <TableCell className="font-medium">{actual.lines?.name || actual.lines?.line_id}</TableCell>
@@ -777,7 +822,7 @@ export default function AllSubmissions() {
                       ))}
                       {sewingActualsPagination.paginatedData.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                             No sewing end of day data found
                           </TableCell>
                         </TableRow>
