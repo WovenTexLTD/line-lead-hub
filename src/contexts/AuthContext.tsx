@@ -12,7 +12,7 @@ const profileSchema = z.object({
   email: z.string(),
   phone: z.string().nullable(),
   avatar_url: z.string().nullable(),
-  is_active: z.boolean(),
+  is_active: z.boolean().nullable().transform(v => v ?? true),
   department: z.string().nullable(),
   invitation_status: z.string().nullable().optional(),
 });
