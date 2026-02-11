@@ -29,7 +29,7 @@ export default function Index() {
     if (!profile) return <Navigate to="/auth" replace />;
 
     if (!profile.factory_id) {
-      return <Navigate to="/subscription" replace />;
+      return <Navigate to="/setup/factory" replace />;
     }
 
     // Check for cutting role first

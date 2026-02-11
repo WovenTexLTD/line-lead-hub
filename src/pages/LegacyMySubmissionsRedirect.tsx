@@ -17,7 +17,7 @@ export default function LegacyMySubmissionsRedirect() {
   if (!profile) return null;
 
   if (!profile.factory_id) {
-    return <Navigate to="/subscription" replace />;
+    return <Navigate to="/setup/factory" replace />;
   }
 
   if (hasRole("cutting")) {
