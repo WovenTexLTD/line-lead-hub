@@ -399,13 +399,25 @@ export default function FactorySetup() {
 
       if (factoryError) throw factoryError;
 
-      // Update user's profile to assign them to the factory
+      // Update user's profile to assign them to the new factory,
+      // clearing stale fields from any previous factory membership.
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({ factory_id: factoryId })
+        .update({
+          factory_id: factoryId,
+          department: null,
+          assigned_unit_id: null,
+          assigned_floor_id: null,
+        })
         .eq('id', user.id);
 
       if (profileError) throw profileError;
+
+      // Remove any leftover roles from previous factories before assigning owner
+      await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', user.id);
 
       // Assign owner role to the user who created the factory
       const { error: roleError } = await supabase

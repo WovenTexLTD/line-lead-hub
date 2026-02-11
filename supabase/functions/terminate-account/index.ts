@@ -50,37 +50,29 @@ serve(async (req) => {
 
     const factoryId = profile?.factory_id;
 
-    // Delete user_line_assignments
+    // Nullify submitted_by on production records so they don't block auth deletion.
+    // Production data belongs to the factory and is preserved.
     if (factoryId) {
-      await supabaseAdmin
-        .from("user_line_assignments")
-        .delete()
-        .eq("user_id", userId);
+      await Promise.all([
+        supabaseAdmin.from("sewing_targets").update({ submitted_by: null }).eq("submitted_by", userId).eq("factory_id", factoryId),
+        supabaseAdmin.from("sewing_actuals").update({ submitted_by: null }).eq("submitted_by", userId).eq("factory_id", factoryId),
+        supabaseAdmin.from("finishing_targets").update({ submitted_by: null }).eq("submitted_by", userId).eq("factory_id", factoryId),
+        supabaseAdmin.from("finishing_actuals").update({ submitted_by: null }).eq("submitted_by", userId).eq("factory_id", factoryId),
+        supabaseAdmin.from("cutting_targets").update({ submitted_by: null }).eq("submitted_by", userId).eq("factory_id", factoryId),
+        supabaseAdmin.from("cutting_actuals").update({ submitted_by: null }).eq("submitted_by", userId).eq("factory_id", factoryId),
+        supabaseAdmin.from("storage_bin_card_transactions").update({ submitted_by: null }).eq("submitted_by", userId).eq("factory_id", factoryId),
+      ]);
     }
 
-    // Delete user_roles
-    await supabaseAdmin
-      .from("user_roles")
-      .delete()
-      .eq("user_id", userId);
-
-    // Delete notification_preferences
-    await supabaseAdmin
-      .from("notification_preferences")
-      .delete()
-      .eq("user_id", userId);
-
-    // Delete email_schedules
-    await supabaseAdmin
-      .from("email_schedules")
-      .delete()
-      .eq("user_id", userId);
-
-    // Delete notifications
-    await supabaseAdmin
-      .from("notifications")
-      .delete()
-      .eq("user_id", userId);
+    // Delete all user-specific data
+    await Promise.all([
+      supabaseAdmin.from("user_roles").delete().eq("user_id", userId),
+      supabaseAdmin.from("user_line_assignments").delete().eq("user_id", userId),
+      supabaseAdmin.from("notification_preferences").delete().eq("user_id", userId),
+      supabaseAdmin.from("email_schedules").delete().eq("user_id", userId),
+      supabaseAdmin.from("notifications").delete().eq("user_id", userId),
+      supabaseAdmin.from("chat_conversations").delete().eq("user_id", userId),
+    ]);
 
     // Delete profile
     await supabaseAdmin
