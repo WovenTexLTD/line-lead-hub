@@ -13,6 +13,7 @@ import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 
 import { getPasswordResetRedirectUrl } from "@/lib/capacitor";
+import { logError } from "@/lib/error-logger";
 import logoSvg from "@/assets/logo.svg";
 import i18n from "@/i18n/config";
 
@@ -42,7 +43,7 @@ const signupSchema = z.object({
 export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("login");
-  const { signIn, signUp, signOut, user, profile, hasRole, isAdminOrHigher, loading: authLoading } = useAuth();
+  const { signIn, signUp, signOut, user, profile, roles, hasRole, isAdminOrHigher, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -103,6 +104,24 @@ export default function Auth() {
     if (isForcedPasswordReset) return;
 
     if (user && !isPasswordResetMode) {
+      // Diagnostic: log redirect decision state
+      logError({
+        message: 'Auth redirect decision',
+        source: 'Auth.tsx',
+        severity: 'info',
+        metadata: {
+          hasUser: !!user,
+          hasProfile: !!profile,
+          factoryId: profile?.factory_id ?? null,
+          isActive: profile?.is_active ?? null,
+          department: profile?.department ?? null,
+          roles: roles.map(r => ({ role: r.role, factory_id: r.factory_id })),
+          isAdminOrHigher: isAdminOrHigher(),
+          hasCutting: hasRole("cutting"),
+          hasStorage: hasRole("storage"),
+        },
+      });
+
       if (profile?.factory_id) {
         // User has factory access - redirect to appropriate page
         // Check for cutting role first
