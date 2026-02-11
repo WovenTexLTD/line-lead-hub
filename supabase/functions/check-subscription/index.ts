@@ -24,6 +24,12 @@ const TIER_MAX_LINES: Record<string, number> = {
   'enterprise': 999999, // Unlimited
 };
 
+// Emails granted free access without Stripe subscription.
+// Map email → tier. These users skip all Stripe checks.
+const GRANTED_FREE_ACCESS: Record<string, string> = {
+  'karimsabbagh21@gmail.com': 'starter',
+};
+
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[CHECK-SUBSCRIPTION] ${step}${detailsStr}`);
@@ -78,6 +84,62 @@ serve(async (req) => {
     }
     const user = userData.user;
     logStep("User authenticated", { userId: user.id, email: user.email });
+
+    // Check if user has been granted free access
+    const grantedTier = GRANTED_FREE_ACCESS[user.email!.toLowerCase()];
+    if (grantedTier) {
+      logStep("Granted free access", { email: user.email, tier: grantedTier });
+
+      // Look up their factory (if any) to include factory name and sync DB
+      const { data: grantedProfile } = await supabaseClient
+        .from('profiles')
+        .select('factory_id')
+        .eq('id', user.id)
+        .single();
+
+      if (grantedProfile?.factory_id) {
+        // Sync the factory record so DB-based checks also work
+        await supabaseClient
+          .from('factory_accounts')
+          .update({
+            subscription_status: 'active',
+            subscription_tier: grantedTier,
+            max_lines: TIER_MAX_LINES[grantedTier] || 30,
+          })
+          .eq('id', grantedProfile.factory_id);
+
+        const { data: grantedFactory } = await supabaseClient
+          .from('factory_accounts')
+          .select('name')
+          .eq('id', grantedProfile.factory_id)
+          .single();
+
+        return new Response(JSON.stringify({
+          subscribed: true,
+          hasAccess: true,
+          isTrial: false,
+          currentTier: grantedTier,
+          maxLines: TIER_MAX_LINES[grantedTier] || 30,
+          factoryName: grantedFactory?.name,
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+
+      // No factory yet — still grant access so they can create one
+      return new Response(JSON.stringify({
+        subscribed: true,
+        hasAccess: true,
+        isTrial: false,
+        needsFactory: true,
+        currentTier: grantedTier,
+        maxLines: TIER_MAX_LINES[grantedTier] || 30,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
 
     // Get user's factory
     const { data: profile } = await supabaseClient
