@@ -15,6 +15,8 @@ import { CuttingTargetDetailModal } from "@/components/CuttingTargetDetailModal"
 import { StorageBinCardDetailModal } from "@/components/StorageBinCardDetailModal";
 import { TargetVsActualComparison } from "@/components/insights/TargetVsActualComparison";
 import { FinishingDashboard } from "@/components/dashboard/FinishingDashboard";
+import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
+import { useOnboardingChecklist } from "@/hooks/useOnboardingChecklist";
 import {
   Factory,
   Package,
@@ -230,6 +232,7 @@ export default function Dashboard() {
   const [storageModalOpen, setStorageModalOpen] = useState(false);
 
   const canViewDashboard = isAdminOrHigher();
+  const onboarding = useOnboardingChecklist(hasRole("owner") ? profile?.factory_id : null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -683,6 +686,16 @@ export default function Dashboard() {
           </p>
         </div>
       </div>
+
+      {/* Onboarding Checklist */}
+      {onboarding.visible && (
+        <OnboardingChecklist
+          steps={onboarding.steps}
+          completedCount={onboarding.completedCount}
+          totalCount={onboarding.totalCount}
+          onDismiss={onboarding.dismiss}
+        />
+      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
