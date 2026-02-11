@@ -247,25 +247,28 @@ export function AppSidebar() {
   const isStorageRole = roles.some(ur => ur.role === 'storage');
   const isCuttingRole = roles.some(ur => ur.role === 'cutting');
   const roleHierarchy = ['owner', 'admin', 'sewing_manager', 'finishing_manager', 'worker'];
-  const highestRole = roleHierarchy.find(r => 
+  const highestRole = roleHierarchy.find(r =>
     roles.some(ur => ur.role === r)
   ) || (isStorageRole ? 'storage' : (isCuttingRole ? 'cutting' : 'worker'));
 
-  // Get nav items based on role and department
-  let navItems = NAV_ITEMS[highestRole as keyof typeof NAV_ITEMS] || NAV_ITEMS.worker;
+  // Users without a factory get owner-level nav (they're setting up)
+  // This prevents stale department/role data from showing wrong nav
+  let navItems = !profile?.factory_id
+    ? NAV_ITEMS.owner
+    : NAV_ITEMS[highestRole as keyof typeof NAV_ITEMS] || NAV_ITEMS.worker;
 
   // For storage-only users, use storage navigation
-  if (isStorageRole && highestRole === 'storage') {
+  if (profile?.factory_id && isStorageRole && highestRole === 'storage') {
     navItems = NAV_ITEMS.storage;
   }
-  
+
   // For cutting-only users, use cutting navigation
-  if (isCuttingRole && highestRole === 'cutting') {
+  if (profile?.factory_id && isCuttingRole && highestRole === 'cutting') {
     navItems = NAV_ITEMS.cutting;
   }
 
-  // For workers, filter navigation based on department
-  if (highestRole === 'worker' && profile?.department) {
+  // For workers, filter navigation based on department (only when in a factory)
+  if (profile?.factory_id && highestRole === 'worker' && profile?.department) {
     if (profile.department === 'sewing') {
       navItems = NAV_ITEMS.worker_sewing;
     } else if (profile.department === 'finishing') {
