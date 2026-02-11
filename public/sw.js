@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-const CACHE_NAME = 'production-portal-v1';
+const CACHE_NAME = 'production-portal-v2';
 const OFFLINE_QUEUE_KEY = 'offline_submission_queue';
 const SYNC_TAG = 'sync-submissions';
 
@@ -50,7 +50,7 @@ function shouldNotCache(url) {
   return NO_CACHE_PATTERNS.some(pattern => pattern.test(url.href));
 }
 
-// Fetch event - network-first for API, cache-first for static assets
+// Fetch event - network-first for navigation, cache-first for hashed assets
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -65,7 +65,29 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For static assets: cache-first strategy
+  // Navigation requests (HTML pages): NETWORK-FIRST
+  // Always fetch the latest HTML so new JS/CSS bundle references are picked up
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request).then((response) => {
+        if (response.ok) {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(request, responseClone);
+          });
+        }
+        return response;
+      }).catch(() => {
+        // Offline fallback: serve cached HTML
+        return caches.match('/').then((cached) => {
+          return cached || new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
+        });
+      })
+    );
+    return;
+  }
+
+  // Static assets: cache-first with background update
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
       if (cachedResponse) {
@@ -82,9 +104,8 @@ self.addEventListener('fetch', (event) => {
         return cachedResponse;
       }
 
-      // Network-first fallback
+      // Not cached - fetch from network
       return fetch(request).then((response) => {
-        // Only cache static assets (not API responses)
         if (response.ok && response.type === 'basic' && !shouldNotCache(url)) {
           const responseClone = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
@@ -93,10 +114,6 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       }).catch(() => {
-        // Return offline page for navigation requests
-        if (request.mode === 'navigate') {
-          return caches.match('/');
-        }
         return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
       });
     })
