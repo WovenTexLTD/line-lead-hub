@@ -116,17 +116,20 @@ export default function Auth() {
           return;
         }
 
-        // Finishing workers land on the Finishing Daily Sheet
-        if (profile.department === "finishing") {
-          navigate("/finishing/daily-sheet", { replace: true });
+        // Admins and owners always go to dashboard
+        if (isAdminOrHigher()) {
+          navigate("/dashboard", { replace: true });
           return;
         }
 
-        const isWorker =
-          profile.department != null ||
-          (hasRole("worker") && !isAdminOrHigher());
+        // Finishing workers land on the Finishing Daily Target
+        if (profile.department === "finishing") {
+          navigate("/finishing/daily-target", { replace: true });
+          return;
+        }
 
-        navigate(isWorker ? "/sewing/morning-targets" : "/dashboard", { replace: true });
+        // Remaining workers go to sewing targets
+        navigate("/sewing/morning-targets", { replace: true });
       } else if (profile && !profile.is_active) {
         // User account is deactivated
         toast.error("Account Deactivated", { description: "Your account has been deactivated. Please contact your administrator." });
