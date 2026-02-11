@@ -28,20 +28,16 @@ export default function LegacyMySubmissionsRedirect() {
     return <Navigate to="/storage" replace />;
   }
 
+  // Admins and owners always go to dashboard
+  if (isAdminOrHigher()) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   // Check for finishing department workers
   if (profile.department === "finishing") {
     return <Navigate to="/finishing/my-submissions" replace />;
   }
 
-  // Default: Sewing workers go to sewing my-submissions, admins go to dashboard
-  const isWorker =
-    profile.department != null ||
-    (hasRole("worker") && !isAdminOrHigher());
-
-  return (
-    <Navigate
-      to={isWorker ? "/sewing/my-submissions" : "/dashboard"}
-      replace
-    />
-  );
+  // Remaining workers go to sewing my-submissions
+  return <Navigate to="/sewing/my-submissions" replace />;
 }
