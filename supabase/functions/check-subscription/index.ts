@@ -350,6 +350,7 @@ serve(async (req) => {
     };
 
     const GRACE_PERIOD_DAYS = 7;
+    const now = new Date();
 
     const respondWithPastDueSubscription = (paymentFailedAt: string | null) => {
       const failedAt = paymentFailedAt ? new Date(paymentFailedAt) : null;
@@ -449,8 +450,6 @@ serve(async (req) => {
         logStep("Error checking stored Stripe subscription", { error: String(err) });
       }
     }
-
-    const now = new Date();
 
     // Database-backed access (authoritative when webhook/checkout updates factory_accounts).
     // This also protects against missing Stripe permissions on restricted keys.

@@ -413,11 +413,27 @@ export default function FactorySetup() {
 
       if (profileError) throw profileError;
 
+      // Verify the profile update actually took effect.
+      // Supabase RLS can silently block updates (returns success but 0 rows affected).
+      const { data: verifyProfile } = await supabase
+        .from('profiles')
+        .select('factory_id')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (verifyProfile?.factory_id !== factoryId) {
+        throw new Error('Failed to assign factory to your profile. Please try again or contact support.');
+      }
+
       // Remove any leftover roles from previous factories before assigning owner
-      await supabase
+      const { error: deleteRolesError } = await supabase
         .from('user_roles')
         .delete()
         .eq('user_id', user.id);
+
+      if (deleteRolesError) {
+        console.error('Error clearing old roles (non-fatal):', deleteRolesError);
+      }
 
       // Assign owner role to the user who created the factory
       const { error: roleError } = await supabase
@@ -429,7 +445,8 @@ export default function FactorySetup() {
         });
 
       if (roleError) {
-        console.error('Error assigning owner role:', roleError);
+        // Owner role is critical — throw so the user knows something went wrong
+        throw new Error(`Factory created but failed to assign owner role: ${roleError.message}`);
       }
 
       // Seed default stages
