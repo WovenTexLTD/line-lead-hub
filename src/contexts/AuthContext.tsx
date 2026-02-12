@@ -84,6 +84,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session?.user ?? null);
 
         if (session?.user) {
+          // On sign-in, set loading=true BEFORE the async fetchUserData starts.
+          // Without this, React flushes user (set) + loading (still false) + profile (still null)
+          // and Auth.tsx's redirect useEffect fires prematurely, sending everyone to /setup/factory.
+          if (event === 'SIGNED_IN') {
+            setLoading(true);
+          }
           fetchUserData(session.user.id);
         } else {
           setProfile(null);
