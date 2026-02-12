@@ -1,7 +1,6 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
-import { logError } from "@/lib/error-logger";
 
 export default function Index() {
   const { user, loading, profile, roles, hasRole, isAdminOrHigher } = useAuth();
@@ -16,18 +15,13 @@ export default function Index() {
   }
 
   // Diagnostic: log redirect decision state
-  logError({
-    message: 'Index redirect decision',
-    source: 'Index.tsx',
-    severity: 'info',
-    metadata: {
-      hasUser: !!user,
-      hasProfile: !!profile,
-      factoryId: profile?.factory_id ?? null,
-      roles: roles.map(r => r.role),
-      department: profile?.department ?? null,
-      isAdminOrHigher: isAdminOrHigher(),
-    },
+  console.warn('[Index] Redirect decision:', {
+    hasUser: !!user,
+    hasProfile: !!profile,
+    factoryId: profile?.factory_id ?? null,
+    roles: roles.map(r => r.role),
+    department: profile?.department ?? null,
+    isAdminOrHigher: isAdminOrHigher(),
   });
 
   // Redirect authenticated users based on role

@@ -13,7 +13,6 @@ import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 
 import { getPasswordResetRedirectUrl } from "@/lib/capacitor";
-import { logError } from "@/lib/error-logger";
 import logoSvg from "@/assets/logo.svg";
 import i18n from "@/i18n/config";
 
@@ -105,21 +104,16 @@ export default function Auth() {
 
     if (user && !isPasswordResetMode) {
       // Diagnostic: log redirect decision state
-      logError({
-        message: 'Auth redirect decision',
-        source: 'Auth.tsx',
-        severity: 'info',
-        metadata: {
-          hasUser: !!user,
-          hasProfile: !!profile,
-          factoryId: profile?.factory_id ?? null,
-          isActive: profile?.is_active ?? null,
-          department: profile?.department ?? null,
-          roles: roles.map(r => ({ role: r.role, factory_id: r.factory_id })),
-          isAdminOrHigher: isAdminOrHigher(),
-          hasCutting: hasRole("cutting"),
-          hasStorage: hasRole("storage"),
-        },
+      console.warn('[Auth] Redirect decision:', {
+        hasUser: !!user,
+        hasProfile: !!profile,
+        factoryId: profile?.factory_id ?? null,
+        isActive: profile?.is_active ?? null,
+        department: profile?.department ?? null,
+        roles: roles.map(r => ({ role: r.role, factory_id: r.factory_id })),
+        isAdminOrHigher: isAdminOrHigher(),
+        hasCutting: hasRole("cutting"),
+        hasStorage: hasRole("storage"),
       });
 
       if (profile?.factory_id) {

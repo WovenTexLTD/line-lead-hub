@@ -149,11 +149,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     lastFetchedUserId.current = userId;
 
     try {
-      const { data: profileData } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .maybeSingle();
+
+      if (profileError) {
+        console.error('[AuthContext] Profile fetch error:', profileError.message, profileError);
+      }
+
+      if (!profileData) {
+        console.warn('[AuthContext] No profile data for user', userId, profileError ? `(error: ${profileError.message})` : '(no row found)');
+      }
 
       if (profileData) {
         if (profileData.invitation_status === 'pending') {
@@ -167,11 +175,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const profileResult = profileSchema.safeParse(profileData);
         if (!profileResult.success) {
-          console.error('Invalid profile data:', profileResult.error);
-          return;
+          console.error('[AuthContext] Invalid profile data — schema parse failed:', profileResult.error.flatten());
+          console.error('[AuthContext] Raw profile data:', JSON.stringify(profileData));
+          // Still set what we can so the user isn't stuck — use raw data as fallback
+          setProfile({
+            id: profileData.id,
+            factory_id: profileData.factory_id ?? null,
+            full_name: profileData.full_name ?? 'Unknown',
+            email: profileData.email ?? '',
+            phone: profileData.phone ?? null,
+            avatar_url: profileData.avatar_url ?? null,
+            is_active: profileData.is_active ?? true,
+            department: profileData.department ?? null,
+            invitation_status: profileData.invitation_status ?? null,
+          });
+          setErrorLoggerUserContext(userId, profileData.factory_id ?? null);
+        } else {
+          setProfile(profileResult.data);
+          setErrorLoggerUserContext(userId, profileResult.data.factory_id);
         }
-        setProfile(profileResult.data);
-        setErrorLoggerUserContext(userId, profileResult.data.factory_id);
+
+        const factoryId = profileData.factory_id;
 
         // Fetch roles and factory in parallel (both only need userId/factory_id from profile)
         const [rolesResponse, factoryResponse] = await Promise.all([
@@ -179,39 +203,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             .from('user_roles')
             .select('role, factory_id')
             .eq('user_id', userId),
-          profileResult.data.factory_id
+          factoryId
             ? supabase
                 .from('factory_accounts')
                 .select('*')
-                .eq('id', profileResult.data.factory_id)
+                .eq('id', factoryId)
                 .maybeSingle()
-            : Promise.resolve({ data: null }),
+            : Promise.resolve({ data: null, error: null }),
         ]);
 
+        if (rolesResponse.error) {
+          console.error('[AuthContext] Roles fetch error:', rolesResponse.error.message);
+        }
         if (rolesResponse.data) {
           const rolesResult = z.array(userRoleSchema).safeParse(rolesResponse.data);
           if (rolesResult.success) {
             const filtered = rolesResult.data.filter((r) => {
-              if (profileResult.data.factory_id) return r.factory_id === profileResult.data.factory_id;
+              if (factoryId) return r.factory_id === factoryId;
               return r.factory_id === null;
             });
             setRoles(filtered);
           } else {
-            console.error('Invalid roles data:', rolesResult.error);
+            console.error('[AuthContext] Invalid roles data:', rolesResult.error);
           }
         }
 
+        if (factoryResponse.error) {
+          console.error('[AuthContext] Factory fetch error:', factoryResponse.error.message);
+        }
         if (factoryResponse.data) {
           const factoryResult = factorySchema.safeParse(factoryResponse.data);
           if (factoryResult.success) {
             setFactory(factoryResult.data);
           } else {
-            console.error('Invalid factory data:', factoryResult.error);
+            console.error('[AuthContext] Invalid factory data — schema parse failed:', factoryResult.error.flatten());
+            console.error('[AuthContext] Raw factory data:', JSON.stringify(factoryResponse.data));
           }
         }
       }
     } catch (error) {
-      console.error('Error fetching user data:', error);
+      console.error('[AuthContext] Error fetching user data:', error);
     } finally {
       fetchingRef.current = false;
       setLoading(false);
