@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { formatShortDate, formatTime } from "@/lib/date-utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { formatShortDate, formatTimeInTimezone } from "@/lib/date-utils";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
@@ -68,7 +69,14 @@ export function FinishingDailySheetsTable({
   activeTab,
   onCountsChange,
 }: FinishingDailySheetsTableProps) {
+  const { factory } = useAuth();
   const [logs, setLogs] = useState<DailyLogRow[]>([]);
+
+  // Helper to format time in factory timezone
+  const formatTime = (dateString: string) => {
+    const timezone = factory?.timezone || "Asia/Dhaka";
+    return formatTimeInTimezone(dateString, timezone);
+  };
   const [loading, setLoading] = useState(true);
   const [selectedLog, setSelectedLog] = useState<DailyLogRow | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);

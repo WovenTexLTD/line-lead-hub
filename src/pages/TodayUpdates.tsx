@@ -18,7 +18,7 @@ import {
 import { Loader2, Factory, Package, Search, Download, RefreshCw, Scissors, Archive, CalendarDays } from "lucide-react";
 import { SubmissionDetailModal } from "@/components/SubmissionDetailModal";
 import { CuttingDetailModal } from "@/components/CuttingDetailModal";
-import { formatTime } from "@/lib/date-utils";
+import { formatTimeInTimezone } from "@/lib/date-utils";
 import { CuttingTargetDetailModal } from "@/components/CuttingTargetDetailModal";
 import { StorageBinCardDetailModal } from "@/components/StorageBinCardDetailModal";
 import { FinishingLogDetailModal } from "@/components/FinishingLogDetailModal";
@@ -201,7 +201,13 @@ type ModalSubmission = {
 };
 
 export default function TodayUpdates() {
-  const { profile } = useAuth();
+  const { profile, factory } = useAuth();
+
+  // Helper to format time in factory timezone
+  const formatTime = (dateString: string) => {
+    const timezone = factory?.timezone || "Asia/Dhaka";
+    return formatTimeInTimezone(dateString, timezone);
+  };
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [sewingUpdates, setSewingUpdates] = useState<SewingUpdate[]>([]);

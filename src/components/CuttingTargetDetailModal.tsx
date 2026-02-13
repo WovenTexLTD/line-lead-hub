@@ -6,7 +6,8 @@ import {
 } from "@/components/ui/dialog";
 import { Target } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { formatDate, formatDateTime } from "@/lib/date-utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { formatDate, formatDateTimeInTimezone } from "@/lib/date-utils";
 
 interface CuttingTargetDetailModalProps {
   target: {
@@ -33,6 +34,14 @@ interface CuttingTargetDetailModalProps {
 }
 
 export function CuttingTargetDetailModal({ target, open, onOpenChange }: CuttingTargetDetailModalProps) {
+  const { factory } = useAuth();
+
+  // Helper to format datetime in factory timezone
+  const formatDateTime = (dateString: string) => {
+    const timezone = factory?.timezone || "Asia/Dhaka";
+    return formatDateTimeInTimezone(dateString, timezone);
+  };
+
   if (!target) return null;
 
   return (

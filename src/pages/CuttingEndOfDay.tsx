@@ -38,6 +38,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { format } from "date-fns";
+import { isLateForCutoff, getTodayInTimezone } from "@/lib/date-utils";
 import { useOfflineSubmission } from "@/hooks/useOfflineSubmission";
 
 interface WorkOrder {
@@ -354,18 +355,12 @@ export default function CuttingEndOfDay() {
     setSubmitting(true);
 
     try {
-      const today = format(new Date(), "yyyy-MM-dd");
-      
-      // Check if submission is late
-      let isLate = false;
-      if (factory?.evening_actual_cutoff) {
-        const now = new Date();
-        const [cutoffHour, cutoffMinute] = factory.evening_actual_cutoff.split(':').map(Number);
-        const cutoffTime = new Date();
-        cutoffTime.setHours(cutoffHour, cutoffMinute, 0, 0);
-        isLate = now > cutoffTime;
-      }
-
+      // Check if submission is late (using factory timezone)
+      const timezone = factory?.timezone || "Asia/Dhaka";
+      const today = getTodayInTimezone(timezone);
+      const isLate = factory?.evening_actual_cutoff
+        ? isLateForCutoff(factory.evening_actual_cutoff, timezone)
+        : false;
 
       const actualData = {
         factory_id: profile.factory_id,

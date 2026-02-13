@@ -18,8 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { format } from "date-fns";
 import { useEditPermission } from "@/hooks/useEditPermission";
+import { isLateForCutoff, getTodayInTimezone } from "@/lib/date-utils";
 
 interface Line {
   id: string;
@@ -242,17 +242,13 @@ export default function SewingMorningTargets() {
     setSubmitting(true);
 
     try {
-      // Check if submission is late based on morning_target_cutoff
-      let isLate = false;
-      if (factory?.morning_target_cutoff) {
-        const now = new Date();
-        const [cutoffHour, cutoffMinute] = factory.morning_target_cutoff.split(':').map(Number);
-        const cutoffTime = new Date();
-        cutoffTime.setHours(cutoffHour, cutoffMinute, 0, 0);
-        isLate = now > cutoffTime;
-      }
+      // Check if submission is late based on morning_target_cutoff (using factory timezone)
+      const timezone = factory?.timezone || "Asia/Dhaka";
+      const isLate = factory?.morning_target_cutoff
+        ? isLateForCutoff(factory.morning_target_cutoff, timezone)
+        : false;
 
-      const productionDate = format(new Date(), "yyyy-MM-dd");
+      const productionDate = getTodayInTimezone(timezone);
 
       const insertData = {
         factory_id: profile.factory_id,

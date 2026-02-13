@@ -30,7 +30,7 @@ import { useSortableTable } from "@/hooks/useSortableTable";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { formatShortDate, formatTime } from "@/lib/date-utils";
+import { formatShortDate, formatTimeInTimezone } from "@/lib/date-utils";
 import { format } from "date-fns";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -120,8 +120,14 @@ type CategoryType = 'targets' | 'actuals';
 type DepartmentType = 'sewing' | 'finishing' | 'cutting' | 'storage';
 
 export default function AllSubmissions() {
-  const { profile } = useAuth();
+  const { profile, factory } = useAuth();
   const [searchParams] = useSearchParams();
+
+  // Helper to format time in factory timezone
+  const formatTime = (dateString: string) => {
+    const timezone = factory?.timezone || "Asia/Dhaka";
+    return formatTimeInTimezone(dateString, timezone);
+  };
   const [loading, setLoading] = useState(true);
   
   // Initialize state from URL params or defaults

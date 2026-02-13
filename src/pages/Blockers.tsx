@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { formatTimeInTimezone, formatDateTimeInTimezone, getCurrentTimeInTimezone } from "@/lib/date-utils";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -44,7 +45,7 @@ interface Blocker {
 export default function Blockers() {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { profile, isAdminOrHigher } = useAuth();
+  const { profile, factory, isAdminOrHigher } = useAuth();
   const [loading, setLoading] = useState(true);
   const [blockers, setBlockers] = useState<Blocker[]>([]);
 
@@ -312,17 +313,26 @@ export default function Blockers() {
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
+    // Use factory timezone for display
+    const timezone = factory?.timezone || "Asia/Dhaka";
+    const now = getCurrentTimeInTimezone(timezone);
+    const today = now.toDateString();
 
-    if (date.toDateString() === today.toDateString()) {
-      return `Today, ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return `Yesterday, ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toDateString();
+
+    // Parse the date in the factory timezone context
+    const date = new Date(dateString);
+    const dateStr = date.toDateString();
+    const timeStr = formatTimeInTimezone(dateString, timezone);
+
+    if (dateStr === today) {
+      return `Today, ${timeStr}`;
+    } else if (dateStr === yesterdayStr) {
+      return `Yesterday, ${timeStr}`;
     }
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return formatDateTimeInTimezone(dateString, timezone);
   };
 
   if (loading) {

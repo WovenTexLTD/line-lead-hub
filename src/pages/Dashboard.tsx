@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
+import { formatTimeInTimezone } from "@/lib/date-utils";
 import { supabase } from "@/integrations/supabase/client";
 import { KPICard } from "@/components/ui/kpi-card";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -657,10 +658,9 @@ export default function Dashboard() {
   }
 
   const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString(i18n.language === 'bn' ? 'bn-BD' : 'en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    // Use factory timezone for display
+    const timezone = factory?.timezone || "Asia/Dhaka";
+    return formatTimeInTimezone(dateString, timezone);
   };
 
   if (!canViewDashboard) {

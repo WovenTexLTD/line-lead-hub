@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { useOfflineSubmission } from "@/hooks/useOfflineSubmission";
+import { isLateForCutoff, getTodayInTimezone } from "@/lib/date-utils";
 
 interface WorkOrder {
   id: string;
@@ -253,17 +254,12 @@ export default function CuttingMorningTargets() {
     setSubmitting(true);
 
     try {
-      const today = format(new Date(), "yyyy-MM-dd");
-      
-      // Check if submission is late
-      let isLate = false;
-      if (factory?.morning_target_cutoff) {
-        const now = new Date();
-        const [cutoffHour, cutoffMinute] = factory.morning_target_cutoff.split(':').map(Number);
-        const cutoffTime = new Date();
-        cutoffTime.setHours(cutoffHour, cutoffMinute, 0, 0);
-        isLate = now > cutoffTime;
-      }
+      // Check if submission is late (using factory timezone)
+      const timezone = factory?.timezone || "Asia/Dhaka";
+      const today = getTodayInTimezone(timezone);
+      const isLate = factory?.morning_target_cutoff
+        ? isLateForCutoff(factory.morning_target_cutoff, timezone)
+        : false;
 
       const targetData = {
         factory_id: profile.factory_id,

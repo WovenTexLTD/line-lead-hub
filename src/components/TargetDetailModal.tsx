@@ -1,7 +1,8 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Clock, CalendarDays, Crosshair, Users } from "lucide-react";
-import { formatDate, formatDateTime } from "@/lib/date-utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { formatDate, formatDateTimeInTimezone } from "@/lib/date-utils";
 
 interface TargetBase {
   id: string;
@@ -43,6 +44,14 @@ interface TargetDetailModalProps {
 }
 
 export function TargetDetailModal({ target, open, onOpenChange }: TargetDetailModalProps) {
+  const { factory } = useAuth();
+
+  // Helper to format datetime in factory timezone
+  const formatDateTime = (dateString: string) => {
+    const timezone = factory?.timezone || "Asia/Dhaka";
+    return formatDateTimeInTimezone(dateString, timezone);
+  };
+
   if (!target) return null;
 
   const isSewing = target.type === 'sewing';

@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { EditSubmissionModal } from "./EditSubmissionModal";
-import { formatDate, formatDateTime } from "@/lib/date-utils";
+import { formatDate, formatDateTimeInTimezone } from "@/lib/date-utils";
 
 interface SewingSubmission {
   id: string;
@@ -82,10 +82,16 @@ interface SubmissionDetailModalProps {
 }
 
 export function SubmissionDetailModal({ submission, open, onOpenChange, onDeleted, onUpdated }: SubmissionDetailModalProps) {
-  const { isAdminOrHigher } = useAuth();
+  const { isAdminOrHigher, factory } = useAuth();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // Helper to format datetime in factory timezone
+  const formatDateTime = (dateString: string) => {
+    const timezone = factory?.timezone || "Asia/Dhaka";
+    return formatDateTimeInTimezone(dateString, timezone);
+  };
 
   if (!submission) return null;
 

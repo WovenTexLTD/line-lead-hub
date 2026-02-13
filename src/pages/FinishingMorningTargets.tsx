@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { format } from "date-fns";
+import { isLateForCutoff, getTodayInTimezone } from "@/lib/date-utils";
 
 interface Line {
   id: string;
@@ -170,18 +171,15 @@ export default function FinishingMorningTargets() {
     setSubmitting(true);
 
     try {
-      let isLate = false;
-      if (factory?.morning_target_cutoff) {
-        const now = new Date();
-        const [cutoffHour, cutoffMinute] = factory.morning_target_cutoff.split(':').map(Number);
-        const cutoffTime = new Date();
-        cutoffTime.setHours(cutoffHour, cutoffMinute, 0, 0);
-        isLate = now > cutoffTime;
-      }
+      // Check if submission is late (using factory timezone)
+      const timezone = factory?.timezone || "Asia/Dhaka";
+      const isLate = factory?.morning_target_cutoff
+        ? isLateForCutoff(factory.morning_target_cutoff, timezone)
+        : false;
 
       const insertData = {
         factory_id: profile.factory_id,
-        production_date: format(new Date(), "yyyy-MM-dd"),
+        production_date: getTodayInTimezone(timezone),
         submitted_by: user.id,
         line_id: selectedLineId,
         work_order_id: selectedWorkOrderId,

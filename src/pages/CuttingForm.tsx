@@ -23,6 +23,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { format } from "date-fns";
+import { isLateForCutoff, getTodayInTimezone } from "@/lib/date-utils";
 
 interface WorkOrder {
   id: string;
@@ -198,27 +199,17 @@ export default function CuttingForm() {
     setSubmitting(true);
 
     try {
-      const today = format(new Date(), "yyyy-MM-dd");
-      
-      // Check if submission is late
-      let isLateMorning = false;
-      let isLateEvening = false;
-      
-      if (factory?.morning_target_cutoff) {
-        const now = new Date();
-        const [cutoffHour, cutoffMinute] = factory.morning_target_cutoff.split(':').map(Number);
-        const cutoffTime = new Date();
-        cutoffTime.setHours(cutoffHour, cutoffMinute, 0, 0);
-        isLateMorning = now > cutoffTime;
-      }
-      
-      if (factory?.evening_actual_cutoff) {
-        const now = new Date();
-        const [cutoffHour, cutoffMinute] = factory.evening_actual_cutoff.split(':').map(Number);
-        const cutoffTime = new Date();
-        cutoffTime.setHours(cutoffHour, cutoffMinute, 0, 0);
-        isLateEvening = now > cutoffTime;
-      }
+      // Check if submission is late (using factory timezone)
+      const timezone = factory?.timezone || "Asia/Dhaka";
+      const today = getTodayInTimezone(timezone);
+
+      const isLateMorning = factory?.morning_target_cutoff
+        ? isLateForCutoff(factory.morning_target_cutoff, timezone)
+        : false;
+
+      const isLateEvening = factory?.evening_actual_cutoff
+        ? isLateForCutoff(factory.evening_actual_cutoff, timezone)
+        : false;
 
       const lineId = selectedLine.id;
 

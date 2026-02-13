@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
+import { formatTimeInTimezone } from "@/lib/date-utils";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,7 +50,7 @@ interface FinishingStats {
 
 export function FinishingDashboard() {
   const { t, i18n } = useTranslation();
-  const { profile } = useAuth();
+  const { profile, factory } = useAuth();
   const [logs, setLogs] = useState<DailyLogSummary[]>([]);
   const [stats, setStats] = useState<FinishingStats>({
     totalTargets: 0,
@@ -127,10 +128,9 @@ export function FinishingDashboard() {
   }
 
   const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString(i18n.language === 'bn' ? 'bn-BD' : 'en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    // Use factory timezone for display
+    const timezone = factory?.timezone || "Asia/Dhaka";
+    return formatTimeInTimezone(dateString, timezone);
   };
 
   const filteredLogs = logs.filter(log => 

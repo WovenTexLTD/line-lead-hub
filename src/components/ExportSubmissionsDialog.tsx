@@ -12,7 +12,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Loader2, Download, FileSpreadsheet, Factory, Package, Scissors } from "lucide-react";
 import { toast } from "sonner";
-import { formatDate, formatTime } from "@/lib/date-utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { formatDate, formatTimeInTimezone } from "@/lib/date-utils";
 
 interface ExportData {
   sewingTargets: any[];
@@ -37,8 +38,15 @@ export function ExportSubmissionsDialog({
   data,
   dateRange,
 }: ExportSubmissionsDialogProps) {
+  const { factory } = useAuth();
   const [exporting, setExporting] = useState(false);
-  
+
+  // Helper to format time in factory timezone
+  const formatTime = (dateString: string) => {
+    const timezone = factory?.timezone || "Asia/Dhaka";
+    return formatTimeInTimezone(dateString, timezone);
+  };
+
   // Department selection
   const [includeSewing, setIncludeSewing] = useState(true);
   const [includeFinishing, setIncludeFinishing] = useState(true);
