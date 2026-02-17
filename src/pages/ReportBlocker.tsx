@@ -54,7 +54,7 @@ interface BlockerType {
 interface DropdownOption {
   id: string;
   label: string;
-  is_active: boolean;
+  is_active: boolean | null;
 }
 
 export default function ReportBlocker() {

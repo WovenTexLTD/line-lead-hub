@@ -46,8 +46,8 @@ interface WorkOrder {
   planned_ex_factory: string | null;
   target_per_hour: number | null;
   target_per_day: number | null;
-  status: string;
-  is_active: boolean;
+  status: string | null;
+  is_active: boolean | null;
   line_id: string | null;
 }
 
@@ -55,7 +55,7 @@ interface Line {
   id: string;
   line_id: string;
   name: string | null;
-  is_active: boolean;
+  is_active: boolean | null;
 }
 
 const WORK_ORDER_STATUSES = [
@@ -254,7 +254,7 @@ export default function WorkOrders() {
       target_per_hour: wo.target_per_hour?.toString() || '',
       target_per_day: wo.target_per_day?.toString() || '',
       status: wo.status || 'not_started',
-      is_active: wo.is_active,
+      is_active: wo.is_active ?? true,
     });
     setSelectedLineIds(workOrderLineAssignments[wo.id] || []);
     setIsDialogOpen(true);
@@ -317,7 +317,7 @@ export default function WorkOrders() {
           supabase.from('work_orders').insert([insertData]).select('id').single()
         );
         if (error) throw error;
-        workOrderId = insertedData.id;
+        workOrderId = insertedData!.id;
         toast.success("Work order created");
       } else if (editingItem) {
         const { error } = await mutateWithRetry(() =>
@@ -341,7 +341,7 @@ export default function WorkOrders() {
         const assignments = selectedLineIds.map(lineId => ({
           work_order_id: workOrderId,
           line_id: lineId,
-          factory_id: profile.factory_id,
+          factory_id: profile.factory_id!,
         }));
 
         const { error: assignError } = await mutateWithRetry(() =>
@@ -711,8 +711,8 @@ export default function WorkOrders() {
                       </TableCell>
                       <TableCell>
                         <Switch
-                          checked={wo.is_active}
-                          onCheckedChange={() => toggleActive(wo.id, wo.is_active)}
+                          checked={wo.is_active ?? true}
+                          onCheckedChange={() => toggleActive(wo.id, wo.is_active ?? true)}
                         />
                       </TableCell>
                       <TableCell className="text-right">

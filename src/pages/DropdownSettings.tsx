@@ -49,7 +49,7 @@ interface DropdownOption {
   id: string;
   label: string;
   sort_order: number;
-  is_active: boolean;
+  is_active: boolean | null;
   code?: string;
 }
 
@@ -112,7 +112,7 @@ interface SortableRowProps {
   canReorder: boolean;
   onEdit: (opt: DropdownOption) => void;
   onDelete: (id: string) => void;
-  onToggleActive: (id: string, currentValue: boolean) => void;
+  onToggleActive: (id: string, currentValue: boolean | null) => void;
 }
 
 function SortableRow({ opt, hasCode, canReorder, onEdit, onDelete, onToggleActive }: SortableRowProps) {
@@ -158,7 +158,7 @@ function SortableRow({ opt, hasCode, canReorder, onEdit, onDelete, onToggleActiv
       <TableCell>{opt.label}</TableCell>
       <TableCell>
         <Switch
-          checked={opt.is_active}
+          checked={opt.is_active ?? true}
           onCheckedChange={() => onToggleActive(opt.id, opt.is_active)}
         />
       </TableCell>
@@ -408,7 +408,7 @@ export default function DropdownSettings() {
     }
   }
 
-  async function toggleActive(id: string, currentValue: boolean) {
+  async function toggleActive(id: string, currentValue: boolean | null) {
     try {
       if (activeTab === 'stages') {
         await supabase.from('stages').update({ is_active: !currentValue }).eq('id', id);

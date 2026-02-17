@@ -61,11 +61,11 @@ interface KnowledgeDocument {
   description: string | null;
   document_type: string;
   source_url: string | null;
-  language: string;
-  is_global: boolean;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
+  language: string | null;
+  is_global: boolean | null;
+  is_active: boolean | null;
+  created_at: string | null;
+  updated_at: string | null;
   factory_id: string | null;
   created_by: string | null;
   ingestion_status?: {
@@ -73,10 +73,12 @@ interface KnowledgeDocument {
     document_id: string;
     status: string;
     error_message: string | null;
-    chunks_created: number;
+    chunks_created: number | null;
+    chunks_processed: number | null;
+    total_chunks: number | null;
     started_at: string | null;
     completed_at: string | null;
-    created_at: string;
+    created_at: string | null;
   };
   chunk_count?: number;
 }
@@ -664,7 +666,7 @@ export default function KnowledgeBase() {
                     <TableCell>{getStatusBadge(doc)}</TableCell>
                     <TableCell>
                       <Switch
-                        checked={doc.is_active}
+                        checked={doc.is_active ?? true}
                         onCheckedChange={() => handleToggleActive(doc)}
                       />
                     </TableCell>

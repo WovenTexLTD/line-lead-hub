@@ -85,10 +85,10 @@ export function useOnboardingChecklist(factoryId: string | null | undefined) {
 
     async function fetchCounts() {
       const [linesRes, workOrdersRes, profilesRes, targetsRes] = await Promise.all([
-        supabase.from("lines").select("*", { count: "exact", head: true }).eq("factory_id", factoryId),
-        supabase.from("work_orders").select("*", { count: "exact", head: true }).eq("factory_id", factoryId),
-        supabase.from("profiles").select("*", { count: "exact", head: true }).eq("factory_id", factoryId),
-        supabase.from("sewing_targets").select("*", { count: "exact", head: true }).eq("factory_id", factoryId),
+        supabase.from("lines").select("*", { count: "exact", head: true }).eq("factory_id", factoryId!),
+        supabase.from("work_orders").select("*", { count: "exact", head: true }).eq("factory_id", factoryId!),
+        supabase.from("profiles").select("*", { count: "exact", head: true }).eq("factory_id", factoryId!),
+        supabase.from("sewing_targets").select("*", { count: "exact", head: true }).eq("factory_id", factoryId!),
       ]);
 
       if (cancelled) return;

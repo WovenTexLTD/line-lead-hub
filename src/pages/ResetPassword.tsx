@@ -12,8 +12,14 @@ import { supabase } from "@/integrations/supabase/client";
 import logoSvg from "@/assets/logo.svg";
 import i18n from "@/i18n/config";
 
+const strongPassword = z.string()
+  .min(8, "Password must be at least 8 characters")
+  .regex(/[a-z]/, "Must contain a lowercase letter")
+  .regex(/[A-Z]/, "Must contain an uppercase letter")
+  .regex(/[0-9]/, "Must contain a number");
+
 const resetSchema = z.object({
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: strongPassword,
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",

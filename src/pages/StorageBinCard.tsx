@@ -71,7 +71,8 @@ interface Transaction {
   ttl_receive: number;
   balance_qty: number;
   remarks: string | null;
-  created_at: string;
+  created_at: string | null;
+  submitted_by?: string | null;
 }
 
 interface NewTransaction {
@@ -128,7 +129,7 @@ export default function StorageBinCard() {
       const { data, error } = await supabase
         .from("work_orders")
         .select("id, po_number, buyer, style, item, color, supplier_name, description, construction, width, package_qty")
-        .eq("factory_id", profile!.factory_id)
+        .eq("factory_id", profile!.factory_id!)
         .eq("is_active", true)
         .order("po_number", { ascending: true });
       
@@ -161,7 +162,7 @@ export default function StorageBinCard() {
       const { data: existingCard, error: fetchError } = await supabase
         .from("storage_bin_cards")
         .select("*")
-        .eq("factory_id", profile!.factory_id)
+        .eq("factory_id", profile!.factory_id!)
         .eq("work_order_id", wo.id)
         .maybeSingle();
       
@@ -184,7 +185,7 @@ export default function StorageBinCard() {
       } else {
         // Create new bin card
         const newCard = {
-          factory_id: profile!.factory_id,
+          factory_id: profile!.factory_id!,
           work_order_id: wo.id,
           buyer: wo.buyer,
           style: wo.style,
@@ -351,6 +352,11 @@ export default function StorageBinCard() {
       }
 
       if (!result.success) {
+        if (result.error?.includes("duplicate") || result.error?.includes("uq_bin_card_transaction_date")) {
+          toast.error("Duplicate entry", { description: "A transaction already exists for this date. Please edit the existing entry instead." });
+          setSaving(false);
+          return;
+        }
         throw new Error(result.error);
       }
 

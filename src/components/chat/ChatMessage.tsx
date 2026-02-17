@@ -250,11 +250,11 @@ export function ChatMessage({
                       {citation.documentType}
                     </Badge>
                     {citation.sourceUrl && (
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => window.open(citation.sourceUrl!, "_blank")}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => window.open(citation.sourceUrl!, "_blank")}>
                         <ExternalLink className="h-3 w-3" />
                       </Button>
                     )}
-                    <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => handleViewSource(citation)} disabled={loadingSource}>
+                    <Button variant="ghost" size="sm" className="h-8 px-2 text-[10px]" onClick={() => handleViewSource(citation)} disabled={loadingSource}>
                       {loadingSource ? <Loader2 className="h-3 w-3 animate-spin" /> : language === "bn" ? "দেখুন" : "View"}
                     </Button>
                   </div>
@@ -298,7 +298,7 @@ export function ChatMessage({
             <Button
               variant="ghost"
               size="icon"
-              className={cn("h-6 w-6 rounded-full", feedback === "thumbs_up" && "text-green-600 bg-green-100 dark:bg-green-900/30")}
+              className={cn("h-8 w-8 rounded-full", feedback === "thumbs_up" && "text-green-600 bg-green-100 dark:bg-green-900/30")}
               onClick={() => handleFeedback("thumbs_up")}
             >
               <ThumbsUp className="h-3 w-3" />
@@ -306,7 +306,7 @@ export function ChatMessage({
             <Button
               variant="ghost"
               size="icon"
-              className={cn("h-6 w-6 rounded-full", feedback === "thumbs_down" && "text-red-600 bg-red-100 dark:bg-red-900/30")}
+              className={cn("h-8 w-8 rounded-full", feedback === "thumbs_down" && "text-red-600 bg-red-100 dark:bg-red-900/30")}
               onClick={() => handleFeedback("thumbs_down")}
             >
               <ThumbsDown className="h-3 w-3" />

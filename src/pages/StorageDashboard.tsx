@@ -58,7 +58,8 @@ interface Transaction {
   ttl_receive: number;
   balance_qty: number;
   remarks: string | null;
-  created_at: string;
+  created_at: string | null;
+  submitted_by?: string | null;
 }
 
 interface DashboardStats {
@@ -140,7 +141,7 @@ export default function StorageDashboard() {
             item
           )
         `)
-        .eq("factory_id", profile!.factory_id)
+        .eq("factory_id", profile!.factory_id!)
         .order("updated_at", { ascending: false });
       
       if (cardsError) throw cardsError;
@@ -159,7 +160,7 @@ export default function StorageDashboard() {
         const { data: allTxns } = await supabase
           .from("storage_bin_card_transactions")
           .select("bin_card_id, balance_qty, receive_qty, issue_qty, transaction_date, created_at")
-          .eq("factory_id", profile!.factory_id)
+          .eq("factory_id", profile!.factory_id!)
           .order("transaction_date", { ascending: false })
           .order("created_at", { ascending: false });
         

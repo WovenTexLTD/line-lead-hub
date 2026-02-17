@@ -25,7 +25,7 @@ interface Blocker {
   impact: string | null;
   owner: string | null;
   status: string;
-  submitted_at: string;
+  submitted_at: string | null;
   production_date: string;
   // Additional fields for detail view
   buyer?: string | null;
@@ -173,7 +173,7 @@ export default function Blockers() {
       }));
 
       setBlockers([...sewingBlockers, ...finishingBlockers].sort(
-        (a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime()
+        (a, b) => new Date(b.submitted_at || 0).getTime() - new Date(a.submitted_at || 0).getTime()
       ));
     } catch (error) {
       console.error('Error fetching blockers:', error);
@@ -312,7 +312,8 @@ export default function Blockers() {
     }
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return '-';
     // Use factory timezone for display
     const timezone = factory?.timezone || "Asia/Dhaka";
     const now = getCurrentTimeInTimezone(timezone);

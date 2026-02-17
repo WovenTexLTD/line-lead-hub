@@ -205,7 +205,7 @@ export function CuttingDetailModal({ cutting, open, onOpenChange }: CuttingDetai
 
           {/* Submitted Info */}
           <p className="text-xs text-muted-foreground">
-            Submitted: {formatDateTime(cutting.submitted_at)}
+            Submitted: {cutting.submitted_at ? formatDateTime(cutting.submitted_at) : "-"}
           </p>
         </div>
       </DialogContent>

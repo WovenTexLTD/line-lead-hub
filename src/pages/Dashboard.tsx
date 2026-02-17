@@ -66,7 +66,7 @@ interface TargetSubmission {
   estimated_ex_factory?: string | null;
   order_qty?: number | null;
   remarks?: string | null;
-  submitted_at: string;
+  submitted_at: string | null;
   production_date: string;
 }
 
@@ -804,7 +804,7 @@ export default function Dashboard() {
                               <span className="font-medium">{target.line_name}</span>
                             </div>
                             <p className="text-sm text-muted-foreground">
-                              {target.po_number || 'No PO'} • {formatTime(target.submitted_at)}
+                              {target.po_number || 'No PO'} • {target.submitted_at ? formatTime(target.submitted_at) : '-'}
                             </p>
                           </div>
                         </div>
@@ -1265,7 +1265,7 @@ export default function Dashboard() {
       />
 
       <TargetDetailModal
-        target={selectedTarget}
+        target={selectedTarget ? { ...selectedTarget, submitted_at: selectedTarget.submitted_at || '' } : null}
         open={targetModalOpen}
         onOpenChange={setTargetModalOpen}
       />

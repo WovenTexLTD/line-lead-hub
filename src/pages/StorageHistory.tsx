@@ -56,7 +56,8 @@ interface Transaction {
   ttl_receive: number;
   balance_qty: number;
   remarks: string | null;
-  created_at: string;
+  created_at: string | null;
+  submitted_by?: string | null;
 }
 
 
@@ -106,7 +107,7 @@ export default function StorageHistory() {
             item
           )
         `)
-        .eq("factory_id", profile!.factory_id)
+        .eq("factory_id", profile!.factory_id!)
         .order("updated_at", { ascending: false });
       
       if (error) throw error;

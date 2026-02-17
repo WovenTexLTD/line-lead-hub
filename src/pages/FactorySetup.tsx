@@ -76,7 +76,7 @@ interface Unit {
   id: string;
   code: string;
   name: string;
-  is_active: boolean;
+  is_active: boolean | null;
 }
 
 interface Floor {
@@ -84,7 +84,7 @@ interface Floor {
   code: string;
   name: string;
   unit_id: string;
-  is_active: boolean;
+  is_active: boolean | null;
 }
 
 interface Line {
@@ -95,7 +95,7 @@ interface Line {
   floor_id: string | null;
   target_per_hour: number | null;
   target_per_day: number | null;
-  is_active: boolean;
+  is_active: boolean | null;
 }
 
 interface Stage {
@@ -103,7 +103,7 @@ interface Stage {
   code: string;
   name: string;
   sequence: number | null;
-  is_active: boolean;
+  is_active: boolean | null;
 }
 
 interface BlockerType {
@@ -112,7 +112,7 @@ interface BlockerType {
   name: string;
   default_owner: string | null;
   default_impact: string | null;
-  is_active: boolean;
+  is_active: boolean | null;
 }
 
 
@@ -327,7 +327,7 @@ export default function FactorySetup() {
     }
   }
 
-  async function toggleActive(id: string, currentValue: boolean) {
+  async function toggleActive(id: string, currentValue: boolean | null) {
     try {
       // For lines: check plan limits before activating
       if (activeTab === 'lines' && !currentValue && !canActivateMore) {
@@ -859,7 +859,7 @@ export default function FactorySetup() {
                         <TableCell>{unit.name}</TableCell>
                         <TableCell>
                           <Switch
-                            checked={unit.is_active}
+                            checked={unit.is_active ?? true}
                             onCheckedChange={() => toggleActive(unit.id, unit.is_active)}
                           />
                         </TableCell>
@@ -919,7 +919,7 @@ export default function FactorySetup() {
                         <TableCell>{units.find(u => u.id === floor.unit_id)?.name || '-'}</TableCell>
                         <TableCell>
                           <Switch
-                            checked={floor.is_active}
+                            checked={floor.is_active ?? true}
                             onCheckedChange={() => toggleActive(floor.id, floor.is_active)}
                           />
                         </TableCell>
@@ -1013,7 +1013,7 @@ export default function FactorySetup() {
                         <TableCell>{line.target_per_day?.toLocaleString() || '-'}</TableCell>
                         <TableCell>
                           <Switch
-                            checked={line.is_active}
+                            checked={line.is_active ?? true}
                             onCheckedChange={() => toggleActive(line.id, line.is_active)}
                             disabled={!line.is_active && !canActivateMore}
                             title={!line.is_active && !canActivateMore ? "Plan limit reached" : ""}

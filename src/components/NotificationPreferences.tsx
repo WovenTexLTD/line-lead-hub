@@ -11,8 +11,8 @@ import { toast } from "sonner";
 interface NotificationPreference {
   id: string;
   notification_type: string;
-  in_app_enabled: boolean;
-  email_enabled: boolean;
+  in_app_enabled: boolean | null;
+  email_enabled: boolean | null;
 }
 
 type UserRole = "worker" | "supervisor" | "admin" | "owner" | "superadmin" | "storage" | "cutting";
@@ -162,7 +162,7 @@ export function NotificationPreferences() {
 
     const defaultPrefs = availableNotificationTypes.map((nt) => ({
       user_id: user.id,
-      factory_id: profile.factory_id,
+      factory_id: profile.factory_id!,
       notification_type: nt.type,
       in_app_enabled: true,
       email_enabled: false,

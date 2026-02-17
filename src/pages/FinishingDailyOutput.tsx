@@ -39,14 +39,14 @@ interface WorkOrder {
 
 interface TargetLog {
   id: string;
-  thread_cutting: number;
-  inside_check: number;
-  top_side_check: number;
-  buttoning: number;
-  iron: number;
-  get_up: number;
-  poly: number;
-  carton: number;
+  thread_cutting: number | null;
+  inside_check: number | null;
+  top_side_check: number | null;
+  buttoning: number | null;
+  iron: number | null;
+  get_up: number | null;
+  poly: number | null;
+  carton: number | null;
 }
 
 // Process categories matching the hourly grid

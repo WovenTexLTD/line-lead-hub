@@ -46,7 +46,7 @@ interface SewingTarget {
   planned_stage_progress: number;
   next_milestone: string | null;
   remarks: string | null;
-  submitted_at: string;
+  submitted_at: string | null;
   production_date: string;
   is_late: boolean | null;
   stages: { name: string } | null;
@@ -62,7 +62,7 @@ interface FinishingTarget {
   day_hour_planned: number;
   day_over_time_planned: number;
   remarks: string | null;
-  submitted_at: string;
+  submitted_at: string | null;
   production_date: string;
   is_late: boolean | null;
   lines: { line_id: string; name: string | null } | null;
@@ -80,12 +80,12 @@ interface SewingActual {
   manpower_actual: number;
   ot_hours_actual: number;
   actual_stage_progress: number;
-  has_blocker: boolean;
+  has_blocker: boolean | null;
   blocker_description: string | null;
   blocker_impact: string | null;
   blocker_owner: string | null;
   remarks: string | null;
-  submitted_at: string;
+  submitted_at: string | null;
   production_date: string;
   stages: { name: string } | null;
   lines: { line_id: string; name: string | null } | null;
@@ -105,12 +105,12 @@ interface FinishingActual {
   day_hour_actual: number;
   day_over_time_actual: number;
   average_production: number | null;
-  has_blocker: boolean;
+  has_blocker: boolean | null;
   blocker_description: string | null;
   blocker_impact: string | null;
   blocker_owner: string | null;
   remarks: string | null;
-  submitted_at: string;
+  submitted_at: string | null;
   production_date: string;
   lines: { line_id: string; name: string | null } | null;
   work_orders: { po_number: string; buyer: string; style: string; order_qty: number } | null;
@@ -827,7 +827,7 @@ export default function AllSubmissions() {
                             />
                           </TableCell>
                           <TableCell className="font-mono text-sm">{formatShortDate(target.production_date)}</TableCell>
-                          <TableCell className="font-mono text-sm text-muted-foreground">{formatTime(target.submitted_at)}</TableCell>
+                          <TableCell className="font-mono text-sm text-muted-foreground">{target.submitted_at ? formatTime(target.submitted_at) : '-'}</TableCell>
                           <TableCell className="font-medium">{target.lines?.name || target.lines?.line_id}</TableCell>
                           <TableCell>{target.work_orders?.po_number || '-'}</TableCell>
                           <TableCell>{target.work_orders?.buyer || '-'}</TableCell>
@@ -892,7 +892,7 @@ export default function AllSubmissions() {
                             />
                           </TableCell>
                           <TableCell className="font-mono text-sm">{formatShortDate(actual.production_date)}</TableCell>
-                          <TableCell className="font-mono text-sm text-muted-foreground">{formatTime(actual.submitted_at)}</TableCell>
+                          <TableCell className="font-mono text-sm text-muted-foreground">{actual.submitted_at ? formatTime(actual.submitted_at) : '-'}</TableCell>
                           <TableCell className="font-medium">{actual.lines?.name || actual.lines?.line_id}</TableCell>
                           <TableCell>{actual.work_orders?.po_number || '-'}</TableCell>
                           <TableCell>{actual.work_orders?.buyer || '-'}</TableCell>

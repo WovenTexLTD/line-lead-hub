@@ -61,7 +61,7 @@ interface Stage {
 interface DropdownOption {
   id: string;
   label: string;
-  is_active: boolean;
+  is_active: boolean | null;
 }
 
 interface FactoryType {

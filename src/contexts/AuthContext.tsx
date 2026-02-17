@@ -162,11 +162,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .maybeSingle();
 
       if (profileError) {
-        console.error('[AuthContext] Profile fetch error:', profileError.message, profileError);
+        console.error('[AuthContext] Profile fetch error:', profileError.message);
       }
 
       if (!profileData) {
-        console.warn('[AuthContext] No profile data for user', userId, profileError ? `(error: ${profileError.message})` : '(no row found)');
+        console.warn('[AuthContext] No profile row found', profileError ? `(error: ${profileError.message})` : '');
       }
 
       if (profileData) {
@@ -182,7 +182,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const profileResult = profileSchema.safeParse(profileData);
         if (!profileResult.success) {
           console.error('[AuthContext] Invalid profile data — schema parse failed:', profileResult.error.flatten());
-          console.error('[AuthContext] Raw profile data:', JSON.stringify(profileData));
           // Still set what we can so the user isn't stuck — use raw data as fallback
           setProfile({
             id: profileData.id,
@@ -230,7 +229,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             });
             setRoles(filtered);
           } else {
-            console.error('[AuthContext] Invalid roles data:', rolesResult.error);
+            console.error('[AuthContext] Invalid roles data — schema parse failed');
           }
         }
 
@@ -243,7 +242,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setFactory(factoryResult.data);
           } else {
             console.error('[AuthContext] Invalid factory data — schema parse failed:', factoryResult.error.flatten());
-            console.error('[AuthContext] Raw factory data:', JSON.stringify(factoryResponse.data));
           }
         }
       }

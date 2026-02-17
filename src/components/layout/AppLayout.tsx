@@ -85,7 +85,6 @@ export function AppLayout() {
                 variant="ghost"
                 size="icon"
                 onClick={() => window.location.reload()}
-                className="h-9 w-9"
                 title="Refresh page"
               >
                 <RefreshCw className="h-5 w-5" />

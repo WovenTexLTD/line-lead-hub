@@ -33,13 +33,13 @@ interface User {
   email: string;
   phone: string | null;
   avatar_url: string | null;
-  is_active: boolean;
+  is_active: boolean | null;
   invitation_status: 'pending' | 'active';
   role: string | null;
   department: string | null;
   assigned_line_ids: string[];
   assigned_line_names: string[];
-  created_at: string;
+  created_at: string | null;
 }
 
 export default function UsersPage() {

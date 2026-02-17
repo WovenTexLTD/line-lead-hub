@@ -43,7 +43,7 @@ interface User {
   full_name: string;
   email: string;
   avatar_url: string | null;
-  is_active: boolean;
+  is_active: boolean | null;
   role: string | null;
   assigned_line_ids: string[];
 }
@@ -99,7 +99,7 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
     if (user) {
       setFormData({
         role: (user.role as AppRole) || 'worker',
-        isActive: user.is_active,
+        isActive: user.is_active ?? true,
       });
       setSelectedLineIds(user.assigned_line_ids || []);
     }
@@ -152,7 +152,7 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
     try {
       // Update role - first delete existing, then insert new
       const { error: deleteRoleError } = await mutateWithRetry(() =>
-        supabase.from('user_roles').delete().eq('user_id', user.id).eq('factory_id', profile.factory_id)
+        supabase.from('user_roles').delete().eq('user_id', user.id).eq('factory_id', profile.factory_id!)
       );
 
       if (deleteRoleError) {
@@ -184,7 +184,7 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
 
       // Update line assignments - delete all existing, then insert new
       const { error: deleteLineError } = await mutateWithRetry(() =>
-        supabase.from('user_line_assignments').delete().eq('user_id', user.id).eq('factory_id', profile.factory_id)
+        supabase.from('user_line_assignments').delete().eq('user_id', user.id).eq('factory_id', profile.factory_id!)
       );
 
       if (deleteLineError) {
@@ -195,7 +195,7 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
         const lineAssignments = selectedLineIds.map(lineId => ({
           user_id: user.id,
           line_id: lineId,
-          factory_id: profile.factory_id,
+          factory_id: profile.factory_id!,
         }));
 
         const { error: insertLineError } = await mutateWithRetry(() =>

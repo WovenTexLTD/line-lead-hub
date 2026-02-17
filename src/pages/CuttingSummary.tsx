@@ -35,7 +35,7 @@ import {
 interface CuttingSubmission {
   id: string;
   production_date: string;
-  submitted_at: string;
+  submitted_at: string | null;
   line_id: string;
   work_order_id: string;
   buyer: string | null;

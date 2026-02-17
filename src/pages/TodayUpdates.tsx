@@ -35,13 +35,13 @@ interface SewingUpdate {
   stage_progress: number | null;
   ot_hours: number | null;
   ot_manpower: number | null;
-  has_blocker: boolean;
+  has_blocker: boolean | null;
   blocker_description: string | null;
   blocker_impact: string | null;
   blocker_owner: string | null;
   blocker_status: string | null;
   notes: string | null;
-  submitted_at: string;
+  submitted_at: string | null;
   production_date: string;
   lines: { line_id: string; name: string | null } | null;
   work_orders: { po_number: string; buyer: string; style: string } | null;
@@ -531,13 +531,13 @@ export default function TodayUpdates() {
       next_milestone: null,
       ot_hours: update.ot_hours,
       ot_manpower: update.ot_manpower,
-      has_blocker: update.has_blocker,
+      has_blocker: update.has_blocker ?? false,
       blocker_description: update.blocker_description,
       blocker_impact: update.blocker_impact,
       blocker_owner: update.blocker_owner,
       blocker_status: update.blocker_status,
       notes: update.notes,
-      submitted_at: update.submitted_at,
+      submitted_at: update.submitted_at || '',
       production_date: update.production_date,
     });
     setDetailModalOpen(true);
@@ -796,7 +796,7 @@ export default function TodayUpdates() {
                           className="cursor-pointer hover:bg-muted/50"
                           onClick={() => handleSewingClick(update)}
                         >
-                          <TableCell className="font-mono text-sm">{formatTime(update.submitted_at)}</TableCell>
+                          <TableCell className="font-mono text-sm">{update.submitted_at ? formatTime(update.submitted_at) : '-'}</TableCell>
                           <TableCell className="font-medium">{update.lines?.name || update.lines?.line_id}</TableCell>
                           <TableCell>{update.work_orders?.po_number || '-'}</TableCell>
                           <TableCell className="text-right font-mono">{update.output_qty.toLocaleString()}</TableCell>
@@ -1143,7 +1143,7 @@ export default function TodayUpdates() {
                           className="cursor-pointer hover:bg-muted/50"
                           onClick={() => handleSewingClick(update)}
                         >
-                          <TableCell className="font-mono text-sm">{formatTime(update.submitted_at)}</TableCell>
+                          <TableCell className="font-mono text-sm">{update.submitted_at ? formatTime(update.submitted_at) : '-'}</TableCell>
                           <TableCell className="font-medium">{update.lines?.name || update.lines?.line_id}</TableCell>
                           <TableCell>{update.work_orders?.po_number || '-'}</TableCell>
                           <TableCell className="text-right font-mono font-bold">{update.output_qty.toLocaleString()}</TableCell>
