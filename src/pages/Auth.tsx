@@ -109,19 +109,6 @@ export default function Auth() {
     if (isForcedPasswordReset) return;
 
     if (user && !isPasswordResetMode) {
-      // Diagnostic: log redirect decision state
-      console.warn('[Auth] Redirect decision:', {
-        hasUser: !!user,
-        hasProfile: !!profile,
-        factoryId: profile?.factory_id ?? null,
-        isActive: profile?.is_active ?? null,
-        department: profile?.department ?? null,
-        roles: roles.map(r => ({ role: r.role, factory_id: r.factory_id })),
-        isAdminOrHigher: isAdminOrHigher(),
-        hasCutting: hasRole("cutting"),
-        hasStorage: hasRole("storage"),
-      });
-
       if (profile?.factory_id) {
         // User has factory access - redirect to appropriate page
         // Check for cutting role first

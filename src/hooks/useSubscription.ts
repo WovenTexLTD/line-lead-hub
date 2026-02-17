@@ -21,6 +21,7 @@ export function useSubscription() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const hasLoadedOnce = useRef(false);
+  const inFlightRef = useRef(false);
 
   // Fallback: check subscription status directly from factory data
   const checkFromFactory = useCallback(() => {
@@ -111,6 +112,10 @@ export function useSubscription() {
       return;
     }
 
+    // Prevent duplicate concurrent calls (auth deps change in quick succession)
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
+
     // Only show loading spinner on the initial check.
     // Background refreshes update status silently to avoid unmounting pages.
     if (!hasLoadedOnce.current) {
@@ -144,6 +149,7 @@ export function useSubscription() {
       setStatus(fallbackStatus);
     } finally {
       hasLoadedOnce.current = true;
+      inFlightRef.current = false;
       setLoading(false);
     }
   }, [user, authLoading, checkFromFactory]);

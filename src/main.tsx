@@ -18,6 +18,8 @@ window.onerror = (message, source, lineno, colno, error) => {
 
 window.onunhandledrejection = (event: PromiseRejectionEvent) => {
   const error = event.reason;
+  // AbortError is expected when navigating away from a page with in-flight requests
+  if (error?.name === 'AbortError') return;
   logError({
     message: error?.message ?? String(error),
     stack: error?.stack,

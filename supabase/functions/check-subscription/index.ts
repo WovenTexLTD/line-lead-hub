@@ -30,6 +30,13 @@ const GRANTED_FREE_ACCESS: Record<string, string> = {
   'karimsabbagh21@gmail.com': 'starter',
 };
 
+// Stripe may return timestamps as Unix seconds (number) or ISO strings depending on API version.
+const parseStripeTimestamp = (value: unknown): Date => {
+  if (typeof value === 'number') return new Date(value * 1000);
+  if (typeof value === 'string') return new Date(value);
+  return new Date(NaN); // fallback — caller should handle
+};
+
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[CHECK-SUBSCRIPTION] ${step}${detailsStr}`);
@@ -168,8 +175,9 @@ serve(async (req) => {
         
         if (activeSub) {
           const isTrial = activeSub.status === 'trialing';
-          const daysRemaining = isTrial && activeSub.trial_end
-            ? Math.ceil((activeSub.trial_end * 1000 - Date.now()) / (1000 * 60 * 60 * 24))
+          const trialEndDate = activeSub.trial_end ? parseStripeTimestamp(activeSub.trial_end) : null;
+          const daysRemaining = isTrial && trialEndDate && !isNaN(trialEndDate.getTime())
+            ? Math.ceil((trialEndDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
             : null;
           
           // Get tier from subscription
@@ -283,9 +291,11 @@ serve(async (req) => {
         .eq('id', profile.factory_id);
 
       const isTrial = subscription.status === 'trialing';
-      const subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
-      const daysRemaining = isTrial && subscription.trial_end
-        ? Math.ceil((subscription.trial_end * 1000 - Date.now()) / (1000 * 60 * 60 * 24))
+      const periodEnd = parseStripeTimestamp(subscription.current_period_end);
+      const subscriptionEnd = !isNaN(periodEnd.getTime()) ? periodEnd.toISOString() : null;
+      const trialEnd = subscription.trial_end ? parseStripeTimestamp(subscription.trial_end) : null;
+      const daysRemaining = isTrial && trialEnd && !isNaN(trialEnd.getTime())
+        ? Math.ceil((trialEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
         : null;
 
       return new Response(JSON.stringify({

@@ -14,16 +14,6 @@ export default function Index() {
     );
   }
 
-  // Diagnostic: log redirect decision state
-  console.warn('[Index] Redirect decision:', {
-    hasUser: !!user,
-    hasProfile: !!profile,
-    factoryId: profile?.factory_id ?? null,
-    roles: roles.map(r => r.role),
-    department: profile?.department ?? null,
-    isAdminOrHigher: isAdminOrHigher(),
-  });
-
   // Redirect authenticated users based on role
   if (user) {
     if (!profile) return <Navigate to="/auth" replace />;
