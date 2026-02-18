@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Search, Scissors, CheckCircle, Shirt, CircleDot, Flame, Package, Box, Archive } from "lucide-react";
+import { ArrowLeft, Loader2, Search, Scissors, CheckCircle, Shirt, CircleDot, Flame, Package, Box, Archive, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -61,6 +61,7 @@ export default function FinishingDailyTarget() {
   // Form state - date is automatically set to today on submission
   const [selectedWorkOrderId, setSelectedWorkOrderId] = useState("");
   const [remarks, setRemarks] = useState("");
+  const [plannedHours, setPlannedHours] = useState("");
 
   // Process category values
   const [processValues, setProcessValues] = useState<Record<ProcessKey, string>>({
@@ -107,6 +108,21 @@ export default function FinishingDailyTarget() {
 
       setWorkOrders(workOrdersData || []);
 
+      // Smart default: fetch most recent planned_hours from this factory's TARGET logs
+      const { data: recentTarget } = await supabase
+        .from("finishing_daily_logs")
+        .select("planned_hours")
+        .eq("factory_id", profile.factory_id)
+        .eq("log_type", "TARGET")
+        .not("planned_hours", "is", null)
+        .order("production_date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (recentTarget?.planned_hours != null) {
+        setPlannedHours(recentTarget.planned_hours.toString());
+      }
+
       // Pre-select from URL params
       const woParam = searchParams.get("wo");
       if (woParam && (workOrdersData || []).find(w => w.id === woParam)) {
@@ -142,6 +158,9 @@ export default function FinishingDailyTarget() {
         setExistingLog(data);
         // Pre-fill form with existing data
         setRemarks(data.remarks || "");
+        if (data.planned_hours != null) {
+          setPlannedHours(data.planned_hours.toString());
+        }
         setProcessValues({
           thread_cutting: data.thread_cutting?.toString() || "",
           inside_check: data.inside_check?.toString() || "",
@@ -230,6 +249,7 @@ export default function FinishingDailyTarget() {
         carton: processValues.carton ? parseInt(processValues.carton) : 0,
         remarks: remarks || null,
         submitted_by: user.id,
+        planned_hours: plannedHours ? parseFloat(plannedHours) : null,
       };
 
       if (isEditing && existingLog) {
@@ -447,6 +467,33 @@ export default function FinishingDailyTarget() {
                   </div>
                 );
               })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Hours Planning */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Hours Planning
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <Label>Total Hours Planned (for this target)</Label>
+              <Input
+                type="number"
+                step="0.5"
+                min="0"
+                max="24"
+                value={plannedHours}
+                onChange={(e) => setPlannedHours(e.target.value)}
+                placeholder="e.g. 10"
+              />
+              <p className="text-xs text-muted-foreground">
+                Total working hours for the finishing department today (including overtime)
+              </p>
             </div>
           </CardContent>
         </Card>

@@ -5,10 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { 
-  Loader2, TrendingUp, TrendingDown, Target, Users, AlertTriangle, 
-  Factory, Package, BarChart3, Calendar, ArrowUp, ArrowDown, 
-  Minus, Zap, Clock, CheckCircle2, XCircle, ChevronRight
+import {
+  Loader2, TrendingUp, TrendingDown, Target, Users, AlertTriangle,
+  Factory, Package, BarChart3, Calendar, ArrowUp, ArrowDown,
+  Minus, Zap, Clock, CheckCircle2, XCircle, ChevronRight, Box, Archive
 } from "lucide-react";
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, Sector,
@@ -79,6 +79,19 @@ interface InsightSummary {
   previousPeriodOutput: number;
 }
 
+interface FinishingEfficiency {
+  polyEfficiency: number;
+  cartonEfficiency: number;
+  threadCuttingEfficiency: number;
+  insideCheckEfficiency: number;
+  topSideCheckEfficiency: number;
+  buttoningEfficiency: number;
+  ironEfficiency: number;
+  getUpEfficiency: number;
+  daysWithHours: number;
+  daysWithoutHours: number;
+}
+
 interface PreviousPeriodData {
   totalOutput: number;
   totalQcPass: number;
@@ -123,6 +136,8 @@ export default function Insights() {
     previousPeriodEfficiency: 0,
     previousPeriodOutput: 0,
   });
+
+  const [finishingEfficiency, setFinishingEfficiency] = useState<FinishingEfficiency | null>(null);
 
   // Line drill-down state
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
@@ -193,6 +208,16 @@ export default function Insights() {
         .select('*, lines(name, line_id), work_orders(po_number, buyer, style, order_qty)')
         .eq('factory_id', profile.factory_id)
         .eq('log_type', 'OUTPUT')
+        .gte('production_date', startDateStr)
+        .lte('production_date', today)
+        .order('production_date', { ascending: true });
+
+      // Fetch finishing TARGET logs (for planned_hours + per-process hourly targets)
+      const { data: finishingTargetLogs } = await supabase
+        .from('finishing_daily_logs')
+        .select('*')
+        .eq('factory_id', profile.factory_id)
+        .eq('log_type', 'TARGET')
         .gte('production_date', startDateStr)
         .lte('production_date', today)
         .order('production_date', { ascending: true });
@@ -394,6 +419,67 @@ export default function Insights() {
       let outputTrend: 'up' | 'down' | 'stable' = 'stable';
       if (totalSewingOutput > prevTotalOutput * 1.1) outputTrend = 'up';
       else if (totalSewingOutput < prevTotalOutput * 0.9) outputTrend = 'down';
+
+      // --- Finishing efficiency per process ---
+      const finishingProcessKeys = ['thread_cutting', 'inside_check', 'top_side_check', 'buttoning', 'iron', 'get_up', 'poly', 'carton'] as const;
+
+      // Pair TARGET and OUTPUT logs by date + work_order_id
+      const finishingPairs: { target: any; output: any }[] = [];
+      finishingTargetLogs?.forEach(tLog => {
+        const matchingOutput = finishingDailyLogs?.find(
+          o => o.production_date === tLog.production_date && o.work_order_id === tLog.work_order_id
+        );
+        if (matchingOutput) {
+          finishingPairs.push({ target: tLog, output: matchingOutput });
+        }
+      });
+
+      // Aggregate: sum output and sum (target × planned_hours) per process
+      const processAgg: Record<string, { totalOutput: number; totalTarget: number }> = {};
+      finishingProcessKeys.forEach(key => {
+        processAgg[key] = { totalOutput: 0, totalTarget: 0 };
+      });
+      const datesWithHours = new Set<string>();
+      const datesWithoutHours = new Set<string>();
+
+      finishingPairs.forEach(({ target, output }) => {
+        const plannedHrs = target.planned_hours;
+        const actualHrs = output.actual_hours;
+        if (plannedHrs && actualHrs) {
+          datesWithHours.add(output.production_date);
+          finishingProcessKeys.forEach(key => {
+            const targetRate = target[key] || 0;
+            const actualOutput = output[key] || 0;
+            processAgg[key].totalOutput += actualOutput;
+            processAgg[key].totalTarget += targetRate * plannedHrs;
+          });
+        } else {
+          datesWithoutHours.add(output.production_date);
+        }
+      });
+
+      const finEfficiencies: Record<string, number> = {};
+      finishingProcessKeys.forEach(key => {
+        const { totalOutput, totalTarget } = processAgg[key];
+        finEfficiencies[key] = totalTarget > 0 ? Math.round((totalOutput / totalTarget) * 100) : 0;
+      });
+
+      if (datesWithHours.size > 0 || datesWithoutHours.size > 0) {
+        setFinishingEfficiency({
+          polyEfficiency: finEfficiencies.poly,
+          cartonEfficiency: finEfficiencies.carton,
+          threadCuttingEfficiency: finEfficiencies.thread_cutting,
+          insideCheckEfficiency: finEfficiencies.inside_check,
+          topSideCheckEfficiency: finEfficiencies.top_side_check,
+          buttoningEfficiency: finEfficiencies.buttoning,
+          ironEfficiency: finEfficiencies.iron,
+          getUpEfficiency: finEfficiencies.get_up,
+          daysWithHours: datesWithHours.size,
+          daysWithoutHours: datesWithoutHours.size,
+        });
+      } else {
+        setFinishingEfficiency(null);
+      }
 
       setSummary({
         totalSewingOutput,
@@ -704,6 +790,109 @@ export default function Insights() {
         previousPeriod={previousPeriodData}
         periodDays={parseInt(period)}
       />
+
+      {/* Finishing Efficiency */}
+      {finishingEfficiency && (finishingEfficiency.daysWithHours > 0 || finishingEfficiency.daysWithoutHours > 0) && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Package className="h-5 w-5 text-info" />
+            Finishing Efficiency
+          </h2>
+
+          {finishingEfficiency.daysWithoutHours > 0 && (
+            <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                {finishingEfficiency.daysWithoutHours} day(s) missing hours data — excluded from efficiency calculations
+              </p>
+            </div>
+          )}
+
+          {finishingEfficiency.daysWithHours > 0 ? (
+            <>
+              {/* Primary KPIs: Poly & Carton */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+                <Card className="relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-20 h-20 bg-info/5 rounded-bl-full" />
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <Box className="h-4 w-4" />
+                      Poly Efficiency
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className={`text-2xl md:text-3xl font-bold ${finishingEfficiency.polyEfficiency >= 90 ? 'text-success' : finishingEfficiency.polyEfficiency >= 70 ? 'text-warning' : 'text-destructive'}`}>
+                      {finishingEfficiency.polyEfficiency}%
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Output vs target x planned hours
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-20 h-20 bg-primary/5 rounded-bl-full" />
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <Archive className="h-4 w-4" />
+                      Carton Efficiency
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className={`text-2xl md:text-3xl font-bold ${finishingEfficiency.cartonEfficiency >= 90 ? 'text-success' : finishingEfficiency.cartonEfficiency >= 70 ? 'text-warning' : 'text-destructive'}`}>
+                      {finishingEfficiency.cartonEfficiency}%
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Output vs target x planned hours
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* All 8 process breakdown */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">All Process Efficiency</CardTitle>
+                  <CardDescription>Achievement vs (hourly target x planned hours)</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {[
+                      { label: 'Thread Cutting', value: finishingEfficiency.threadCuttingEfficiency },
+                      { label: 'Inside Check', value: finishingEfficiency.insideCheckEfficiency },
+                      { label: 'Top Side Check', value: finishingEfficiency.topSideCheckEfficiency },
+                      { label: 'Buttoning', value: finishingEfficiency.buttoningEfficiency },
+                      { label: 'Iron', value: finishingEfficiency.ironEfficiency },
+                      { label: 'Get-up', value: finishingEfficiency.getUpEfficiency },
+                      { label: 'Poly', value: finishingEfficiency.polyEfficiency },
+                      { label: 'Carton', value: finishingEfficiency.cartonEfficiency },
+                    ].map(proc => (
+                      <div key={proc.label} className="flex items-center justify-between">
+                        <span className="text-sm font-medium w-1/3">{proc.label}</span>
+                        <div className="flex items-center gap-3 w-2/3">
+                          <Progress value={Math.min(proc.value, 100)} className="h-2 flex-1" />
+                          <Badge variant={proc.value >= 90 ? 'default' : proc.value >= 70 ? 'secondary' : 'destructive'} className="w-14 justify-center">
+                            {proc.value}%
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center py-4 text-muted-foreground">
+                  <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="font-medium">Missing hours data</p>
+                  <p className="text-sm">Add planned hours to targets and actual hours to outputs to see efficiency metrics</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       {/* Trends Section */}
       <div className="space-y-4">

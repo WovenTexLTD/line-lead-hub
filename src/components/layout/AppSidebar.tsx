@@ -30,6 +30,8 @@ import {
   RefreshCw,
   Loader2,
   Bug,
+  BookOpen,
+  BarChart3,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -85,6 +87,8 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   ClipboardCheck,
   Scissors,
   Bug,
+  BookOpen,
+  BarChart3,
 };
 
 const navLabelKeys: Record<string, string> = {
@@ -123,6 +127,8 @@ const navLabelKeys: Record<string, string> = {
   'Storage': 'nav.storage',
   'Bin Card Entry': 'nav.binCardEntry',
   'All Bin Cards': 'nav.allBinCards',
+  'Daily Target': 'nav.finishingDailyTarget',
+  'End of Day Output': 'nav.finishingDailyOutput',
 };
 
 interface NavItem {

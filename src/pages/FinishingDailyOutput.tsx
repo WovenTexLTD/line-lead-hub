@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Search, Scissors, CheckCircle, Shirt, CircleDot, Flame, Package, Box, Archive, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { ArrowLeft, Loader2, Search, Scissors, CheckCircle, Shirt, CircleDot, Flame, Package, Box, Archive, TrendingUp, TrendingDown, Minus, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -43,6 +43,7 @@ interface TargetLog {
   get_up: number | null;
   poly: number | null;
   carton: number | null;
+  planned_hours: number | null;
 }
 
 // Process categories matching the hourly grid
@@ -77,6 +78,7 @@ export default function FinishingDailyOutput() {
   // Form state - date is automatically set to today on submission
   const [selectedWorkOrderId, setSelectedWorkOrderId] = useState("");
   const [remarks, setRemarks] = useState("");
+  const [actualHours, setActualHours] = useState("");
 
   // Process category values
   const [processValues, setProcessValues] = useState<Record<ProcessKey, string>>({
@@ -183,6 +185,7 @@ export default function FinishingDailyOutput() {
         setExistingLog(outputRes.data);
         // Pre-fill form with existing data
         setRemarks(outputRes.data.remarks || "");
+        setActualHours(outputRes.data.actual_hours?.toString() || "");
         setProcessValues({
           thread_cutting: outputRes.data.thread_cutting?.toString() || "",
           inside_check: outputRes.data.inside_check?.toString() || "",
@@ -197,6 +200,8 @@ export default function FinishingDailyOutput() {
       } else {
         setExistingLog(null);
         setIsEditing(false);
+        // Prefill actual hours from target's planned_hours
+        setActualHours(targetRes.data?.planned_hours?.toString() || "");
         // Reset form
         setProcessValues({
           thread_cutting: "",
@@ -301,6 +306,7 @@ export default function FinishingDailyOutput() {
         poly: processValues.poly ? parseInt(processValues.poly) : 0,
         carton: processValues.carton ? parseInt(processValues.carton) : 0,
         remarks: remarks || null,
+        actual_hours: actualHours ? parseFloat(actualHours) : null,
         submitted_by: user.id,
       };
 
@@ -548,6 +554,23 @@ export default function FinishingDailyOutput() {
                     <VarianceIndicator variance={calculateTotal() - calculateTargetTotal()} />
                   </div>
                 </div>
+                {(targetLog?.planned_hours || actualHours) && (
+                  <div className="border-t pt-2 mt-2 grid grid-cols-4 gap-2 text-sm">
+                    <div className="flex items-center gap-1">
+                      <Clock className="h-3 w-3 text-muted-foreground" />
+                      Hours
+                    </div>
+                    <div className="text-right text-muted-foreground">{targetLog?.planned_hours ?? "—"}</div>
+                    <div className="text-right font-medium">{actualHours || "—"}</div>
+                    <div className="text-right">
+                      {targetLog?.planned_hours && actualHours ? (
+                        <VarianceIndicator variance={parseFloat(actualHours) - targetLog.planned_hours} />
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -596,6 +619,35 @@ export default function FinishingDailyOutput() {
                   </div>
                 );
               })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Working Hours */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Working Hours
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <Label>Actual Total Hours Worked</Label>
+              <Input
+                type="number"
+                step="0.5"
+                min="0"
+                max="24"
+                value={actualHours}
+                onChange={(e) => setActualHours(e.target.value)}
+                placeholder={targetLog?.planned_hours ? `Planned: ${targetLog.planned_hours}h` : "e.g. 8"}
+              />
+              {targetLog?.planned_hours && (
+                <p className="text-xs text-muted-foreground">
+                  Planned hours from target: {targetLog.planned_hours}h
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>

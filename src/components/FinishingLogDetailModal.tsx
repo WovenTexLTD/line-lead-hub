@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
-import { Scissors, CheckCircle, Shirt, CircleDot, Flame, Package, Box, Archive, FileText, Calendar, User } from "lucide-react";
+import { Scissors, CheckCircle, Shirt, CircleDot, Flame, Package, Box, Archive, FileText, Calendar, User, Clock } from "lucide-react";
 
 interface FinishingDailyLog {
   id: string;
@@ -18,6 +18,8 @@ interface FinishingDailyLog {
   get_up: number;
   poly: number;
   carton: number;
+  planned_hours: number | null;
+  actual_hours: number | null;
   remarks: string | null;
   submitted_at: string;
   is_locked: boolean;
@@ -124,6 +126,30 @@ export function FinishingLogDetailModal({ log, open, onOpenChange }: FinishingLo
               })}
             </div>
           </div>
+
+          {/* Hours */}
+          {(log.planned_hours != null || log.actual_hours != null) && (
+            <div className="border rounded-lg p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <span className="font-medium">Hours</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {log.planned_hours != null && (
+                  <div className="p-2 bg-muted/50 rounded">
+                    <span className="text-xs text-muted-foreground">Planned</span>
+                    <p className="font-medium">{log.planned_hours}h</p>
+                  </div>
+                )}
+                {log.actual_hours != null && (
+                  <div className="p-2 bg-muted/50 rounded">
+                    <span className="text-xs text-muted-foreground">Actual</span>
+                    <p className="font-medium">{log.actual_hours}h</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Remarks */}
           {log.remarks && (

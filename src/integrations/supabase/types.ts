@@ -1122,6 +1122,7 @@ export type Database = {
           locked_at: string | null
           locked_by: string | null
           log_type: Database["public"]["Enums"]["finishing_log_type"]
+          planned_hours: number | null
           poly: number | null
           production_date: string
           remarks: string | null
@@ -1133,6 +1134,7 @@ export type Database = {
           updated_at: string | null
           updated_by: string | null
           work_order_id: string | null
+          actual_hours: number | null
         }
         Insert: {
           buttoning?: number | null
@@ -1148,6 +1150,7 @@ export type Database = {
           locked_at?: string | null
           locked_by?: string | null
           log_type: Database["public"]["Enums"]["finishing_log_type"]
+          planned_hours?: number | null
           poly?: number | null
           production_date?: string
           remarks?: string | null
@@ -1159,6 +1162,7 @@ export type Database = {
           updated_at?: string | null
           updated_by?: string | null
           work_order_id?: string | null
+          actual_hours?: number | null
         }
         Update: {
           buttoning?: number | null
@@ -1174,6 +1178,7 @@ export type Database = {
           locked_at?: string | null
           locked_by?: string | null
           log_type?: Database["public"]["Enums"]["finishing_log_type"]
+          planned_hours?: number | null
           poly?: number | null
           production_date?: string
           remarks?: string | null
@@ -1185,6 +1190,7 @@ export type Database = {
           updated_at?: string | null
           updated_by?: string | null
           work_order_id?: string | null
+          actual_hours?: number | null
         }
         Relationships: [
           {

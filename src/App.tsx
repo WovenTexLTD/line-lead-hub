@@ -157,7 +157,7 @@ function AppRoutes() {
         <Route path="/finishing/daily-sheet" element={<Navigate to="/finishing/daily-target" replace />} />
         <Route path="/morning-targets" element={<SubscriptionGate><ProtectedRoute adminOnly><MorningTargets /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/end-of-day" element={<SubscriptionGate><ProtectedRoute adminOnly><EndOfDay /></ProtectedRoute></SubscriptionGate>} />
-        <Route path="/report-blocker" element={<SubscriptionGate><ProtectedRoute allowedRoles={['worker', 'sewing', 'finishing']}><ReportBlocker /></ProtectedRoute></SubscriptionGate>} />
+        <Route path="/report-blocker" element={<SubscriptionGate><ProtectedRoute allowedRoles={['worker', 'sewing', 'finishing', 'storage', 'cutting']}><ReportBlocker /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/today" element={<SubscriptionGate><ProtectedRoute adminOnly><TodayUpdates /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/blockers" element={<SubscriptionGate><ProtectedRoute adminOnly><Blockers /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/week" element={<SubscriptionGate><ProtectedRoute adminOnly><ThisWeek /></ProtectedRoute></SubscriptionGate>} />

@@ -36,6 +36,8 @@ interface DailyLogSummary {
   get_up: number;
   poly: number;
   carton: number;
+  planned_hours: number | null;
+  actual_hours: number | null;
   remarks: string | null;
   submitted_at: string;
   production_date: string;
@@ -102,6 +104,8 @@ export function FinishingDashboard() {
         get_up: log.get_up || 0,
         poly: log.poly || 0,
         carton: log.carton || 0,
+        planned_hours: log.planned_hours ?? null,
+        actual_hours: log.actual_hours ?? null,
         remarks: log.remarks || null,
         submitted_at: log.submitted_at,
         production_date: log.production_date,
@@ -262,6 +266,8 @@ export function FinishingDashboard() {
                           get_up: log.get_up,
                           poly: log.poly,
                           carton: log.carton,
+                          planned_hours: log.planned_hours,
+                          actual_hours: log.actual_hours,
                           remarks: log.remarks,
                           submitted_at: log.submitted_at,
                           is_locked: false,

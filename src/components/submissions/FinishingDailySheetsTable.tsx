@@ -47,6 +47,8 @@ interface DailyLogRow {
   get_up: number;
   poly: number;
   carton: number;
+  planned_hours: number | null;
+  actual_hours: number | null;
   remarks: string | null;
   submitted_at: string;
   is_locked: boolean;
@@ -125,6 +127,8 @@ export function FinishingDailySheetsTable({
         get_up: log.get_up || 0,
         poly: log.poly || 0,
         carton: log.carton || 0,
+        planned_hours: log.planned_hours ?? null,
+        actual_hours: log.actual_hours ?? null,
         remarks: log.remarks || null,
         submitted_at: log.submitted_at,
         is_locked: log.is_locked,
@@ -228,7 +232,7 @@ export function FinishingDailySheetsTable({
 
   function exportSelectedCsv() {
     const rows = sortedData.filter(l => selectedIds.has(l.id));
-    const headers = ["Date", "PO", "Buyer", "Style", "Type", "Thread Cutting", "Inside Check", "Top Side Check", "Buttoning", "Iron", "Get Up", "Poly", "Carton"];
+    const headers = ["Date", "PO", "Buyer", "Style", "Type", "Thread Cutting", "Inside Check", "Top Side Check", "Buttoning", "Iron", "Get Up", "Poly", "Carton", "Planned Hours", "Actual Hours"];
     const csvRows = [headers.join(",")];
     rows.forEach(l => {
       csvRows.push([
@@ -245,6 +249,8 @@ export function FinishingDailySheetsTable({
         l.get_up,
         l.poly,
         l.carton,
+        l.planned_hours ?? "",
+        l.actual_hours ?? "",
       ].join(","));
     });
     const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
@@ -422,6 +428,7 @@ export function FinishingDailySheetsTable({
                       <SortableTableHead column="buyer" sortConfig={sortConfig} onSort={requestSort}>Buyer</SortableTableHead>
                       <SortableTableHead column="poly" sortConfig={sortConfig} onSort={requestSort} className="text-right">Poly</SortableTableHead>
                       <SortableTableHead column="carton" sortConfig={sortConfig} onSort={requestSort} className="text-right">Carton</SortableTableHead>
+                      <TableHead className="text-right">Hours</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="w-[60px]"></TableHead>
                     </TableRow>
@@ -466,6 +473,13 @@ export function FinishingDailySheetsTable({
                               {log.carton.toLocaleString()}
                             </span>
                           </TableCell>
+                          <TableCell className="text-right">
+                            <span className="font-mono text-sm">
+                              {activeTab === "targets"
+                                ? (log.planned_hours != null ? `${log.planned_hours}h` : "—")
+                                : (log.actual_hours != null ? `${log.actual_hours}h` : "—")}
+                            </span>
+                          </TableCell>
                           <TableCell>
                             {log.is_locked ? (
                               <Badge variant="secondary">Locked</Badge>
@@ -484,7 +498,7 @@ export function FinishingDailySheetsTable({
                       ))}
                       {paginatedData.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
+                          <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
                             <Package className="h-12 w-12 mx-auto mb-3 opacity-30" />
                             <p>No {activeTab === "targets" ? "targets" : "outputs"} found</p>
                           </TableCell>
@@ -528,6 +542,8 @@ export function FinishingDailySheetsTable({
           get_up: selectedLog.get_up,
           poly: selectedLog.poly,
           carton: selectedLog.carton,
+          planned_hours: selectedLog.planned_hours,
+          actual_hours: selectedLog.actual_hours,
           remarks: selectedLog.remarks,
           submitted_at: selectedLog.submitted_at,
           is_locked: selectedLog.is_locked,
