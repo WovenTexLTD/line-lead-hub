@@ -1223,13 +1223,19 @@ export default function TodayUpdates() {
                           <TableRow
                             key={row.groupKey}
                             className="cursor-pointer hover:bg-muted/50"
-                            onClick={() => row.isGroup ? toggleStorageGroup(row.groupKey) : handleStorageClick(row.transactions[0])}
+                            onClick={() => row.isGroup ? handleStorageClick(row.transactions[0]) : handleStorageClick(row.transactions[0])}
                           >
                             <TableCell className="font-mono text-sm">{row.latestTime ? formatTime(row.latestTime) : '-'}</TableCell>
                             <TableCell>
                               {row.isGroup ? (
                                 <span className="inline-flex items-center gap-1">
-                                  {expandedStorageGroups.has(row.groupKey) ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+                                  <button
+                                    type="button"
+                                    className="p-0.5 rounded hover:bg-muted"
+                                    onClick={(e) => { e.stopPropagation(); toggleStorageGroup(row.groupKey); }}
+                                  >
+                                    {expandedStorageGroups.has(row.groupKey) ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+                                  </button>
                                   <span className="font-medium text-primary">{row.groupName}</span>
                                   <span className="text-xs text-muted-foreground ml-1">({row.transactions.length} POs)</span>
                                 </span>
@@ -1576,13 +1582,19 @@ export default function TodayUpdates() {
                         <TableRow
                           key={row.groupKey}
                           className="cursor-pointer hover:bg-muted/50"
-                          onClick={() => row.isGroup ? toggleStorageGroup(row.groupKey) : handleStorageClick(row.transactions[0])}
+                          onClick={() => row.isGroup ? handleStorageClick(row.transactions[0]) : handleStorageClick(row.transactions[0])}
                         >
                           <TableCell className="font-mono text-sm">{row.latestTime ? formatTime(row.latestTime) : '-'}</TableCell>
                           <TableCell>
                             {row.isGroup ? (
                               <span className="inline-flex items-center gap-1">
-                                {expandedStorageGroups.has(row.groupKey) ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+                                <button
+                                  type="button"
+                                  className="p-0.5 rounded hover:bg-muted"
+                                  onClick={(e) => { e.stopPropagation(); toggleStorageGroup(row.groupKey); }}
+                                >
+                                  {expandedStorageGroups.has(row.groupKey) ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+                                </button>
                                 <span className="font-medium text-primary">{row.groupName}</span>
                                 <span className="text-xs text-muted-foreground ml-1">({row.transactions.length} POs)</span>
                               </span>
