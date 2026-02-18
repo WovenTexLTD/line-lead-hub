@@ -727,7 +727,7 @@ export default function Dashboard() {
         cards,
         poNumbers: cards.map(c => c.po_number).filter(Boolean) as string[],
         groupName: cards[0].group_name,
-        buyer: uniqueBuyers.length === 1 ? uniqueBuyers[0]! : uniqueBuyers.length > 1 ? 'Mixed' : 'No buyer',
+        buyer: cards[0].group_name || (uniqueBuyers.length === 1 ? uniqueBuyers[0]! : uniqueBuyers.length > 1 ? 'Mixed' : 'No buyer'),
         style: uniqueStyles.length === 1 ? uniqueStyles[0]! : uniqueStyles.length > 1 ? 'Mixed' : 'No style',
         totalBalance: cards.reduce((sum, c) => sum + c.latest_balance, 0),
         transactionCount: cards.reduce((sum, c) => sum + c.transaction_count, 0),
@@ -1296,10 +1296,10 @@ export default function Dashboard() {
                               )}
                             </div>
                             <p className="text-sm text-muted-foreground whitespace-nowrap">
-                              {item.buyer} • {item.style}
-                              {item.groupName && (
-                                <span className="ml-1 text-xs text-primary">({item.groupName})</span>
-                              )}
+                              {item.type === 'group' && item.groupName
+                                ? `${item.poNumbers.join(', ')}`
+                                : `${item.buyer} • ${item.style}`
+                              }
                             </p>
                           </div>
                         </div>
