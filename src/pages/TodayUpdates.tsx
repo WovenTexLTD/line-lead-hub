@@ -142,7 +142,7 @@ interface SewingActualRow {
   cumulative_good_total: number;
   manpower_actual: number;
   ot_hours_actual: number;
-  ot_manpower_actual: number;
+  ot_manpower_actual: number | null;
   actual_stage_progress: number;
   has_blocker: boolean | null;
   blocker_description: string | null;
