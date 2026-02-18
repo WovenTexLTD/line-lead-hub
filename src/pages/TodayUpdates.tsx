@@ -1088,7 +1088,7 @@ export default function TodayUpdates() {
                           <TableCell className="font-mono text-sm">{txn.created_at ? formatTime(txn.created_at) : '-'}</TableCell>
                           <TableCell>
                             {txn.storage_bin_cards?.work_orders?.po_number || '-'}
-                            {txn.batch_id && <Layers className="h-3 w-3 inline ml-1 text-muted-foreground" title="Bulk submission" />}
+{txn.batch_id && <span title="Bulk submission"><Layers className="h-3 w-3 inline ml-1 text-muted-foreground" /></span>}
                           </TableCell>
                           <TableCell>{txn.storage_bin_cards?.style || '-'}</TableCell>
                           <TableCell className="text-right font-mono text-success">{txn.receive_qty > 0 ? `+${txn.receive_qty.toLocaleString()}` : '-'}</TableCell>
@@ -1415,7 +1415,7 @@ export default function TodayUpdates() {
                         <TableCell className="font-mono text-sm">{txn.created_at ? formatTime(txn.created_at) : '-'}</TableCell>
                         <TableCell>
                           {txn.storage_bin_cards?.work_orders?.po_number || '-'}
-                          {txn.batch_id && <Layers className="h-3 w-3 inline ml-1 text-muted-foreground" title="Bulk submission" />}
+                          {txn.batch_id && <span title="Bulk submission"><Layers className="h-3 w-3 inline ml-1 text-muted-foreground" /></span>}
                         </TableCell>
                         <TableCell>{txn.storage_bin_cards?.style || '-'}</TableCell>
                         <TableCell className="text-right font-mono text-success">{txn.receive_qty > 0 ? `+${txn.receive_qty.toLocaleString()}` : '-'}</TableCell>

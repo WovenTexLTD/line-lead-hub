@@ -2612,6 +2612,7 @@ export type Database = {
       storage_bin_card_transactions: {
         Row: {
           balance_qty: number
+          batch_id: string | null
           bin_card_id: string
           created_at: string | null
           factory_id: string
@@ -2625,6 +2626,7 @@ export type Database = {
         }
         Insert: {
           balance_qty?: number
+          batch_id?: string | null
           bin_card_id: string
           created_at?: string | null
           factory_id: string
@@ -2638,6 +2640,7 @@ export type Database = {
         }
         Update: {
           balance_qty?: number
+          batch_id?: string | null
           bin_card_id?: string
           created_at?: string | null
           factory_id?: string
