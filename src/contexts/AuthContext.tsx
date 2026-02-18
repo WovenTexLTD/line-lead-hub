@@ -18,7 +18,7 @@ const profileSchema = z.object({
 });
 
 const userRoleSchema = z.object({
-  role: z.enum(['worker', 'admin', 'owner', 'storage', 'cutting']),
+  role: z.enum(['worker', 'admin', 'owner', 'storage', 'cutting', 'superadmin']),
   factory_id: z.string().nullable(),
 });
 
@@ -29,10 +29,10 @@ const factorySchema = z.object({
   subscription_tier: z.string(),
   subscription_status: z.string().nullable(),
   trial_end_date: z.string().nullable(),
-  cutoff_time: z.string(),
+  cutoff_time: z.string().nullable().transform(v => v ?? '16:00:00'),
   morning_target_cutoff: z.string().nullable(),
   evening_actual_cutoff: z.string().nullable(),
-  timezone: z.string(),
+  timezone: z.string().nullable().transform(v => v ?? 'Asia/Dhaka'),
   logo_url: z.string().nullable(),
   max_lines: z.number().nullable(),
   low_stock_threshold: z.number(),

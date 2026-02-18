@@ -145,19 +145,19 @@ function AppRoutes() {
         <Route path="/dashboard" element={<SubscriptionGate><ProtectedRoute adminOnly><Dashboard /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/update/sewing" element={<SubscriptionGate><ProtectedRoute adminOnly><SewingUpdate /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/update/finishing" element={<SubscriptionGate><ProtectedRoute adminOnly><FinishingUpdate /></ProtectedRoute></SubscriptionGate>} />
-        <Route path="/sewing/morning-targets" element={<SubscriptionGate><SewingMorningTargets /></SubscriptionGate>} />
-        <Route path="/sewing/end-of-day" element={<SubscriptionGate><SewingEndOfDay /></SubscriptionGate>} />
-        
-        <Route path="/finishing/daily-target" element={<SubscriptionGate><FinishingDailyTarget /></SubscriptionGate>} />
-        <Route path="/finishing/daily-output" element={<SubscriptionGate><FinishingDailyOutput /></SubscriptionGate>} />
-        <Route path="/finishing/my-submissions" element={<SubscriptionGate><FinishingMySubmissions /></SubscriptionGate>} />
-        <Route path="/finishing/overview" element={<SubscriptionGate><FinishingOverview /></SubscriptionGate>} />
-        <Route path="/finishing/daily-summary" element={<SubscriptionGate><FinishingDailySummary /></SubscriptionGate>} />
+        <Route path="/sewing/morning-targets" element={<SubscriptionGate><ProtectedRoute allowedRoles={['worker']}><SewingMorningTargets /></ProtectedRoute></SubscriptionGate>} />
+        <Route path="/sewing/end-of-day" element={<SubscriptionGate><ProtectedRoute allowedRoles={['worker']}><SewingEndOfDay /></ProtectedRoute></SubscriptionGate>} />
+
+        <Route path="/finishing/daily-target" element={<SubscriptionGate><ProtectedRoute allowedRoles={['worker']}><FinishingDailyTarget /></ProtectedRoute></SubscriptionGate>} />
+        <Route path="/finishing/daily-output" element={<SubscriptionGate><ProtectedRoute allowedRoles={['worker']}><FinishingDailyOutput /></ProtectedRoute></SubscriptionGate>} />
+        <Route path="/finishing/my-submissions" element={<SubscriptionGate><ProtectedRoute allowedRoles={['worker']}><FinishingMySubmissions /></ProtectedRoute></SubscriptionGate>} />
+        <Route path="/finishing/overview" element={<SubscriptionGate><ProtectedRoute allowedRoles={['worker']}><FinishingOverview /></ProtectedRoute></SubscriptionGate>} />
+        <Route path="/finishing/daily-summary" element={<SubscriptionGate><ProtectedRoute allowedRoles={['worker']}><FinishingDailySummary /></ProtectedRoute></SubscriptionGate>} />
         {/* Redirect old route to new daily target */}
         <Route path="/finishing/daily-sheet" element={<Navigate to="/finishing/daily-target" replace />} />
         <Route path="/morning-targets" element={<SubscriptionGate><ProtectedRoute adminOnly><MorningTargets /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/end-of-day" element={<SubscriptionGate><ProtectedRoute adminOnly><EndOfDay /></ProtectedRoute></SubscriptionGate>} />
-        <Route path="/report-blocker" element={<SubscriptionGate><ReportBlocker /></SubscriptionGate>} />
+        <Route path="/report-blocker" element={<SubscriptionGate><ProtectedRoute allowedRoles={['worker']}><ReportBlocker /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/today" element={<SubscriptionGate><ProtectedRoute adminOnly><TodayUpdates /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/blockers" element={<SubscriptionGate><ProtectedRoute adminOnly><Blockers /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/week" element={<SubscriptionGate><ProtectedRoute adminOnly><ThisWeek /></ProtectedRoute></SubscriptionGate>} />
@@ -189,8 +189,8 @@ function AppRoutes() {
         <Route path="/cutting/summary" element={<SubscriptionGate><ProtectedRoute allowedRoles={['cutting']}><CuttingSummary /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/cutting/submissions" element={<SubscriptionGate><ProtectedRoute allowedRoles={['cutting']}><CuttingAllSubmissions /></ProtectedRoute></SubscriptionGate>} />
         {/* Sewing module routes */}
-        <Route path="/sewing/cutting-handoffs" element={<SubscriptionGate><CuttingHandoffs /></SubscriptionGate>} />
-        <Route path="/sewing/my-submissions" element={<SubscriptionGate><SewingMySubmissions /></SubscriptionGate>} />
+        <Route path="/sewing/cutting-handoffs" element={<SubscriptionGate><ProtectedRoute allowedRoles={['worker']}><CuttingHandoffs /></ProtectedRoute></SubscriptionGate>} />
+        <Route path="/sewing/my-submissions" element={<SubscriptionGate><ProtectedRoute allowedRoles={['worker']}><SewingMySubmissions /></ProtectedRoute></SubscriptionGate>} />
       </Route>
 
       <Route path="*" element={<NotFound />} />

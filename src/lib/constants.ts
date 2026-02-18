@@ -14,6 +14,7 @@ export const ROLES = {
   OWNER: 'owner',
   STORAGE: 'storage',
   CUTTING: 'cutting',
+  SUPERADMIN: 'superadmin',
 } as const;
 
 export type AppRole = typeof ROLES[keyof typeof ROLES];
@@ -25,6 +26,7 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   owner: 'Owner',
   storage: 'Storage',
   cutting: 'Cutting',
+  superadmin: 'Super Admin',
 };
 
 // Blocker impact levels

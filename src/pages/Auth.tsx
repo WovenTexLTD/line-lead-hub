@@ -139,7 +139,7 @@ export default function Auth() {
       } else if (profile && !profile.is_active) {
         // User account is deactivated
         toast.error("Account Deactivated", { description: "Your account has been deactivated. Please contact your administrator." });
-        signOut();
+        signOut().catch(console.error);
       } else if (!profile || profile.factory_id === null) {
         // User without profile or without factory - redirect to factory setup
         navigate("/setup/factory", { replace: true });

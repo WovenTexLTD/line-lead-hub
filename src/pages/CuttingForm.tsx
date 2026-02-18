@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { useOfflineSubmission } from "@/hooks/useOfflineSubmission";
 import { toast } from "sonner";
 import { Loader2, Search, Scissors } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,7 @@ export default function CuttingForm() {
   const navigate = useNavigate();
   const { i18n } = useTranslation();
   const { user, profile, factory, isAdminOrHigher } = useAuth();
+  const { submit: offlineSubmit } = useOfflineSubmission();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -233,18 +235,56 @@ export default function CuttingForm() {
         is_late: isLateMorning,
       };
 
-      const { error: targetError } = await supabase.from("cutting_targets").insert(targetData as any);
+      // Insert targets via offline-capable hook
+      const targetResult = await offlineSubmit("cutting_targets", "cutting_targets", targetData as Record<string, unknown>, {
+        showSuccessToast: false,
+        showQueuedToast: false,
+      });
 
-      if (targetError) {
-        if (targetError.code === "23505") {
+      if (targetResult.queued) {
+        // Queued offline — queue actuals too and navigate away
+        const actualData = {
+          factory_id: profile.factory_id,
+          production_date: today,
+          submitted_by: user.id,
+          line_id: lineId,
+          work_order_id: selectedWorkOrder.id,
+          buyer: selectedWorkOrder.buyer,
+          style: selectedWorkOrder.style,
+          po_no: selectedWorkOrder.po_number,
+          colour: selectedWorkOrder.color || "",
+          order_qty: selectedWorkOrder.order_qty,
+          day_cutting: parseInt(dayCutting),
+          total_cutting: totalCutting,
+          day_input: parseInt(dayInput),
+          total_input: totalInput,
+          balance: balance,
+          is_late: isLateEvening,
+          transfer_to_line_id: selectedLine.id,
+        };
+        await offlineSubmit("cutting_actuals", "cutting_actuals", actualData as Record<string, unknown>, {
+          showSuccessToast: false,
+          showQueuedToast: true,
+          queuedMessage: "Cutting report saved offline. Will sync when online.",
+        });
+        if (isAdminOrHigher()) {
+          navigate("/dashboard");
+        } else {
+          navigate("/cutting/submissions");
+        }
+        return;
+      }
+
+      if (!targetResult.success) {
+        if (targetResult.error?.includes("duplicate")) {
           // Already submitted targets, continue with actuals only
           console.log("Targets already submitted for today, updating actuals only");
         } else {
-          throw targetError;
+          throw new Error(targetResult.error);
         }
       }
 
-      // Insert actuals
+      // Insert actuals via offline-capable hook
       const actualData = {
         factory_id: profile.factory_id,
         production_date: today,
@@ -265,13 +305,25 @@ export default function CuttingForm() {
         transfer_to_line_id: selectedLine.id,
       };
 
-      const { error: actualError } = await supabase.from("cutting_actuals").insert(actualData as any);
+      const actualResult = await offlineSubmit("cutting_actuals", "cutting_actuals", actualData as Record<string, unknown>, {
+        showSuccessToast: false,
+        showQueuedToast: true,
+      });
 
-      if (actualError) {
-        if (actualError.code === "23505") {
+      if (actualResult.queued) {
+        if (isAdminOrHigher()) {
+          navigate("/dashboard");
+        } else {
+          navigate("/cutting/submissions");
+        }
+        return;
+      }
+
+      if (!actualResult.success) {
+        if (actualResult.error?.includes("duplicate")) {
           toast.error("Already submitted for this PO today");
         } else {
-          throw actualError;
+          throw new Error(actualResult.error);
         }
         return;
       }

@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Package, Search, FileText, AlertTriangle, CalendarIcon, X, Layers } from "lucide-react";
+import { Loader2, Package, Search, FileText, AlertTriangle, CalendarIcon, X, Layers, ChevronRight, ArrowDownToLine, ArrowUpFromLine, Scale } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { format } from "date-fns";
 import {
@@ -27,6 +27,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 
@@ -58,7 +64,9 @@ interface DisplayRow {
   poNumbers: string[];
   groupName: string | null;
   buyer: string;
+  buyers: string[];
   style: string;
+  styles: string[];
   description: string;
   preparedBy: string;
   createdAt: string;
@@ -137,18 +145,22 @@ export default function StorageHistory() {
     }
   }
 
-  // Build a map of bin_group_id -> all PO numbers in that group (for cross-PO search)
-  const groupPoMap = useMemo(() => {
-    const map = new Map<string, string[]>();
+  // Build a map of bin_group_id -> all searchable values in that group (for cross-PO search)
+  const groupSearchMap = useMemo(() => {
+    const map = new Map<string, { poNumbers: string[]; buyers: string[]; styles: string[] }>();
     for (const card of binCards) {
       if (card.bin_group_id) {
         const existing = map.get(card.bin_group_id);
         if (existing) {
-          if (!existing.includes(card.work_orders.po_number)) {
-            existing.push(card.work_orders.po_number);
-          }
+          if (!existing.poNumbers.includes(card.work_orders.po_number)) existing.poNumbers.push(card.work_orders.po_number);
+          if (!existing.buyers.includes(card.work_orders.buyer)) existing.buyers.push(card.work_orders.buyer);
+          if (!existing.styles.includes(card.work_orders.style)) existing.styles.push(card.work_orders.style);
         } else {
-          map.set(card.bin_group_id, [card.work_orders.po_number]);
+          map.set(card.bin_group_id, {
+            poNumbers: [card.work_orders.po_number],
+            buyers: [card.work_orders.buyer],
+            styles: [card.work_orders.style],
+          });
         }
       }
     }
@@ -167,10 +179,16 @@ export default function StorageHistory() {
         (card.description?.toLowerCase().includes(term)) ||
         (card.group_name?.toLowerCase().includes(term))
       );
-      // Also check sibling POs in the same group
+      // Also check sibling POs/buyers/styles in the same group
       if (!matchesSearch && card.bin_group_id) {
-        const groupPos = groupPoMap.get(card.bin_group_id) || [];
-        matchesSearch = groupPos.some(po => po.toLowerCase().includes(term));
+        const groupData = groupSearchMap.get(card.bin_group_id);
+        if (groupData) {
+          matchesSearch = (
+            groupData.poNumbers.some(po => po.toLowerCase().includes(term)) ||
+            groupData.buyers.some(b => b.toLowerCase().includes(term)) ||
+            groupData.styles.some(s => s.toLowerCase().includes(term))
+          );
+        }
       }
       if (!matchesSearch) return false;
     }
@@ -226,14 +244,18 @@ export default function StorageHistory() {
     // Add grouped rows
     for (const [groupId, cards] of groupMap) {
       const first = cards[0];
+      const uniqueBuyers = [...new Set(cards.map(c => c.work_orders.buyer))];
+      const uniqueStyles = [...new Set(cards.map(c => c.work_orders.style))];
       rows.push({
         type: cards.length > 1 ? "group" : "single",
         key: groupId,
         cards,
         poNumbers: cards.map(c => c.work_orders.po_number),
         groupName: first.group_name || null,
-        buyer: first.work_orders.buyer,
-        style: [...new Set(cards.map(c => c.work_orders.style))].join(", "),
+        buyer: uniqueBuyers.length === 1 ? uniqueBuyers[0] : "Mixed",
+        buyers: uniqueBuyers,
+        style: uniqueStyles.length === 1 ? uniqueStyles[0] : "Mixed",
+        styles: uniqueStyles,
         description: first.description || first.work_orders.item || "-",
         preparedBy: first.prepared_by || "-",
         createdAt: first.created_at,
@@ -249,7 +271,9 @@ export default function StorageHistory() {
         poNumbers: [card.work_orders.po_number],
         groupName: null,
         buyer: card.work_orders.buyer,
+        buyers: [card.work_orders.buyer],
         style: card.work_orders.style,
+        styles: [card.work_orders.style],
         description: card.description || card.work_orders.item || "-",
         preparedBy: card.prepared_by || "-",
         createdAt: card.created_at,
@@ -285,10 +309,12 @@ export default function StorageHistory() {
   // Open detail for a group: load transactions for all cards in the group
   const [selectedGroup, setSelectedGroup] = useState<DisplayRow | null>(null);
   const [groupTransactions, setGroupTransactions] = useState<Record<string, { po: string; txns: Transaction[] }>>({});
+  const [expandedGroupPo, setExpandedGroupPo] = useState<string | null>(null);
 
   async function openGroupDetail(row: DisplayRow) {
     setSelectedGroup(row);
     setSelectedCard(null);
+    setExpandedGroupPo(null);
     setLoadingTxn(true);
 
     try {
@@ -431,6 +457,7 @@ export default function StorageHistory() {
                 <p>No bin cards found</p>
               </div>
             ) : (
+              <TooltipProvider>
               <div className="w-full overflow-x-auto rounded-md border">
                 <Table>
                   <TableHeader>
@@ -448,6 +475,7 @@ export default function StorageHistory() {
                   <TableBody>
                     {displayRows.map(row => (
                       <TableRow key={row.key}>
+                        {/* PO Number */}
                         <TableCell className="font-medium">
                           <div className="flex flex-wrap items-center gap-1">
                             {row.type === "group" && (
@@ -456,27 +484,94 @@ export default function StorageHistory() {
                             {row.poNumbers.length === 1 ? (
                               row.poNumbers[0]
                             ) : (
-                              row.poNumbers.map(po => (
-                                <Badge key={po} variant="secondary" className="text-xs font-medium">
-                                  {po}
-                                </Badge>
-                              ))
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="cursor-default">
+                                    <Badge variant="secondary" className="text-xs font-medium">
+                                      {row.poNumbers[0]}
+                                    </Badge>
+                                    <Badge variant="outline" className="text-xs font-medium ml-1">
+                                      +{row.poNumbers.length - 1}
+                                    </Badge>
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom" className="max-w-xs">
+                                  <div className="space-y-1">
+                                    {row.poNumbers.map(po => (
+                                      <div key={po} className="text-xs">{po}</div>
+                                    ))}
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="max-w-[120px] truncate">
+
+                        {/* Group */}
+                        <TableCell className="max-w-[150px]">
                           {row.groupName ? (
                             <Badge variant="outline" className="text-xs font-normal">
                               {row.groupName}
                             </Badge>
                           ) : row.type === "group" ? (
-                            <span className="text-xs text-muted-foreground">{row.poNumbers.length} POs</span>
+                            <Badge variant="outline" className="text-xs font-normal text-muted-foreground">
+                              Bulk ({row.poNumbers.length} POs)
+                            </Badge>
                           ) : (
                             <span className="text-xs text-muted-foreground">-</span>
                           )}
                         </TableCell>
-                        <TableCell>{row.buyer}</TableCell>
-                        <TableCell>{row.style}</TableCell>
+
+                        {/* Buyer */}
+                        <TableCell>
+                          {row.buyers.length <= 1 ? (
+                            row.buyer
+                          ) : (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="cursor-default text-muted-foreground italic">
+                                  Mixed
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom" className="max-w-xs">
+                                <div className="space-y-1">
+                                  {row.cards.map(c => (
+                                    <div key={c.id} className="text-xs">
+                                      <span className="font-medium">{c.work_orders.po_number}:</span>{" "}
+                                      {c.work_orders.buyer}
+                                    </div>
+                                  ))}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </TableCell>
+
+                        {/* Style */}
+                        <TableCell>
+                          {row.styles.length <= 1 ? (
+                            row.style
+                          ) : (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="cursor-default text-muted-foreground italic">
+                                  Mixed
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom" className="max-w-xs">
+                                <div className="space-y-1">
+                                  {row.cards.map(c => (
+                                    <div key={c.id} className="text-xs">
+                                      <span className="font-medium">{c.work_orders.po_number}:</span>{" "}
+                                      {c.work_orders.style}
+                                    </div>
+                                  ))}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </TableCell>
+
                         <TableCell className="max-w-[150px] truncate">{row.description}</TableCell>
                         <TableCell>{row.preparedBy}</TableCell>
                         <TableCell>{format(new Date(row.createdAt), "dd/MM/yyyy")}</TableCell>
@@ -496,6 +591,7 @@ export default function StorageHistory() {
                   </TableBody>
                 </Table>
               </div>
+              </TooltipProvider>
             )}
           </CardContent>
         </Card>
@@ -581,14 +677,14 @@ export default function StorageHistory() {
       </Dialog>
 
       {/* Group Detail Modal */}
-      <Dialog open={!!selectedGroup} onOpenChange={() => setSelectedGroup(null)}>
+      <Dialog open={!!selectedGroup} onOpenChange={() => { setSelectedGroup(null); setExpandedGroupPo(null); }}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="pr-8 break-words flex items-center gap-2">
               <Layers className="h-5 w-5 text-primary" />
               {selectedGroup?.groupName
-                ? `${selectedGroup.groupName}`
-                : `Bin Card Group — ${selectedGroup?.poNumbers.join(", ")}`}
+                ? selectedGroup.groupName
+                : `Bulk Group (${selectedGroup?.poNumbers.length} POs)`}
             </DialogTitle>
           </DialogHeader>
 
@@ -597,18 +693,6 @@ export default function StorageHistory() {
               {/* Shared header info */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                 <div>
-                  <span className="text-muted-foreground">POs:</span>
-                  <div className="flex flex-wrap gap-1 mt-0.5">
-                    {selectedGroup.poNumbers.map(po => (
-                      <Badge key={po} variant="secondary" className="text-xs">{po}</Badge>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Buyer:</span>
-                  <p className="font-medium">{selectedGroup.buyer}</p>
-                </div>
-                <div>
                   <span className="text-muted-foreground">Supplier:</span>
                   <p className="font-medium">{selectedGroup.cards[0].supplier_name || "-"}</p>
                 </div>
@@ -616,59 +700,157 @@ export default function StorageHistory() {
                   <span className="text-muted-foreground">Prepared By:</span>
                   <p className="font-medium">{selectedGroup.preparedBy}</p>
                 </div>
+                <div>
+                  <span className="text-muted-foreground">Created:</span>
+                  <p className="font-medium">{format(new Date(selectedGroup.createdAt), "dd/MM/yyyy")}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">POs in Group:</span>
+                  <p className="font-medium">{selectedGroup.poNumbers.length}</p>
+                </div>
               </div>
 
-              {/* Per-PO transaction tables */}
-              {loadingTxn ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin" />
-                </div>
-              ) : (
-                Object.entries(groupTransactions).map(([cardId, { po, txns }]) => (
-                  <div key={cardId} className="space-y-2">
-                    <h4 className="text-sm font-semibold flex items-center gap-2">
-                      <Package className="h-4 w-4" />
-                      {po}
-                    </h4>
-                    <div className="w-full overflow-x-auto rounded-md border">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>DATE</TableHead>
-                            <TableHead className="text-right">RECEIVE QTY</TableHead>
-                            <TableHead className="text-right">TTL RECEIVE</TableHead>
-                            <TableHead className="text-right">ISSUE QTY</TableHead>
-                            <TableHead className="text-right">BALANCE QTY</TableHead>
-                            <TableHead>REMARKS</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {txns.length === 0 ? (
-                            <TableRow>
-                              <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
-                                No transactions recorded
-                              </TableCell>
-                            </TableRow>
-                          ) : (
-                            txns.map(txn => (
-                              <TableRow key={txn.id}>
-                                <TableCell>{format(new Date(txn.transaction_date), "dd/MM/yyyy")}</TableCell>
-                                <TableCell className="text-right">{txn.receive_qty}</TableCell>
-                                <TableCell className="text-right font-medium">{txn.ttl_receive}</TableCell>
-                                <TableCell className="text-right">{txn.issue_qty}</TableCell>
-                                <TableCell className={`text-right font-medium ${txn.balance_qty < 0 ? 'text-destructive' : ''}`}>
-                                  {txn.balance_qty}
-                                </TableCell>
-                                <TableCell className="max-w-[200px] truncate">{txn.remarks || "-"}</TableCell>
-                              </TableRow>
-                            ))
-                          )}
-                        </TableBody>
-                      </Table>
+              {/* PO summary table */}
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>PO Number</TableHead>
+                      <TableHead>Buyer</TableHead>
+                      <TableHead>Style</TableHead>
+                      <TableHead>Description</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedGroup.cards.map(card => (
+                      <TableRow key={card.id}>
+                        <TableCell className="font-medium">{card.work_orders.po_number}</TableCell>
+                        <TableCell>{card.work_orders.buyer}</TableCell>
+                        <TableCell>{card.work_orders.style}</TableCell>
+                        <TableCell className="max-w-[200px] truncate">{card.description || card.work_orders.item || "-"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Group totals */}
+              {!loadingTxn && Object.keys(groupTransactions).length > 0 && (() => {
+                const allTxns = Object.values(groupTransactions).flatMap(g => g.txns);
+                const totalReceived = allTxns.reduce((sum, t) => sum + t.receive_qty, 0);
+                const totalIssued = allTxns.reduce((sum, t) => sum + t.issue_qty, 0);
+                // Sum latest balance per PO
+                const totalBalance = Object.values(groupTransactions).reduce((sum, { txns }) => {
+                  if (txns.length === 0) return sum;
+                  return sum + txns[txns.length - 1].balance_qty;
+                }, 0);
+                return (
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                      <ArrowDownToLine className="h-4 w-4 text-green-600" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Total Received</p>
+                        <p className="text-lg font-bold text-green-600">{totalReceived.toLocaleString()}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                      <ArrowUpFromLine className="h-4 w-4 text-destructive" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Total Issued</p>
+                        <p className="text-lg font-bold text-destructive">{totalIssued.toLocaleString()}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20">
+                      <Scale className="h-4 w-4 text-primary" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Total Balance</p>
+                        <p className="text-lg font-bold text-primary">{totalBalance.toLocaleString()}</p>
+                      </div>
                     </div>
                   </div>
-                ))
-              )}
+                );
+              })()}
+
+              {/* Per-PO ledger sections */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold">Per-PO Ledger</h4>
+                {loadingTxn ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  </div>
+                ) : (
+                  selectedGroup.cards.map(card => {
+                    const cardData = groupTransactions[card.id];
+                    const txns = cardData?.txns || [];
+                    const isExpanded = expandedGroupPo === card.id;
+                    const latestBalance = txns.length > 0 ? txns[txns.length - 1].balance_qty : 0;
+                    const totalRcv = txns.reduce((s, t) => s + t.receive_qty, 0);
+                    const totalIss = txns.reduce((s, t) => s + t.issue_qty, 0);
+
+                    return (
+                      <div key={card.id} className="rounded-md border">
+                        {/* Collapsible PO header */}
+                        <button
+                          type="button"
+                          className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted/50 transition-colors"
+                          onClick={() => setExpandedGroupPo(isExpanded ? null : card.id)}
+                        >
+                          <div className="flex items-center gap-3">
+                            <ChevronRight className={cn("h-4 w-4 transition-transform", isExpanded && "rotate-90")} />
+                            <Package className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium text-sm">{card.work_orders.po_number}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {card.work_orders.buyer} / {card.work_orders.style}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                            <span>Rcv: <span className="font-medium text-foreground">{totalRcv}</span></span>
+                            <span>Iss: <span className="font-medium text-foreground">{totalIss}</span></span>
+                            <span>Bal: <span className={cn("font-medium", latestBalance < 0 ? "text-destructive" : "text-foreground")}>{latestBalance}</span></span>
+                            <Badge variant="outline" className="text-xs">{txns.length} txns</Badge>
+                          </div>
+                        </button>
+
+                        {/* Expanded transaction table */}
+                        {isExpanded && (
+                          <div className="border-t">
+                            {txns.length === 0 ? (
+                              <p className="text-sm text-muted-foreground text-center py-4">No transactions recorded</p>
+                            ) : (
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>DATE</TableHead>
+                                    <TableHead className="text-right">RECEIVE QTY</TableHead>
+                                    <TableHead className="text-right">TTL RECEIVE</TableHead>
+                                    <TableHead className="text-right">ISSUE QTY</TableHead>
+                                    <TableHead className="text-right">BALANCE QTY</TableHead>
+                                    <TableHead>REMARKS</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {txns.map(txn => (
+                                    <TableRow key={txn.id}>
+                                      <TableCell>{format(new Date(txn.transaction_date), "dd/MM/yyyy")}</TableCell>
+                                      <TableCell className="text-right">{txn.receive_qty}</TableCell>
+                                      <TableCell className="text-right font-medium">{txn.ttl_receive}</TableCell>
+                                      <TableCell className="text-right">{txn.issue_qty}</TableCell>
+                                      <TableCell className={`text-right font-medium ${txn.balance_qty < 0 ? 'text-destructive' : ''}`}>
+                                        {txn.balance_qty}
+                                      </TableCell>
+                                      <TableCell className="max-w-[200px] truncate">{txn.remarks || "-"}</TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </div>
           )}
         </DialogContent>

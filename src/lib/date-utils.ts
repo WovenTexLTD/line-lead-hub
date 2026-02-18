@@ -21,8 +21,16 @@ export function formatDateTime(dateString: string): string {
   return format(new Date(dateString), "MMM d, yyyy 'at' h:mm a");
 }
 
-/** "2026-01-05" — for DB queries / production_date */
-export function toISODate(date: Date = new Date()): string {
+/**
+ * "2026-01-05" — for DB queries / production_date.
+ * Prefer `getTodayInTimezone(tz)` for production dates.
+ * When a timezone is provided, the date is interpreted in that timezone.
+ */
+export function toISODate(date: Date = new Date(), timezone?: string): string {
+  if (timezone) {
+    const zonedDate = toZonedTime(date, timezone);
+    return format(zonedDate, "yyyy-MM-dd");
+  }
   return format(date, "yyyy-MM-dd");
 }
 
