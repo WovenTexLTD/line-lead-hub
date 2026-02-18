@@ -1270,7 +1270,9 @@ export default function Dashboard() {
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-nowrap">
-                              {item.poNumbers.length <= 1 ? (
+                              {item.type === 'group' && item.groupName ? (
+                                <span className="font-medium whitespace-nowrap">{item.groupName}</span>
+                              ) : item.poNumbers.length <= 1 ? (
                                 <span className="font-medium whitespace-nowrap">{item.poNumbers[0] || 'No PO'}</span>
                               ) : (
                                 <Tooltip>
@@ -1297,7 +1299,7 @@ export default function Dashboard() {
                             </div>
                             <p className="text-sm text-muted-foreground whitespace-nowrap">
                               {item.type === 'group' && item.groupName
-                                ? `${item.poNumbers.join(', ')}`
+                                ? item.poNumbers.join(', ')
                                 : `${item.buyer} • ${item.style}`
                               }
                             </p>
