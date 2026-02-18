@@ -5,7 +5,7 @@ import { z } from "zod";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { useEditPermission } from "@/hooks/useEditPermission";
 import { isLateForCutoff, getTodayInTimezone } from "@/lib/date-utils";
 
@@ -111,6 +120,7 @@ export default function SewingMorningTargets() {
 
   // Validation
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [poSearchOpen, setPoSearchOpen] = useState(false);
 
   const filteredWorkOrders = useMemo(() => {
     if (!selectedLineId) return workOrders;
@@ -372,18 +382,51 @@ export default function SewingMorningTargets() {
 
             <div className="space-y-2">
               <Label>{t("forms.poNumber")} *</Label>
-              <Select value={selectedWorkOrderId} onValueChange={setSelectedWorkOrderId} disabled={!selectedLineId}>
-                <SelectTrigger className={errors.workOrder ? "border-destructive" : ""}>
-                  <SelectValue placeholder={selectedLineId ? t("forms.selectPO") : "Select a line first"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredWorkOrders.map((wo) => (
-                    <SelectItem key={wo.id} value={wo.id}>
-                      {wo.po_number} - {wo.style}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={poSearchOpen} onOpenChange={setPoSearchOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    disabled={!selectedLineId}
+                    className={`w-full justify-start ${errors.workOrder ? 'border-destructive' : ''}`}
+                  >
+                    <Search className="mr-2 h-4 w-4 shrink-0" />
+                    <span className="truncate">
+                      {selectedWorkOrderId
+                        ? (() => {
+                            const wo = filteredWorkOrders.find(w => w.id === selectedWorkOrderId);
+                            return wo ? `${wo.po_number} - ${wo.style}` : (selectedLineId ? t("forms.selectPO") : "Select a line first");
+                          })()
+                        : (selectedLineId ? t("forms.selectPO") : "Select a line first")}
+                    </span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[350px] p-0" align="start">
+                  <Command shouldFilter={true}>
+                    <CommandInput placeholder={t("forms.selectPO")} />
+                    <CommandList>
+                      <CommandEmpty>No PO found.</CommandEmpty>
+                      <CommandGroup>
+                        {filteredWorkOrders.map((wo) => (
+                          <CommandItem
+                            key={wo.id}
+                            value={`${wo.po_number} ${wo.buyer} ${wo.style} ${wo.item || ''}`}
+                            onSelect={() => {
+                              setSelectedWorkOrderId(wo.id);
+                              setPoSearchOpen(false);
+                            }}
+                          >
+                            <div className="flex flex-col">
+                              <span className="font-medium">{wo.po_number} - {wo.style}</span>
+                              <span className="text-xs text-muted-foreground">{wo.buyer}{wo.item ? ` / ${wo.item}` : ''}</span>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
               {errors.workOrder && <p className="text-sm text-destructive">{errors.workOrder}</p>}
             </div>
           </CardContent>
