@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-const CACHE_NAME = 'production-portal-v2';
+const CACHE_NAME = 'production-portal-v3';
 const OFFLINE_QUEUE_KEY = 'offline_submission_queue';
 const SYNC_TAG = 'sync-submissions';
 

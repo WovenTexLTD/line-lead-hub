@@ -57,7 +57,7 @@ export default defineConfig(({ mode }) => ({
       "next-themes",
     ],
     // Force re-bundling when deps change
-    force: true,
+    // force: true — removed to avoid unnecessary re-bundling on every dev start
     esbuildOptions: {
       // Ensure React is resolved to a single instance
       define: {
