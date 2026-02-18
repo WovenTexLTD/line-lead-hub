@@ -12,7 +12,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Package, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { Loader2, Package, ArrowLeft, CheckCircle2, Search } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { EmptyState } from "@/components/EmptyState";
 import { useOfflineSubmission } from "@/hooks/useOfflineSubmission";
 
@@ -117,6 +126,7 @@ export default function FinishingUpdate() {
 
   // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [poSearchOpen, setPoSearchOpen] = useState(false);
 
   useEffect(() => {
     if (profile?.factory_id) {
@@ -464,22 +474,51 @@ export default function FinishingUpdate() {
             {/* PO ID */}
             <div className="space-y-2">
               <Label htmlFor="po">{t('sewing.poId')} *</Label>
-              <Select 
-                value={selectedPO} 
-                onValueChange={setSelectedPO}
-                disabled={!selectedLine || filteredWorkOrders.length === 0}
-              >
-                <SelectTrigger className={`h-12 ${errors.po ? 'border-destructive' : ''}`}>
-                  <SelectValue placeholder={!selectedLine ? t('common.selectLineFirst') : filteredWorkOrders.length === 0 ? t('common.noPOsForLine') : t('common.selectPO')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredWorkOrders.map((wo) => (
-                    <SelectItem key={wo.id} value={wo.id}>
-                      {wo.po_number} - {wo.style} ({wo.buyer})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={poSearchOpen} onOpenChange={setPoSearchOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    disabled={!selectedLine || filteredWorkOrders.length === 0}
+                    className={`w-full h-12 justify-start ${errors.po ? 'border-destructive' : ''}`}
+                  >
+                    <Search className="mr-2 h-4 w-4 shrink-0" />
+                    <span className="truncate">
+                      {selectedPO
+                        ? (() => {
+                            const wo = filteredWorkOrders.find(w => w.id === selectedPO);
+                            return wo ? `${wo.po_number} - ${wo.style} (${wo.buyer})` : t('common.selectPO');
+                          })()
+                        : !selectedLine ? t('common.selectLineFirst') : filteredWorkOrders.length === 0 ? t('common.noPOsForLine') : t('common.selectPO')}
+                    </span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[350px] p-0" align="start">
+                  <Command shouldFilter={true}>
+                    <CommandInput placeholder="Search PO, buyer, style..." />
+                    <CommandList>
+                      <CommandEmpty>No PO found.</CommandEmpty>
+                      <CommandGroup>
+                        {filteredWorkOrders.map((wo) => (
+                          <CommandItem
+                            key={wo.id}
+                            value={`${wo.po_number} ${wo.buyer} ${wo.style} ${wo.item || ''}`}
+                            onSelect={() => {
+                              setSelectedPO(wo.id);
+                              setPoSearchOpen(false);
+                            }}
+                          >
+                            <div className="flex flex-col">
+                              <span className="font-medium">{wo.po_number} - {wo.style}</span>
+                              <span className="text-xs text-muted-foreground">{wo.buyer}{wo.item ? ` / ${wo.item}` : ''}</span>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
               {errors.po && <p className="text-xs text-destructive">{errors.po}</p>}
             </div>
           </CardContent>
