@@ -134,6 +134,7 @@ export default function StorageBinCard() {
     remarks: "",
   });
   const [bulkLoaded, setBulkLoaded] = useState(false);
+  const [bulkHeaderLocked, setBulkHeaderLocked] = useState(false);
 
   const isBulkMode = selectedWorkOrders.length > 1;
   const selectedWorkOrder = selectedWorkOrders.length === 1 ? selectedWorkOrders[0] : null;
@@ -189,6 +190,7 @@ export default function StorageBinCard() {
     if (selectedWorkOrders.length <= 2) {
       setBulkBinCards([]);
       setBulkLoaded(false);
+      setBulkHeaderLocked(false);
       setBulkTxn({ receive_qty: "", issue_qty: "", remarks: "" });
     }
   }
@@ -200,6 +202,7 @@ export default function StorageBinCard() {
     setTransactions([]);
     setBulkBinCards([]);
     setBulkLoaded(false);
+    setBulkHeaderLocked(false);
     setBulkTxn({ receive_qty: "", issue_qty: "", remarks: "" });
     setNewTxn({ receive_qty: "", issue_qty: "", remarks: "" });
     setShowAllTransactions(false);
@@ -319,7 +322,7 @@ export default function StorageBinCard() {
         let isNew = false;
 
         if (!existingCard) {
-          // Auto-create bin card with work order defaults
+          // Auto-create bin card with work order defaults (unlocked so user can edit header)
           const { data: created, error: createError } = await supabase
             .from("storage_bin_cards")
             .insert({
@@ -335,7 +338,7 @@ export default function StorageBinCard() {
               package_qty: wo.package_qty?.toString() || null,
               prepared_by: profile?.full_name || null,
               prepared_by_user_id: user?.id,
-              is_header_locked: true,
+              is_header_locked: false,
             })
             .select()
             .single();
@@ -368,6 +371,37 @@ export default function StorageBinCard() {
           hasTodayTransaction,
         });
       }
+
+      // Pre-populate shared header from first existing bin card with data, or first PO's work order
+      const firstExisting = results.find(r => !r.isNew && r.binCard);
+      const firstWo = selectedWorkOrders[0];
+      if (firstExisting?.binCard) {
+        const bc = firstExisting.binCard;
+        setHeaderFields({
+          supplier_name: bc.supplier_name || firstWo.supplier_name || "",
+          description: bc.description || firstWo.description || firstWo.item || "",
+          construction: bc.construction || firstWo.construction || "",
+          color: bc.color || firstWo.color || "",
+          width: bc.width || firstWo.width || "",
+          package_qty: bc.package_qty || (firstWo.package_qty?.toString() || ""),
+          prepared_by: bc.prepared_by || profile?.full_name || "",
+        });
+      } else {
+        setHeaderFields({
+          supplier_name: firstWo.supplier_name || "",
+          description: firstWo.description || firstWo.item || "",
+          construction: firstWo.construction || "",
+          color: firstWo.color || "",
+          width: firstWo.width || "",
+          package_qty: firstWo.package_qty?.toString() || "",
+          prepared_by: profile?.full_name || "",
+        });
+      }
+
+      // Determine bulk lock state: locked only if ALL existing cards are locked
+      const existingCards = results.filter(r => !r.isNew && r.binCard);
+      const allLocked = existingCards.length > 0 && existingCards.every(r => r.binCard!.is_header_locked);
+      setBulkHeaderLocked(allLocked);
 
       setBulkBinCards(results);
       setBulkLoaded(true);
@@ -481,6 +515,63 @@ export default function StorageBinCard() {
     }
   }
 
+  // Bulk mode: save shared header to ALL bin cards
+  async function saveBulkHeader() {
+    const binCardIds = bulkBinCards.filter(b => b.binCard).map(b => b.binCard!.id);
+    if (binCardIds.length === 0) return;
+
+    setHeaderSaving(true);
+    try {
+      const { error } = await supabase
+        .from("storage_bin_cards")
+        .update({
+          supplier_name: headerFields.supplier_name || null,
+          description: headerFields.description || null,
+          construction: headerFields.construction || null,
+          color: headerFields.color || null,
+          width: headerFields.width || null,
+          package_qty: headerFields.package_qty || null,
+          prepared_by: headerFields.prepared_by || null,
+          is_header_locked: true,
+        })
+        .in("id", binCardIds);
+
+      if (error) throw error;
+
+      setBulkHeaderLocked(true);
+      toast.success("Header saved", { description: `Bin card header saved and locked for ${binCardIds.length} POs.` });
+    } catch (error) {
+      console.error("Error saving bulk header:", error);
+      toast.error("Error", { description: "Failed to save header" });
+    } finally {
+      setHeaderSaving(false);
+    }
+  }
+
+  // Bulk mode: unlock ALL bin cards
+  async function unlockBulkHeader() {
+    const binCardIds = bulkBinCards.filter(b => b.binCard).map(b => b.binCard!.id);
+    if (binCardIds.length === 0) return;
+
+    setHeaderSaving(true);
+    try {
+      const { error } = await supabase
+        .from("storage_bin_cards")
+        .update({ is_header_locked: false })
+        .in("id", binCardIds);
+
+      if (error) throw error;
+
+      setBulkHeaderLocked(false);
+      toast.success("Header unlocked", { description: "Header is now editable." });
+    } catch (error) {
+      console.error("Error unlocking bulk header:", error);
+      toast.error("Error", { description: "Failed to unlock header" });
+    } finally {
+      setHeaderSaving(false);
+    }
+  }
+
   // Single mode submit (original behavior)
   async function submitTransaction() {
     if (!binCard || !profile?.factory_id) return;
@@ -558,7 +649,35 @@ export default function StorageBinCard() {
 
     setSaving(true);
     const batchId = crypto.randomUUID();
+    const binGroupId = crypto.randomUUID();
     const today = format(new Date(), "yyyy-MM-dd");
+
+    // Set bin_group_id + apply shared header to all bin cards
+    const allBinCardIds = bulkBinCards.filter(b => b.binCard).map(b => b.binCard!.id);
+    if (allBinCardIds.length > 0) {
+      const { error: headerError } = await supabase
+        .from("storage_bin_cards")
+        .update({
+          bin_group_id: binGroupId,
+          supplier_name: headerFields.supplier_name || null,
+          description: headerFields.description || null,
+          construction: headerFields.construction || null,
+          color: headerFields.color || null,
+          width: headerFields.width || null,
+          package_qty: headerFields.package_qty || null,
+          prepared_by: headerFields.prepared_by || null,
+          is_header_locked: true,
+        })
+        .in("id", allBinCardIds);
+
+      if (headerError) {
+        console.error("Error updating bin card headers:", headerError);
+        toast.error("Error", { description: "Failed to save shared header" });
+        setSaving(false);
+        return;
+      }
+    }
+
     let successCount = 0;
     let failCount = 0;
     const errors: string[] = [];
@@ -1023,12 +1142,38 @@ export default function StorageBinCard() {
       {/* ===== BULK MODE (2+ POs selected) ===== */}
       {isBulkMode && bulkLoaded && !loading && (
         <>
-          {/* Step 2: Selected POs Summary */}
+          {/* Step 2: Bin Card Details (Summary + Shared Header) */}
           <Card className="overflow-hidden">
             <CardHeader className="pb-3 px-3 sm:px-6">
-              <CardTitle className="text-base sm:text-lg">Step 2: Selected POs Summary</CardTitle>
+              <CardTitle className="text-base sm:text-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <span>Step 2: Bin Card Header</span>
+                <div className="flex items-center gap-2">
+                  {bulkHeaderLocked && (
+                    <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-1 rounded">
+                      Locked
+                    </span>
+                  )}
+                  {bulkHeaderLocked && (isAdminOrHigher() || isStorageUser()) && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={unlockBulkHeader}
+                      disabled={headerSaving}
+                    >
+                      {headerSaving ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Unlock className="mr-2 h-4 w-4" />
+                      )}
+                      Unlock
+                    </Button>
+                  )}
+                </div>
+              </CardTitle>
             </CardHeader>
-            <CardContent className="px-3 sm:px-6">
+            <CardContent className="px-3 sm:px-6 space-y-4">
+              {/* Section A: Selected POs Summary */}
               <div className="rounded-md border">
                 <Table>
                   <TableHeader>
@@ -1062,18 +1207,110 @@ export default function StorageBinCard() {
                 </Table>
               </div>
               {bulkPreviews.some(item => item.hasTodayTransaction) && (
-                <p className="text-sm text-warning mt-3 flex items-center gap-1">
+                <p className="text-sm text-warning flex items-center gap-1">
                   <AlertTriangle className="h-4 w-4" />
                   POs marked "Has entry" already have today's transaction and will be skipped.
                 </p>
               )}
+
+              {/* Section B: Shared Bin Card Header Fields */}
+              <div className="grid grid-cols-1 gap-3">
+                {(() => {
+                  const buyers = [...new Set(selectedWorkOrders.map(wo => wo.buyer))];
+                  const styles = [...new Set(selectedWorkOrders.map(wo => wo.style))];
+                  return (
+                    <>
+                      <div>
+                        <Label>BUYER</Label>
+                        <Input value={buyers.length === 1 ? buyers[0] : `Multiple (${buyers.length})`} disabled className="bg-muted" />
+                      </div>
+                      <div>
+                        <Label>STYLE</Label>
+                        <Input value={styles.length === 1 ? styles[0] : `Multiple (${styles.length})`} disabled className="bg-muted" />
+                      </div>
+                    </>
+                  );
+                })()}
+                <div>
+                  <Label>SUPPLIER NAME</Label>
+                  <Input
+                    value={headerFields.supplier_name}
+                    onChange={e => setHeaderFields({...headerFields, supplier_name: e.target.value})}
+                    disabled={bulkHeaderLocked && !isAdminOrHigher()}
+                    placeholder="Enter supplier name"
+                  />
+                </div>
+                <div>
+                  <Label>DESCRIPTION</Label>
+                  <Input
+                    value={headerFields.description}
+                    onChange={e => setHeaderFields({...headerFields, description: e.target.value})}
+                    disabled={bulkHeaderLocked && !isAdminOrHigher()}
+                    placeholder="Item description"
+                  />
+                </div>
+                <div>
+                  <Label>CONSTRUCTION</Label>
+                  <Input
+                    value={headerFields.construction}
+                    onChange={e => setHeaderFields({...headerFields, construction: e.target.value})}
+                    disabled={bulkHeaderLocked && !isAdminOrHigher()}
+                    placeholder="Construction details"
+                  />
+                </div>
+                <div>
+                  <Label>PREPARED BY</Label>
+                  <Input
+                    value={headerFields.prepared_by}
+                    onChange={e => setHeaderFields({...headerFields, prepared_by: e.target.value})}
+                    disabled={bulkHeaderLocked && !isAdminOrHigher()}
+                  />
+                </div>
+                <div>
+                  <Label>COLOR</Label>
+                  <Input
+                    value={headerFields.color}
+                    onChange={e => setHeaderFields({...headerFields, color: e.target.value})}
+                    disabled={bulkHeaderLocked && !isAdminOrHigher()}
+                    placeholder="Color"
+                  />
+                </div>
+                <div>
+                  <Label>WIDTH</Label>
+                  <Input
+                    value={headerFields.width}
+                    onChange={e => setHeaderFields({...headerFields, width: e.target.value})}
+                    disabled={bulkHeaderLocked && !isAdminOrHigher()}
+                    placeholder="Width"
+                  />
+                </div>
+                <div>
+                  <Label>PACKAGE QTY</Label>
+                  <Input
+                    value={headerFields.package_qty}
+                    onChange={e => setHeaderFields({...headerFields, package_qty: e.target.value})}
+                    disabled={bulkHeaderLocked && !isAdminOrHigher()}
+                    placeholder="Package quantity"
+                  />
+                </div>
+              </div>
+              {!bulkHeaderLocked && (
+                <Button onClick={saveBulkHeader} disabled={headerSaving}>
+                  {headerSaving ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="mr-2 h-4 w-4" />
+                  )}
+                  Save & Lock Header
+                </Button>
+              )}
             </CardContent>
           </Card>
 
-          {/* Step 3: Bulk Transaction Entry */}
+          {/* Step 3: Daily Transaction Entry */}
           <Card className="overflow-hidden">
             <CardHeader className="pb-3 px-3 sm:px-6">
-              <CardTitle className="text-base sm:text-lg">Step 3: Bulk Transaction Entry</CardTitle>
+              <CardTitle className="text-base sm:text-lg">Step 3: Daily Transaction Entry</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 px-3 sm:px-6">
               <div className="border rounded-lg p-3 sm:p-4 bg-muted/30">
@@ -1081,7 +1318,7 @@ export default function StorageBinCard() {
                   <Layers className="h-4 w-4" />
                   Apply to {submittableBulk.length} PO{submittableBulk.length !== 1 ? 's' : ''} ({format(new Date(), "dd/MM/yyyy")})
                 </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3">
                   <div>
                     <Label>Receive Qty</Label>
                     <Input
@@ -1102,57 +1339,55 @@ export default function StorageBinCard() {
                       placeholder="0"
                     />
                   </div>
-                </div>
-                <div className="mt-3">
-                  <Label>Remarks</Label>
-                  <Textarea
-                    value={bulkTxn.remarks}
-                    onChange={e => setBulkTxn({...bulkTxn, remarks: e.target.value})}
-                    placeholder="Optional notes (applies to all)"
-                    className="h-10 min-h-0"
-                  />
+                  <div>
+                    <Label>Remarks</Label>
+                    <Textarea
+                      value={bulkTxn.remarks}
+                      onChange={e => setBulkTxn({...bulkTxn, remarks: e.target.value})}
+                      placeholder="Optional notes (applies to all)"
+                      className="h-10 min-h-0"
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* Per-PO preview */}
-              {(bulkReceive > 0 || bulkIssue > 0) && (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>PO</TableHead>
-                        <TableHead className="text-right">PREV BAL</TableHead>
-                        <TableHead className="text-right text-success">+RECEIVE</TableHead>
-                        <TableHead className="text-right text-destructive">-ISSUE</TableHead>
-                        <TableHead className="text-right">NEW BAL</TableHead>
-                        <TableHead>STATUS</TableHead>
+              {/* Per-PO calculation preview (always shown) */}
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>PO</TableHead>
+                      <TableHead className="text-right">PREV BALANCE</TableHead>
+                      <TableHead className="text-right">TTL RECEIVE (calc)</TableHead>
+                      <TableHead className="text-right">BALANCE (calc)</TableHead>
+                      <TableHead>STATUS</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {bulkPreviews.map(item => (
+                      <TableRow key={item.workOrder.id} className={item.skipped ? "opacity-50" : ""}>
+                        <TableCell className="font-medium">{item.workOrder.po_number}</TableCell>
+                        <TableCell className="text-right">{item.lastBalance}</TableCell>
+                        <TableCell className="text-right font-mono">
+                          {item.skipped ? '-' : item.previewTtlReceive}
+                        </TableCell>
+                        <TableCell className={`text-right font-mono font-medium ${item.wouldGoNegative ? 'text-destructive' : ''}`}>
+                          {item.skipped ? '-' : item.previewBalance}
+                        </TableCell>
+                        <TableCell>
+                          {item.skipped ? (
+                            <span className="text-xs text-muted-foreground">Skipped</span>
+                          ) : item.wouldGoNegative ? (
+                            <Badge variant="destructive" className="text-xs">Negative</Badge>
+                          ) : (
+                            <Badge variant="success" className="text-xs">OK</Badge>
+                          )}
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {bulkPreviews.map(item => (
-                        <TableRow key={item.workOrder.id} className={item.skipped ? "opacity-50" : ""}>
-                          <TableCell className="font-medium">{item.workOrder.po_number}</TableCell>
-                          <TableCell className="text-right">{item.lastBalance}</TableCell>
-                          <TableCell className="text-right text-success">{item.skipped ? '-' : `+${bulkReceive}`}</TableCell>
-                          <TableCell className="text-right text-destructive">{item.skipped ? '-' : `-${bulkIssue}`}</TableCell>
-                          <TableCell className={`text-right font-medium ${item.wouldGoNegative ? 'text-destructive' : ''}`}>
-                            {item.skipped ? '-' : item.previewBalance}
-                          </TableCell>
-                          <TableCell>
-                            {item.skipped ? (
-                              <span className="text-xs text-muted-foreground">Skipped</span>
-                            ) : item.wouldGoNegative ? (
-                              <Badge variant="destructive" className="text-xs">Negative</Badge>
-                            ) : (
-                              <Badge variant="success" className="text-xs">OK</Badge>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
 
               {anyBulkNegative && !isAdminOrHigher() && (
                 <p className="text-sm text-destructive flex items-center gap-1">
