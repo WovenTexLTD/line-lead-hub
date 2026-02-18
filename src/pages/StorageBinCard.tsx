@@ -135,9 +135,17 @@ export default function StorageBinCard() {
   });
   const [bulkLoaded, setBulkLoaded] = useState(false);
   const [bulkHeaderLocked, setBulkHeaderLocked] = useState(false);
+  const [groupName, setGroupName] = useState("");
+  const [existingGroupId, setExistingGroupId] = useState<string | null>(null);
+  const [existingGroupFound, setExistingGroupFound] = useState(false);
 
   const isBulkMode = selectedWorkOrders.length > 1;
   const selectedWorkOrder = selectedWorkOrders.length === 1 ? selectedWorkOrders[0] : null;
+
+  // Compute deterministic signature from sorted work order IDs
+  function computePoSetSignature(workOrderIds: string[]): string {
+    return [...workOrderIds].sort().join(",");
+  }
 
   const canAccess = isStorageUser() || isAdminOrHigher();
 
@@ -192,6 +200,9 @@ export default function StorageBinCard() {
       setBulkLoaded(false);
       setBulkHeaderLocked(false);
       setBulkTxn({ receive_qty: "", issue_qty: "", remarks: "" });
+      setGroupName("");
+      setExistingGroupId(null);
+      setExistingGroupFound(false);
     }
   }
 
@@ -206,6 +217,9 @@ export default function StorageBinCard() {
     setBulkTxn({ receive_qty: "", issue_qty: "", remarks: "" });
     setNewTxn({ receive_qty: "", issue_qty: "", remarks: "" });
     setShowAllTransactions(false);
+    setGroupName("");
+    setExistingGroupId(null);
+    setExistingGroupFound(false);
   }
 
   // Handle popover close — trigger appropriate load
@@ -304,9 +318,32 @@ export default function StorageBinCard() {
     setLoading(true);
     setBinCard(null);
     setTransactions([]);
+    setExistingGroupId(null);
+    setExistingGroupFound(false);
+    setGroupName("");
     const today = format(new Date(), "yyyy-MM-dd");
 
     try {
+      // Compute po_set_signature for this selection
+      const signature = computePoSetSignature(selectedWorkOrders.map(wo => wo.id));
+
+      // Check if an existing group with this exact PO set already exists
+      const { data: existingGroupCards } = await supabase
+        .from("storage_bin_cards")
+        .select("bin_group_id, group_name, po_set_signature")
+        .eq("factory_id", profile!.factory_id!)
+        .eq("po_set_signature", signature)
+        .not("bin_group_id", "is", null)
+        .limit(1);
+
+      if (existingGroupCards && existingGroupCards.length > 0) {
+        setExistingGroupId(existingGroupCards[0].bin_group_id);
+        setExistingGroupFound(true);
+        if (existingGroupCards[0].group_name) {
+          setGroupName(existingGroupCards[0].group_name);
+        }
+      }
+
       const results: BulkBinCardInfo[] = [];
 
       for (const wo of selectedWorkOrders) {
@@ -520,6 +557,8 @@ export default function StorageBinCard() {
     const binCardIds = bulkBinCards.filter(b => b.binCard).map(b => b.binCard!.id);
     if (binCardIds.length === 0) return;
 
+    const signature = computePoSetSignature(selectedWorkOrders.map(wo => wo.id));
+
     setHeaderSaving(true);
     try {
       const { error } = await supabase
@@ -533,6 +572,8 @@ export default function StorageBinCard() {
           package_qty: headerFields.package_qty || null,
           prepared_by: headerFields.prepared_by || null,
           is_header_locked: true,
+          po_set_signature: signature,
+          group_name: groupName.trim() || null,
         })
         .in("id", binCardIds);
 
@@ -649,16 +690,20 @@ export default function StorageBinCard() {
 
     setSaving(true);
     const batchId = crypto.randomUUID();
-    const binGroupId = crypto.randomUUID();
+    // Reuse existing group ID if same PO set was previously submitted, otherwise create new
+    const binGroupId = existingGroupId || crypto.randomUUID();
+    const signature = computePoSetSignature(selectedWorkOrders.map(wo => wo.id));
     const today = format(new Date(), "yyyy-MM-dd");
 
-    // Set bin_group_id + apply shared header to all bin cards
+    // Set bin_group_id + po_set_signature + group_name + apply shared header to all bin cards
     const allBinCardIds = bulkBinCards.filter(b => b.binCard).map(b => b.binCard!.id);
     if (allBinCardIds.length > 0) {
       const { error: headerError } = await supabase
         .from("storage_bin_cards")
         .update({
           bin_group_id: binGroupId,
+          po_set_signature: signature,
+          group_name: groupName.trim() || null,
           supplier_name: headerFields.supplier_name || null,
           description: headerFields.description || null,
           construction: headerFields.construction || null,
@@ -1212,6 +1257,27 @@ export default function StorageBinCard() {
                   POs marked "Has entry" already have today's transaction and will be skipped.
                 </p>
               )}
+
+              {/* Existing group indicator */}
+              {existingGroupFound && (
+                <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+                  <Layers className="h-4 w-4 text-primary shrink-0" />
+                  <span>
+                    <strong>Existing group found</strong> — continuing shared ledger
+                    {groupName && <> ({groupName})</>}
+                  </span>
+                </div>
+              )}
+
+              {/* Group Name (optional) */}
+              <div>
+                <Label>GROUP NAME (optional)</Label>
+                <Input
+                  value={groupName}
+                  onChange={e => setGroupName(e.target.value)}
+                  placeholder="e.g. Fabric Lot A, Batch March-01"
+                />
+              </div>
 
               {/* Section B: Shared Bin Card Header Fields */}
               <div className="grid grid-cols-1 gap-3">

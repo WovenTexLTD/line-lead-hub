@@ -42,6 +42,7 @@ interface BinCardWithWorkOrder {
   created_at: string;
   updated_at: string;
   bin_group_id: string | null;
+  group_name: string | null;
   work_orders: {
     po_number: string;
     buyer: string;
@@ -55,6 +56,7 @@ interface DisplayRow {
   key: string;
   cards: BinCardWithWorkOrder[];
   poNumbers: string[];
+  groupName: string | null;
   buyer: string;
   style: string;
   description: string;
@@ -115,6 +117,7 @@ export default function StorageHistory() {
           created_at,
           updated_at,
           bin_group_id,
+          group_name,
           work_orders!inner (
             po_number,
             buyer,
@@ -134,20 +137,44 @@ export default function StorageHistory() {
     }
   }
 
+  // Build a map of bin_group_id -> all PO numbers in that group (for cross-PO search)
+  const groupPoMap = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const card of binCards) {
+      if (card.bin_group_id) {
+        const existing = map.get(card.bin_group_id);
+        if (existing) {
+          if (!existing.includes(card.work_orders.po_number)) {
+            existing.push(card.work_orders.po_number);
+          }
+        } else {
+          map.set(card.bin_group_id, [card.work_orders.po_number]);
+        }
+      }
+    }
+    return map;
+  }, [binCards]);
+
   const filteredCards = binCards.filter(card => {
-    // Text search
+    // Text search — also match any PO in the same group + group_name
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      const matchesSearch = (
+      let matchesSearch = (
         card.work_orders.po_number.toLowerCase().includes(term) ||
         card.work_orders.buyer.toLowerCase().includes(term) ||
         card.work_orders.style.toLowerCase().includes(term) ||
         (card.work_orders.item?.toLowerCase().includes(term)) ||
-        (card.description?.toLowerCase().includes(term))
+        (card.description?.toLowerCase().includes(term)) ||
+        (card.group_name?.toLowerCase().includes(term))
       );
+      // Also check sibling POs in the same group
+      if (!matchesSearch && card.bin_group_id) {
+        const groupPos = groupPoMap.get(card.bin_group_id) || [];
+        matchesSearch = groupPos.some(po => po.toLowerCase().includes(term));
+      }
       if (!matchesSearch) return false;
     }
-    
+
     // Date from filter
     if (dateFrom) {
       const cardDate = new Date(card.created_at);
@@ -156,7 +183,7 @@ export default function StorageHistory() {
       fromDate.setHours(0, 0, 0, 0);
       if (cardDate < fromDate) return false;
     }
-    
+
     // Date to filter
     if (dateTo) {
       const cardDate = new Date(card.created_at);
@@ -165,7 +192,7 @@ export default function StorageHistory() {
       toDate.setHours(23, 59, 59, 999);
       if (cardDate > toDate) return false;
     }
-    
+
     return true;
   });
 
@@ -204,6 +231,7 @@ export default function StorageHistory() {
         key: groupId,
         cards,
         poNumbers: cards.map(c => c.work_orders.po_number),
+        groupName: first.group_name || null,
         buyer: first.work_orders.buyer,
         style: [...new Set(cards.map(c => c.work_orders.style))].join(", "),
         description: first.description || first.work_orders.item || "-",
@@ -219,6 +247,7 @@ export default function StorageHistory() {
         key: card.id,
         cards: [card],
         poNumbers: [card.work_orders.po_number],
+        groupName: null,
         buyer: card.work_orders.buyer,
         style: card.work_orders.style,
         description: card.description || card.work_orders.item || "-",
@@ -393,7 +422,7 @@ export default function StorageHistory() {
       {!loading && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Bin Cards ({filteredCards.length})</CardTitle>
+            <CardTitle className="text-lg">Bin Cards ({displayRows.length})</CardTitle>
           </CardHeader>
           <CardContent>
             {displayRows.length === 0 ? (
@@ -407,6 +436,7 @@ export default function StorageHistory() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>PO Number</TableHead>
+                      <TableHead>Group</TableHead>
                       <TableHead>Buyer</TableHead>
                       <TableHead>Style</TableHead>
                       <TableHead>Description</TableHead>
@@ -433,6 +463,17 @@ export default function StorageHistory() {
                               ))
                             )}
                           </div>
+                        </TableCell>
+                        <TableCell className="max-w-[120px] truncate">
+                          {row.groupName ? (
+                            <Badge variant="outline" className="text-xs font-normal">
+                              {row.groupName}
+                            </Badge>
+                          ) : row.type === "group" ? (
+                            <span className="text-xs text-muted-foreground">{row.poNumbers.length} POs</span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
                         </TableCell>
                         <TableCell>{row.buyer}</TableCell>
                         <TableCell>{row.style}</TableCell>
@@ -545,7 +586,9 @@ export default function StorageHistory() {
           <DialogHeader>
             <DialogTitle className="pr-8 break-words flex items-center gap-2">
               <Layers className="h-5 w-5 text-primary" />
-              Bin Card Group - {selectedGroup?.poNumbers.join(", ")}
+              {selectedGroup?.groupName
+                ? `${selectedGroup.groupName}`
+                : `Bin Card Group — ${selectedGroup?.poNumbers.join(", ")}`}
             </DialogTitle>
           </DialogHeader>
 
