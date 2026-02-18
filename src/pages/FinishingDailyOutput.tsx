@@ -633,7 +633,7 @@ export default function FinishingDailyOutput() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <Label>Actual Total Hours Worked</Label>
+              <Label>Actual Total Hours Worked *</Label>
               <Input
                 type="number"
                 step="0.5"

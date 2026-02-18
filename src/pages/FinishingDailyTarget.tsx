@@ -481,7 +481,7 @@ export default function FinishingDailyTarget() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <Label>Total Hours Planned (for this target)</Label>
+              <Label>Total Hours Planned (for this target) *</Label>
               <Input
                 type="number"
                 step="0.5"
