@@ -2319,6 +2319,7 @@ export type Database = {
           manpower_actual: number
           order_qty: number | null
           ot_hours_actual: number
+          ot_manpower_actual: number | null
           photo_urls: string[] | null
           production_date: string
           reject_today: number
@@ -2352,6 +2353,7 @@ export type Database = {
           manpower_actual?: number
           order_qty?: number | null
           ot_hours_actual?: number
+          ot_manpower_actual?: number | null
           photo_urls?: string[] | null
           production_date?: string
           reject_today?: number
@@ -2385,6 +2387,7 @@ export type Database = {
           manpower_actual?: number
           order_qty?: number | null
           ot_hours_actual?: number
+          ot_manpower_actual?: number | null
           photo_urls?: string[] | null
           production_date?: string
           reject_today?: number
