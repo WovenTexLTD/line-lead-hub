@@ -95,8 +95,8 @@ export default function ReportBlocker() {
   const isCuttingOrStorage = hasRole("cutting") || hasRole("storage");
   const showLineSelection = !isCuttingOrStorage;
   
-  // Determine update type based on user's department
-  const userDepartment = profile?.department || "sewing";
+  // Determine update type based on role or legacy department
+  const userDepartment = hasRole("sewing") ? "sewing" : hasRole("finishing") ? "finishing" : (profile?.department || "sewing");
   const canAccessBoth = userDepartment === "both" || isAdminOrHigher();
   const defaultUpdateType = userDepartment === "finishing" ? "finishing" : "sewing";
   const [updateType, setUpdateType] = useState<"sewing" | "finishing">(defaultUpdateType);
@@ -109,9 +109,13 @@ export default function ReportBlocker() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [poSearchOpen, setPoSearchOpen] = useState(false);
 
-  // Set update type based on department when profile loads
+  // Set update type based on role or department when profile loads
   useEffect(() => {
-    if (profile?.department) {
+    if (hasRole("finishing")) {
+      setUpdateType("finishing");
+    } else if (hasRole("sewing")) {
+      setUpdateType("sewing");
+    } else if (profile?.department) {
       if (profile.department === "finishing") {
         setUpdateType("finishing");
       } else if (profile.department === "sewing") {
@@ -119,7 +123,7 @@ export default function ReportBlocker() {
       }
       // If "both", keep whatever is currently selected (defaults to sewing)
     }
-  }, [profile?.department]);
+  }, [profile?.department, roles]);
 
   useEffect(() => {
     if (profile?.factory_id) {
@@ -357,7 +361,7 @@ export default function ReportBlocker() {
           navigate("/cutting/submissions");
         } else if (hasRole("storage")) {
           navigate("/submissions?department=storage");
-        } else if (updateType === "finishing" || profile?.department === "finishing") {
+        } else if (hasRole("finishing") || updateType === "finishing" || profile?.department === "finishing") {
           navigate("/finishing/my-submissions");
         } else {
           navigate("/my-submissions");
@@ -408,7 +412,7 @@ export default function ReportBlocker() {
         navigate("/cutting/submissions");
       } else if (hasRole("storage")) {
         navigate("/submissions?department=storage");
-      } else if (updateType === "finishing" || profile?.department === "finishing") {
+      } else if (hasRole("finishing") || updateType === "finishing" || profile?.department === "finishing") {
         navigate("/finishing/my-submissions");
       } else {
         // Default to sewing submissions for workers

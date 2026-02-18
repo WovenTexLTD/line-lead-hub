@@ -37,7 +37,17 @@ export default function Index() {
       return <Navigate to="/dashboard" replace />;
     }
 
-    // Check for finishing department workers
+    // Standalone sewing role
+    if (hasRole('sewing')) {
+      return <Navigate to="/sewing/morning-targets" replace />;
+    }
+
+    // Standalone finishing role
+    if (hasRole('finishing')) {
+      return <Navigate to="/finishing/daily-target" replace />;
+    }
+
+    // Legacy: finishing department workers
     if (profile.department === 'finishing') {
       return <Navigate to="/finishing/daily-target" replace />;
     }

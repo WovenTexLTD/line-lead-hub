@@ -147,7 +147,10 @@ Deno.serve(async (req) => {
       .update({
         factory_id: factoryId,
         full_name: fullName,
-        department: role === "worker" ? (department || null) : null,
+        department: role === "sewing" ? "sewing"
+          : role === "finishing" ? "finishing"
+          : role === "worker" ? (department || null)
+          : null,
         invitation_status: "pending", // New users are pending until they sign in
       })
       .eq("id", userId);

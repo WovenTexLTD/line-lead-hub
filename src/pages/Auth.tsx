@@ -128,7 +128,19 @@ export default function Auth() {
           return;
         }
 
-        // Finishing workers land on the Finishing Daily Target
+        // Standalone sewing role
+        if (hasRole("sewing")) {
+          navigate("/sewing/morning-targets", { replace: true });
+          return;
+        }
+
+        // Standalone finishing role
+        if (hasRole("finishing")) {
+          navigate("/finishing/daily-target", { replace: true });
+          return;
+        }
+
+        // Legacy: finishing department workers
         if (profile.department === "finishing") {
           navigate("/finishing/daily-target", { replace: true });
           return;

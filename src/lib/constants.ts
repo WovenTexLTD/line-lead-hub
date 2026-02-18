@@ -14,10 +14,15 @@ export const ROLES = {
   OWNER: 'owner',
   STORAGE: 'storage',
   CUTTING: 'cutting',
+  SEWING: 'sewing',
+  FINISHING: 'finishing',
   SUPERADMIN: 'superadmin',
 } as const;
 
 export type AppRole = typeof ROLES[keyof typeof ROLES];
+
+// Roles that are department-wide (all lines / all POs) — no line assignment needed
+export const DEPARTMENT_WIDE_ROLES: AppRole[] = ['storage', 'cutting', 'finishing'];
 
 // Role display names
 export const ROLE_LABELS: Record<AppRole, string> = {
@@ -26,6 +31,8 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   owner: 'Owner',
   storage: 'Storage',
   cutting: 'Cutting',
+  sewing: 'Sewing',
+  finishing: 'Finishing',
   superadmin: 'Super Admin',
 };
 
@@ -252,6 +259,21 @@ export const NAV_ITEMS = {
     { path: '/cutting/morning-targets', label: 'Cutting Morning Targets', icon: 'Crosshair' },
     { path: '/cutting/end-of-day', label: 'Cutting End of Day', icon: 'ClipboardCheck' },
     { path: '/cutting/submissions', label: 'All Submissions', icon: 'FileText' },
+    { path: '/report-blocker', label: 'Report Blocker', icon: 'AlertTriangle' },
+    { path: '/preferences', label: 'My Preferences', icon: 'UserCog' },
+  ],
+  sewing: [
+    { path: '/sewing/morning-targets', label: 'Sewing Morning Targets', icon: 'Crosshair' },
+    { path: '/sewing/end-of-day', label: 'Sewing End of Day', icon: 'ClipboardCheck' },
+    { path: '/sewing/my-submissions', label: 'My Submissions', icon: 'FileText' },
+    { path: '/sewing/cutting-handoffs', label: 'Cutting Handoffs', icon: 'Scissors' },
+    { path: '/report-blocker', label: 'Report Blocker', icon: 'AlertTriangle' },
+    { path: '/preferences', label: 'My Preferences', icon: 'UserCog' },
+  ],
+  finishing: [
+    { path: '/finishing/daily-target', label: 'Daily Target', icon: 'Crosshair' },
+    { path: '/finishing/daily-output', label: 'End of Day Output', icon: 'ClipboardCheck' },
+    { path: '/finishing/my-submissions', label: 'My Submissions', icon: 'FileText' },
     { path: '/report-blocker', label: 'Report Blocker', icon: 'AlertTriangle' },
     { path: '/preferences', label: 'My Preferences', icon: 'UserCog' },
   ],

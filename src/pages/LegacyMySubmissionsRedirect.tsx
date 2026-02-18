@@ -33,7 +33,17 @@ export default function LegacyMySubmissionsRedirect() {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Check for finishing department workers
+  // Standalone sewing role
+  if (hasRole("sewing")) {
+    return <Navigate to="/sewing/my-submissions" replace />;
+  }
+
+  // Standalone finishing role
+  if (hasRole("finishing")) {
+    return <Navigate to="/finishing/my-submissions" replace />;
+  }
+
+  // Legacy: finishing department workers
   if (profile.department === "finishing") {
     return <Navigate to="/finishing/my-submissions" replace />;
   }

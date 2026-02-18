@@ -23,10 +23,10 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, UserPlus, Mail, User, Shield, GitBranch, Briefcase, Key, Eye, EyeOff } from "lucide-react";
+import { Loader2, UserPlus, Mail, User, Shield, GitBranch, Key, Eye, EyeOff, Info } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { ROLE_LABELS, type AppRole } from "@/lib/constants";
+import { ROLE_LABELS, DEPARTMENT_WIDE_ROLES, type AppRole } from "@/lib/constants";
 
 interface InviteUserDialogProps {
   open: boolean;
@@ -40,15 +40,12 @@ interface Line {
   name: string | null;
 }
 
-const ASSIGNABLE_ROLES: AppRole[] = ['worker', 'admin', 'storage', 'cutting'];
-const DEPARTMENTS = ['sewing', 'finishing', 'both'] as const;
-type Department = typeof DEPARTMENTS[number];
+const ASSIGNABLE_ROLES: AppRole[] = ['sewing', 'finishing', 'admin', 'storage', 'cutting'];
 
 const inviteUserSchema = z.object({
   email: z.string().email("Invalid email address").max(255, "Email too long"),
   fullName: z.string().min(1, "Full name is required").max(100, "Name too long"),
-  role: z.enum(["worker", "admin", "storage", "cutting"]),
-  department: z.enum(["sewing", "finishing", "both"]),
+  role: z.enum(["sewing", "finishing", "admin", "storage", "cutting"]),
   temporaryPassword: z.string().min(6, "Password must be at least 6 characters").max(100, "Password too long").optional(),
 });
 
@@ -63,15 +60,17 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
   const [formData, setFormData] = useState({
     email: "",
     fullName: "",
-    role: "worker" as AppRole,
-    department: "both" as Department,
+    role: "sewing" as AppRole,
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // Admins can invite all roles including other admins
   const availableRoles = hasRole('admin') || hasRole('owner')
-    ? ASSIGNABLE_ROLES 
+    ? ASSIGNABLE_ROLES
     : ASSIGNABLE_ROLES.filter(r => r !== 'admin');
+
+  const isDeptWide = DEPARTMENT_WIDE_ROLES.includes(formData.role);
+  const showLinePicker = formData.role === 'sewing';
 
   useEffect(() => {
     if (open && profile?.factory_id) {
@@ -100,8 +99,8 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
   }
 
   function toggleLine(lineId: string) {
-    setSelectedLineIds(prev => 
-      prev.includes(lineId) 
+    setSelectedLineIds(prev =>
+      prev.includes(lineId)
         ? prev.filter(id => id !== lineId)
         : [...prev, lineId]
     );
@@ -115,7 +114,6 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
       email: formData.email,
       fullName: formData.fullName,
       role: formData.role,
-      department: formData.department,
       temporaryPassword: useTemporaryPassword ? temporaryPassword : undefined,
     };
 
@@ -133,20 +131,26 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
     setLoading(true);
 
     try {
+      // Map standalone roles to department for the profile record
+      const department = formData.role === 'sewing' ? 'sewing'
+        : formData.role === 'finishing' ? 'finishing'
+        : null;
+
+      // Sewing is line-bound; finishing/storage/cutting get all lines; admin gets none
+      const lineIds = formData.role === 'sewing'
+        ? selectedLineIds
+        : isDeptWide
+          ? lines.map(l => l.id)
+          : [];
+
       // Use edge function to create user (doesn't affect current session)
       const { data, error } = await invokeEdgeFn('admin-invite-user', {
         email: formData.email,
         fullName: formData.fullName,
         factoryId: profile.factory_id,
         role: formData.role,
-        department: formData.role === 'worker' ? formData.department : null,
-        // Storage, cutting, and finishing-department workers get all lines automatically
-        lineIds: formData.role === 'worker' && formData.department === 'sewing'
-          ? selectedLineIds
-          : ['storage', 'cutting'].includes(formData.role) ||
-            (formData.role === 'worker' && (formData.department === 'finishing' || formData.department === 'both'))
-            ? lines.map(l => l.id)
-            : [],
+        department,
+        lineIds,
         temporaryPassword: useTemporaryPassword ? temporaryPassword : undefined,
       });
 
@@ -181,13 +185,13 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
       }
 
       toast.success(
-        useTemporaryPassword 
-          ? `User ${formData.fullName} created with temporary password` 
+        useTemporaryPassword
+          ? `User ${formData.fullName} created with temporary password`
           : `User ${formData.fullName} invited successfully`
       );
       onSuccess();
       onOpenChange(false);
-      setFormData({ email: "", fullName: "", role: "worker", department: "both" });
+      setFormData({ email: "", fullName: "", role: "sewing" });
       setSelectedLineIds([]);
       setUseTemporaryPassword(false);
       setTemporaryPassword("");
@@ -326,34 +330,8 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
             </Select>
           </div>
 
-          {/* Department selector - only for workers */}
-          {formData.role === 'worker' && (
-            <div className="space-y-2">
-              <Label htmlFor="department" className="flex items-center gap-2">
-                <Briefcase className="h-4 w-4 text-muted-foreground" />
-                Department
-              </Label>
-              <Select
-                value={formData.department}
-                onValueChange={(value: Department) => setFormData({ ...formData, department: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select department" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="sewing">Sewing Only</SelectItem>
-                  <SelectItem value="finishing">Finishing Only</SelectItem>
-                  <SelectItem value="both">Both Sewing & Finishing</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                This determines which update form the worker can access.
-              </p>
-            </div>
-          )}
-
-          {/* Line assignments - only for sewing workers (finishing, storage, and cutting get all lines automatically) */}
-          {formData.role === 'worker' && formData.department === 'sewing' && (
+          {/* Line assignments - only for sewing (line-bound) */}
+          {showLinePicker && (
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <GitBranch className="h-4 w-4 text-muted-foreground" />
@@ -390,15 +368,17 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
                 )}
               </ScrollArea>
               <p className="text-xs text-muted-foreground">
-                Select which lines this worker can submit updates for.
+                Select which lines this user can submit updates for.
               </p>
             </div>
           )}
 
-          {formData.role === 'worker' && (formData.department === 'finishing' || formData.department === 'both') && (
-            <p className="text-xs text-muted-foreground px-1">
-              Finishing department workers are automatically assigned to all lines.
-            </p>
+          {/* Info note for department-wide roles */}
+          {isDeptWide && (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 border text-sm text-muted-foreground">
+              <Info className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>This role has access to all lines and POs.</span>
+            </div>
           )}
 
           <DialogFooter>

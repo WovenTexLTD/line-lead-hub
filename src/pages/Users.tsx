@@ -91,7 +91,7 @@ export default function UsersPage() {
         if (!isFactoryScoped) return;
 
         const existingRole = roleMap.get(r.user_id);
-        const roleOrder = ['owner', 'admin', 'supervisor', 'worker'];
+        const roleOrder = ['owner', 'admin', 'supervisor', 'sewing', 'finishing', 'storage', 'cutting', 'worker'];
         if (!existingRole || roleOrder.indexOf(r.role) < roleOrder.indexOf(existingRole)) {
           roleMap.set(r.user_id, r.role);
         }

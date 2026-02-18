@@ -33,9 +33,9 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, UserCog, Shield, Trash2, GitBranch } from "lucide-react";
+import { Loader2, UserCog, Shield, Trash2, GitBranch, Info } from "lucide-react";
 import { toast } from "sonner";
-import { ROLE_LABELS, type AppRole } from "@/lib/constants";
+import { ROLE_LABELS, DEPARTMENT_WIDE_ROLES, type AppRole } from "@/lib/constants";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface User {
@@ -61,10 +61,10 @@ interface Line {
   name: string | null;
 }
 
-const ASSIGNABLE_ROLES: AppRole[] = ['worker', 'admin', 'storage'];
+const ASSIGNABLE_ROLES: AppRole[] = ['sewing', 'finishing', 'admin', 'storage', 'cutting'];
 
 const editUserSchema = z.object({
-  role: z.enum(["worker", "admin", "storage", "cutting", "owner"]),
+  role: z.enum(["sewing", "finishing", "admin", "storage", "cutting", "owner", "worker"]),
   isActive: z.boolean(),
 });
 
@@ -75,7 +75,7 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
   const [lines, setLines] = useState<Line[]>([]);
   const [selectedLineIds, setSelectedLineIds] = useState<string[]>([]);
   const [formData, setFormData] = useState({
-    role: "worker" as AppRole,
+    role: "sewing" as AppRole,
     isActive: true,
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -89,6 +89,9 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
   const isOwnerOrHigher = user?.role === 'owner';
   const isAdminOrHigher = user?.role === 'admin' || user?.role === 'owner';
 
+  const isDeptWide = DEPARTMENT_WIDE_ROLES.includes(formData.role);
+  const showLinePicker = formData.role === 'sewing';
+
   useEffect(() => {
     if (open && profile?.factory_id) {
       fetchLines();
@@ -98,7 +101,7 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
   useEffect(() => {
     if (user) {
       setFormData({
-        role: (user.role as AppRole) || 'worker',
+        role: (user.role as AppRole) || 'sewing',
         isActive: user.is_active ?? true,
       });
       setSelectedLineIds(user.assigned_line_ids || []);
@@ -126,8 +129,8 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
   }
 
   function toggleLine(lineId: string) {
-    setSelectedLineIds(prev => 
-      prev.includes(lineId) 
+    setSelectedLineIds(prev =>
+      prev.includes(lineId)
         ? prev.filter(id => id !== lineId)
         : [...prev, lineId]
     );
@@ -172,9 +175,16 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
         return;
       }
 
-      // Update profile with active status
+      // Update profile with active status and department
+      const department = formData.role === 'sewing' ? 'sewing'
+        : formData.role === 'finishing' ? 'finishing'
+        : null;
+
       const { error: profileError } = await mutateWithRetry(() =>
-        supabase.from('profiles').update({ is_active: formData.isActive }).eq('id', user.id)
+        supabase.from('profiles').update({
+          is_active: formData.isActive,
+          department,
+        }).eq('id', user.id)
       );
 
       if (profileError) {
@@ -191,8 +201,19 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
         console.error("Delete line assignments error:", deleteLineError);
       }
 
-      if (selectedLineIds.length > 0) {
-        const lineAssignments = selectedLineIds.map(lineId => ({
+      // Determine which line IDs to assign
+      let lineIdsToAssign: string[] = [];
+      if (showLinePicker) {
+        // Sewing: use manually selected lines
+        lineIdsToAssign = selectedLineIds;
+      } else if (isDeptWide) {
+        // Finishing, storage, cutting: all lines
+        lineIdsToAssign = lines.map(l => l.id);
+      }
+      // Admin: no lines
+
+      if (lineIdsToAssign.length > 0) {
+        const lineAssignments = lineIdsToAssign.map(lineId => ({
           user_id: user.id,
           line_id: lineId,
           factory_id: profile.factory_id!,
@@ -319,8 +340,8 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
               {formErrors.role && <p className="text-sm text-destructive">{formErrors.role}</p>}
             </div>
 
-            {/* Line Assignment - for workers, storage, and cutting roles */}
-            {['worker', 'storage', 'cutting'].includes(formData.role) && (
+            {/* Line Assignment - only for sewing (line-bound) */}
+            {showLinePicker && (
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
                   <GitBranch className="h-4 w-4 text-muted-foreground" />
@@ -357,12 +378,16 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
                   )}
                 </ScrollArea>
                 <p className="text-xs text-muted-foreground">
-                  {formData.role === 'storage' 
-                    ? 'Lines this storage user manages inventory for.'
-                    : formData.role === 'cutting'
-                    ? 'Lines this cutting user manages.'
-                    : 'Lines this worker can submit updates for.'}
+                  Lines this sewing user can submit updates for.
                 </p>
+              </div>
+            )}
+
+            {/* Info note for department-wide roles */}
+            {isDeptWide && (
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 border text-sm text-muted-foreground">
+                <Info className="h-4 w-4 mt-0.5 shrink-0" />
+                <span>This role has access to all lines and POs.</span>
               </div>
             )}
 
