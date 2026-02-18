@@ -298,7 +298,7 @@ export default function Lines() {
           <Rows3 className="h-6 w-6" />
           Production Lines
         </h1>
-        <p className="text-muted-foreground">View line status and today's submissions</p>
+        <p className="text-muted-foreground">View line status and today's sewing submissions</p>
       </div>
 
       {/* Stats */}
@@ -347,8 +347,8 @@ export default function Lines() {
                   <TableHead>Current PO</TableHead>
                   <TableHead className="text-center">Target Status</TableHead>
                   <TableHead className="text-center">EOD Status</TableHead>
-                  <TableHead className="text-right">Sewing Target</TableHead>
-                  <TableHead className="text-right">Sewing EOD</TableHead>
+                  <TableHead className="text-right">Target</TableHead>
+                  <TableHead className="text-right">EOD</TableHead>
                   <TableHead className="text-center">Active</TableHead>
                 </TableRow>
               </TableHeader>
