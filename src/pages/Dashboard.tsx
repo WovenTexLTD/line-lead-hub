@@ -194,6 +194,7 @@ interface StorageBinCard {
   latest_balance: number;
   bin_group_id: string | null;
   group_name: string | null;
+  po_set_signature: string | null;
 }
 
 interface StorageTransaction {
@@ -578,6 +579,7 @@ export default function Dashboard() {
             prepared_by: b.prepared_by,
             bin_group_id: b.bin_group_id || null,
             group_name: b.group_name || null,
+            po_set_signature: b.po_set_signature || null,
             transactions: allTransactions.map((t: any) => ({
               id: t.id,
               transaction_date: t.transaction_date,
@@ -596,13 +598,13 @@ export default function Dashboard() {
         });
 
       // Include cards with today's transactions + all group members where any member has today's transactions
-      const todayGroupIds = new Set(
+      const todayGroupKeys = new Set(
         allFormattedBinCards
-          .filter(b => b.hasTodayTransactions && b.bin_group_id)
-          .map(b => b.bin_group_id!)
+          .filter(b => b.hasTodayTransactions && (b.po_set_signature || b.bin_group_id))
+          .map(b => (b.po_set_signature || b.bin_group_id)!)
       );
       const formattedBinCards: StorageBinCard[] = allFormattedBinCards.filter(
-        b => b.hasTodayTransactions || (b.bin_group_id && todayGroupIds.has(b.bin_group_id))
+        b => b.hasTodayTransactions || ((b.po_set_signature || b.bin_group_id) && todayGroupKeys.has((b.po_set_signature || b.bin_group_id)!))
       );
 
       // Fetch active blockers from production_updates tables (same source as Blockers page)
@@ -698,18 +700,19 @@ export default function Dashboard() {
   const currentTargets = departmentTab === 'sewing' ? sewingTargets : finishingTargets;
   const currentEndOfDay = departmentTab === 'sewing' ? sewingEndOfDay : finishingEndOfDay;
 
-  // Group storage bin cards by bin_group_id for display
+  // Group storage bin cards by po_set_signature or bin_group_id for display
   const storageDisplayItems = useMemo(() => {
     const groupMap = new Map<string, StorageBinCard[]>();
     const ungrouped: StorageBinCard[] = [];
 
     for (const card of storageBinCards) {
-      if (card.bin_group_id) {
-        const existing = groupMap.get(card.bin_group_id);
+      const key = card.po_set_signature || card.bin_group_id || null;
+      if (key) {
+        const existing = groupMap.get(key);
         if (existing) {
           existing.push(card);
         } else {
-          groupMap.set(card.bin_group_id, [card]);
+          groupMap.set(key, [card]);
         }
       } else {
         ungrouped.push(card);
