@@ -1109,6 +1109,7 @@ export type Database = {
       }
       finishing_daily_logs: {
         Row: {
+          actual_hours: number | null
           buttoning: number | null
           carton: number | null
           created_at: string
@@ -1134,9 +1135,9 @@ export type Database = {
           updated_at: string | null
           updated_by: string | null
           work_order_id: string | null
-          actual_hours: number | null
         }
         Insert: {
+          actual_hours?: number | null
           buttoning?: number | null
           carton?: number | null
           created_at?: string
@@ -1162,9 +1163,9 @@ export type Database = {
           updated_at?: string | null
           updated_by?: string | null
           work_order_id?: string | null
-          actual_hours?: number | null
         }
         Update: {
+          actual_hours?: number | null
           buttoning?: number | null
           carton?: number | null
           created_at?: string
@@ -1190,7 +1191,6 @@ export type Database = {
           updated_at?: string | null
           updated_by?: string | null
           work_order_id?: string | null
-          actual_hours?: number | null
         }
         Relationships: [
           {

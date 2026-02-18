@@ -18,8 +18,8 @@ interface FinishingDailyLog {
   get_up: number;
   poly: number;
   carton: number;
-  planned_hours: number | null;
-  actual_hours: number | null;
+  planned_hours?: number | null;
+  actual_hours?: number | null;
   remarks: string | null;
   submitted_at: string;
   is_locked: boolean;
