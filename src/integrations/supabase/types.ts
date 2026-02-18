@@ -2671,6 +2671,7 @@ export type Database = {
       }
       storage_bin_cards: {
         Row: {
+          bin_group_id: string | null
           buyer: string | null
           color: string | null
           construction: string | null
@@ -2689,6 +2690,7 @@ export type Database = {
           work_order_id: string
         }
         Insert: {
+          bin_group_id?: string | null
           buyer?: string | null
           color?: string | null
           construction?: string | null
@@ -2707,6 +2709,7 @@ export type Database = {
           work_order_id: string
         }
         Update: {
+          bin_group_id?: string | null
           buyer?: string | null
           color?: string | null
           construction?: string | null
