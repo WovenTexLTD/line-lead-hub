@@ -168,6 +168,8 @@ interface StorageTransaction {
     id: string;
     buyer: string | null;
     style: string | null;
+    bin_group_id: string | null;
+    group_name: string | null;
     work_orders: { po_number: string } | null;
   } | null;
 }
@@ -232,6 +234,13 @@ export default function TodayUpdates() {
   const [binCardTransactions, setBinCardTransactions] = useState<any[]>([]);
   const [storageModalOpen, setStorageModalOpen] = useState(false);
   const [storageLoading, setStorageLoading] = useState(false);
+  const [selectedGroupedCards, setSelectedGroupedCards] = useState<{
+    groupName: string;
+    cards: {
+      binCard: { id: string; buyer: string | null; style: string | null; po_number: string | null; supplier_name: string | null; description: string | null; construction: string | null; color: string | null; width: string | null; package_qty: string | null; prepared_by: string | null };
+      transactions: any[];
+    }[];
+  } | null>(null);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [selectedFinishingLog, setSelectedFinishingLog] = useState<FinishingDailyLog | null>(null);
   const [finishingLogModalOpen, setFinishingLogModalOpen] = useState(false);
@@ -287,7 +296,7 @@ export default function TodayUpdates() {
           .order('submitted_at', { ascending: false }),
         supabase
           .from('storage_bin_card_transactions')
-          .select('*, storage_bin_cards(id, buyer, style, work_orders(po_number))')
+          .select('*, storage_bin_cards(id, buyer, style, bin_group_id, group_name, work_orders(po_number))')
           .eq('factory_id', profile.factory_id)
           .eq('transaction_date', today)
           .order('created_at', { ascending: false }),
@@ -597,6 +606,7 @@ export default function TodayUpdates() {
 
     setStorageLoading(true);
     setStorageModalOpen(true);
+    setSelectedGroupedCards(null);
 
     try {
       // Fetch full bin card details
@@ -608,7 +618,55 @@ export default function TodayUpdates() {
 
       if (binCardError) throw binCardError;
 
-      // Fetch all transactions for this bin card
+      // If this bin card is part of a group, load the full group
+      if (binCardData.bin_group_id) {
+        const { data: groupCards, error: groupError } = await supabase
+          .from('storage_bin_cards')
+          .select('*, work_orders(po_number)')
+          .eq('bin_group_id', binCardData.bin_group_id)
+          .order('created_at', { ascending: true });
+
+        if (!groupError && groupCards && groupCards.length > 1) {
+          const groupedCardsData = await Promise.all(
+            groupCards.map(async (card: any) => {
+              const { data: cardTxns } = await supabase
+                .from('storage_bin_card_transactions')
+                .select('*')
+                .eq('bin_card_id', card.id)
+                .order('transaction_date', { ascending: true })
+                .order('created_at', { ascending: true });
+
+              return {
+                binCard: {
+                  id: card.id,
+                  buyer: card.buyer,
+                  style: card.style,
+                  po_number: card.work_orders?.po_number || null,
+                  supplier_name: card.supplier_name,
+                  description: card.description,
+                  construction: card.construction,
+                  color: card.color,
+                  width: card.width,
+                  package_qty: card.package_qty,
+                  prepared_by: card.prepared_by,
+                },
+                transactions: cardTxns || [],
+              };
+            })
+          );
+
+          setSelectedGroupedCards({
+            groupName: binCardData.group_name || `Bulk (${groupCards.length} POs)`,
+            cards: groupedCardsData,
+          });
+          setSelectedBinCard(null);
+          setBinCardTransactions([]);
+          setStorageLoading(false);
+          return;
+        }
+      }
+
+      // Single card flow
       const { data: txnData, error: txnError } = await supabase
         .from('storage_bin_card_transactions')
         .select('*')
@@ -1089,6 +1147,7 @@ export default function TodayUpdates() {
                           <TableCell>
                             {txn.storage_bin_cards?.work_orders?.po_number || '-'}
 {txn.batch_id && <span title="Bulk submission"><Layers className="h-3 w-3 inline ml-1 text-muted-foreground" /></span>}
+{txn.storage_bin_cards?.group_name && <span className="ml-1 text-xs text-primary">({txn.storage_bin_cards.group_name})</span>}
                           </TableCell>
                           <TableCell>{txn.storage_bin_cards?.style || '-'}</TableCell>
                           <TableCell className="text-right font-mono text-success">{txn.receive_qty > 0 ? `+${txn.receive_qty.toLocaleString()}` : '-'}</TableCell>
@@ -1416,6 +1475,7 @@ export default function TodayUpdates() {
                         <TableCell>
                           {txn.storage_bin_cards?.work_orders?.po_number || '-'}
                           {txn.batch_id && <span title="Bulk submission"><Layers className="h-3 w-3 inline ml-1 text-muted-foreground" /></span>}
+                          {txn.storage_bin_cards?.group_name && <span className="ml-1 text-xs text-primary">({txn.storage_bin_cards.group_name})</span>}
                         </TableCell>
                         <TableCell>{txn.storage_bin_cards?.style || '-'}</TableCell>
                         <TableCell className="text-right font-mono text-success">{txn.receive_qty > 0 ? `+${txn.receive_qty.toLocaleString()}` : '-'}</TableCell>
@@ -1459,7 +1519,11 @@ export default function TodayUpdates() {
         binCard={selectedBinCard}
         transactions={binCardTransactions}
         open={storageModalOpen}
-        onOpenChange={setStorageModalOpen}
+        onOpenChange={(open) => {
+          setStorageModalOpen(open);
+          if (!open) setSelectedGroupedCards(null);
+        }}
+        groupedCards={selectedGroupedCards}
       />
 
       {/* Finishing Log Detail Modal */}

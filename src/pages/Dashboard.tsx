@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,6 +8,13 @@ import { KPICard } from "@/components/ui/kpi-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SubmissionDetailModal } from "@/components/SubmissionDetailModal";
 import { TargetDetailModal } from "@/components/TargetDetailModal";
@@ -32,6 +39,7 @@ import {
   Scissors,
   Archive,
   Target,
+  Layers,
 } from "lucide-react";
 
 interface DashboardStats {
@@ -184,6 +192,8 @@ interface StorageBinCard {
   transactions: StorageTransaction[];
   transaction_count: number;
   latest_balance: number;
+  bin_group_id: string | null;
+  group_name: string | null;
 }
 
 interface StorageTransaction {
@@ -231,6 +241,13 @@ export default function Dashboard() {
   const [cuttingModalOpen, setCuttingModalOpen] = useState(false);
   const [cuttingTargetModalOpen, setCuttingTargetModalOpen] = useState(false);
   const [storageModalOpen, setStorageModalOpen] = useState(false);
+  const [selectedGroupedCards, setSelectedGroupedCards] = useState<{
+    groupName: string;
+    cards: {
+      binCard: { id: string; buyer: string | null; style: string | null; po_number: string | null; supplier_name: string | null; description: string | null; construction: string | null; color: string | null; width: string | null; package_qty: string | null; prepared_by: string | null };
+      transactions: StorageTransaction[];
+    }[];
+  } | null>(null);
 
   const canViewDashboard = isAdminOrHigher();
   const onboarding = useOnboardingChecklist(hasRole("owner") ? profile?.factory_id : null);
@@ -560,6 +577,8 @@ export default function Dashboard() {
             width: b.width,
             package_qty: b.package_qty,
             prepared_by: b.prepared_by,
+            bin_group_id: b.bin_group_id || null,
+            group_name: b.group_name || null,
             transactions: allTransactions.map((t: any) => ({
               id: t.id,
               transaction_date: t.transaction_date,
@@ -670,6 +689,59 @@ export default function Dashboard() {
 
   const currentTargets = departmentTab === 'sewing' ? sewingTargets : finishingTargets;
   const currentEndOfDay = departmentTab === 'sewing' ? sewingEndOfDay : finishingEndOfDay;
+
+  // Group storage bin cards by bin_group_id for display
+  const storageDisplayItems = useMemo(() => {
+    const groupMap = new Map<string, StorageBinCard[]>();
+    const ungrouped: StorageBinCard[] = [];
+
+    for (const card of storageBinCards) {
+      if (card.bin_group_id) {
+        const existing = groupMap.get(card.bin_group_id);
+        if (existing) {
+          existing.push(card);
+        } else {
+          groupMap.set(card.bin_group_id, [card]);
+        }
+      } else {
+        ungrouped.push(card);
+      }
+    }
+
+    const items: { type: 'single' | 'group'; key: string; cards: StorageBinCard[]; poNumbers: string[]; groupName: string | null; buyer: string; style: string; totalBalance: number; transactionCount: number }[] = [];
+
+    for (const [groupId, cards] of groupMap) {
+      const uniqueBuyers = [...new Set(cards.map(c => c.buyer).filter(Boolean))];
+      const uniqueStyles = [...new Set(cards.map(c => c.style).filter(Boolean))];
+      items.push({
+        type: cards.length > 1 ? 'group' : 'single',
+        key: groupId,
+        cards,
+        poNumbers: cards.map(c => c.po_number).filter(Boolean) as string[],
+        groupName: cards[0].group_name,
+        buyer: uniqueBuyers.length === 1 ? uniqueBuyers[0]! : uniqueBuyers.length > 1 ? 'Mixed' : 'No buyer',
+        style: uniqueStyles.length === 1 ? uniqueStyles[0]! : uniqueStyles.length > 1 ? 'Mixed' : 'No style',
+        totalBalance: cards.reduce((sum, c) => sum + c.latest_balance, 0),
+        transactionCount: cards.reduce((sum, c) => sum + c.transaction_count, 0),
+      });
+    }
+
+    for (const card of ungrouped) {
+      items.push({
+        type: 'single',
+        key: card.id,
+        cards: [card],
+        poNumbers: [card.po_number].filter(Boolean) as string[],
+        groupName: null,
+        buyer: card.buyer || 'No buyer',
+        style: card.style || 'No style',
+        totalBalance: card.latest_balance,
+        transactionCount: card.transaction_count,
+      });
+    }
+
+    return items;
+  }, [storageBinCards]);
 
   return (
     <div className="p-3 md:p-4 lg:p-6 space-y-4 md:space-y-6 overflow-x-hidden">
@@ -1141,44 +1213,97 @@ export default function Dashboard() {
                     <div key={i} className="h-16 bg-muted rounded-lg animate-pulse" />
                   ))}
                 </div>
-              ) : storageBinCards.length > 0 ? (
+              ) : storageDisplayItems.length > 0 ? (
+                <TooltipProvider>
                 <div className="w-full overflow-x-auto">
                   <div className="space-y-3 max-h-[500px] overflow-y-auto min-w-[320px]">
-                    {storageBinCards.map((binCard) => (
+                    {storageDisplayItems.map((item) => (
                       <div
-                        key={binCard.id}
+                        key={item.key}
                         onClick={() => {
-                          setSelectedBinCard(binCard);
-                          setStorageModalOpen(true);
+                          if (item.type === 'group' && item.cards.length > 1) {
+                            const groupedCards = {
+                              groupName: item.groupName || `Bulk (${item.poNumbers.length} POs)`,
+                              cards: item.cards.map(card => ({
+                                binCard: {
+                                  id: card.id,
+                                  buyer: card.buyer,
+                                  style: card.style,
+                                  po_number: card.po_number,
+                                  supplier_name: card.supplier_name,
+                                  description: card.description,
+                                  construction: card.construction,
+                                  color: card.color,
+                                  width: card.width,
+                                  package_qty: card.package_qty,
+                                  prepared_by: card.prepared_by,
+                                },
+                                transactions: card.transactions,
+                              })),
+                            };
+                            setSelectedGroupedCards(groupedCards);
+                            setSelectedBinCard(null);
+                            setStorageModalOpen(true);
+                          } else {
+                            setSelectedBinCard(item.cards[0]);
+                            setSelectedGroupedCards(null);
+                            setStorageModalOpen(true);
+                          }
                         }}
                         className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-primary/10 shrink-0">
-                            <Archive className="h-5 w-5 text-primary" />
+                            {item.type === 'group' && item.cards.length > 1 ? (
+                              <Layers className="h-5 w-5 text-primary" />
+                            ) : (
+                              <Archive className="h-5 w-5 text-primary" />
+                            )}
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-nowrap">
-                              <span className="font-medium whitespace-nowrap">{binCard.po_number || 'No PO'}</span>
-                              {binCard.transaction_count > 0 && (
+                              {item.poNumbers.length <= 1 ? (
+                                <span className="font-medium whitespace-nowrap">{item.poNumbers[0] || 'No PO'}</span>
+                              ) : (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="cursor-default flex items-center gap-1">
+                                      <span className="font-medium whitespace-nowrap">{item.poNumbers[0]}</span>
+                                      <Badge variant="outline" className="text-xs shrink-0">+{item.poNumbers.length - 1}</Badge>
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="bottom">
+                                    <div className="space-y-1">
+                                      {item.poNumbers.map(po => (
+                                        <div key={po} className="text-xs">{po}</div>
+                                      ))}
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                              {item.transactionCount > 0 && (
                                 <StatusBadge variant="info" size="sm">
-                                  {binCard.transaction_count} txns
+                                  {item.transactionCount} txns
                                 </StatusBadge>
                               )}
                             </div>
                             <p className="text-sm text-muted-foreground whitespace-nowrap">
-                              {binCard.buyer || 'No buyer'} • {binCard.style || 'No style'}
+                              {item.buyer} • {item.style}
+                              {item.groupName && (
+                                <span className="ml-1 text-xs text-primary">({item.groupName})</span>
+                              )}
                             </p>
                           </div>
                         </div>
                         <div className="text-right shrink-0 ml-3">
-                          <p className="font-mono font-bold text-lg">{binCard.latest_balance.toLocaleString()}</p>
+                          <p className="font-mono font-bold text-lg">{item.totalBalance.toLocaleString()}</p>
                           <p className="text-xs text-muted-foreground">balance</p>
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
+                </TooltipProvider>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
                   <Archive className="h-12 w-12 mx-auto mb-3 opacity-50" />
@@ -1304,7 +1429,11 @@ export default function Dashboard() {
         binCard={selectedBinCard}
         transactions={selectedBinCard?.transactions || []}
         open={storageModalOpen}
-        onOpenChange={setStorageModalOpen}
+        onOpenChange={(open) => {
+          setStorageModalOpen(open);
+          if (!open) setSelectedGroupedCards(null);
+        }}
+        groupedCards={selectedGroupedCards}
       />
     </div>
   );
