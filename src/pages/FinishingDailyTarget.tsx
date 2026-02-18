@@ -216,10 +216,10 @@ export default function FinishingDailyTarget() {
       const logData = {
         factory_id: profile.factory_id,
         production_date: today,
-        line_id: null,
+        line_id: undefined,
         work_order_id: selectedWorkOrderId,
         log_type: "TARGET" as const,
-        shift: null,
+        shift: undefined,
         thread_cutting: processValues.thread_cutting ? parseInt(processValues.thread_cutting) : 0,
         inside_check: processValues.inside_check ? parseInt(processValues.inside_check) : 0,
         top_side_check: processValues.top_side_check ? parseInt(processValues.top_side_check) : 0,
