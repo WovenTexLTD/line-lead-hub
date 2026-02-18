@@ -1,17 +1,20 @@
 import { useState, useEffect, useMemo } from "react";
+import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import {
   Table,
   TableBody,
@@ -20,11 +23,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, Rows3, Search, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { Loader2, Rows3, Search, CheckCircle2, XCircle, Clock, ChevronsUpDown, Check } from "lucide-react";
 
 interface LineWorkOrder {
   id: string;
   po_number: string;
+  buyer: string;
   is_active: boolean;
   created_at: string | null;
 }
@@ -75,6 +79,7 @@ export default function Lines() {
     profile?.factory_id ? loadSelectedPOs(profile.factory_id) : {}
   );
   const [searchTerm, setSearchTerm] = useState("");
+  const [openPopovers, setOpenPopovers] = useState<Record<string, boolean>>({});
 
   // Reload saved selections when factory_id becomes available
   useEffect(() => {
@@ -117,10 +122,9 @@ export default function Lines() {
           .eq('factory_id', profile.factory_id)
           .eq('production_date', today),
         supabase
-          .from('work_orders')
-          .select('id, line_id, po_number, is_active, created_at')
-          .eq('factory_id', profile.factory_id)
-          .not('line_id', 'is', null),
+          .from('work_order_line_assignments')
+          .select('line_id, work_orders(id, po_number, buyer, is_active, created_at)')
+          .eq('factory_id', profile.factory_id),
       ]);
 
       setRawData({
@@ -143,18 +147,22 @@ export default function Lines() {
 
     const { lines: linesData, sewingTargets, sewingActuals, finishingLogs, workOrders } = rawData;
 
-    // Group work orders by line_id, sorted: active first, then most recent
+    // Group work orders by line_id via junction table, sorted: active first, then most recent
     const lineWoMap = new Map<string, LineWorkOrder[]>();
-    workOrders.forEach((wo: any) => {
-      if (!wo.line_id) return;
-      const list = lineWoMap.get(wo.line_id) || [];
-      list.push({
-        id: wo.id,
-        po_number: wo.po_number,
-        is_active: wo.is_active ?? false,
-        created_at: wo.created_at,
-      });
-      lineWoMap.set(wo.line_id, list);
+    workOrders.forEach((assignment: any) => {
+      const wo = assignment.work_orders;
+      if (!wo || !assignment.line_id) return;
+      const list = lineWoMap.get(assignment.line_id) || [];
+      if (!list.some(w => w.id === wo.id)) {
+        list.push({
+          id: wo.id,
+          po_number: wo.po_number,
+          buyer: wo.buyer || '',
+          is_active: wo.is_active ?? false,
+          created_at: wo.created_at,
+        });
+      }
+      lineWoMap.set(assignment.line_id, list);
     });
 
     // Sort each group: active first, then by created_at descending
@@ -347,28 +355,71 @@ export default function Lines() {
                     <TableCell>{line.unit_name || '-'}</TableCell>
                     <TableCell>{line.floor_name || '-'}</TableCell>
                     <TableCell>
-                      {line.workOrders.length > 1 ? (
-                        <Select
-                          value={line.selectedWoId || undefined}
-                          onValueChange={(v) => handlePOChange(line.id, v)}
-                        >
-                          <SelectTrigger className="h-8 w-[140px] font-mono text-sm">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {line.workOrders.map(wo => (
-                              <SelectItem key={wo.id} value={wo.id}>
-                                <span className="font-mono">
-                                  {wo.po_number}
-                                  {wo.is_active && (
+                      {line.workOrders.length > 1 ? (() => {
+                        const selectedWo = line.workOrders.find(wo => wo.id === line.selectedWoId);
+                        return (
+                          <Popover
+                            open={openPopovers[line.id] || false}
+                            onOpenChange={(open) =>
+                              setOpenPopovers(prev => ({ ...prev, [line.id]: open }))
+                            }
+                          >
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                className="h-8 w-[180px] justify-between font-mono text-sm px-3"
+                              >
+                                <span className="truncate">
+                                  {selectedWo?.po_number || 'Select PO...'}
+                                  {selectedWo?.is_active && (
                                     <span className="ml-1 text-success">●</span>
                                   )}
                                 </span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : line.workOrders.length === 1 ? (
+                                <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[220px] p-0" align="start">
+                              <Command>
+                                <CommandInput placeholder="Search buyer / PO..." />
+                                <CommandList>
+                                  <CommandEmpty>No PO found.</CommandEmpty>
+                                  <CommandGroup>
+                                    {line.workOrders.map(wo => (
+                                      <CommandItem
+                                        key={wo.id}
+                                        value={`${wo.po_number} ${wo.buyer}`}
+                                        onSelect={() => {
+                                          handlePOChange(line.id, wo.id);
+                                          setOpenPopovers(prev => ({ ...prev, [line.id]: false }));
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-3 w-3",
+                                            line.selectedWoId === wo.id ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        <span className="font-mono text-sm">
+                                          {wo.po_number}
+                                          {wo.buyer && (
+                                            <span className="ml-1 text-muted-foreground text-xs">
+                                              ({wo.buyer})
+                                            </span>
+                                          )}
+                                          {wo.is_active && (
+                                            <span className="ml-1 text-success">●</span>
+                                          )}
+                                        </span>
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                        );
+                      })() : line.workOrders.length === 1 ? (
                         <span className="font-mono text-sm">{line.workOrders[0].po_number}</span>
                       ) : (
                         <span className="text-muted-foreground">-</span>
