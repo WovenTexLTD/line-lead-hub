@@ -74,6 +74,7 @@ export function StorageSubmissionsTable({
   const [binCards, setBinCards] = useState<BinCard[]>([]);
   const [selectedBinCard, setSelectedBinCard] = useState<any>(null);
   const [binCardTransactions, setBinCardTransactions] = useState<any[]>([]);
+  const [groupedModalData, setGroupedModalData] = useState<any>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -259,11 +260,11 @@ export function StorageSubmissionsTable({
   }, [binCards, lowStockThreshold]);
 
   const handleCardClick = async (card: BinCard) => {
+    setGroupedModalData(null);
     setModalLoading(true);
     setModalOpen(true);
 
     try {
-      // Fetch full bin card details
       const { data: binCardData, error: binCardError } = await supabase
         .from('storage_bin_cards')
         .select('*, work_orders(po_number)')
@@ -272,7 +273,6 @@ export function StorageSubmissionsTable({
 
       if (binCardError) throw binCardError;
 
-      // Fetch all transactions for this bin card
       const { data: txnData, error: txnError } = await supabase
         .from('storage_bin_card_transactions')
         .select('*')
@@ -300,6 +300,66 @@ export function StorageSubmissionsTable({
       console.error('Error fetching bin card details:', error);
       setModalOpen(false);
       toast.error("Failed to load bin card details");
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  const handleGroupClick = async (row: DisplayRow) => {
+    setSelectedBinCard(null);
+    setGroupedModalData(null);
+    setModalLoading(true);
+    setModalOpen(true);
+
+    try {
+      const cardIds = row.cards.map(c => c.id);
+
+      const [cardsResult, txnsResult] = await Promise.all([
+        supabase
+          .from('storage_bin_cards')
+          .select('*, work_orders(po_number)')
+          .in('id', cardIds),
+        supabase
+          .from('storage_bin_card_transactions')
+          .select('*')
+          .in('bin_card_id', cardIds)
+          .order('transaction_date', { ascending: true })
+          .order('created_at', { ascending: true }),
+      ]);
+
+      if (cardsResult.error) throw cardsResult.error;
+      if (txnsResult.error) throw txnsResult.error;
+
+      const txnsByCard = new Map<string, any[]>();
+      (txnsResult.data || []).forEach(txn => {
+        const list = txnsByCard.get(txn.bin_card_id) || [];
+        list.push(txn);
+        txnsByCard.set(txn.bin_card_id, list);
+      });
+
+      setGroupedModalData({
+        groupName: row.groupName || "Grouped Submission",
+        cards: (cardsResult.data || []).map(card => ({
+          binCard: {
+            id: card.id,
+            buyer: card.buyer,
+            style: card.style,
+            po_number: card.work_orders?.po_number || null,
+            supplier_name: card.supplier_name,
+            description: card.description,
+            construction: card.construction,
+            color: card.color,
+            width: card.width,
+            package_qty: card.package_qty,
+            prepared_by: card.prepared_by,
+          },
+          transactions: txnsByCard.get(card.id) || [],
+        })),
+      });
+    } catch (error) {
+      console.error('Error fetching group details:', error);
+      setModalOpen(false);
+      toast.error("Failed to load group details");
     } finally {
       setModalLoading(false);
     }
@@ -485,13 +545,20 @@ export function StorageSubmissionsTable({
                             <TableCell className="font-mono text-sm">
                               {format(new Date(row.created_at), "MMM d")}
                             </TableCell>
-                            <TableCell className="font-medium" colSpan={3}>
-                              <div className="flex items-center gap-2">
+                            <TableCell className="font-medium">
+                              <div className="flex items-center gap-1.5">
                                 {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                                <span className="text-muted-foreground">{row.cards.length} POs</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              <div className="flex items-center gap-1.5">
                                 <Layers className="h-4 w-4 text-primary" />
                                 <span>{row.groupName}</span>
-                                <Badge variant="outline" className="ml-1 text-xs">{row.cards.length} POs</Badge>
                               </div>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground text-sm">
+                              {[...new Set(row.cards.map(c => c.work_orders.style))].join(", ")}
                             </TableCell>
                             <TableCell className="text-right font-medium text-emerald-600">
                               {row.totalReceived.toLocaleString()}
@@ -609,6 +676,7 @@ export function StorageSubmissionsTable({
       <StorageBinCardDetailModal
         binCard={selectedBinCard}
         transactions={binCardTransactions}
+        groupedCards={groupedModalData}
         open={modalOpen}
         onOpenChange={setModalOpen}
       />

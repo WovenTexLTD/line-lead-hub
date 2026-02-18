@@ -29,23 +29,123 @@ interface Transaction {
   batch_id?: string | null;
 }
 
+interface BinCardInfo {
+  id: string;
+  buyer: string | null;
+  style: string | null;
+  po_number: string | null;
+  supplier_name: string | null;
+  description: string | null;
+  construction: string | null;
+  color: string | null;
+  width: string | null;
+  package_qty: string | null;
+  prepared_by: string | null;
+}
+
 interface StorageBinCardDetailModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  binCard: {
-    id: string;
-    buyer: string | null;
-    style: string | null;
-    po_number: string | null;
-    supplier_name: string | null;
-    description: string | null;
-    construction: string | null;
-    color: string | null;
-    width: string | null;
-    package_qty: string | null;
-    prepared_by: string | null;
-  } | null;
+  binCard: BinCardInfo | null;
   transactions: Transaction[];
+  /** For grouped bin cards — multiple cards with their own transactions */
+  groupedCards?: {
+    groupName: string;
+    cards: {
+      binCard: BinCardInfo;
+      transactions: Transaction[];
+    }[];
+  } | null;
+}
+
+function TransactionTable({ transactions }: { transactions: Transaction[] }) {
+  if (transactions.length === 0) {
+    return <p className="text-sm text-muted-foreground text-center py-4">No transactions recorded yet</p>;
+  }
+
+  return (
+    <div className="overflow-x-auto border rounded-lg">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Date</TableHead>
+            <TableHead className="text-right">Receive Qty</TableHead>
+            <TableHead className="text-right">Ttl Receive</TableHead>
+            <TableHead className="text-right">Issue Qty</TableHead>
+            <TableHead className="text-right">Balance Qty</TableHead>
+            <TableHead>Remarks</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {transactions.map((txn) => (
+            <TableRow key={txn.id}>
+              <TableCell className="font-medium">
+                {format(new Date(txn.transaction_date), 'dd/MM/yyyy')}
+                {txn.batch_id && (
+                  <Badge variant="outline" className="ml-2 text-xs py-0">
+                    <Layers className="h-3 w-3 mr-1" />Bulk
+                  </Badge>
+                )}
+              </TableCell>
+              <TableCell className="text-right">
+                {txn.receive_qty > 0 ? (
+                  <Badge variant="outline" className="bg-success/10 text-success border-success/20">
+                    +{txn.receive_qty}
+                  </Badge>
+                ) : '-'}
+              </TableCell>
+              <TableCell className="text-right font-mono">{txn.ttl_receive}</TableCell>
+              <TableCell className="text-right">
+                {txn.issue_qty > 0 ? (
+                  <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20">
+                    -{txn.issue_qty}
+                  </Badge>
+                ) : '-'}
+              </TableCell>
+              <TableCell className="text-right font-mono font-semibold">{txn.balance_qty}</TableCell>
+              <TableCell className="text-muted-foreground text-sm max-w-[150px] truncate">
+                {txn.remarks || '-'}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+function SummaryCards({ transactions }: { transactions: Transaction[] }) {
+  const latestBalance = transactions.length > 0
+    ? transactions[transactions.length - 1].balance_qty
+    : 0;
+  const totalReceived = transactions.reduce((sum, t) => sum + t.receive_qty, 0);
+  const totalIssued = transactions.reduce((sum, t) => sum + t.issue_qty, 0);
+
+  return (
+    <div className="grid grid-cols-3 gap-4">
+      <div className="flex items-center gap-3 p-3 rounded-lg bg-success/10 border border-success/20">
+        <ArrowDownToLine className="h-5 w-5 text-success" />
+        <div>
+          <p className="text-xs text-muted-foreground">Total Received</p>
+          <p className="text-lg font-bold text-success">{totalReceived.toLocaleString()}</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-3 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+        <ArrowUpFromLine className="h-5 w-5 text-destructive" />
+        <div>
+          <p className="text-xs text-muted-foreground">Total Issued</p>
+          <p className="text-lg font-bold text-destructive">{totalIssued.toLocaleString()}</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/10 border border-primary/20">
+        <Scale className="h-5 w-5 text-primary" />
+        <div>
+          <p className="text-xs text-muted-foreground">Current Balance</p>
+          <p className="text-lg font-bold text-primary">{latestBalance.toLocaleString()}</p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function StorageBinCardDetailModal({
@@ -53,7 +153,75 @@ export function StorageBinCardDetailModal({
   onOpenChange,
   binCard,
   transactions,
+  groupedCards,
 }: StorageBinCardDetailModalProps) {
+  // Grouped view
+  if (groupedCards) {
+    const allTxns = groupedCards.cards.flatMap(c => c.transactions);
+    const uniqueBuyers = [...new Set(groupedCards.cards.map(c => c.binCard.buyer).filter(Boolean))];
+    const uniqueSuppliers = [...new Set(groupedCards.cards.map(c => c.binCard.supplier_name).filter(Boolean))];
+    const poNumbers = groupedCards.cards.map(c => c.binCard.po_number).filter(Boolean);
+
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="w-[calc(100%-2rem)] max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Layers className="h-5 w-5 text-primary" />
+              {groupedCards.groupName}
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Group Header Info */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <p className="text-xs text-muted-foreground">POs</p>
+              <div className="flex flex-wrap gap-1 mt-0.5">
+                {poNumbers.map((po, i) => (
+                  <Badge key={i} variant="outline" className="text-xs">{po}</Badge>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Buyer{uniqueBuyers.length > 1 ? 's' : ''}</p>
+              <p className="font-medium">{uniqueBuyers.join(", ") || '-'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Supplier{uniqueSuppliers.length > 1 ? 's' : ''}</p>
+              <p className="font-medium">{uniqueSuppliers.join(", ") || '-'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Prepared By</p>
+              <p className="font-medium">{groupedCards.cards[0]?.binCard.prepared_by || '-'}</p>
+            </div>
+          </div>
+
+          <Separator />
+
+          <SummaryCards transactions={allTxns} />
+
+          <Separator />
+
+          {/* Individual PO sections */}
+          <div className="space-y-6">
+            {groupedCards.cards.map(({ binCard: card, transactions: txns }) => (
+              <div key={card.id}>
+                <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                  <Package className="h-4 w-4 text-primary" />
+                  {card.po_number}
+                  {card.buyer && <span className="text-muted-foreground font-normal">— {card.buyer}</span>}
+                  {card.style && <Badge variant="outline" className="text-xs">{card.style}</Badge>}
+                </h4>
+                <TransactionTable transactions={txns} />
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Single bin card view
   if (!binCard) return null;
 
   const latestBalance = transactions.length > 0 
@@ -125,30 +293,7 @@ export function StorageBinCardDetailModal({
 
         <Separator />
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-3 gap-4">
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-success/10 border border-success/20">
-            <ArrowDownToLine className="h-5 w-5 text-success" />
-            <div>
-              <p className="text-xs text-muted-foreground">Total Received</p>
-              <p className="text-lg font-bold text-success">{totalReceived.toLocaleString()}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
-            <ArrowUpFromLine className="h-5 w-5 text-destructive" />
-            <div>
-              <p className="text-xs text-muted-foreground">Total Issued</p>
-              <p className="text-lg font-bold text-destructive">{totalIssued.toLocaleString()}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/10 border border-primary/20">
-            <Scale className="h-5 w-5 text-primary" />
-            <div>
-              <p className="text-xs text-muted-foreground">Current Balance</p>
-              <p className="text-lg font-bold text-primary">{latestBalance.toLocaleString()}</p>
-            </div>
-          </div>
-        </div>
+        <SummaryCards transactions={transactions} />
 
         {/* Transactions Table */}
         <div>
@@ -156,62 +301,7 @@ export function StorageBinCardDetailModal({
             <Calendar className="h-4 w-4" />
             Transaction History ({transactions.length})
           </h4>
-          
-          {transactions.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No transactions recorded yet</p>
-          ) : (
-            <div className="overflow-x-auto border rounded-lg">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead className="text-right">Receive</TableHead>
-                    <TableHead className="text-right">Issue</TableHead>
-                    <TableHead className="text-right">Total Receive</TableHead>
-                    <TableHead className="text-right">Balance</TableHead>
-                    <TableHead>Remarks</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {transactions.map((txn) => (
-                    <TableRow key={txn.id}>
-                      <TableCell className="font-medium">
-                        {format(new Date(txn.transaction_date), 'dd MMM yyyy')}
-                        {txn.batch_id && (
-                          <Badge variant="outline" className="ml-2 text-xs py-0">
-                            <Layers className="h-3 w-3 mr-1" />Bulk
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {txn.receive_qty > 0 ? (
-                          <Badge variant="outline" className="bg-success/10 text-success border-success/20">
-                            +{txn.receive_qty}
-                          </Badge>
-                        ) : (
-                          '-'
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {txn.issue_qty > 0 ? (
-                          <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20">
-                            -{txn.issue_qty}
-                          </Badge>
-                        ) : (
-                          '-'
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right font-mono">{txn.ttl_receive}</TableCell>
-                      <TableCell className="text-right font-mono font-semibold">{txn.balance_qty}</TableCell>
-                      <TableCell className="text-muted-foreground text-sm max-w-[150px] truncate">
-                        {txn.remarks || '-'}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+          <TransactionTable transactions={transactions} />
         </div>
       </DialogContent>
     </Dialog>
