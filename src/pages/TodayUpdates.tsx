@@ -700,12 +700,14 @@ export default function TodayUpdates() {
       if (binCardError) throw binCardError;
 
       // If this bin card is part of a group, load the full group
-      if (binCardData.bin_group_id) {
-        const { data: groupCards, error: groupError } = await supabase
-          .from('storage_bin_cards')
-          .select('*, work_orders(po_number)')
-          .eq('bin_group_id', binCardData.bin_group_id)
-          .order('created_at', { ascending: true });
+      const groupKey = binCardData.po_set_signature || binCardData.bin_group_id;
+      if (groupKey) {
+        // Query by whichever grouping field is present
+        const groupQuery = binCardData.po_set_signature
+          ? supabase.from('storage_bin_cards').select('*, work_orders(po_number)').eq('po_set_signature', binCardData.po_set_signature!).order('created_at', { ascending: true })
+          : supabase.from('storage_bin_cards').select('*, work_orders(po_number)').eq('bin_group_id', binCardData.bin_group_id!).order('created_at', { ascending: true });
+
+        const { data: groupCards, error: groupError } = await groupQuery;
 
         if (!groupError && groupCards && groupCards.length > 1) {
           const groupedCardsData = await Promise.all(
