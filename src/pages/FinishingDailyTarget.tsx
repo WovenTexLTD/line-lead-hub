@@ -211,6 +211,10 @@ export default function FinishingDailyTarget() {
       newErrors.processes = "Enter at least one target value";
     }
 
+    if (!plannedHours || parseFloat(plannedHours) <= 0) {
+      newErrors.plannedHours = "Planned hours must be greater than 0";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }
@@ -249,7 +253,7 @@ export default function FinishingDailyTarget() {
         carton: processValues.carton ? parseInt(processValues.carton) : 0,
         remarks: remarks || null,
         submitted_by: user.id,
-        planned_hours: plannedHours ? parseFloat(plannedHours) : null,
+        planned_hours: parseFloat(plannedHours),
       };
 
       if (isEditing && existingLog) {
@@ -485,12 +489,14 @@ export default function FinishingDailyTarget() {
               <Input
                 type="number"
                 step="0.5"
-                min="0"
+                min="0.5"
                 max="24"
                 value={plannedHours}
                 onChange={(e) => setPlannedHours(e.target.value)}
                 placeholder="e.g. 10"
+                className={errors.plannedHours ? "border-destructive" : ""}
               />
+              {errors.plannedHours && <p className="text-sm text-destructive">{errors.plannedHours}</p>}
               <p className="text-xs text-muted-foreground">
                 Total working hours for the finishing department today (including overtime)
               </p>
