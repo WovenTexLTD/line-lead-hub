@@ -311,8 +311,9 @@ export default function TodayUpdates() {
   );
 
   const filteredFinishing = finishingDailyLogs.filter(s =>
-    (s.lines?.name || s.lines?.line_id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (s.work_orders?.po_number || '').toLowerCase().includes(searchTerm.toLowerCase())
+    (s.work_orders?.po_number || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (s.work_orders?.buyer || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (s.work_orders?.style || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const filteredCutting = cuttingActuals.filter(c =>
@@ -459,12 +460,10 @@ export default function TodayUpdates() {
     );
   }, [filteredCuttingTargets, filteredCutting]);
 
-  // Merge finishing TARGET and OUTPUT logs by line for unified display
+  // Merge finishing TARGET and OUTPUT logs by PO for unified display
   const mergedFinishingData = useMemo(() => {
     const map = new Map<string, {
       key: string;
-      line_id: string;
-      line_name: string;
       po_number: string | null;
       target: FinishingDailyLog | null;
       output: FinishingDailyLog | null;
@@ -472,7 +471,7 @@ export default function TodayUpdates() {
     }>();
 
     filteredFinishing.forEach(log => {
-      const key = `${log.line_id || 'dept'}-${log.work_order_id || 'no-po'}`;
+      const key = `${log.work_order_id || 'no-po'}`;
       const existing = map.get(key);
 
       if (existing) {
@@ -488,8 +487,6 @@ export default function TodayUpdates() {
       } else {
         map.set(key, {
           key,
-          line_id: log.line_id || '',
-          line_name: log.lines?.name || log.lines?.line_id || 'All Lines',
           po_number: log.work_orders?.po_number || null,
           target: log.log_type === 'TARGET' ? log : null,
           output: log.log_type === 'OUTPUT' ? log : null,
@@ -498,7 +495,7 @@ export default function TodayUpdates() {
       }
     });
 
-    return Array.from(map.values()).sort((a, b) => 
+    return Array.from(map.values()).sort((a, b) =>
       b.submitted_at.localeCompare(a.submitted_at)
     );
   }, [filteredFinishing]);
@@ -933,7 +930,6 @@ export default function TodayUpdates() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Time</TableHead>
-                        <TableHead>Line</TableHead>
                         <TableHead>PO</TableHead>
                         <TableHead className="text-right">Output (Poly)</TableHead>
                         <TableHead className="text-right">Target (Poly)</TableHead>
@@ -954,13 +950,12 @@ export default function TodayUpdates() {
                         const hasTarget = totalTarget > 0;
                         const percent = totalTarget > 0 ? (totalOutput / totalTarget) * 100 : null;
                         return (
-                          <TableRow 
+                          <TableRow
                             key={`finishing-merged-${idx}`}
                             className="cursor-pointer hover:bg-muted/50"
                             onClick={() => item.output && handleFinishingClick(item.output)}
                           >
                             <TableCell className="font-mono text-sm">{formatTime(item.submitted_at)}</TableCell>
-                            <TableCell className="font-medium">{item.line_name}</TableCell>
                             <TableCell>{item.po_number || '-'}</TableCell>
                             <TableCell className="text-right font-mono">{outputPoly.toLocaleString()}</TableCell>
                             <TableCell className="text-right font-mono text-muted-foreground">{targetPoly.toLocaleString()}</TableCell>
@@ -1276,7 +1271,6 @@ export default function TodayUpdates() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Time</TableHead>
-                        <TableHead>Line</TableHead>
                         <TableHead>PO</TableHead>
                         <TableHead className="text-right">Output (Poly)</TableHead>
                         <TableHead className="text-right">Target (Poly)</TableHead>
@@ -1292,13 +1286,12 @@ export default function TodayUpdates() {
                         const outputCarton = row.output?.carton || 0;
                         const targetCarton = row.target?.carton || 0;
                         return (
-                          <TableRow 
+                          <TableRow
                             key={row.key}
                             className="cursor-pointer hover:bg-muted/50"
                             onClick={() => row.output ? handleFinishingClick(row.output) : row.target && handleFinishingClick(row.target)}
                           >
                             <TableCell className="font-mono text-sm">{formatTime(row.submitted_at)}</TableCell>
-                            <TableCell className="font-medium">{row.line_name}</TableCell>
                             <TableCell>{row.po_number || '-'}</TableCell>
                             <TableCell className="text-right font-mono font-bold">{outputPoly.toLocaleString()}</TableCell>
                             <TableCell className="text-right font-mono">{targetPoly > 0 ? targetPoly.toLocaleString() : '-'}</TableCell>
@@ -1318,7 +1311,7 @@ export default function TodayUpdates() {
                       })}
                       {mergedFinishingData.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                             No finishing logs today
                           </TableCell>
                         </TableRow>
@@ -1477,10 +1470,7 @@ export default function TodayUpdates() {
           carton: selectedFinishingLog.carton || 0,
           is_locked: false,
           submitted_at: selectedFinishingLog.submitted_at,
-          line: selectedFinishingLog.lines ? {
-            line_id: selectedFinishingLog.lines.line_id,
-            name: selectedFinishingLog.lines.name
-          } : null,
+          line: null,
           work_order: selectedFinishingLog.work_orders ? {
             po_number: selectedFinishingLog.work_orders.po_number,
             style: selectedFinishingLog.work_orders.style,

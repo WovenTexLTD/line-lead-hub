@@ -333,7 +333,6 @@ export default function FinishingMySubmissions() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Date</TableHead>
-                        <TableHead>Line</TableHead>
                         <TableHead>PO / Style</TableHead>
                         <TableHead>Shift</TableHead>
                         <TableHead className="text-right">Total Pcs</TableHead>
@@ -357,22 +356,6 @@ export default function FinishingMySubmissions() {
                                   </Badge>
                                 )}
                               </div>
-                            </TableCell>
-                            <TableCell>
-                              {log.line ? (
-                                <>
-                                  <span className="font-medium">
-                                    {log.line.line_id}
-                                  </span>
-                                  {log.line.name && (
-                                    <span className="text-muted-foreground ml-1">
-                                      ({log.line.name})
-                                    </span>
-                                  )}
-                                </>
-                              ) : (
-                                <span className="text-muted-foreground">All Lines</span>
-                              )}
                             </TableCell>
                             <TableCell>
                               {log.work_order ? (

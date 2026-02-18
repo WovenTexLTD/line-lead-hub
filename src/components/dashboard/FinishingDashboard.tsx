@@ -87,8 +87,8 @@ export function FinishingDashboard() {
       // Format logs
       const formattedLogs: DailyLogSummary[] = (logsData || []).map((log: any) => ({
         id: log.id,
-        line_id: log.lines?.line_id || 'Unknown',
-        line_name: log.lines?.name || log.lines?.line_id || 'Unknown',
+        line_id: '',
+        line_name: '',
         work_order_id: log.work_order_id,
         po_number: log.work_orders?.po_number || null,
         buyer: log.work_orders?.buyer || null,
@@ -265,10 +265,7 @@ export function FinishingDashboard() {
                           remarks: log.remarks,
                           submitted_at: log.submitted_at,
                           is_locked: false,
-                          line: {
-                            line_id: log.line_id,
-                            name: log.line_name,
-                          },
+                          line: null,
                           work_order: log.po_number ? {
                             po_number: log.po_number,
                             style: log.style || '',
@@ -289,13 +286,13 @@ export function FinishingDashboard() {
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-semibold">{log.line_name}</span>
+                            <span className="font-semibold">{log.po_number || 'No PO'}</span>
                             <Badge variant={activeTab === "targets" ? "secondary" : "default"} className="text-xs">
                               {activeTab === "targets" ? "Target" : "Output"}
                             </Badge>
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            {log.po_number || 'No PO'} • {log.style || 'No Style'}
+                            {log.buyer || 'No Buyer'} • {log.style || 'No Style'}
                           </p>
                           <span className="text-xs text-muted-foreground">
                             Submitted {formatTime(log.submitted_at)}

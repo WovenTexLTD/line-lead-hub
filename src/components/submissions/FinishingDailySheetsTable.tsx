@@ -111,8 +111,8 @@ export function FinishingDailySheetsTable({
       const formatted: DailyLogRow[] = (data || []).map((log: any) => ({
         id: log.id,
         production_date: log.production_date,
-        line_name: log.lines?.name || log.lines?.line_id || "Unknown",
-        line_id: log.lines?.line_id || "Unknown",
+        line_name: "",
+        line_id: "",
         po_number: log.work_orders?.po_number || null,
         buyer: log.work_orders?.buyer || null,
         style: log.work_orders?.style || null,
@@ -151,7 +151,6 @@ export function FinishingDailySheetsTable({
       if (!searchTerm) return true;
       const search = searchTerm.toLowerCase();
       return (
-        log.line_name.toLowerCase().includes(search) ||
         (log.po_number?.toLowerCase() || "").includes(search) ||
         (log.style?.toLowerCase() || "").includes(search) ||
         (log.buyer?.toLowerCase() || "").includes(search)
@@ -229,12 +228,11 @@ export function FinishingDailySheetsTable({
 
   function exportSelectedCsv() {
     const rows = sortedData.filter(l => selectedIds.has(l.id));
-    const headers = ["Date", "Line", "PO", "Buyer", "Style", "Type", "Thread Cutting", "Inside Check", "Top Side Check", "Buttoning", "Iron", "Get Up", "Poly", "Carton"];
+    const headers = ["Date", "PO", "Buyer", "Style", "Type", "Thread Cutting", "Inside Check", "Top Side Check", "Buttoning", "Iron", "Get Up", "Poly", "Carton"];
     const csvRows = [headers.join(",")];
     rows.forEach(l => {
       csvRows.push([
         l.production_date,
-        `"${l.line_name}"`,
         `"${l.po_number || ""}"`,
         `"${l.buyer || ""}"`,
         `"${l.style || ""}"`,
@@ -263,7 +261,7 @@ export function FinishingDailySheetsTable({
     return (
       <div className="space-y-4">
         <StatsCardsSkeleton count={3} />
-        <TableSkeleton columns={8} rows={6} headers={["Date", "Line", "PO / Style", "Buyer", "Poly", "Carton", "Status", ""]} />
+        <TableSkeleton columns={7} rows={6} headers={["Date", "PO / Style", "Buyer", "Poly", "Carton", "Status", ""]} />
       </div>
     );
   }
@@ -371,7 +369,7 @@ export function FinishingDailySheetsTable({
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by line, PO, buyer, or style..."
+              placeholder="Search by PO, buyer, or style..."
               value={searchTerm}
               onChange={(e) => onSearchChange(e.target.value)}
               className="pl-9"
@@ -420,7 +418,6 @@ export function FinishingDailySheetsTable({
                         />
                       </TableHead>
                       <SortableTableHead column="production_date" sortConfig={sortConfig} onSort={requestSort}>Date</SortableTableHead>
-                      <SortableTableHead column="line_name" sortConfig={sortConfig} onSort={requestSort}>Line</SortableTableHead>
                       <TableHead>PO / Style</TableHead>
                       <SortableTableHead column="buyer" sortConfig={sortConfig} onSort={requestSort}>Buyer</SortableTableHead>
                       <SortableTableHead column="poly" sortConfig={sortConfig} onSort={requestSort} className="text-right">Poly</SortableTableHead>
@@ -451,9 +448,6 @@ export function FinishingDailySheetsTable({
                               <p className="font-mono text-sm">{formatShortDate(log.production_date)}</p>
                               <p className="text-xs text-muted-foreground">{formatTime(log.submitted_at)}</p>
                             </div>
-                          </TableCell>
-                          <TableCell>
-                            <span className="font-medium">{log.line_name}</span>
                           </TableCell>
                           <TableCell>
                             <div>
@@ -490,7 +484,7 @@ export function FinishingDailySheetsTable({
                       ))}
                       {paginatedData.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
+                          <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
                             <Package className="h-12 w-12 mx-auto mb-3 opacity-30" />
                             <p>No {activeTab === "targets" ? "targets" : "outputs"} found</p>
                           </TableCell>
@@ -537,10 +531,7 @@ export function FinishingDailySheetsTable({
           remarks: selectedLog.remarks,
           submitted_at: selectedLog.submitted_at,
           is_locked: selectedLog.is_locked,
-          line: {
-            line_id: selectedLog.line_id,
-            name: selectedLog.line_name
-          },
+          line: null,
           work_order: selectedLog.po_number ? {
             po_number: selectedLog.po_number,
             style: selectedLog.style || "",

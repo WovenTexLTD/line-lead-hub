@@ -80,31 +80,25 @@ export function FinishingLogDetailModal({ log, open, onOpenChange }: FinishingLo
             </div>
           </div>
 
-          {/* Line & PO */}
-          <div className="border rounded-lg p-3 space-y-2">
-            <div>
-              <span className="text-sm text-muted-foreground">Line:</span>
-              <p className="font-medium">{log.line?.name || log.line?.line_id || "All Lines"}</p>
-            </div>
-            {log.work_order && (
-              <>
+          {/* PO Info */}
+          {log.work_order && (
+            <div className="border rounded-lg p-3 space-y-2">
+              <div>
+                <span className="text-sm text-muted-foreground">PO Number:</span>
+                <p className="font-medium">{log.work_order.po_number}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <span className="text-sm text-muted-foreground">PO Number:</span>
-                  <p className="font-medium">{log.work_order.po_number}</p>
+                  <span className="text-sm text-muted-foreground">Style:</span>
+                  <p className="font-medium">{log.work_order.style}</p>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <span className="text-sm text-muted-foreground">Style:</span>
-                    <p className="font-medium">{log.work_order.style}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm text-muted-foreground">Buyer:</span>
-                    <p className="font-medium">{log.work_order.buyer}</p>
-                  </div>
+                <div>
+                  <span className="text-sm text-muted-foreground">Buyer:</span>
+                  <p className="font-medium">{log.work_order.buyer}</p>
                 </div>
-              </>
-            )}
-          </div>
+              </div>
+            </div>
+          )}
 
           {/* Process Values */}
           <div className="border rounded-lg p-3">
