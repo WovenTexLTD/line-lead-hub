@@ -1118,7 +1118,7 @@ export type Database = {
           inside_check: number | null
           iron: number | null
           is_locked: boolean
-          line_id: string
+          line_id: string | null
           locked_at: string | null
           locked_by: string | null
           log_type: Database["public"]["Enums"]["finishing_log_type"]
@@ -1144,7 +1144,7 @@ export type Database = {
           inside_check?: number | null
           iron?: number | null
           is_locked?: boolean
-          line_id: string
+          line_id?: string | null
           locked_at?: string | null
           locked_by?: string | null
           log_type: Database["public"]["Enums"]["finishing_log_type"]
@@ -1170,7 +1170,7 @@ export type Database = {
           inside_check?: number | null
           iron?: number | null
           is_locked?: boolean
-          line_id?: string
+          line_id?: string | null
           locked_at?: string | null
           locked_by?: string | null
           log_type?: Database["public"]["Enums"]["finishing_log_type"]
