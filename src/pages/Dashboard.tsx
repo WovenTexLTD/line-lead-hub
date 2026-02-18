@@ -553,18 +553,17 @@ export default function Dashboard() {
         leftover_location: c.leftover_location || null,
       }));
 
-      // Format storage bin cards - only include those with transactions from today
-      const formattedBinCards: StorageBinCard[] = (binCardsData || [])
+      // Format storage bin cards
+      const allFormattedBinCards: (StorageBinCard & { hasTodayTransactions: boolean })[] = (binCardsData || [])
         .map((b: any) => {
           const allTransactions = (b.storage_bin_card_transactions || []).sort(
             (a: any, b: any) => new Date(a.transaction_date).getTime() - new Date(b.transaction_date).getTime()
           );
-          // Filter to only today's transactions
           const todayTransactions = allTransactions.filter(
             (t: any) => t.transaction_date === today
           );
           const latestBalance = allTransactions.length > 0 ? allTransactions[allTransactions.length - 1].balance_qty : 0;
-          
+
           return {
             id: b.id,
             buyer: b.work_orders?.buyer || b.buyer || null,
@@ -590,12 +589,21 @@ export default function Dashboard() {
               created_at: t.created_at,
               batch_id: t.batch_id || null,
             })),
-            transaction_count: todayTransactions.length, // Show only today's transaction count
+            transaction_count: todayTransactions.length,
             latest_balance: latestBalance,
             hasTodayTransactions: todayTransactions.length > 0,
           };
-        })
-        .filter((b: any) => b.hasTodayTransactions); // Only show bin cards with today's transactions
+        });
+
+      // Include cards with today's transactions + all group members where any member has today's transactions
+      const todayGroupIds = new Set(
+        allFormattedBinCards
+          .filter(b => b.hasTodayTransactions && b.bin_group_id)
+          .map(b => b.bin_group_id!)
+      );
+      const formattedBinCards: StorageBinCard[] = allFormattedBinCards.filter(
+        b => b.hasTodayTransactions || (b.bin_group_id && todayGroupIds.has(b.bin_group_id))
+      );
 
       // Fetch active blockers from production_updates tables (same source as Blockers page)
       const [sewingBlockersData, finishingBlockersData] = await Promise.all([

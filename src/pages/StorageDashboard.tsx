@@ -252,48 +252,66 @@ export default function StorageDashboard() {
     return map;
   }, [binCards]);
 
-  const filteredCards = binCards.filter(card => {
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      let matchesSearch = (
-        card.work_orders.po_number.toLowerCase().includes(term) ||
-        card.work_orders.buyer.toLowerCase().includes(term) ||
-        card.work_orders.style.toLowerCase().includes(term) ||
-        (card.work_orders.item?.toLowerCase().includes(term)) ||
-        (card.description?.toLowerCase().includes(term)) ||
-        (card.group_name?.toLowerCase().includes(term))
-      );
-      if (!matchesSearch && card.bin_group_id) {
-        const groupData = groupSearchMap.get(card.bin_group_id);
-        if (groupData) {
-          matchesSearch = (
-            groupData.poNumbers.some(po => po.toLowerCase().includes(term)) ||
-            groupData.buyers.some(b => b.toLowerCase().includes(term)) ||
-            groupData.styles.some(s => s.toLowerCase().includes(term))
-          );
+  const filteredCards = useMemo(() => {
+    // First pass: standard filtering
+    const directMatches = binCards.filter(card => {
+      if (searchTerm) {
+        const term = searchTerm.toLowerCase();
+        let matchesSearch = (
+          card.work_orders.po_number.toLowerCase().includes(term) ||
+          card.work_orders.buyer.toLowerCase().includes(term) ||
+          card.work_orders.style.toLowerCase().includes(term) ||
+          (card.work_orders.item?.toLowerCase().includes(term)) ||
+          (card.description?.toLowerCase().includes(term)) ||
+          (card.group_name?.toLowerCase().includes(term))
+        );
+        if (!matchesSearch && card.bin_group_id) {
+          const groupData = groupSearchMap.get(card.bin_group_id);
+          if (groupData) {
+            matchesSearch = (
+              groupData.poNumbers.some(po => po.toLowerCase().includes(term)) ||
+              groupData.buyers.some(b => b.toLowerCase().includes(term)) ||
+              groupData.styles.some(s => s.toLowerCase().includes(term))
+            );
+          }
         }
+        if (!matchesSearch) return false;
       }
-      if (!matchesSearch) return false;
-    }
 
-    if (dateFrom) {
-      const cardDate = new Date(card.created_at);
-      cardDate.setHours(0, 0, 0, 0);
-      const fromDate = new Date(dateFrom);
-      fromDate.setHours(0, 0, 0, 0);
-      if (cardDate < fromDate) return false;
-    }
+      if (dateFrom) {
+        const cardDate = new Date(card.created_at);
+        cardDate.setHours(0, 0, 0, 0);
+        const fromDate = new Date(dateFrom);
+        fromDate.setHours(0, 0, 0, 0);
+        if (cardDate < fromDate) return false;
+      }
 
-    if (dateTo) {
-      const cardDate = new Date(card.created_at);
-      cardDate.setHours(23, 59, 59, 999);
-      const toDate = new Date(dateTo);
-      toDate.setHours(23, 59, 59, 999);
-      if (cardDate > toDate) return false;
-    }
+      if (dateTo) {
+        const cardDate = new Date(card.created_at);
+        cardDate.setHours(23, 59, 59, 999);
+        const toDate = new Date(dateTo);
+        toDate.setHours(23, 59, 59, 999);
+        if (cardDate > toDate) return false;
+      }
 
-    return true;
-  });
+      return true;
+    });
+
+    // Second pass: include all group members when any member matched
+    const matchedGroupIds = new Set(
+      directMatches.filter(c => c.bin_group_id).map(c => c.bin_group_id!)
+    );
+    if (matchedGroupIds.size === 0) return directMatches;
+
+    const matchedIds = new Set(directMatches.map(c => c.id));
+    const result = [...directMatches];
+    for (const card of binCards) {
+      if (!matchedIds.has(card.id) && card.bin_group_id && matchedGroupIds.has(card.bin_group_id)) {
+        result.push(card);
+      }
+    }
+    return result;
+  }, [binCards, searchTerm, dateFrom, dateTo, groupSearchMap]);
 
   // Group filtered cards for display
   const displayRows: DisplayRow[] = useMemo(() => {

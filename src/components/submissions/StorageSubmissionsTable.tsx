@@ -118,7 +118,37 @@ export function StorageSubmissionsTable({
 
       if (error) throw error;
 
-      const cardIds = (cardsData || []).map(c => c.id);
+      // Backfill missing group members: if any card in a group passes the date
+      // filter, also fetch sibling cards that were created outside the date range
+      const fetchedIds = new Set((cardsData || []).map(c => c.id));
+      const groupSignatures = [...new Set(
+        (cardsData || []).map(c => c.po_set_signature).filter(Boolean)
+      )] as string[];
+
+      let allCards = [...(cardsData || [])];
+
+      if (groupSignatures.length > 0) {
+        const { data: siblingCards } = await supabase
+          .from("storage_bin_cards")
+          .select(`
+            id, work_order_id, buyer, style, supplier_name, description, color,
+            created_at, updated_at, group_name, po_set_signature,
+            work_orders!inner ( po_number, buyer, style, item )
+          `)
+          .eq("factory_id", factoryId)
+          .in("po_set_signature", groupSignatures);
+
+        if (siblingCards) {
+          for (const card of siblingCards) {
+            if (!fetchedIds.has(card.id)) {
+              allCards.push(card);
+              fetchedIds.add(card.id);
+            }
+          }
+        }
+      }
+
+      const cardIds = allCards.map(c => c.id);
       const latestByCard = new Map<string, { balance: number; received: number; issued: number }>();
 
       if (cardIds.length > 0) {
@@ -131,12 +161,12 @@ export function StorageSubmissionsTable({
           .order("created_at", { ascending: false });
 
         const txnTotals = new Map<string, { received: number; issued: number }>();
-        
+
         (allTxns || []).forEach(txn => {
           if (!latestByCard.has(txn.bin_card_id)) {
             latestByCard.set(txn.bin_card_id, { balance: txn.balance_qty, received: 0, issued: 0 });
           }
-          
+
           const current = txnTotals.get(txn.bin_card_id) || { received: 0, issued: 0 };
           current.received += txn.receive_qty || 0;
           current.issued += txn.issue_qty || 0;
@@ -152,7 +182,7 @@ export function StorageSubmissionsTable({
         });
       }
 
-      const cardsWithBalance = (cardsData || []).map(card => ({
+      const cardsWithBalance = allCards.map(card => ({
         ...card,
         latestBalance: latestByCard.get(card.id)?.balance,
         totalReceived: latestByCard.get(card.id)?.received || 0,
