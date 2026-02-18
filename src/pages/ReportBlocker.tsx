@@ -123,7 +123,7 @@ export default function ReportBlocker() {
       }
       // If "both", keep whatever is currently selected (defaults to sewing)
     }
-  }, [profile?.department, roles]);
+  }, [profile?.department, hasRole]);
 
   useEffect(() => {
     if (profile?.factory_id) {

@@ -163,11 +163,10 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
       }
 
       const { error: insertRoleError } = await mutateWithRetry(() =>
-        supabase.from('user_roles').insert({
+        supabase.from('user_roles').insert([{
           user_id: user.id,
-          role: formData.role,
-          factory_id: profile.factory_id,
-        })
+          role: formData.role as any,
+        }])
       );
 
       if (insertRoleError) {

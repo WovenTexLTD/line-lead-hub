@@ -101,7 +101,7 @@ const handler = async (req: Request): Promise<Response> => {
 
 // --- Late Submission Logic ---
 async function processLateSubmissions(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   factoryId: string,
   factoryName: string,
   todayStr: string,
@@ -147,11 +147,11 @@ async function processLateSubmissions(
     .eq("production_date", todayStr);
 
   const submittedLineIds = new Set([
-    ...(sewingSubmissions || []).map((s: { line_id: string }) => s.line_id),
-    ...(finishingSubmissions || []).map((s: { line_id: string }) => s.line_id),
+    ...(sewingSubmissions || []).map((s: any) => s.line_id),
+    ...(finishingSubmissions || []).map((s: any) => s.line_id),
   ]);
 
-  const missingLines = lines.filter((l: { id: string }) => !submittedLineIds.has(l.id));
+  const missingLines = (lines as any[]).filter((l) => !submittedLineIds.has(l.id));
 
   if (missingLines.length === 0) {
     logStep(`All lines submitted for ${factoryName}`);
@@ -176,12 +176,12 @@ async function processLateSubmissions(
     .in("role", ["admin", "owner"])
     .in(
       "user_id",
-      adminUsers.map((u: { id: string }) => u.id)
+      (adminUsers as any[]).map((u) => u.id)
     );
 
   if (!adminRoles || adminRoles.length === 0) return;
 
-  const adminUserIds = adminRoles.map((r: { user_id: string }) => r.user_id);
+  const adminUserIds = (adminRoles as any[]).map((r) => r.user_id);
 
   // Check preferences for each admin
   const { data: prefs } = await supabase
@@ -191,14 +191,14 @@ async function processLateSubmissions(
     .in("user_id", adminUserIds);
 
   const prefsMap = new Map(
-    (prefs || []).map((p: { user_id: string; in_app_enabled: boolean | null }) => [
+    (prefs || []).map((p: any) => [
       p.user_id,
       p.in_app_enabled,
     ])
   );
 
   const missingLineNames = missingLines
-    .map((l: { name: string | null; line_id: string }) => l.name || l.line_id)
+    .map((l: any) => l.name || l.line_id)
     .slice(0, 5);
   const moreCount = missingLines.length > 5 ? missingLines.length - 5 : 0;
   const linesSummary = missingLineNames.join(", ") + (moreCount > 0 ? ` +${moreCount} more` : "");
@@ -218,7 +218,7 @@ async function processLateSubmissions(
       data: {
         production_date: todayStr,
         missing_count: missingLines.length,
-        missing_lines: missingLines.map((l: { id: string; name: string | null; line_id: string }) => ({
+        missing_lines: missingLines.map((l: any) => ({
           id: l.id,
           name: l.name || l.line_id,
         })),
@@ -240,7 +240,7 @@ async function processLateSubmissions(
 
 // --- Daily Summary Logic ---
 async function processDailySummary(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   factoryId: string,
   factoryName: string,
   todayStr: string,
