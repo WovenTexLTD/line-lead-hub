@@ -42,8 +42,8 @@ interface Line {
   is_active: boolean;
   targetSubmitted: boolean;
   eodSubmitted: boolean;
-  sewingOutput: number;
-  finishingOutput: number;
+  sewingTarget: number;
+  sewingEod: number;
   workOrders: LineWorkOrder[];
   selectedWoId: string | null;
 }
@@ -108,7 +108,7 @@ export default function Lines() {
           .order('line_id'),
         supabase
           .from('sewing_targets')
-          .select('line_id, work_order_id')
+          .select('line_id, work_order_id, target_qty')
           .eq('factory_id', profile.factory_id)
           .eq('production_date', today),
         supabase
@@ -205,6 +205,15 @@ export default function Lines() {
       }
     });
 
+    // Build sewing target map (PO-scoped)
+    const sewingTargetMap = new Map<string, number>();
+    sewingTargets.forEach((t: any) => {
+      if (matchesSelectedPO(t.line_id, t.work_order_id)) {
+        const existing = sewingTargetMap.get(t.line_id) || 0;
+        sewingTargetMap.set(t.line_id, existing + (t.target_qty || 0));
+      }
+    });
+
     // Build sewing EOD map (PO-scoped)
     const sewingEodMap = new Map<string, { submitted: boolean; output: number }>();
     sewingActuals.forEach((u: any) => {
@@ -242,8 +251,8 @@ export default function Lines() {
         is_active: line.is_active,
         targetSubmitted: targetSubmittedSet.has(line.id),
         eodSubmitted: !!(sewingEod?.submitted || finishingEod?.submitted),
-        sewingOutput: sewingEod?.output || 0,
-        finishingOutput: finishingEod?.output || 0,
+        sewingTarget: sewingTargetMap.get(line.id) || 0,
+        sewingEod: sewingEod?.output || 0,
         workOrders: woList,
         selectedWoId: lineSelectedWo.get(line.id) || null,
       };
@@ -338,8 +347,8 @@ export default function Lines() {
                   <TableHead>Current PO</TableHead>
                   <TableHead className="text-center">Target Status</TableHead>
                   <TableHead className="text-center">EOD Status</TableHead>
-                  <TableHead className="text-right">Sewing</TableHead>
-                  <TableHead className="text-right">Finishing</TableHead>
+                  <TableHead className="text-right">Sewing Target</TableHead>
+                  <TableHead className="text-right">Sewing EOD</TableHead>
                   <TableHead className="text-center">Active</TableHead>
                 </TableRow>
               </TableHeader>
@@ -460,10 +469,10 @@ export default function Lines() {
                       )}
                     </TableCell>
                     <TableCell className="text-right font-mono font-bold">
-                      {line.sewingOutput > 0 ? line.sewingOutput.toLocaleString() : '-'}
+                      {line.sewingTarget > 0 ? line.sewingTarget.toLocaleString() : '-'}
                     </TableCell>
                     <TableCell className="text-right font-mono font-bold">
-                      {line.finishingOutput > 0 ? line.finishingOutput.toLocaleString() : '-'}
+                      {line.sewingEod > 0 ? line.sewingEod.toLocaleString() : '-'}
                     </TableCell>
                     <TableCell className="text-center">
                       {line.is_active ? (
