@@ -1216,17 +1216,22 @@ export default function StorageBinCard() {
               {/* Section B: Shared Bin Card Header Fields */}
               <div className="grid grid-cols-1 gap-3">
                 {(() => {
+                  const poNumbers = selectedWorkOrders.map(wo => wo.po_number);
                   const buyers = [...new Set(selectedWorkOrders.map(wo => wo.buyer))];
                   const styles = [...new Set(selectedWorkOrders.map(wo => wo.style))];
                   return (
                     <>
                       <div>
+                        <Label>PO NUMBERS</Label>
+                        <Input value={poNumbers.join(", ")} disabled className="bg-muted" />
+                      </div>
+                      <div>
                         <Label>BUYER</Label>
-                        <Input value={buyers.length === 1 ? buyers[0] : `Multiple (${buyers.length})`} disabled className="bg-muted" />
+                        <Input value={buyers.join(", ")} disabled className="bg-muted" />
                       </div>
                       <div>
                         <Label>STYLE</Label>
-                        <Input value={styles.length === 1 ? styles[0] : `Multiple (${styles.length})`} disabled className="bg-muted" />
+                        <Input value={styles.join(", ")} disabled className="bg-muted" />
                       </div>
                     </>
                   );

@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, Package, Search, FileText, AlertTriangle, CalendarIcon, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Package, Search, FileText, AlertTriangle, CalendarIcon, X, Layers } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { format } from "date-fns";
 import {
@@ -40,12 +41,25 @@ interface BinCardWithWorkOrder {
   prepared_by_user_id: string | null;
   created_at: string;
   updated_at: string;
+  bin_group_id: string | null;
   work_orders: {
     po_number: string;
     buyer: string;
     style: string;
     item: string | null;
   };
+}
+
+interface DisplayRow {
+  type: "single" | "group";
+  key: string;
+  cards: BinCardWithWorkOrder[];
+  poNumbers: string[];
+  buyer: string;
+  style: string;
+  description: string;
+  preparedBy: string;
+  createdAt: string;
 }
 
 interface Transaction {
@@ -100,6 +114,7 @@ export default function StorageHistory() {
           prepared_by_user_id,
           created_at,
           updated_at,
+          bin_group_id,
           work_orders!inner (
             po_number,
             buyer,
@@ -162,10 +177,65 @@ export default function StorageHistory() {
 
   const hasActiveFilters = dateFrom || dateTo || searchTerm;
 
+  // Group filtered cards by bin_group_id for display
+  const displayRows: DisplayRow[] = useMemo(() => {
+    const rows: DisplayRow[] = [];
+    const groupMap = new Map<string, BinCardWithWorkOrder[]>();
+    const ungrouped: BinCardWithWorkOrder[] = [];
+
+    for (const card of filteredCards) {
+      if (card.bin_group_id) {
+        const existing = groupMap.get(card.bin_group_id);
+        if (existing) {
+          existing.push(card);
+        } else {
+          groupMap.set(card.bin_group_id, [card]);
+        }
+      } else {
+        ungrouped.push(card);
+      }
+    }
+
+    // Add grouped rows
+    for (const [groupId, cards] of groupMap) {
+      const first = cards[0];
+      rows.push({
+        type: cards.length > 1 ? "group" : "single",
+        key: groupId,
+        cards,
+        poNumbers: cards.map(c => c.work_orders.po_number),
+        buyer: first.work_orders.buyer,
+        style: [...new Set(cards.map(c => c.work_orders.style))].join(", "),
+        description: first.description || first.work_orders.item || "-",
+        preparedBy: first.prepared_by || "-",
+        createdAt: first.created_at,
+      });
+    }
+
+    // Add ungrouped rows
+    for (const card of ungrouped) {
+      rows.push({
+        type: "single",
+        key: card.id,
+        cards: [card],
+        poNumbers: [card.work_orders.po_number],
+        buyer: card.work_orders.buyer,
+        style: card.work_orders.style,
+        description: card.description || card.work_orders.item || "-",
+        preparedBy: card.prepared_by || "-",
+        createdAt: card.created_at,
+      });
+    }
+
+    // Sort by most recent created_at
+    rows.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return rows;
+  }, [filteredCards]);
+
   async function openCardDetail(card: BinCardWithWorkOrder) {
     setSelectedCard(card);
     setLoadingTxn(true);
-    
+
     try {
       const { data, error } = await supabase
         .from("storage_bin_card_transactions")
@@ -173,11 +243,41 @@ export default function StorageHistory() {
         .eq("bin_card_id", card.id)
         .order("transaction_date", { ascending: true })
         .order("created_at", { ascending: true });
-      
+
       if (error) throw error;
       setTransactions(data || []);
     } catch (error) {
       console.error("Error loading transactions:", error);
+    } finally {
+      setLoadingTxn(false);
+    }
+  }
+
+  // Open detail for a group: load transactions for all cards in the group
+  const [selectedGroup, setSelectedGroup] = useState<DisplayRow | null>(null);
+  const [groupTransactions, setGroupTransactions] = useState<Record<string, { po: string; txns: Transaction[] }>>({});
+
+  async function openGroupDetail(row: DisplayRow) {
+    setSelectedGroup(row);
+    setSelectedCard(null);
+    setLoadingTxn(true);
+
+    try {
+      const result: Record<string, { po: string; txns: Transaction[] }> = {};
+      for (const card of row.cards) {
+        const { data, error } = await supabase
+          .from("storage_bin_card_transactions")
+          .select("*")
+          .eq("bin_card_id", card.id)
+          .order("transaction_date", { ascending: true })
+          .order("created_at", { ascending: true });
+
+        if (error) throw error;
+        result[card.id] = { po: card.work_orders.po_number, txns: data || [] };
+      }
+      setGroupTransactions(result);
+    } catch (error) {
+      console.error("Error loading group transactions:", error);
     } finally {
       setLoadingTxn(false);
     }
@@ -296,7 +396,7 @@ export default function StorageHistory() {
             <CardTitle className="text-lg">Bin Cards ({filteredCards.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            {filteredCards.length === 0 ? (
+            {displayRows.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Package className="mx-auto h-12 w-12 mb-2" />
                 <p>No bin cards found</p>
@@ -316,20 +416,39 @@ export default function StorageHistory() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredCards.map(card => (
-                      <TableRow key={card.id}>
-                        <TableCell className="font-medium">{card.work_orders.po_number}</TableCell>
-                        <TableCell>{card.work_orders.buyer}</TableCell>
-                        <TableCell>{card.work_orders.style}</TableCell>
-                        <TableCell className="max-w-[150px] truncate">
-                          {card.description || card.work_orders.item || "-"}
+                    {displayRows.map(row => (
+                      <TableRow key={row.key}>
+                        <TableCell className="font-medium">
+                          <div className="flex flex-wrap items-center gap-1">
+                            {row.type === "group" && (
+                              <Layers className="h-3.5 w-3.5 text-primary shrink-0 mr-1" />
+                            )}
+                            {row.poNumbers.length === 1 ? (
+                              row.poNumbers[0]
+                            ) : (
+                              row.poNumbers.map(po => (
+                                <Badge key={po} variant="secondary" className="text-xs font-medium">
+                                  {po}
+                                </Badge>
+                              ))
+                            )}
+                          </div>
                         </TableCell>
-                        <TableCell>{card.prepared_by || "-"}</TableCell>
-                        <TableCell>{format(new Date(card.created_at), "dd/MM/yyyy")}</TableCell>
+                        <TableCell>{row.buyer}</TableCell>
+                        <TableCell>{row.style}</TableCell>
+                        <TableCell className="max-w-[150px] truncate">{row.description}</TableCell>
+                        <TableCell>{row.preparedBy}</TableCell>
+                        <TableCell>{format(new Date(row.createdAt), "dd/MM/yyyy")}</TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="sm" onClick={() => openCardDetail(card)}>
-                            View Ledger
-                          </Button>
+                          {row.type === "group" ? (
+                            <Button variant="ghost" size="sm" onClick={() => openGroupDetail(row)}>
+                              View Ledger
+                            </Button>
+                          ) : (
+                            <Button variant="ghost" size="sm" onClick={() => openCardDetail(row.cards[0])}>
+                              View Ledger
+                            </Button>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -341,7 +460,7 @@ export default function StorageHistory() {
         </Card>
       )}
 
-      {/* Detail Modal */}
+      {/* Single Card Detail Modal */}
       <Dialog open={!!selectedCard} onOpenChange={() => setSelectedCard(null)}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
@@ -349,7 +468,7 @@ export default function StorageHistory() {
               Bin Card Ledger - {selectedCard?.work_orders.po_number}
             </DialogTitle>
           </DialogHeader>
-          
+
           {selectedCard && (
             <div className="space-y-4">
               {/* Header info */}
@@ -371,7 +490,7 @@ export default function StorageHistory() {
                   <p className="font-medium">{selectedCard.prepared_by || "-"}</p>
                 </div>
               </div>
-              
+
               {/* Transactions */}
               {loadingTxn ? (
                 <div className="flex justify-center py-8">
@@ -414,6 +533,98 @@ export default function StorageHistory() {
                     </TableBody>
                   </Table>
                 </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Group Detail Modal */}
+      <Dialog open={!!selectedGroup} onOpenChange={() => setSelectedGroup(null)}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="pr-8 break-words flex items-center gap-2">
+              <Layers className="h-5 w-5 text-primary" />
+              Bin Card Group - {selectedGroup?.poNumbers.join(", ")}
+            </DialogTitle>
+          </DialogHeader>
+
+          {selectedGroup && (
+            <div className="space-y-4">
+              {/* Shared header info */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                <div>
+                  <span className="text-muted-foreground">POs:</span>
+                  <div className="flex flex-wrap gap-1 mt-0.5">
+                    {selectedGroup.poNumbers.map(po => (
+                      <Badge key={po} variant="secondary" className="text-xs">{po}</Badge>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Buyer:</span>
+                  <p className="font-medium">{selectedGroup.buyer}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Supplier:</span>
+                  <p className="font-medium">{selectedGroup.cards[0].supplier_name || "-"}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Prepared By:</span>
+                  <p className="font-medium">{selectedGroup.preparedBy}</p>
+                </div>
+              </div>
+
+              {/* Per-PO transaction tables */}
+              {loadingTxn ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                </div>
+              ) : (
+                Object.entries(groupTransactions).map(([cardId, { po, txns }]) => (
+                  <div key={cardId} className="space-y-2">
+                    <h4 className="text-sm font-semibold flex items-center gap-2">
+                      <Package className="h-4 w-4" />
+                      {po}
+                    </h4>
+                    <div className="w-full overflow-x-auto rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>DATE</TableHead>
+                            <TableHead className="text-right">RECEIVE QTY</TableHead>
+                            <TableHead className="text-right">TTL RECEIVE</TableHead>
+                            <TableHead className="text-right">ISSUE QTY</TableHead>
+                            <TableHead className="text-right">BALANCE QTY</TableHead>
+                            <TableHead>REMARKS</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {txns.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
+                                No transactions recorded
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            txns.map(txn => (
+                              <TableRow key={txn.id}>
+                                <TableCell>{format(new Date(txn.transaction_date), "dd/MM/yyyy")}</TableCell>
+                                <TableCell className="text-right">{txn.receive_qty}</TableCell>
+                                <TableCell className="text-right font-medium">{txn.ttl_receive}</TableCell>
+                                <TableCell className="text-right">{txn.issue_qty}</TableCell>
+                                <TableCell className={`text-right font-medium ${txn.balance_qty < 0 ? 'text-destructive' : ''}`}>
+                                  {txn.balance_qty}
+                                </TableCell>
+                                <TableCell className="max-w-[200px] truncate">{txn.remarks || "-"}</TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           )}
