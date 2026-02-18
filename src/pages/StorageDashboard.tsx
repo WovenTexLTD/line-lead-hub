@@ -50,6 +50,7 @@ interface BinCardWithWorkOrder {
   updated_at: string;
   bin_group_id: string | null;
   group_name: string | null;
+  po_set_signature: string | null;
   work_orders: {
     po_number: string;
     buyer: string;
@@ -57,6 +58,10 @@ interface BinCardWithWorkOrder {
     item: string | null;
   };
   latestBalance?: number;
+}
+
+function getGroupKey(card: BinCardWithWorkOrder): string | null {
+  return card.po_set_signature || card.bin_group_id || null;
 }
 
 interface DisplayRow {
@@ -160,6 +165,7 @@ export default function StorageDashboard() {
           updated_at,
           bin_group_id,
           group_name,
+          po_set_signature,
           work_orders!inner (
             po_number,
             buyer,
@@ -234,14 +240,15 @@ export default function StorageDashboard() {
   const groupSearchMap = useMemo(() => {
     const map = new Map<string, { poNumbers: string[]; buyers: string[]; styles: string[] }>();
     for (const card of binCards) {
-      if (card.bin_group_id) {
-        const existing = map.get(card.bin_group_id);
+      const key = getGroupKey(card);
+      if (key) {
+        const existing = map.get(key);
         if (existing) {
           if (!existing.poNumbers.includes(card.work_orders.po_number)) existing.poNumbers.push(card.work_orders.po_number);
           if (!existing.buyers.includes(card.work_orders.buyer)) existing.buyers.push(card.work_orders.buyer);
           if (!existing.styles.includes(card.work_orders.style)) existing.styles.push(card.work_orders.style);
         } else {
-          map.set(card.bin_group_id, {
+          map.set(key, {
             poNumbers: [card.work_orders.po_number],
             buyers: [card.work_orders.buyer],
             styles: [card.work_orders.style],
@@ -265,14 +272,17 @@ export default function StorageDashboard() {
           (card.description?.toLowerCase().includes(term)) ||
           (card.group_name?.toLowerCase().includes(term))
         );
-        if (!matchesSearch && card.bin_group_id) {
-          const groupData = groupSearchMap.get(card.bin_group_id);
-          if (groupData) {
-            matchesSearch = (
-              groupData.poNumbers.some(po => po.toLowerCase().includes(term)) ||
-              groupData.buyers.some(b => b.toLowerCase().includes(term)) ||
-              groupData.styles.some(s => s.toLowerCase().includes(term))
-            );
+        if (!matchesSearch) {
+          const key = getGroupKey(card);
+          if (key) {
+            const groupData = groupSearchMap.get(key);
+            if (groupData) {
+              matchesSearch = (
+                groupData.poNumbers.some(po => po.toLowerCase().includes(term)) ||
+                groupData.buyers.some(b => b.toLowerCase().includes(term)) ||
+                groupData.styles.some(s => s.toLowerCase().includes(term))
+              );
+            }
           }
         }
         if (!matchesSearch) return false;
@@ -298,15 +308,16 @@ export default function StorageDashboard() {
     });
 
     // Second pass: include all group members when any member matched
-    const matchedGroupIds = new Set(
-      directMatches.filter(c => c.bin_group_id).map(c => c.bin_group_id!)
+    const matchedGroupKeys = new Set(
+      directMatches.map(c => getGroupKey(c)).filter(Boolean) as string[]
     );
-    if (matchedGroupIds.size === 0) return directMatches;
+    if (matchedGroupKeys.size === 0) return directMatches;
 
     const matchedIds = new Set(directMatches.map(c => c.id));
     const result = [...directMatches];
     for (const card of binCards) {
-      if (!matchedIds.has(card.id) && card.bin_group_id && matchedGroupIds.has(card.bin_group_id)) {
+      const key = getGroupKey(card);
+      if (!matchedIds.has(card.id) && key && matchedGroupKeys.has(key)) {
         result.push(card);
       }
     }
@@ -320,10 +331,11 @@ export default function StorageDashboard() {
     const ungrouped: BinCardWithWorkOrder[] = [];
 
     for (const card of filteredCards) {
-      if (card.bin_group_id) {
-        const existing = groupMap.get(card.bin_group_id);
+      const key = getGroupKey(card);
+      if (key) {
+        const existing = groupMap.get(key);
         if (existing) existing.push(card);
-        else groupMap.set(card.bin_group_id, [card]);
+        else groupMap.set(key, [card]);
       } else {
         ungrouped.push(card);
       }
