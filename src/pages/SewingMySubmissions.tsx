@@ -138,6 +138,7 @@ export default function SewingMySubmissions() {
           rework_today,
           manpower_actual,
           ot_hours_actual,
+          ot_manpower_actual,
           cumulative_good_total,
           work_order_id,
           line_id,
