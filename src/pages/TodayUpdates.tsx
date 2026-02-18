@@ -62,6 +62,8 @@ interface FinishingDailyLog {
   get_up: number | null;
   poly: number | null;
   carton: number | null;
+  planned_hours: number | null;
+  actual_hours: number | null;
   remarks: string | null;
   lines: { line_id: string; name: string | null } | null;
   work_orders: { po_number: string; buyer: string; style: string } | null;
@@ -1686,6 +1688,8 @@ export default function TodayUpdates() {
           poly: selectedFinishingLog.poly || 0,
           carton: selectedFinishingLog.carton || 0,
           is_locked: false,
+          planned_hours: selectedFinishingLog.planned_hours ?? 0,
+          actual_hours: selectedFinishingLog.actual_hours ?? 0,
           submitted_at: selectedFinishingLog.submitted_at,
           line: null,
           work_order: selectedFinishingLog.work_orders ? {
