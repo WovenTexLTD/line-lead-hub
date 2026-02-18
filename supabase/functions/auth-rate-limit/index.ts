@@ -2,7 +2,7 @@
 // This function is called before auth operations to check/enforce limits
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
+import { z } from "npm:zod@3";
 import {
   corsHeaders,
   getSecureHeaders,

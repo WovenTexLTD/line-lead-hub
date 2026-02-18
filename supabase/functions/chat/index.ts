@@ -211,8 +211,8 @@ serve(async (req) => {
     logStep("Checking for live data queries");
     let liveDataContext: LiveDataContext | null = null;
     try {
-      liveDataContext = await fetchLiveData(
-        supabaseAdmin,
+    liveDataContext = await fetchLiveData(
+        supabaseAdmin as any,
         profile?.factory_id,
         message,
         factoryTimezone,
