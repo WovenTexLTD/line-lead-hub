@@ -323,6 +323,7 @@ export default function SewingEndOfDay() {
         cumulative_good_total: cumulativeGoodTotal,
         manpower_actual: parseInt(manpowerActual),
         ot_hours_actual: parseFloat(otHoursActual),
+        ot_manpower_actual: parseInt(otManpowerActual) || 0,
         actual_stage_id: actualStageId,
         actual_stage_progress: parseInt(actualStageProgress),
         remarks: remarks || null,
