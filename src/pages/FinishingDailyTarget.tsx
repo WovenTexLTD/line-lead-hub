@@ -10,13 +10,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Command,
@@ -27,13 +20,6 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
-
-interface Line {
-  id: string;
-  line_id: string;
-  name: string | null;
-}
 
 interface WorkOrder {
   id: string;
@@ -70,11 +56,9 @@ export default function FinishingDailyTarget() {
   const [isEditing, setIsEditing] = useState(false);
 
   // Master data
-  const [lines, setLines] = useState<Line[]>([]);
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
 
   // Form state - date is automatically set to today on submission
-  const [selectedLineId, setSelectedLineId] = useState("");
   const [selectedWorkOrderId, setSelectedWorkOrderId] = useState("");
   const [remarks, setRemarks] = useState("");
 
@@ -94,11 +78,6 @@ export default function FinishingDailyTarget() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [poSearchOpen, setPoSearchOpen] = useState(false);
 
-  const filteredWorkOrders = useMemo(() => {
-    if (!selectedLineId) return workOrders;
-    return workOrders.filter(wo => wo.line_id === selectedLineId || !wo.line_id);
-  }, [workOrders, selectedLineId]);
-
   const selectedWorkOrder = useMemo(() => {
     return workOrders.find(wo => wo.id === selectedWorkOrderId);
   }, [workOrders, selectedWorkOrderId]);
@@ -109,50 +88,28 @@ export default function FinishingDailyTarget() {
     }
   }, [profile?.factory_id]);
 
-  // Check for existing log when line/work order changes
+  // Check for existing log when work order changes
   useEffect(() => {
-    if (selectedLineId && selectedWorkOrderId && profile?.factory_id) {
+    if (selectedWorkOrderId && profile?.factory_id) {
       checkExistingLog();
     }
-  }, [selectedLineId, selectedWorkOrderId, profile?.factory_id]);
-
-  // Clear PO selection when line changes
-  useEffect(() => {
-    if (selectedLineId && selectedWorkOrderId) {
-      const selectedWO = workOrders.find(wo => wo.id === selectedWorkOrderId);
-      if (selectedWO && selectedWO.line_id && selectedWO.line_id !== selectedLineId) {
-        setSelectedWorkOrderId("");
-      }
-    }
-  }, [selectedLineId, selectedWorkOrderId, workOrders]);
+  }, [selectedWorkOrderId, profile?.factory_id]);
 
   async function fetchFormData() {
     if (!profile?.factory_id) return;
 
     try {
-      const [linesRes, workOrdersRes, assignmentsRes] = await Promise.all([
-        supabase.from("lines").select("id, line_id, name").eq("factory_id", profile.factory_id).eq("is_active", true).order("line_id"),
-        supabase.from("work_orders").select("id, po_number, buyer, style, item, order_qty, line_id").eq("factory_id", profile.factory_id).eq("is_active", true),
-        supabase.from("user_line_assignments").select("line_id").eq("user_id", user?.id || ""),
-      ]);
+      const { data: workOrdersData } = await supabase
+        .from("work_orders")
+        .select("id, po_number, buyer, style, item, order_qty, line_id")
+        .eq("factory_id", profile.factory_id)
+        .eq("is_active", true);
 
-      let availableLines = linesRes.data || [];
-      
-      if (!isAdminOrHigher() && assignmentsRes.data && assignmentsRes.data.length > 0) {
-        const assignedLineIds = assignmentsRes.data.map(a => a.line_id);
-        availableLines = availableLines.filter(l => assignedLineIds.includes(l.id));
-      }
-
-      setLines(availableLines);
-      setWorkOrders(workOrdersRes.data || []);
+      setWorkOrders(workOrdersData || []);
 
       // Pre-select from URL params
-      const lineParam = searchParams.get("line");
       const woParam = searchParams.get("wo");
-      if (lineParam && availableLines.find(l => l.id === lineParam)) {
-        setSelectedLineId(lineParam);
-      }
-      if (woParam && (workOrdersRes.data || []).find(w => w.id === woParam)) {
+      if (woParam && (workOrdersData || []).find(w => w.id === woParam)) {
         setSelectedWorkOrderId(woParam);
       }
     } catch (error) {
@@ -164,7 +121,7 @@ export default function FinishingDailyTarget() {
   }
 
   async function checkExistingLog() {
-    if (!profile?.factory_id || !selectedLineId || !selectedWorkOrderId) return;
+    if (!profile?.factory_id || !selectedWorkOrderId) return;
 
     try {
       const today = format(new Date(), "yyyy-MM-dd");
@@ -173,7 +130,7 @@ export default function FinishingDailyTarget() {
         .select("*")
         .eq("factory_id", profile.factory_id)
         .eq("production_date", today)
-        .eq("line_id", selectedLineId)
+        .is("line_id", null)
         .eq("work_order_id", selectedWorkOrderId)
         .eq("log_type", "TARGET");
 
@@ -223,7 +180,6 @@ export default function FinishingDailyTarget() {
   function validateForm(): boolean {
     const newErrors: Record<string, string> = {};
 
-    if (!selectedLineId) newErrors.line = "Line is required";
     if (!selectedWorkOrderId) newErrors.workOrder = "PO Number is required";
     
     // At least one process value should be entered
@@ -260,7 +216,7 @@ export default function FinishingDailyTarget() {
       const logData = {
         factory_id: profile.factory_id,
         production_date: today,
-        line_id: selectedLineId,
+        line_id: null,
         work_order_id: selectedWorkOrderId,
         log_type: "TARGET" as const,
         shift: null,
@@ -305,7 +261,7 @@ export default function FinishingDailyTarget() {
 
         if (error) {
           if (error.code === "23505") {
-            toast.error("Target already submitted for this date and line. You can edit the existing entry.");
+            toast.error("Target already submitted for this date and PO. You can edit the existing entry.");
             checkExistingLog();
             return;
           }
@@ -372,29 +328,12 @@ export default function FinishingDailyTarget() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Line & PO Selection */}
+        {/* PO Selection */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Select Line & PO</CardTitle>
+            <CardTitle className="text-base">Select PO</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Line No. *</Label>
-              <Select value={selectedLineId} onValueChange={setSelectedLineId}>
-                <SelectTrigger className={errors.line ? "border-destructive" : ""}>
-                  <SelectValue placeholder="Select line" />
-                </SelectTrigger>
-                <SelectContent>
-                  {lines.map((line) => (
-                    <SelectItem key={line.id} value={line.id}>
-                      {line.name || line.line_id}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.line && <p className="text-sm text-destructive">{errors.line}</p>}
-            </div>
-
             <div className="space-y-2">
               <Label>PO Number *</Label>
               <Popover open={poSearchOpen} onOpenChange={setPoSearchOpen}>
@@ -402,17 +341,16 @@ export default function FinishingDailyTarget() {
                   <Button
                     variant="outline"
                     role="combobox"
-                    disabled={!selectedLineId}
                     className={`w-full justify-start ${errors.workOrder ? 'border-destructive' : ''}`}
                   >
                     <Search className="mr-2 h-4 w-4 shrink-0" />
                     <span className="truncate">
                       {selectedWorkOrderId
                         ? (() => {
-                            const wo = filteredWorkOrders.find(w => w.id === selectedWorkOrderId);
-                            return wo ? `${wo.po_number} - ${wo.style}` : (selectedLineId ? "Select PO" : "Select a line first");
+                            const wo = workOrders.find(w => w.id === selectedWorkOrderId);
+                            return wo ? `${wo.po_number} - ${wo.style}` : "Select PO";
                           })()
-                        : (selectedLineId ? "Select PO" : "Select a line first")}
+                        : "Select PO"}
                     </span>
                   </Button>
                 </PopoverTrigger>
@@ -422,7 +360,7 @@ export default function FinishingDailyTarget() {
                     <CommandList>
                       <CommandEmpty>No PO found.</CommandEmpty>
                       <CommandGroup>
-                        {filteredWorkOrders.map((wo) => (
+                        {workOrders.map((wo) => (
                           <CommandItem
                             key={wo.id}
                             value={`${wo.po_number} ${wo.buyer} ${wo.style} ${wo.item || ''}`}

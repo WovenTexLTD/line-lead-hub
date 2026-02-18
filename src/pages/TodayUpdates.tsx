@@ -49,7 +49,8 @@ interface SewingUpdate {
 
 interface FinishingDailyLog {
   id: string;
-  line_id: string;
+  line_id: string | null;
+  work_order_id: string | null;
   production_date: string;
   submitted_at: string;
   log_type: 'TARGET' | 'OUTPUT';
@@ -471,9 +472,9 @@ export default function TodayUpdates() {
     }>();
 
     filteredFinishing.forEach(log => {
-      const key = log.line_id;
+      const key = `${log.line_id || 'dept'}-${log.work_order_id || 'no-po'}`;
       const existing = map.get(key);
-      
+
       if (existing) {
         if (log.log_type === 'TARGET') {
           existing.target = log;
@@ -487,8 +488,8 @@ export default function TodayUpdates() {
       } else {
         map.set(key, {
           key,
-          line_id: log.line_id,
-          line_name: log.lines?.name || log.lines?.line_id || 'Unknown',
+          line_id: log.line_id || '',
+          line_name: log.lines?.name || log.lines?.line_id || 'All Lines',
           po_number: log.work_orders?.po_number || null,
           target: log.log_type === 'TARGET' ? log : null,
           output: log.log_type === 'OUTPUT' ? log : null,

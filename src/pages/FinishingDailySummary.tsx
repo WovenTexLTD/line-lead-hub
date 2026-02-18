@@ -36,7 +36,7 @@ interface Line {
 interface FinishingDailyLog {
   id: string;
   production_date: string;
-  line_id: string;
+  line_id: string | null;
   work_order_id: string | null;
   log_type: "TARGET" | "OUTPUT";
   shift: string | null;
@@ -150,7 +150,7 @@ export default function FinishingDailySummary() {
     const grouped: Record<string, { target: FinishingDailyLog | null; output: FinishingDailyLog | null; line: any }> = {};
     
     logs.forEach((log) => {
-      const key = `${log.line_id}-${log.work_order_id || 'no-po'}`;
+      const key = `${log.line_id || 'dept'}-${log.work_order_id || 'no-po'}`;
       if (!grouped[key]) {
         grouped[key] = { target: null, output: null, line: log.line };
       }
@@ -193,7 +193,7 @@ export default function FinishingDailySummary() {
     // Create CSV content
     const headers = ["Line", "PO", "Type", ...PROCESS_KEYS.map(k => PROCESS_LABELS[k]), "Total"];
     const rows = logs.map(log => [
-      log.line?.line_id || "",
+      log.line?.line_id || "All Lines",
       log.work_order?.po_number || "No PO",
       log.log_type,
       ...PROCESS_KEYS.map(k => (log as any)[k] || 0),
@@ -331,7 +331,7 @@ export default function FinishingDailySummary() {
                       {/* Target Row */}
                       <TableRow key={`${key}-target`} className="bg-blue-50/50 dark:bg-blue-950/20">
                         <TableCell className="sticky left-0 bg-blue-50/50 dark:bg-blue-950/20 font-medium" rowSpan={3}>
-                          {line?.line_id || "—"}
+                          {line?.line_id || "All Lines"}
                         </TableCell>
                         <TableCell rowSpan={3}>
                           {target?.work_order?.po_number || output?.work_order?.po_number || "No PO"}

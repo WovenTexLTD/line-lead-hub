@@ -140,10 +140,11 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
         factoryId: profile.factory_id,
         role: formData.role,
         department: formData.role === 'worker' ? formData.department : null,
-        // Storage and cutting roles get all lines automatically, workers get selected lines
-        lineIds: formData.role === 'worker'
+        // Storage, cutting, and finishing-department workers get all lines automatically
+        lineIds: formData.role === 'worker' && formData.department === 'sewing'
           ? selectedLineIds
-          : ['storage', 'cutting'].includes(formData.role)
+          : ['storage', 'cutting'].includes(formData.role) ||
+            (formData.role === 'worker' && (formData.department === 'finishing' || formData.department === 'both'))
             ? lines.map(l => l.id)
             : [],
         temporaryPassword: useTemporaryPassword ? temporaryPassword : undefined,
@@ -351,8 +352,8 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
             </div>
           )}
 
-          {/* Line assignments - only for workers (storage and cutting get all lines automatically) */}
-          {formData.role === 'worker' && (
+          {/* Line assignments - only for sewing workers (finishing, storage, and cutting get all lines automatically) */}
+          {formData.role === 'worker' && formData.department === 'sewing' && (
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <GitBranch className="h-4 w-4 text-muted-foreground" />
@@ -392,6 +393,12 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
                 Select which lines this worker can submit updates for.
               </p>
             </div>
+          )}
+
+          {formData.role === 'worker' && (formData.department === 'finishing' || formData.department === 'both') && (
+            <p className="text-xs text-muted-foreground px-1">
+              Finishing department workers are automatically assigned to all lines.
+            </p>
           )}
 
           <DialogFooter>

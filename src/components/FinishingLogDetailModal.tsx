@@ -6,7 +6,7 @@ import { Scissors, CheckCircle, Shirt, CircleDot, Flame, Package, Box, Archive, 
 interface FinishingDailyLog {
   id: string;
   production_date: string;
-  line_id: string;
+  line_id: string | null;
   work_order_id: string | null;
   log_type: "TARGET" | "OUTPUT";
   shift: string | null;
@@ -84,7 +84,7 @@ export function FinishingLogDetailModal({ log, open, onOpenChange }: FinishingLo
           <div className="border rounded-lg p-3 space-y-2">
             <div>
               <span className="text-sm text-muted-foreground">Line:</span>
-              <p className="font-medium">{log.line?.name || log.line?.line_id || "—"}</p>
+              <p className="font-medium">{log.line?.name || log.line?.line_id || "All Lines"}</p>
             </div>
             {log.work_order && (
               <>

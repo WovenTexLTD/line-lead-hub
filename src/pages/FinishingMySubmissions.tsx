@@ -31,7 +31,7 @@ import { useEditPermission } from "@/hooks/useEditPermission";
 interface FinishingDailyLog {
   id: string;
   production_date: string;
-  line_id: string;
+  line_id: string | null;
   work_order_id: string | null;
   log_type: "TARGET" | "OUTPUT";
   shift: string | null;
@@ -174,7 +174,7 @@ export default function FinishingMySubmissions() {
   const handleEdit = (log: FinishingDailyLog) => {
     const path = log.log_type === "TARGET" ? "/finishing/daily-target" : "/finishing/daily-output";
     const params = new URLSearchParams();
-    params.set("line", log.line_id);
+    if (log.line_id) params.set("line", log.line_id);
     if (log.work_order_id) params.set("wo", log.work_order_id);
     navigate(`${path}?${params.toString()}`);
   };
@@ -359,13 +359,19 @@ export default function FinishingMySubmissions() {
                               </div>
                             </TableCell>
                             <TableCell>
-                              <span className="font-medium">
-                                {log.line?.line_id || "—"}
-                              </span>
-                              {log.line?.name && (
-                                <span className="text-muted-foreground ml-1">
-                                  ({log.line.name})
-                                </span>
+                              {log.line ? (
+                                <>
+                                  <span className="font-medium">
+                                    {log.line.line_id}
+                                  </span>
+                                  {log.line.name && (
+                                    <span className="text-muted-foreground ml-1">
+                                      ({log.line.name})
+                                    </span>
+                                  )}
+                                </>
+                              ) : (
+                                <span className="text-muted-foreground">All Lines</span>
                               )}
                             </TableCell>
                             <TableCell>
