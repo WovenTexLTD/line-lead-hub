@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Fragment } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays } from "date-fns";
 import { toast } from "sonner";
-import { Search, Package, Download, X } from "lucide-react";
+import { Search, Package, Download, X, ChevronRight, ChevronDown, Layers } from "lucide-react";
 import { TableSkeleton, StatsCardsSkeleton } from "@/components/ui/table-skeleton";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -20,8 +20,6 @@ import { Badge } from "@/components/ui/badge";
 import { StorageBinCardDetailModal } from "@/components/StorageBinCardDetailModal";
 import { TablePagination } from "@/components/ui/table-pagination";
 import { usePagination } from "@/hooks/usePagination";
-import { useSortableTable } from "@/hooks/useSortableTable";
-import { SortableTableHead } from "@/components/ui/sortable-table-head";
 
 interface BinCard {
   id: string;
@@ -33,6 +31,8 @@ interface BinCard {
   color: string | null;
   created_at: string;
   updated_at: string;
+  group_name: string | null;
+  po_set_signature: string | null;
   work_orders: {
     po_number: string;
     buyer: string;
@@ -42,6 +42,17 @@ interface BinCard {
   latestBalance?: number;
   totalReceived?: number;
   totalIssued?: number;
+}
+
+interface DisplayRow {
+  type: "single" | "group";
+  id: string; // card id or group signature
+  groupName?: string;
+  cards: BinCard[];
+  totalReceived: number;
+  totalIssued: number;
+  totalBalance: number;
+  created_at: string;
 }
 
 interface StorageSubmissionsTableProps {
@@ -67,6 +78,7 @@ export function StorageSubmissionsTable({
   const [modalLoading, setModalLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [pageSize, setPageSize] = useState(25);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   useEffect(() => {
     fetchData();
   }, [factoryId, dateRange]);
@@ -89,6 +101,8 @@ export function StorageSubmissionsTable({
           color,
           created_at,
           updated_at,
+          group_name,
+          po_set_signature,
           work_orders!inner (
             po_number,
             buyer,
@@ -160,16 +174,62 @@ export function StorageSubmissionsTable({
       card.work_orders.po_number.toLowerCase().includes(term) ||
       card.work_orders.buyer.toLowerCase().includes(term) ||
       card.work_orders.style.toLowerCase().includes(term) ||
-      (card.description?.toLowerCase().includes(term))
+      (card.description?.toLowerCase().includes(term)) ||
+      (card.group_name?.toLowerCase().includes(term))
     );
   }, [binCards, searchTerm]);
 
-  const { sortedData, sortConfig, requestSort } = useSortableTable(filteredCards);
+  // Group cards by po_set_signature
+  const displayRows = useMemo((): DisplayRow[] => {
+    const grouped = new Map<string, BinCard[]>();
+    const ungrouped: BinCard[] = [];
+
+    filteredCards.forEach(card => {
+      if (card.po_set_signature) {
+        const existing = grouped.get(card.po_set_signature) || [];
+        existing.push(card);
+        grouped.set(card.po_set_signature, existing);
+      } else {
+        ungrouped.push(card);
+      }
+    });
+
+    const rows: DisplayRow[] = [];
+
+    grouped.forEach((cards, sig) => {
+      rows.push({
+        type: "group",
+        id: sig,
+        groupName: cards[0].group_name || "Grouped Submission",
+        cards,
+        totalReceived: cards.reduce((s, c) => s + (c.totalReceived || 0), 0),
+        totalIssued: cards.reduce((s, c) => s + (c.totalIssued || 0), 0),
+        totalBalance: cards.reduce((s, c) => s + (c.latestBalance || 0), 0),
+        created_at: cards[0].created_at,
+      });
+    });
+
+    ungrouped.forEach(card => {
+      rows.push({
+        type: "single",
+        id: card.id,
+        cards: [card],
+        totalReceived: card.totalReceived || 0,
+        totalIssued: card.totalIssued || 0,
+        totalBalance: card.latestBalance || 0,
+        created_at: card.created_at,
+      });
+    });
+
+    // Sort by created_at descending
+    rows.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return rows;
+  }, [filteredCards]);
 
   const {
     currentPage,
     totalPages,
-    paginatedData,
+    paginatedData: paginatedRows,
     setCurrentPage,
     goToFirstPage,
     goToLastPage,
@@ -179,7 +239,16 @@ export function StorageSubmissionsTable({
     canGoPrevious,
     startIndex,
     endIndex,
-  } = usePagination(sortedData, { pageSize });
+  } = usePagination(displayRows, { pageSize });
+
+  function toggleGroup(sig: string) {
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(sig)) next.delete(sig);
+      else next.add(sig);
+      return next;
+    });
+  }
 
   const stats = useMemo(() => {
     const totalBalance = binCards.reduce((sum, c) => sum + (c.latestBalance || 0), 0);
@@ -236,16 +305,17 @@ export function StorageSubmissionsTable({
     }
   };
 
-  const allPageSelected = paginatedData.length > 0 && paginatedData.every(c => selectedIds.has(c.id));
-  const somePageSelected = paginatedData.some(c => selectedIds.has(c.id));
+  const allCardIds = paginatedRows.flatMap(r => r.cards.map(c => c.id));
+  const allPageSelected = allCardIds.length > 0 && allCardIds.every(id => selectedIds.has(id));
+  const somePageSelected = allCardIds.some(id => selectedIds.has(id));
 
   function toggleSelectAll() {
     setSelectedIds(prev => {
       const next = new Set(prev);
       if (allPageSelected) {
-        paginatedData.forEach(c => next.delete(c.id));
+        allCardIds.forEach(id => next.delete(id));
       } else {
-        paginatedData.forEach(c => next.add(c.id));
+        allCardIds.forEach(id => next.add(id));
       }
       return next;
     });
@@ -261,7 +331,7 @@ export function StorageSubmissionsTable({
   }
 
   function exportSelectedCsv() {
-    const rows = sortedData.filter(c => selectedIds.has(c.id));
+    const rows = filteredCards.filter(c => selectedIds.has(c.id));
     const headers = ["Created", "PO Number", "Buyer", "Style", "Description", "Received", "Issued", "Balance"];
     const csvRows = [headers.join(",")];
     rows.forEach(c => {
@@ -371,59 +441,147 @@ export function StorageSubmissionsTable({
                       {...(somePageSelected && !allPageSelected ? { "data-state": "indeterminate" } : {})}
                     />
                   </TableHead>
-                  <SortableTableHead column="created_at" sortConfig={sortConfig} onSort={requestSort}>Created</SortableTableHead>
-                  <SortableTableHead column="work_orders.po_number" sortConfig={sortConfig} onSort={requestSort}>PO Number</SortableTableHead>
-                  <SortableTableHead column="work_orders.buyer" sortConfig={sortConfig} onSort={requestSort}>Buyer</SortableTableHead>
-                  <SortableTableHead column="work_orders.style" sortConfig={sortConfig} onSort={requestSort}>Style</SortableTableHead>
-                  <SortableTableHead column="totalReceived" sortConfig={sortConfig} onSort={requestSort} className="text-right">Received</SortableTableHead>
-                  <SortableTableHead column="totalIssued" sortConfig={sortConfig} onSort={requestSort} className="text-right">Issued</SortableTableHead>
-                  <SortableTableHead column="latestBalance" sortConfig={sortConfig} onSort={requestSort} className="text-right">Balance</SortableTableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead>PO Number</TableHead>
+                  <TableHead>Buyer</TableHead>
+                  <TableHead>Style</TableHead>
+                  <TableHead className="text-right">Received</TableHead>
+                  <TableHead className="text-right">Issued</TableHead>
+                  <TableHead className="text-right">Balance</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedData.length === 0 ? (
+                {paginatedRows.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                       No bin cards found
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paginatedData.map((card) => (
-                    <TableRow
-                      key={card.id}
-                      className={`cursor-pointer hover:bg-muted/50 ${selectedIds.has(card.id) ? "bg-primary/5" : ""}`}
-                      onClick={() => handleCardClick(card)}
-                    >
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <Checkbox
-                          checked={selectedIds.has(card.id)}
-                          onCheckedChange={() => toggleSelectRow(card.id)}
-                          aria-label={`Select row`}
-                        />
-                      </TableCell>
-                      <TableCell className="font-mono text-sm">
-                        {format(new Date(card.created_at), "MMM d")}
-                      </TableCell>
-                      <TableCell className="font-medium">{card.work_orders.po_number}</TableCell>
-                      <TableCell>{card.work_orders.buyer}</TableCell>
-                      <TableCell>{card.work_orders.style}</TableCell>
-                      <TableCell className="text-right text-green-600 font-medium">
-                        {card.totalReceived?.toLocaleString() || 0}
-                      </TableCell>
-                      <TableCell className="text-right text-blue-600 font-medium">
-                        {card.totalIssued?.toLocaleString() || 0}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {card.latestBalance !== undefined ? (
-                          <Badge variant={card.latestBalance <= lowStockThreshold ? "destructive" : "secondary"}>
-                            {card.latestBalance.toLocaleString()}
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  paginatedRows.map((row) => {
+                    if (row.type === "group") {
+                      const isExpanded = expandedGroups.has(row.id);
+                      return (
+                        <Fragment key={row.id}>
+                          <TableRow
+                            key={row.id}
+                            className="cursor-pointer hover:bg-muted/50 bg-accent/30"
+                            onClick={() => toggleGroup(row.id)}
+                          >
+                            <TableCell onClick={(e) => e.stopPropagation()}>
+                              <Checkbox
+                                checked={row.cards.every(c => selectedIds.has(c.id))}
+                                onCheckedChange={() => {
+                                  setSelectedIds(prev => {
+                                    const next = new Set(prev);
+                                    const allSelected = row.cards.every(c => next.has(c.id));
+                                    row.cards.forEach(c => allSelected ? next.delete(c.id) : next.add(c.id));
+                                    return next;
+                                  });
+                                }}
+                                aria-label="Select group"
+                              />
+                            </TableCell>
+                            <TableCell className="font-mono text-sm">
+                              {format(new Date(row.created_at), "MMM d")}
+                            </TableCell>
+                            <TableCell className="font-medium" colSpan={3}>
+                              <div className="flex items-center gap-2">
+                                {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                                <Layers className="h-4 w-4 text-primary" />
+                                <span>{row.groupName}</span>
+                                <Badge variant="outline" className="ml-1 text-xs">{row.cards.length} POs</Badge>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right font-medium text-emerald-600">
+                              {row.totalReceived.toLocaleString()}
+                            </TableCell>
+                            <TableCell className="text-right font-medium text-blue-600">
+                              {row.totalIssued.toLocaleString()}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Badge variant="secondary">{row.totalBalance.toLocaleString()}</Badge>
+                            </TableCell>
+                          </TableRow>
+                          {isExpanded && row.cards.map(card => (
+                            <TableRow
+                              key={card.id}
+                              className="cursor-pointer hover:bg-muted/50 bg-muted/20"
+                              onClick={() => handleCardClick(card)}
+                            >
+                              <TableCell onClick={(e) => e.stopPropagation()}>
+                                <Checkbox
+                                  checked={selectedIds.has(card.id)}
+                                  onCheckedChange={() => toggleSelectRow(card.id)}
+                                  aria-label="Select row"
+                                />
+                              </TableCell>
+                              <TableCell className="font-mono text-sm pl-8">
+                                {format(new Date(card.created_at), "MMM d")}
+                              </TableCell>
+                              <TableCell className="font-medium pl-8">{card.work_orders.po_number}</TableCell>
+                              <TableCell>{card.work_orders.buyer}</TableCell>
+                              <TableCell>{card.work_orders.style}</TableCell>
+                              <TableCell className="text-right text-emerald-600 font-medium">
+                                {card.totalReceived?.toLocaleString() || 0}
+                              </TableCell>
+                              <TableCell className="text-right text-blue-600 font-medium">
+                                {card.totalIssued?.toLocaleString() || 0}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {card.latestBalance !== undefined ? (
+                                  <Badge variant={card.latestBalance <= lowStockThreshold ? "destructive" : "secondary"}>
+                                    {card.latestBalance.toLocaleString()}
+                                  </Badge>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </Fragment>
+                      );
+                    }
+
+                    // Single card row
+                    const card = row.cards[0];
+                    return (
+                      <TableRow
+                        key={card.id}
+                        className={`cursor-pointer hover:bg-muted/50 ${selectedIds.has(card.id) ? "bg-primary/5" : ""}`}
+                        onClick={() => handleCardClick(card)}
+                      >
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={selectedIds.has(card.id)}
+                            onCheckedChange={() => toggleSelectRow(card.id)}
+                            aria-label="Select row"
+                          />
+                        </TableCell>
+                        <TableCell className="font-mono text-sm">
+                          {format(new Date(card.created_at), "MMM d")}
+                        </TableCell>
+                        <TableCell className="font-medium">{card.work_orders.po_number}</TableCell>
+                        <TableCell>{card.work_orders.buyer}</TableCell>
+                        <TableCell>{card.work_orders.style}</TableCell>
+                        <TableCell className="text-right text-emerald-600 font-medium">
+                          {card.totalReceived?.toLocaleString() || 0}
+                        </TableCell>
+                        <TableCell className="text-right text-blue-600 font-medium">
+                          {card.totalIssued?.toLocaleString() || 0}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {card.latestBalance !== undefined ? (
+                            <Badge variant={card.latestBalance <= lowStockThreshold ? "destructive" : "secondary"}>
+                              {card.latestBalance.toLocaleString()}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
@@ -433,7 +591,7 @@ export function StorageSubmissionsTable({
             totalPages={totalPages}
             startIndex={startIndex}
             endIndex={endIndex}
-            totalItems={filteredCards.length}
+            totalItems={displayRows.length}
             onPageChange={setCurrentPage}
             onFirstPage={goToFirstPage}
             onLastPage={goToLastPage}
