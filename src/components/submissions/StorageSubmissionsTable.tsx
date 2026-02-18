@@ -556,7 +556,7 @@ export function StorageSubmissionsTable({
                           <TableRow
                             key={row.id}
                             className="cursor-pointer hover:bg-muted/50"
-                            onClick={() => toggleGroup(row.id)}
+                            onClick={() => handleGroupClick(row)}
                           >
                             <TableCell onClick={(e) => e.stopPropagation()}>
                               <Checkbox
@@ -577,7 +577,13 @@ export function StorageSubmissionsTable({
                             </TableCell>
                             <TableCell className="font-medium">
                               <div className="flex items-center gap-1.5">
-                                {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                                <button
+                                  type="button"
+                                  className="p-0.5 rounded hover:bg-muted"
+                                  onClick={(e) => { e.stopPropagation(); toggleGroup(row.id); }}
+                                >
+                                  {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                                </button>
                                 <span className="text-muted-foreground">{row.cards.length} POs</span>
                               </div>
                             </TableCell>
