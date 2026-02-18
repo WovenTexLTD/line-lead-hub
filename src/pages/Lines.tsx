@@ -108,7 +108,7 @@ export default function Lines() {
           .order('line_id'),
         supabase
           .from('sewing_targets')
-          .select('line_id, work_order_id, target_qty')
+          .select('line_id, work_order_id, per_hour_target')
           .eq('factory_id', profile.factory_id)
           .eq('production_date', today),
         supabase
@@ -210,7 +210,7 @@ export default function Lines() {
     sewingTargets.forEach((t: any) => {
       if (matchesSelectedPO(t.line_id, t.work_order_id)) {
         const existing = sewingTargetMap.get(t.line_id) || 0;
-        sewingTargetMap.set(t.line_id, existing + (t.target_qty || 0));
+        sewingTargetMap.set(t.line_id, existing + (t.per_hour_target || 0));
       }
     });
 
