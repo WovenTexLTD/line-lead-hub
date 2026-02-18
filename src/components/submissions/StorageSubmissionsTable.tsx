@@ -555,7 +555,7 @@ export function StorageSubmissionsTable({
                         <Fragment key={row.id}>
                           <TableRow
                             key={row.id}
-                            className="cursor-pointer hover:bg-muted/50 bg-accent/30"
+                            className="cursor-pointer hover:bg-muted/50"
                             onClick={() => toggleGroup(row.id)}
                           >
                             <TableCell onClick={(e) => e.stopPropagation()}>
