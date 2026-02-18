@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, Factory, Package, Search, Download, RefreshCw, Scissors, Archive, CalendarDays, Layers } from "lucide-react";
+import { Loader2, Factory, Package, Search, Download, RefreshCw, Scissors, Archive, CalendarDays, Layers, ChevronDown, ChevronRight } from "lucide-react";
 import { SubmissionDetailModal } from "@/components/SubmissionDetailModal";
 import { CuttingDetailModal } from "@/components/CuttingDetailModal";
 import { formatTimeInTimezone } from "@/lib/date-utils";
@@ -170,8 +170,21 @@ interface StorageTransaction {
     style: string | null;
     bin_group_id: string | null;
     group_name: string | null;
+    po_set_signature: string | null;
     work_orders: { po_number: string } | null;
   } | null;
+}
+
+interface GroupedStorageRow {
+  groupKey: string;
+  groupName: string | null;
+  isGroup: boolean;
+  transactions: StorageTransaction[];
+  totalReceived: number;
+  totalIssued: number;
+  totalBalance: number;
+  latestTime: string | null;
+  style: string | null;
 }
 
 type ModalSubmission = {
@@ -244,6 +257,7 @@ export default function TodayUpdates() {
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [selectedFinishingLog, setSelectedFinishingLog] = useState<FinishingDailyLog | null>(null);
   const [finishingLogModalOpen, setFinishingLogModalOpen] = useState(false);
+  const [expandedStorageGroups, setExpandedStorageGroups] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (profile?.factory_id) {
@@ -296,7 +310,7 @@ export default function TodayUpdates() {
           .order('submitted_at', { ascending: false }),
         supabase
           .from('storage_bin_card_transactions')
-          .select('*, storage_bin_cards(id, buyer, style, bin_group_id, group_name, work_orders(po_number))')
+          .select('*, storage_bin_cards(id, buyer, style, bin_group_id, group_name, po_set_signature, work_orders(po_number))')
           .eq('factory_id', profile.factory_id)
           .eq('transaction_date', today)
           .order('created_at', { ascending: false }),
@@ -352,7 +366,74 @@ export default function TodayUpdates() {
     (s.storage_bin_cards?.style || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Merge sewing targets and actuals by line+work_order for unified display
+  // Group storage transactions by po_set_signature or batch_id
+  const groupedStorageRows = useMemo((): GroupedStorageRow[] => {
+    const groupMap = new Map<string, StorageTransaction[]>();
+    const singles: StorageTransaction[] = [];
+
+    filteredStorage.forEach(txn => {
+      const groupKey = txn.storage_bin_cards?.po_set_signature || txn.storage_bin_cards?.bin_group_id;
+      if (groupKey) {
+        const existing = groupMap.get(groupKey) || [];
+        existing.push(txn);
+        groupMap.set(groupKey, existing);
+      } else {
+        singles.push(txn);
+      }
+    });
+
+    const rows: GroupedStorageRow[] = [];
+
+    // Add grouped rows
+    groupMap.forEach((txns, groupKey) => {
+      if (txns.length > 1) {
+        const groupName = txns[0].storage_bin_cards?.group_name || `Group (${txns.length} POs)`;
+        rows.push({
+          groupKey,
+          groupName,
+          isGroup: true,
+          transactions: txns,
+          totalReceived: txns.reduce((s, t) => s + (t.receive_qty || 0), 0),
+          totalIssued: txns.reduce((s, t) => s + (t.issue_qty || 0), 0),
+          totalBalance: txns.reduce((s, t) => s + (t.balance_qty || 0), 0),
+          latestTime: txns.reduce((latest, t) => (!latest || (t.created_at && t.created_at > latest)) ? t.created_at : latest, null as string | null),
+          style: txns[0].storage_bin_cards?.style || null,
+        });
+      } else {
+        // Single item in group key — treat as single
+        singles.push(txns[0]);
+      }
+    });
+
+    // Add singles
+    singles.forEach(txn => {
+      rows.push({
+        groupKey: txn.id,
+        groupName: null,
+        isGroup: false,
+        transactions: [txn],
+        totalReceived: txn.receive_qty,
+        totalIssued: txn.issue_qty,
+        totalBalance: txn.balance_qty,
+        latestTime: txn.created_at,
+        style: txn.storage_bin_cards?.style || null,
+      });
+    });
+
+    // Sort by latest time desc
+    rows.sort((a, b) => (b.latestTime || '').localeCompare(a.latestTime || ''));
+    return rows;
+  }, [filteredStorage]);
+
+  const toggleStorageGroup = (groupKey: string) => {
+    setExpandedStorageGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(groupKey)) next.delete(groupKey);
+      else next.add(groupKey);
+      return next;
+    });
+  };
+
   const mergedSewingData = useMemo(() => {
     const map = new Map<string, {
       key: string;
@@ -1129,7 +1210,7 @@ export default function TodayUpdates() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Time</TableHead>
-                        <TableHead>PO</TableHead>
+                        <TableHead>PO / Group</TableHead>
                         <TableHead>Style</TableHead>
                         <TableHead className="text-right">Received</TableHead>
                         <TableHead className="text-right">Issued</TableHead>
@@ -1137,23 +1218,48 @@ export default function TodayUpdates() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredStorage.map((txn) => (
-                        <TableRow 
-                          key={txn.id} 
-                          className="cursor-pointer hover:bg-muted/50"
-                          onClick={() => handleStorageClick(txn)}
-                        >
-                          <TableCell className="font-mono text-sm">{txn.created_at ? formatTime(txn.created_at) : '-'}</TableCell>
-                          <TableCell>
-                            {txn.storage_bin_cards?.work_orders?.po_number || '-'}
-{txn.batch_id && <span title="Bulk submission"><Layers className="h-3 w-3 inline ml-1 text-muted-foreground" /></span>}
-{txn.storage_bin_cards?.group_name && <span className="ml-1 text-xs text-primary">({txn.storage_bin_cards.group_name})</span>}
-                          </TableCell>
-                          <TableCell>{txn.storage_bin_cards?.style || '-'}</TableCell>
-                          <TableCell className="text-right font-mono text-success">{txn.receive_qty > 0 ? `+${txn.receive_qty.toLocaleString()}` : '-'}</TableCell>
-                          <TableCell className="text-right font-mono text-destructive">{txn.issue_qty > 0 ? `-${txn.issue_qty.toLocaleString()}` : '-'}</TableCell>
-                          <TableCell className="text-right font-mono font-medium">{txn.balance_qty.toLocaleString()}</TableCell>
-                        </TableRow>
+                      {groupedStorageRows.map((row) => (
+                        <>
+                          <TableRow
+                            key={row.groupKey}
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => row.isGroup ? toggleStorageGroup(row.groupKey) : handleStorageClick(row.transactions[0])}
+                          >
+                            <TableCell className="font-mono text-sm">{row.latestTime ? formatTime(row.latestTime) : '-'}</TableCell>
+                            <TableCell>
+                              {row.isGroup ? (
+                                <span className="inline-flex items-center gap-1">
+                                  {expandedStorageGroups.has(row.groupKey) ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+                                  <span className="font-medium text-primary">{row.groupName}</span>
+                                  <span className="text-xs text-muted-foreground ml-1">({row.transactions.length} POs)</span>
+                                </span>
+                              ) : (
+                                <>
+                                  {row.transactions[0].storage_bin_cards?.work_orders?.po_number || '-'}
+                                  {row.transactions[0].batch_id && <span title="Bulk submission"><Layers className="h-3 w-3 inline ml-1 text-muted-foreground" /></span>}
+                                </>
+                              )}
+                            </TableCell>
+                            <TableCell>{row.style || '-'}</TableCell>
+                            <TableCell className="text-right font-mono text-success">{row.totalReceived > 0 ? `+${row.totalReceived.toLocaleString()}` : '-'}</TableCell>
+                            <TableCell className="text-right font-mono text-destructive">{row.totalIssued > 0 ? `-${row.totalIssued.toLocaleString()}` : '-'}</TableCell>
+                            <TableCell className="text-right font-mono font-medium">{row.totalBalance.toLocaleString()}</TableCell>
+                          </TableRow>
+                          {row.isGroup && expandedStorageGroups.has(row.groupKey) && row.transactions.map(txn => (
+                            <TableRow
+                              key={txn.id}
+                              className="cursor-pointer hover:bg-muted/50 bg-muted/20"
+                              onClick={() => handleStorageClick(txn)}
+                            >
+                              <TableCell className="font-mono text-sm pl-8">{txn.created_at ? formatTime(txn.created_at) : '-'}</TableCell>
+                              <TableCell className="pl-8 text-muted-foreground">{txn.storage_bin_cards?.work_orders?.po_number || '-'}</TableCell>
+                              <TableCell>{txn.storage_bin_cards?.style || '-'}</TableCell>
+                              <TableCell className="text-right font-mono text-success">{txn.receive_qty > 0 ? `+${txn.receive_qty.toLocaleString()}` : '-'}</TableCell>
+                              <TableCell className="text-right font-mono text-destructive">{txn.issue_qty > 0 ? `-${txn.issue_qty.toLocaleString()}` : '-'}</TableCell>
+                              <TableCell className="text-right font-mono font-medium">{txn.balance_qty.toLocaleString()}</TableCell>
+                            </TableRow>
+                          ))}
+                        </>
                       ))}
                     </TableBody>
                   </Table>
@@ -1457,7 +1563,7 @@ export default function TodayUpdates() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Time</TableHead>
-                      <TableHead>PO</TableHead>
+                      <TableHead>PO / Group</TableHead>
                       <TableHead>Style</TableHead>
                       <TableHead className="text-right">Received</TableHead>
                       <TableHead className="text-right">Issued</TableHead>
@@ -1465,25 +1571,50 @@ export default function TodayUpdates() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredStorage.map((txn) => (
-                      <TableRow 
-                        key={txn.id} 
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => handleStorageClick(txn)}
-                      >
-                        <TableCell className="font-mono text-sm">{txn.created_at ? formatTime(txn.created_at) : '-'}</TableCell>
-                        <TableCell>
-                          {txn.storage_bin_cards?.work_orders?.po_number || '-'}
-                          {txn.batch_id && <span title="Bulk submission"><Layers className="h-3 w-3 inline ml-1 text-muted-foreground" /></span>}
-                          {txn.storage_bin_cards?.group_name && <span className="ml-1 text-xs text-primary">({txn.storage_bin_cards.group_name})</span>}
-                        </TableCell>
-                        <TableCell>{txn.storage_bin_cards?.style || '-'}</TableCell>
-                        <TableCell className="text-right font-mono text-success">{txn.receive_qty > 0 ? `+${txn.receive_qty.toLocaleString()}` : '-'}</TableCell>
-                        <TableCell className="text-right font-mono text-destructive">{txn.issue_qty > 0 ? `-${txn.issue_qty.toLocaleString()}` : '-'}</TableCell>
-                        <TableCell className="text-right font-mono font-medium">{txn.balance_qty.toLocaleString()}</TableCell>
-                      </TableRow>
+                    {groupedStorageRows.map((row) => (
+                      <>
+                        <TableRow
+                          key={row.groupKey}
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => row.isGroup ? toggleStorageGroup(row.groupKey) : handleStorageClick(row.transactions[0])}
+                        >
+                          <TableCell className="font-mono text-sm">{row.latestTime ? formatTime(row.latestTime) : '-'}</TableCell>
+                          <TableCell>
+                            {row.isGroup ? (
+                              <span className="inline-flex items-center gap-1">
+                                {expandedStorageGroups.has(row.groupKey) ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+                                <span className="font-medium text-primary">{row.groupName}</span>
+                                <span className="text-xs text-muted-foreground ml-1">({row.transactions.length} POs)</span>
+                              </span>
+                            ) : (
+                              <>
+                                {row.transactions[0].storage_bin_cards?.work_orders?.po_number || '-'}
+                                {row.transactions[0].batch_id && <span title="Bulk submission"><Layers className="h-3 w-3 inline ml-1 text-muted-foreground" /></span>}
+                              </>
+                            )}
+                          </TableCell>
+                          <TableCell>{row.style || '-'}</TableCell>
+                          <TableCell className="text-right font-mono text-success">{row.totalReceived > 0 ? `+${row.totalReceived.toLocaleString()}` : '-'}</TableCell>
+                          <TableCell className="text-right font-mono text-destructive">{row.totalIssued > 0 ? `-${row.totalIssued.toLocaleString()}` : '-'}</TableCell>
+                          <TableCell className="text-right font-mono font-medium">{row.totalBalance.toLocaleString()}</TableCell>
+                        </TableRow>
+                        {row.isGroup && expandedStorageGroups.has(row.groupKey) && row.transactions.map(txn => (
+                          <TableRow
+                            key={txn.id}
+                            className="cursor-pointer hover:bg-muted/50 bg-muted/20"
+                            onClick={() => handleStorageClick(txn)}
+                          >
+                            <TableCell className="font-mono text-sm pl-8">{txn.created_at ? formatTime(txn.created_at) : '-'}</TableCell>
+                            <TableCell className="pl-8 text-muted-foreground">{txn.storage_bin_cards?.work_orders?.po_number || '-'}</TableCell>
+                            <TableCell>{txn.storage_bin_cards?.style || '-'}</TableCell>
+                            <TableCell className="text-right font-mono text-success">{txn.receive_qty > 0 ? `+${txn.receive_qty.toLocaleString()}` : '-'}</TableCell>
+                            <TableCell className="text-right font-mono text-destructive">{txn.issue_qty > 0 ? `-${txn.issue_qty.toLocaleString()}` : '-'}</TableCell>
+                            <TableCell className="text-right font-mono font-medium">{txn.balance_qty.toLocaleString()}</TableCell>
+                          </TableRow>
+                        ))}
+                      </>
                     ))}
-                    {filteredStorage.length === 0 && (
+                    {groupedStorageRows.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                           No storage transactions today
