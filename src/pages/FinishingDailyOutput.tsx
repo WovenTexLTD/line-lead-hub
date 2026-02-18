@@ -269,6 +269,10 @@ export default function FinishingDailyOutput() {
       newErrors.processes = "Enter at least one output value";
     }
 
+    if (!actualHours || parseFloat(actualHours) <= 0) {
+      newErrors.actualHours = "Actual hours must be greater than 0";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }
@@ -306,7 +310,7 @@ export default function FinishingDailyOutput() {
         poly: processValues.poly ? parseInt(processValues.poly) : 0,
         carton: processValues.carton ? parseInt(processValues.carton) : 0,
         remarks: remarks || null,
-        actual_hours: actualHours ? parseFloat(actualHours) : null,
+        actual_hours: parseFloat(actualHours),
         submitted_by: user.id,
       };
 
@@ -637,12 +641,14 @@ export default function FinishingDailyOutput() {
               <Input
                 type="number"
                 step="0.5"
-                min="0"
+                min="0.5"
                 max="24"
                 value={actualHours}
                 onChange={(e) => setActualHours(e.target.value)}
                 placeholder={targetLog?.planned_hours ? `Planned: ${targetLog.planned_hours}h` : "e.g. 8"}
+                className={errors.actualHours ? "border-destructive" : ""}
               />
+              {errors.actualHours && <p className="text-sm text-destructive">{errors.actualHours}</p>}
               {targetLog?.planned_hours && (
                 <p className="text-xs text-muted-foreground">
                   Planned hours from target: {targetLog.planned_hours}h
