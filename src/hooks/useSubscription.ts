@@ -15,16 +15,22 @@ interface SubscriptionStatus {
   paymentFailedAt?: string;
 }
 
+// Module-level cache so all SubscriptionGate instances share the same data
+// and don't each trigger their own edge function call + loading spinner.
+let cachedStatus: SubscriptionStatus | null = null;
+let lastEdgeFetchTime = 0;
+
+const EDGE_FETCH_COOLDOWN_MS = 60_000; // Don't re-call edge function within 60s
+
 export function useSubscription() {
   const { user, profile, factory, loading: authLoading } = useAuth();
-  const [status, setStatus] = useState<SubscriptionStatus | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState<SubscriptionStatus | null>(cachedStatus);
+  const [loading, setLoading] = useState(!cachedStatus && authLoading);
   const [error, setError] = useState<string | null>(null);
-  const hasLoadedOnce = useRef(false);
   const inFlightRef = useRef(false);
 
-  // Fallback: check subscription status directly from factory data
-  const checkFromFactory = useCallback(() => {
+  // Derive subscription status synchronously from factory data already in AuthContext
+  const checkFromFactory = useCallback((): SubscriptionStatus => {
     if (!profile?.factory_id || !factory) {
       return {
         subscribed: false,
@@ -99,78 +105,84 @@ export function useSubscription() {
     };
   }, [profile?.factory_id, factory]);
 
-  const checkSubscription = useCallback(async () => {
+  // Immediately derive status from factory data when auth finishes loading.
+  // This is synchronous — no network call, no loading spinner on navigation.
+  useEffect(() => {
+    if (authLoading) {
+      // Only show loading if we have no cached status at all
+      if (!cachedStatus) {
+        setLoading(true);
+      }
+      return;
+    }
+
     if (!user) {
+      cachedStatus = null;
       setStatus(null);
       setLoading(false);
       return;
     }
 
-    // Wait for auth data to finish loading before checking subscription
-    if (authLoading) {
-      setLoading(true);
-      return;
-    }
+    // Derive status from factory data already in AuthContext
+    const derived = checkFromFactory();
+    cachedStatus = derived;
+    setStatus(derived);
+    setLoading(false);
+  }, [authLoading, user, checkFromFactory]);
 
-    // Prevent duplicate concurrent calls (auth deps change in quick succession)
+  // Background edge function validation — never blocks rendering.
+  // Runs once after auth loads, then every 5 minutes.
+  const refreshFromEdge = useCallback(async () => {
+    if (!user || authLoading) return;
     if (inFlightRef.current) return;
+
+    // Cooldown: don't call edge function if we called it recently
+    const now = Date.now();
+    if (now - lastEdgeFetchTime < EDGE_FETCH_COOLDOWN_MS) return;
+
     inFlightRef.current = true;
 
-    // Only show loading spinner on the initial check.
-    // Background refreshes update status silently to avoid unmounting pages.
-    if (!hasLoadedOnce.current) {
-      setLoading(true);
-    }
-
     try {
-      setError(null);
-
-      // Verify we have a valid session before calling the edge function
       const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData?.session) {
-        // No valid session yet, use fallback
-        const fallbackStatus = checkFromFactory();
-        setStatus(fallbackStatus);
-        return;
-      }
+      if (!sessionData?.session) return;
 
       const { data, error: fnError } = await supabase.functions.invoke('check-subscription');
 
-      if (fnError) {
-        throw fnError;
-      }
+      if (fnError) throw fnError;
 
+      lastEdgeFetchTime = Date.now();
+      cachedStatus = data;
       setStatus(data);
+      setError(null);
     } catch (err) {
-      console.error('Error checking subscription:', err);
+      console.error('Error checking subscription (background):', err);
       setError('Failed to check subscription status');
-      // Fallback to checking factory data directly
-      const fallbackStatus = checkFromFactory();
-      setStatus(fallbackStatus);
+      // Don't overwrite status — keep the factory-derived status
     } finally {
-      hasLoadedOnce.current = true;
       inFlightRef.current = false;
-      setLoading(false);
     }
-  }, [user, authLoading, checkFromFactory]);
+  }, [user, authLoading]);
 
+  // Run edge function once after auth loads (background, non-blocking)
   useEffect(() => {
-    checkSubscription();
-  }, [checkSubscription]);
+    if (!authLoading && user) {
+      refreshFromEdge();
+    }
+  }, [authLoading, user, refreshFromEdge]);
 
-  // Refresh silently every 5 minutes (no loading spinner)
+  // Refresh silently every 5 minutes
   useEffect(() => {
     if (!user) return;
 
-    const interval = setInterval(checkSubscription, 300000);
+    const interval = setInterval(refreshFromEdge, 300_000);
     return () => clearInterval(interval);
-  }, [user, checkSubscription]);
+  }, [user, refreshFromEdge]);
 
   return {
     status,
     loading,
     error,
-    refresh: checkSubscription,
+    refresh: refreshFromEdge,
     hasAccess: status?.hasAccess ?? false,
     isTrial: status?.isTrial ?? false,
     needsPayment: status?.needsPayment ?? false,
