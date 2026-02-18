@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, Factory, Package, Search, Download, RefreshCw, Scissors, Archive, CalendarDays } from "lucide-react";
+import { Loader2, Factory, Package, Search, Download, RefreshCw, Scissors, Archive, CalendarDays, Layers } from "lucide-react";
 import { SubmissionDetailModal } from "@/components/SubmissionDetailModal";
 import { CuttingDetailModal } from "@/components/CuttingDetailModal";
 import { formatTimeInTimezone } from "@/lib/date-utils";
@@ -163,6 +163,7 @@ interface StorageTransaction {
   balance_qty: number;
   transaction_date: string;
   created_at: string | null;
+  batch_id: string | null;
   storage_bin_cards: {
     id: string;
     buyer: string | null;
@@ -1085,7 +1086,10 @@ export default function TodayUpdates() {
                           onClick={() => handleStorageClick(txn)}
                         >
                           <TableCell className="font-mono text-sm">{txn.created_at ? formatTime(txn.created_at) : '-'}</TableCell>
-                          <TableCell>{txn.storage_bin_cards?.work_orders?.po_number || '-'}</TableCell>
+                          <TableCell>
+                            {txn.storage_bin_cards?.work_orders?.po_number || '-'}
+                            {txn.batch_id && <Layers className="h-3 w-3 inline ml-1 text-muted-foreground" title="Bulk submission" />}
+                          </TableCell>
                           <TableCell>{txn.storage_bin_cards?.style || '-'}</TableCell>
                           <TableCell className="text-right font-mono text-success">{txn.receive_qty > 0 ? `+${txn.receive_qty.toLocaleString()}` : '-'}</TableCell>
                           <TableCell className="text-right font-mono text-destructive">{txn.issue_qty > 0 ? `-${txn.issue_qty.toLocaleString()}` : '-'}</TableCell>
@@ -1409,7 +1413,10 @@ export default function TodayUpdates() {
                         onClick={() => handleStorageClick(txn)}
                       >
                         <TableCell className="font-mono text-sm">{txn.created_at ? formatTime(txn.created_at) : '-'}</TableCell>
-                        <TableCell>{txn.storage_bin_cards?.work_orders?.po_number || '-'}</TableCell>
+                        <TableCell>
+                          {txn.storage_bin_cards?.work_orders?.po_number || '-'}
+                          {txn.batch_id && <Layers className="h-3 w-3 inline ml-1 text-muted-foreground" title="Bulk submission" />}
+                        </TableCell>
                         <TableCell>{txn.storage_bin_cards?.style || '-'}</TableCell>
                         <TableCell className="text-right font-mono text-success">{txn.receive_qty > 0 ? `+${txn.receive_qty.toLocaleString()}` : '-'}</TableCell>
                         <TableCell className="text-right font-mono text-destructive">{txn.issue_qty > 0 ? `-${txn.issue_qty.toLocaleString()}` : '-'}</TableCell>

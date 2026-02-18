@@ -569,6 +569,7 @@ export default function Dashboard() {
               balance_qty: t.balance_qty,
               remarks: t.remarks,
               created_at: t.created_at,
+              batch_id: t.batch_id || null,
             })),
             transaction_count: todayTransactions.length, // Show only today's transaction count
             latest_balance: latestBalance,

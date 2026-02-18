@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Package, Calendar, ArrowDownToLine, ArrowUpFromLine, Scale } from "lucide-react";
+import { Package, Calendar, ArrowDownToLine, ArrowUpFromLine, Scale, Layers } from "lucide-react";
 import { format } from "date-fns";
 
 interface Transaction {
@@ -26,6 +26,7 @@ interface Transaction {
   balance_qty: number;
   remarks: string | null;
   created_at: string | null;
+  batch_id?: string | null;
 }
 
 interface StorageBinCardDetailModalProps {
@@ -176,6 +177,11 @@ export function StorageBinCardDetailModal({
                     <TableRow key={txn.id}>
                       <TableCell className="font-medium">
                         {format(new Date(txn.transaction_date), 'dd MMM yyyy')}
+                        {txn.batch_id && (
+                          <Badge variant="outline" className="ml-2 text-xs py-0">
+                            <Layers className="h-3 w-3 mr-1" />Bulk
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         {txn.receive_qty > 0 ? (

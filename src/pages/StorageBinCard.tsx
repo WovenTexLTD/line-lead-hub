@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,7 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Package, Search, Plus, Save, AlertTriangle, Unlock, ChevronDown, ChevronUp } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Loader2, Package, Search, Plus, Save, AlertTriangle, Unlock, ChevronDown, ChevronUp, X, Check, Layers } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { format } from "date-fns";
 import { useOfflineSubmission } from "@/hooks/useOfflineSubmission";
@@ -81,6 +83,15 @@ interface NewTransaction {
   remarks: string;
 }
 
+interface BulkBinCardInfo {
+  workOrder: WorkOrder;
+  binCard: BinCard | null;
+  isNew: boolean;
+  lastBalance: number;
+  lastTtlReceive: number;
+  hasTodayTransaction: boolean;
+}
+
 export default function StorageBinCard() {
   const navigate = useNavigate();
   const { user, profile, isStorageUser, isAdminOrHigher } = useAuth();
@@ -91,13 +102,15 @@ export default function StorageBinCard() {
   const [saving, setSaving] = useState(false);
   const [headerSaving, setHeaderSaving] = useState(false);
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
-  const [selectedWorkOrder, setSelectedWorkOrder] = useState<WorkOrder | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Multi-select state
+  const [selectedWorkOrders, setSelectedWorkOrders] = useState<WorkOrder[]>([]);
+
+  // Single mode state (used when exactly 1 PO selected)
   const [binCard, setBinCard] = useState<BinCard | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [searchOpen, setSearchOpen] = useState(false);
   const [showAllTransactions, setShowAllTransactions] = useState(false);
-  
-  // Header fields (editable if not locked)
   const [headerFields, setHeaderFields] = useState({
     supplier_name: "",
     description: "",
@@ -107,13 +120,23 @@ export default function StorageBinCard() {
     package_qty: "",
     prepared_by: "",
   });
-  
-  // New transaction entry
   const [newTxn, setNewTxn] = useState<NewTransaction>({
     receive_qty: "",
     issue_qty: "",
     remarks: "",
   });
+
+  // Bulk mode state (used when 2+ POs selected)
+  const [bulkBinCards, setBulkBinCards] = useState<BulkBinCardInfo[]>([]);
+  const [bulkTxn, setBulkTxn] = useState<NewTransaction>({
+    receive_qty: "",
+    issue_qty: "",
+    remarks: "",
+  });
+  const [bulkLoaded, setBulkLoaded] = useState(false);
+
+  const isBulkMode = selectedWorkOrders.length > 1;
+  const selectedWorkOrder = selectedWorkOrders.length === 1 ? selectedWorkOrders[0] : null;
 
   const canAccess = isStorageUser() || isAdminOrHigher();
 
@@ -132,7 +155,7 @@ export default function StorageBinCard() {
         .eq("factory_id", profile!.factory_id!)
         .eq("is_active", true)
         .order("po_number", { ascending: true });
-      
+
       if (error) throw error;
       setWorkOrders(data || []);
     } catch (error) {
@@ -140,7 +163,6 @@ export default function StorageBinCard() {
     }
   }
 
-  // Create searchable value for each work order
   const getSearchableValue = (wo: WorkOrder) => {
     return [
       wo.po_number,
@@ -151,23 +173,72 @@ export default function StorageBinCard() {
     ].filter(Boolean).join(" ").toLowerCase();
   };
 
-  // When a work order is selected, load or create bin card
-  async function handleSelectWorkOrder(wo: WorkOrder) {
-    setSelectedWorkOrder(wo);
+  // Toggle a work order in/out of selection
+  function toggleWorkOrder(wo: WorkOrder) {
+    setSelectedWorkOrders(prev => {
+      const exists = prev.find(s => s.id === wo.id);
+      if (exists) return prev.filter(s => s.id !== wo.id);
+      return [...prev, wo];
+    });
+  }
+
+  // Remove a PO from selection
+  function removeWorkOrder(woId: string) {
+    setSelectedWorkOrders(prev => prev.filter(s => s.id !== woId));
+    // If removing from bulk and going to 1, reset bulk state
+    if (selectedWorkOrders.length <= 2) {
+      setBulkBinCards([]);
+      setBulkLoaded(false);
+      setBulkTxn({ receive_qty: "", issue_qty: "", remarks: "" });
+    }
+  }
+
+  // Reset all selection
+  function resetSelection() {
+    setSelectedWorkOrders([]);
+    setBinCard(null);
+    setTransactions([]);
+    setBulkBinCards([]);
+    setBulkLoaded(false);
+    setBulkTxn({ receive_qty: "", issue_qty: "", remarks: "" });
+    setNewTxn({ receive_qty: "", issue_qty: "", remarks: "" });
+    setShowAllTransactions(false);
+  }
+
+  // Handle popover close — trigger appropriate load
+  async function handleApplySelection() {
     setSearchOpen(false);
+
+    if (selectedWorkOrders.length === 0) {
+      resetSelection();
+      return;
+    }
+
+    if (selectedWorkOrders.length === 1) {
+      // Single mode: load like before
+      await handleSingleSelect(selectedWorkOrders[0]);
+    } else {
+      // Bulk mode: load all bin cards
+      await handleBulkLoad();
+    }
+  }
+
+  // Single mode: load or create bin card (original behavior)
+  async function handleSingleSelect(wo: WorkOrder) {
     setLoading(true);
-    
+    setBulkBinCards([]);
+    setBulkLoaded(false);
+
     try {
-      // Try to find existing bin card
       const { data: existingCard, error: fetchError } = await supabase
         .from("storage_bin_cards")
         .select("*")
         .eq("factory_id", profile!.factory_id!)
         .eq("work_order_id", wo.id)
         .maybeSingle();
-      
+
       if (fetchError) throw fetchError;
-      
+
       if (existingCard) {
         setBinCard(existingCard as BinCard);
         setHeaderFields({
@@ -179,11 +250,8 @@ export default function StorageBinCard() {
           package_qty: existingCard.package_qty || (wo.package_qty?.toString() || ""),
           prepared_by: existingCard.prepared_by || profile?.full_name || "",
         });
-        
-        // Load transactions
         await loadTransactions(existingCard.id);
       } else {
-        // Create new bin card
         const newCard = {
           factory_id: profile!.factory_id!,
           work_order_id: wo.id,
@@ -199,15 +267,15 @@ export default function StorageBinCard() {
           prepared_by_user_id: user?.id,
           is_header_locked: false,
         };
-        
+
         const { data: createdCard, error: createError } = await supabase
           .from("storage_bin_cards")
           .insert(newCard)
           .select()
           .single();
-        
+
         if (createError) throw createError;
-        
+
         setBinCard(createdCard as BinCard);
         setHeaderFields({
           supplier_name: wo.supplier_name || "",
@@ -228,6 +296,89 @@ export default function StorageBinCard() {
     }
   }
 
+  // Bulk mode: load/create bin cards for all selected POs
+  async function handleBulkLoad() {
+    setLoading(true);
+    setBinCard(null);
+    setTransactions([]);
+    const today = format(new Date(), "yyyy-MM-dd");
+
+    try {
+      const results: BulkBinCardInfo[] = [];
+
+      for (const wo of selectedWorkOrders) {
+        // Check for existing bin card
+        const { data: existingCard } = await supabase
+          .from("storage_bin_cards")
+          .select("*")
+          .eq("factory_id", profile!.factory_id!)
+          .eq("work_order_id", wo.id)
+          .maybeSingle();
+
+        let binCardData = existingCard;
+        let isNew = false;
+
+        if (!existingCard) {
+          // Auto-create bin card with work order defaults
+          const { data: created, error: createError } = await supabase
+            .from("storage_bin_cards")
+            .insert({
+              factory_id: profile!.factory_id!,
+              work_order_id: wo.id,
+              buyer: wo.buyer,
+              style: wo.style,
+              supplier_name: wo.supplier_name || null,
+              description: wo.description || wo.item || null,
+              construction: wo.construction || null,
+              color: wo.color || null,
+              width: wo.width || null,
+              package_qty: wo.package_qty?.toString() || null,
+              prepared_by: profile?.full_name || null,
+              prepared_by_user_id: user?.id,
+              is_header_locked: true,
+            })
+            .select()
+            .single();
+
+          if (createError) throw createError;
+          binCardData = created;
+          isNew = true;
+        }
+
+        // Get latest transaction for balance
+        const { data: latestTxns } = await supabase
+          .from("storage_bin_card_transactions")
+          .select("balance_qty, ttl_receive, transaction_date")
+          .eq("bin_card_id", binCardData!.id)
+          .order("transaction_date", { ascending: false })
+          .order("created_at", { ascending: false })
+          .limit(1);
+
+        const latestTxn = latestTxns?.[0];
+        const lastBalance = latestTxn?.balance_qty ?? 0;
+        const lastTtlReceive = latestTxn?.ttl_receive ?? 0;
+        const hasTodayTransaction = latestTxn?.transaction_date === today;
+
+        results.push({
+          workOrder: wo,
+          binCard: binCardData as BinCard,
+          isNew,
+          lastBalance,
+          lastTtlReceive,
+          hasTodayTransaction,
+        });
+      }
+
+      setBulkBinCards(results);
+      setBulkLoaded(true);
+    } catch (error) {
+      console.error("Error loading bulk bin cards:", error);
+      toast.error("Error", { description: "Failed to load bin cards" });
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function loadTransactions(binCardId: string) {
     const { data, error } = await supabase
       .from("storage_bin_card_transactions")
@@ -235,22 +386,22 @@ export default function StorageBinCard() {
       .eq("bin_card_id", binCardId)
       .order("transaction_date", { ascending: false })
       .order("created_at", { ascending: false });
-    
+
     if (error) {
       console.error("Error loading transactions:", error);
       return;
     }
-    
+
     setTransactions(data || []);
   }
 
-  // Calculate running totals for new transaction preview
-  const lastBalance = transactions.length > 0 
-    ? transactions[transactions.length - 1].balance_qty 
+  // Single mode balance calculations (keep original behavior)
+  const lastBalance = transactions.length > 0
+    ? transactions[transactions.length - 1].balance_qty
     : 0;
-  
-  const lastTtlReceive = transactions.length > 0 
-    ? transactions[transactions.length - 1].ttl_receive 
+
+  const lastTtlReceive = transactions.length > 0
+    ? transactions[transactions.length - 1].ttl_receive
     : 0;
 
   const previewReceive = parseInt(newTxn.receive_qty) || 0;
@@ -258,6 +409,24 @@ export default function StorageBinCard() {
   const previewTtlReceive = lastTtlReceive + previewReceive;
   const previewBalance = lastBalance + previewReceive - previewIssue;
   const wouldGoNegative = previewBalance < 0;
+
+  // Bulk mode balance calculations
+  const bulkReceive = parseInt(bulkTxn.receive_qty) || 0;
+  const bulkIssue = parseInt(bulkTxn.issue_qty) || 0;
+
+  const bulkPreviews = useMemo(() => {
+    return bulkBinCards.map(item => {
+      if (item.hasTodayTransaction) {
+        return { ...item, previewBalance: item.lastBalance, previewTtlReceive: item.lastTtlReceive, wouldGoNegative: false, skipped: true };
+      }
+      const previewTtlReceive = item.lastTtlReceive + bulkReceive;
+      const previewBalance = item.lastBalance + bulkReceive - bulkIssue;
+      return { ...item, previewBalance, previewTtlReceive, wouldGoNegative: previewBalance < 0, skipped: false };
+    });
+  }, [bulkBinCards, bulkReceive, bulkIssue]);
+
+  const submittableBulk = bulkPreviews.filter(item => !item.skipped && (!item.wouldGoNegative || isAdminOrHigher()));
+  const anyBulkNegative = bulkPreviews.some(item => !item.skipped && item.wouldGoNegative);
 
   async function saveHeaderFields() {
     if (!binCard) return;
@@ -274,7 +443,7 @@ export default function StorageBinCard() {
           width: headerFields.width || null,
           package_qty: headerFields.package_qty || null,
           prepared_by: headerFields.prepared_by || null,
-          is_header_locked: true, // Lock after first save
+          is_header_locked: true,
         })
         .eq("id", binCard.id);
 
@@ -312,21 +481,22 @@ export default function StorageBinCard() {
     }
   }
 
+  // Single mode submit (original behavior)
   async function submitTransaction() {
     if (!binCard || !profile?.factory_id) return;
-    
+
     if (wouldGoNegative && !isAdminOrHigher()) {
       toast.error("Invalid transaction", { description: "Balance cannot go negative. Reduce issue quantity." });
       return;
     }
-    
+
     if (previewReceive === 0 && previewIssue === 0) {
       toast.error("Invalid transaction", { description: "Enter a receive or issue quantity." });
       return;
     }
-    
+
     setSaving(true);
-    
+
     try {
       const newTransaction = {
         bin_card_id: binCard.id,
@@ -339,7 +509,7 @@ export default function StorageBinCard() {
         remarks: newTxn.remarks || null,
         submitted_by: user?.id,
       };
-      
+
       const result = await offlineSubmit("storage_bin_cards", "storage_bin_card_transactions", newTransaction as Record<string, unknown>, {
         showSuccessToast: false,
         showQueuedToast: true,
@@ -360,12 +530,8 @@ export default function StorageBinCard() {
         throw new Error(result.error);
       }
 
-      // Reload transactions
       await loadTransactions(binCard.id);
-
-      // Reset form
       setNewTxn({ receive_qty: "", issue_qty: "", remarks: "" });
-
       toast.success("Transaction saved", { description: "Entry has been recorded." });
       navigate("/storage/history");
     } catch (error) {
@@ -374,6 +540,80 @@ export default function StorageBinCard() {
     } finally {
       setSaving(false);
     }
+  }
+
+  // Bulk mode submit
+  async function submitBulkTransactions() {
+    if (!profile?.factory_id) return;
+
+    if (bulkReceive === 0 && bulkIssue === 0) {
+      toast.error("Invalid transaction", { description: "Enter a receive or issue quantity." });
+      return;
+    }
+
+    if (submittableBulk.length === 0) {
+      toast.error("No valid entries", { description: "All POs either have today's entry or would go negative." });
+      return;
+    }
+
+    setSaving(true);
+    const batchId = crypto.randomUUID();
+    const today = format(new Date(), "yyyy-MM-dd");
+    let successCount = 0;
+    let failCount = 0;
+    const errors: string[] = [];
+
+    for (const item of submittableBulk) {
+      const payload = {
+        bin_card_id: item.binCard!.id,
+        factory_id: profile.factory_id,
+        transaction_date: today,
+        receive_qty: bulkReceive,
+        issue_qty: bulkIssue,
+        ttl_receive: item.previewTtlReceive,
+        balance_qty: item.previewBalance,
+        remarks: bulkTxn.remarks || null,
+        submitted_by: user?.id,
+        batch_id: batchId,
+      };
+
+      const result = await offlineSubmit(
+        "storage_bin_cards",
+        "storage_bin_card_transactions",
+        payload as Record<string, unknown>,
+        { showSuccessToast: false, showQueuedToast: false }
+      );
+
+      if (result.queued || result.success) {
+        successCount++;
+      } else {
+        failCount++;
+        const po = item.workOrder.po_number;
+        if (result.error?.includes("duplicate") || result.error?.includes("uq_bin_card_transaction_date")) {
+          errors.push(`${po}: already has today's entry`);
+        } else {
+          errors.push(`${po}: ${result.error}`);
+        }
+      }
+    }
+
+    if (successCount > 0 && failCount === 0) {
+      toast.success(`${successCount} entries saved`, {
+        description: `Batch applied to ${successCount} POs`,
+      });
+    } else if (successCount > 0 && failCount > 0) {
+      toast.warning(`${successCount} saved, ${failCount} failed`, {
+        description: errors.join("; "),
+      });
+    } else {
+      toast.error("All entries failed", { description: errors.join("; ") });
+    }
+
+    if (successCount > 0) {
+      navigate("/storage/history");
+    }
+
+    setSaving(false);
   }
 
   if (!canAccess) {
@@ -398,50 +638,97 @@ export default function StorageBinCard() {
         </div>
       </div>
 
-      {/* Step 1: PO Selector */}
+      {/* Step 1: PO Selector (Multi-select) */}
       <Card className="overflow-hidden">
         <CardHeader className="pb-3 px-3 sm:px-6">
-          <CardTitle className="text-base sm:text-lg">Step 1: Select PO / Work Order</CardTitle>
+          <CardTitle className="text-base sm:text-lg flex items-center justify-between">
+            <span>Step 1: Select PO / Work Order</span>
+            {selectedWorkOrders.length > 0 && (
+              <Button variant="ghost" size="sm" onClick={resetSelection} className="text-xs">
+                Clear All
+              </Button>
+            )}
+          </CardTitle>
         </CardHeader>
-        <CardContent className="px-3 sm:px-6">
+        <CardContent className="px-3 sm:px-6 space-y-3">
           <Popover open={searchOpen} onOpenChange={setSearchOpen}>
             <PopoverTrigger asChild>
               <Button variant="outline" className="w-full justify-start min-w-0">
                 <Search className="mr-2 h-4 w-4" />
                 <span className="truncate">
-                  {selectedWorkOrder
-                    ? `${selectedWorkOrder.po_number} - ${selectedWorkOrder.buyer} / ${selectedWorkOrder.style}`
-                    : "Search by PO, Buyer, Style, Item..."}
+                  {selectedWorkOrders.length === 0
+                    ? "Search by PO, Buyer, Style, Item..."
+                    : selectedWorkOrders.length === 1
+                      ? `${selectedWorkOrders[0].po_number} - ${selectedWorkOrders[0].buyer} / ${selectedWorkOrders[0].style}`
+                      : `${selectedWorkOrders.length} POs selected`}
                 </span>
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-[var(--radix-popover-trigger-width)] max-w-[400px] p-0" align="start">
               <Command shouldFilter={true}>
-                <CommandInput 
-                  placeholder="Search PO, buyer, style, item..." 
-                />
+                <CommandInput placeholder="Search PO, buyer, style, item..." />
                 <CommandList>
                   <CommandEmpty>No work orders found.</CommandEmpty>
                   <CommandGroup>
-                    {workOrders.map(wo => (
-                      <CommandItem 
-                        key={wo.id} 
-                        value={getSearchableValue(wo)}
-                        onSelect={() => handleSelectWorkOrder(wo)}
-                      >
-                        <div className="flex flex-col">
-                          <span className="font-medium">{wo.po_number}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {wo.buyer} / {wo.style} {wo.item ? `/ ${wo.item}` : ""}
-                          </span>
-                        </div>
-                      </CommandItem>
-                    ))}
+                    {workOrders.map(wo => {
+                      const isSelected = selectedWorkOrders.some(s => s.id === wo.id);
+                      return (
+                        <CommandItem
+                          key={wo.id}
+                          value={getSearchableValue(wo)}
+                          onSelect={() => toggleWorkOrder(wo)}
+                        >
+                          <div className="flex items-center gap-2 w-full">
+                            <Checkbox
+                              checked={isSelected}
+                              className="pointer-events-none"
+                            />
+                            <div className="flex flex-col min-w-0 flex-1">
+                              <span className="font-medium">{wo.po_number}</span>
+                              <span className="text-xs text-muted-foreground truncate">
+                                {wo.buyer} / {wo.style} {wo.item ? `/ ${wo.item}` : ""}
+                              </span>
+                            </div>
+                            {isSelected && <Check className="h-4 w-4 text-primary shrink-0" />}
+                          </div>
+                        </CommandItem>
+                      );
+                    })}
                   </CommandGroup>
                 </CommandList>
+                {selectedWorkOrders.length > 0 && (
+                  <div className="border-t p-2">
+                    <Button size="sm" className="w-full" onClick={handleApplySelection}>
+                      Apply ({selectedWorkOrders.length} selected)
+                    </Button>
+                  </div>
+                )}
               </Command>
             </PopoverContent>
           </Popover>
+
+          {/* Selected PO chips */}
+          {selectedWorkOrders.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {selectedWorkOrders.map(wo => (
+                <Badge key={wo.id} variant="secondary" className="flex items-center gap-1 pl-2.5 pr-1 py-1">
+                  <span className="text-xs">{wo.po_number}</span>
+                  <button
+                    onClick={() => removeWorkOrder(wo.id)}
+                    className="ml-1 rounded-full hover:bg-muted-foreground/20 p-0.5"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+              {isBulkMode && (
+                <Badge variant="info" className="text-xs">
+                  <Layers className="h-3 w-3 mr-1" />
+                  Bulk Entry
+                </Badge>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -452,287 +739,439 @@ export default function StorageBinCard() {
         </div>
       )}
 
-      {/* Step 2: Header Fields - shown when bin card is loaded */}
-      {binCard && !loading && (
-        <Card className="overflow-hidden">
-          <CardHeader className="pb-3 px-3 sm:px-6">
-            <CardTitle className="text-base sm:text-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <span>Step 2: Bin Card Header</span>
-              <div className="flex items-center gap-2">
-                {binCard.is_header_locked && (
-                  <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-1 rounded">
-                    Locked
-                  </span>
-                )}
-                {binCard.is_header_locked && (isAdminOrHigher() || isStorageUser()) && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={unlockHeader}
-                    disabled={headerSaving}
-                  >
-                    {headerSaving ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Unlock className="mr-2 h-4 w-4" />
-                    )}
-                    Unlock
-                  </Button>
-                )}
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-3 sm:px-6">
-            <div className="grid grid-cols-1 gap-3">
-              <div>
-                <Label>BUYER</Label>
-                <Input value={selectedWorkOrder?.buyer || ""} disabled className="bg-muted" />
-              </div>
-              <div>
-                <Label>STYLE</Label>
-                <Input value={selectedWorkOrder?.style || ""} disabled className="bg-muted" />
-              </div>
-              <div>
-                <Label>SUPPLIER NAME</Label>
-                <Input 
-                  value={headerFields.supplier_name}
-                  onChange={e => setHeaderFields({...headerFields, supplier_name: e.target.value})}
-                  disabled={binCard.is_header_locked && !isAdminOrHigher()}
-                  placeholder="Enter supplier name"
-                />
-              </div>
-              <div>
-                <Label>DESCRIPTION</Label>
-                <Input 
-                  value={headerFields.description}
-                  onChange={e => setHeaderFields({...headerFields, description: e.target.value})}
-                  disabled={binCard.is_header_locked && !isAdminOrHigher()}
-                  placeholder="Item description"
-                />
-              </div>
-              <div>
-                <Label>CONSTRUCTION</Label>
-                <Input 
-                  value={headerFields.construction}
-                  onChange={e => setHeaderFields({...headerFields, construction: e.target.value})}
-                  disabled={binCard.is_header_locked && !isAdminOrHigher()}
-                  placeholder="Construction details"
-                />
-              </div>
-              <div>
-                <Label>PREPARED BY</Label>
-                <Input 
-                  value={headerFields.prepared_by}
-                  onChange={e => setHeaderFields({...headerFields, prepared_by: e.target.value})}
-                  disabled={binCard.is_header_locked && !isAdminOrHigher()}
-                />
-              </div>
-              <div>
-                <Label>COLOR</Label>
-                <Input 
-                  value={headerFields.color}
-                  onChange={e => setHeaderFields({...headerFields, color: e.target.value})}
-                  disabled={binCard.is_header_locked && !isAdminOrHigher()}
-                  placeholder="Color"
-                />
-              </div>
-              <div>
-                <Label>WIDTH</Label>
-                <Input 
-                  value={headerFields.width}
-                  onChange={e => setHeaderFields({...headerFields, width: e.target.value})}
-                  disabled={binCard.is_header_locked && !isAdminOrHigher()}
-                  placeholder="Width"
-                />
-              </div>
-              <div>
-                <Label>PACKAGE QTY</Label>
-                <Input 
-                  value={headerFields.package_qty}
-                  onChange={e => setHeaderFields({...headerFields, package_qty: e.target.value})}
-                  disabled={binCard.is_header_locked && !isAdminOrHigher()}
-                  placeholder="Package quantity"
-                />
-              </div>
-            </div>
-            {!binCard.is_header_locked && (
-              <Button onClick={saveHeaderFields} className="mt-4" disabled={headerSaving}>
-                {headerSaving ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="mr-2 h-4 w-4" />
-                )}
-                Save & Lock Header
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Step 3: Transaction Grid */}
-      {binCard && !loading && (
-        <Card className="overflow-hidden">
-          <CardHeader className="pb-3 px-3 sm:px-6">
-            <CardTitle className="text-base sm:text-lg">Step 3: Daily Transaction Entry</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 px-3 sm:px-6">
-            {/* Existing transactions table */}
-            {(() => {
-              const newestTransactions = transactions.slice(0, 3);
-              const olderTransactions = transactions.slice(3);
-              const hasOlderTransactions = olderTransactions.length > 0;
-              
-              return (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>DATE</TableHead>
-                        <TableHead className="text-right">RECEIVE QTY</TableHead>
-                        <TableHead className="text-right">TTL RECEIVE</TableHead>
-                        <TableHead className="text-right">ISSUE QTY</TableHead>
-                        <TableHead className="text-right">BALANCE QTY</TableHead>
-                        <TableHead>REMARKS</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {transactions.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                            No transactions yet. Add your first entry below.
-                          </TableCell>
-                        </TableRow>
+      {/* ===== SINGLE MODE (1 PO selected) ===== */}
+      {!isBulkMode && binCard && !loading && (
+        <>
+          {/* Step 2: Header Fields */}
+          <Card className="overflow-hidden">
+            <CardHeader className="pb-3 px-3 sm:px-6">
+              <CardTitle className="text-base sm:text-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <span>Step 2: Bin Card Header</span>
+                <div className="flex items-center gap-2">
+                  {binCard.is_header_locked && (
+                    <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-1 rounded">
+                      Locked
+                    </span>
+                  )}
+                  {binCard.is_header_locked && (isAdminOrHigher() || isStorageUser()) && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={unlockHeader}
+                      disabled={headerSaving}
+                    >
+                      {headerSaving ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       ) : (
-                        <>
-                          {/* Show latest 3 transactions first */}
-                          {newestTransactions.map(txn => (
-                            <TableRow key={txn.id}>
-                              <TableCell>{format(new Date(txn.transaction_date), "dd/MM/yyyy")}</TableCell>
-                              <TableCell className="text-right">{txn.receive_qty}</TableCell>
-                              <TableCell className="text-right font-medium">{txn.ttl_receive}</TableCell>
-                              <TableCell className="text-right">{txn.issue_qty}</TableCell>
-                              <TableCell className={`text-right font-medium ${txn.balance_qty < 0 ? 'text-destructive' : ''}`}>
-                                {txn.balance_qty}
-                              </TableCell>
-                              <TableCell className="max-w-[200px] truncate">{txn.remarks || "-"}</TableCell>
-                            </TableRow>
-                          ))}
-                          
-                          {/* Show more button if there are older transactions */}
-                          {hasOlderTransactions && (
-                            <TableRow>
-                              <TableCell colSpan={6} className="p-0">
-                                <Button
-                                  variant="ghost"
-                                  className="w-full h-10 rounded-none hover:bg-muted/50"
-                                  onClick={() => setShowAllTransactions(!showAllTransactions)}
-                                >
-                                  {showAllTransactions ? (
-                                    <>
-                                      <ChevronUp className="mr-2 h-4 w-4" />
-                                      Hide older entries ({olderTransactions.length})
-                                    </>
-                                  ) : (
-                                    <>
-                                      <ChevronDown className="mr-2 h-4 w-4" />
-                                      Show {olderTransactions.length} older {olderTransactions.length === 1 ? 'entry' : 'entries'}
-                                    </>
-                                  )}
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          )}
-                          
-                          {/* Show older transactions when expanded */}
-                          {showAllTransactions && olderTransactions.map(txn => (
-                            <TableRow key={txn.id}>
-                              <TableCell>{format(new Date(txn.transaction_date), "dd/MM/yyyy")}</TableCell>
-                              <TableCell className="text-right">{txn.receive_qty}</TableCell>
-                              <TableCell className="text-right font-medium">{txn.ttl_receive}</TableCell>
-                              <TableCell className="text-right">{txn.issue_qty}</TableCell>
-                              <TableCell className={`text-right font-medium ${txn.balance_qty < 0 ? 'text-destructive' : ''}`}>
-                                {txn.balance_qty}
-                              </TableCell>
-                              <TableCell className="max-w-[200px] truncate">{txn.remarks || "-"}</TableCell>
-                            </TableRow>
-                          ))}
-                        </>
+                        <Unlock className="mr-2 h-4 w-4" />
                       )}
-                    </TableBody>
-                  </Table>
+                      Unlock
+                    </Button>
+                  )}
                 </div>
-              );
-            })()}
-
-            {/* New entry row */}
-            <div className="border rounded-lg p-3 sm:p-4 bg-muted/30">
-              <h4 className="font-medium mb-3 flex items-center gap-2 text-sm sm:text-base">
-                <Plus className="h-4 w-4" />
-                Add Today's Entry ({format(new Date(), "dd/MM/yyyy")})
-              </h4>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 sm:px-6">
               <div className="grid grid-cols-1 gap-3">
                 <div>
-                  <Label>Receive Qty</Label>
+                  <Label>BUYER</Label>
+                  <Input value={selectedWorkOrder?.buyer || ""} disabled className="bg-muted" />
+                </div>
+                <div>
+                  <Label>STYLE</Label>
+                  <Input value={selectedWorkOrder?.style || ""} disabled className="bg-muted" />
+                </div>
+                <div>
+                  <Label>SUPPLIER NAME</Label>
                   <Input
-                    type="number"
-                    min="0"
-                    value={newTxn.receive_qty}
-                    onChange={e => setNewTxn({...newTxn, receive_qty: e.target.value})}
-                    placeholder="0"
+                    value={headerFields.supplier_name}
+                    onChange={e => setHeaderFields({...headerFields, supplier_name: e.target.value})}
+                    disabled={binCard.is_header_locked && !isAdminOrHigher()}
+                    placeholder="Enter supplier name"
                   />
                 </div>
                 <div>
-                  <Label>Issue Qty</Label>
+                  <Label>DESCRIPTION</Label>
                   <Input
-                    type="number"
-                    min="0"
-                    value={newTxn.issue_qty}
-                    onChange={e => setNewTxn({...newTxn, issue_qty: e.target.value})}
-                    placeholder="0"
+                    value={headerFields.description}
+                    onChange={e => setHeaderFields({...headerFields, description: e.target.value})}
+                    disabled={binCard.is_header_locked && !isAdminOrHigher()}
+                    placeholder="Item description"
                   />
                 </div>
                 <div>
-                  <Label>TTL Receive (calc)</Label>
-                  <Input value={previewTtlReceive} disabled className="bg-muted" />
-                </div>
-                <div>
-                  <Label>Balance (calc)</Label>
-                  <Input 
-                    value={previewBalance} 
-                    disabled 
-                    className={`bg-muted ${wouldGoNegative ? 'text-destructive border-destructive' : ''}`}
+                  <Label>CONSTRUCTION</Label>
+                  <Input
+                    value={headerFields.construction}
+                    onChange={e => setHeaderFields({...headerFields, construction: e.target.value})}
+                    disabled={binCard.is_header_locked && !isAdminOrHigher()}
+                    placeholder="Construction details"
                   />
                 </div>
                 <div>
+                  <Label>PREPARED BY</Label>
+                  <Input
+                    value={headerFields.prepared_by}
+                    onChange={e => setHeaderFields({...headerFields, prepared_by: e.target.value})}
+                    disabled={binCard.is_header_locked && !isAdminOrHigher()}
+                  />
+                </div>
+                <div>
+                  <Label>COLOR</Label>
+                  <Input
+                    value={headerFields.color}
+                    onChange={e => setHeaderFields({...headerFields, color: e.target.value})}
+                    disabled={binCard.is_header_locked && !isAdminOrHigher()}
+                    placeholder="Color"
+                  />
+                </div>
+                <div>
+                  <Label>WIDTH</Label>
+                  <Input
+                    value={headerFields.width}
+                    onChange={e => setHeaderFields({...headerFields, width: e.target.value})}
+                    disabled={binCard.is_header_locked && !isAdminOrHigher()}
+                    placeholder="Width"
+                  />
+                </div>
+                <div>
+                  <Label>PACKAGE QTY</Label>
+                  <Input
+                    value={headerFields.package_qty}
+                    onChange={e => setHeaderFields({...headerFields, package_qty: e.target.value})}
+                    disabled={binCard.is_header_locked && !isAdminOrHigher()}
+                    placeholder="Package quantity"
+                  />
+                </div>
+              </div>
+              {!binCard.is_header_locked && (
+                <Button onClick={saveHeaderFields} className="mt-4" disabled={headerSaving}>
+                  {headerSaving ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="mr-2 h-4 w-4" />
+                  )}
+                  Save & Lock Header
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Step 3: Transaction Grid (Single Mode) */}
+          <Card className="overflow-hidden">
+            <CardHeader className="pb-3 px-3 sm:px-6">
+              <CardTitle className="text-base sm:text-lg">Step 3: Daily Transaction Entry</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 px-3 sm:px-6">
+              {/* Existing transactions table */}
+              {(() => {
+                const newestTransactions = transactions.slice(0, 3);
+                const olderTransactions = transactions.slice(3);
+                const hasOlderTransactions = olderTransactions.length > 0;
+
+                return (
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>DATE</TableHead>
+                          <TableHead className="text-right">RECEIVE QTY</TableHead>
+                          <TableHead className="text-right">TTL RECEIVE</TableHead>
+                          <TableHead className="text-right">ISSUE QTY</TableHead>
+                          <TableHead className="text-right">BALANCE QTY</TableHead>
+                          <TableHead>REMARKS</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {transactions.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                              No transactions yet. Add your first entry below.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          <>
+                            {newestTransactions.map(txn => (
+                              <TableRow key={txn.id}>
+                                <TableCell>{format(new Date(txn.transaction_date), "dd/MM/yyyy")}</TableCell>
+                                <TableCell className="text-right">{txn.receive_qty}</TableCell>
+                                <TableCell className="text-right font-medium">{txn.ttl_receive}</TableCell>
+                                <TableCell className="text-right">{txn.issue_qty}</TableCell>
+                                <TableCell className={`text-right font-medium ${txn.balance_qty < 0 ? 'text-destructive' : ''}`}>
+                                  {txn.balance_qty}
+                                </TableCell>
+                                <TableCell className="max-w-[200px] truncate">{txn.remarks || "-"}</TableCell>
+                              </TableRow>
+                            ))}
+
+                            {hasOlderTransactions && (
+                              <TableRow>
+                                <TableCell colSpan={6} className="p-0">
+                                  <Button
+                                    variant="ghost"
+                                    className="w-full h-10 rounded-none hover:bg-muted/50"
+                                    onClick={() => setShowAllTransactions(!showAllTransactions)}
+                                  >
+                                    {showAllTransactions ? (
+                                      <>
+                                        <ChevronUp className="mr-2 h-4 w-4" />
+                                        Hide older entries ({olderTransactions.length})
+                                      </>
+                                    ) : (
+                                      <>
+                                        <ChevronDown className="mr-2 h-4 w-4" />
+                                        Show {olderTransactions.length} older {olderTransactions.length === 1 ? 'entry' : 'entries'}
+                                      </>
+                                    )}
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            )}
+
+                            {showAllTransactions && olderTransactions.map(txn => (
+                              <TableRow key={txn.id}>
+                                <TableCell>{format(new Date(txn.transaction_date), "dd/MM/yyyy")}</TableCell>
+                                <TableCell className="text-right">{txn.receive_qty}</TableCell>
+                                <TableCell className="text-right font-medium">{txn.ttl_receive}</TableCell>
+                                <TableCell className="text-right">{txn.issue_qty}</TableCell>
+                                <TableCell className={`text-right font-medium ${txn.balance_qty < 0 ? 'text-destructive' : ''}`}>
+                                  {txn.balance_qty}
+                                </TableCell>
+                                <TableCell className="max-w-[200px] truncate">{txn.remarks || "-"}</TableCell>
+                              </TableRow>
+                            ))}
+                          </>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                );
+              })()}
+
+              {/* New entry row */}
+              <div className="border rounded-lg p-3 sm:p-4 bg-muted/30">
+                <h4 className="font-medium mb-3 flex items-center gap-2 text-sm sm:text-base">
+                  <Plus className="h-4 w-4" />
+                  Add Today's Entry ({format(new Date(), "dd/MM/yyyy")})
+                </h4>
+                <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <Label>Receive Qty</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={newTxn.receive_qty}
+                      onChange={e => setNewTxn({...newTxn, receive_qty: e.target.value})}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <Label>Issue Qty</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={newTxn.issue_qty}
+                      onChange={e => setNewTxn({...newTxn, issue_qty: e.target.value})}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <Label>TTL Receive (calc)</Label>
+                    <Input value={previewTtlReceive} disabled className="bg-muted" />
+                  </div>
+                  <div>
+                    <Label>Balance (calc)</Label>
+                    <Input
+                      value={previewBalance}
+                      disabled
+                      className={`bg-muted ${wouldGoNegative ? 'text-destructive border-destructive' : ''}`}
+                    />
+                  </div>
+                  <div>
+                    <Label>Remarks</Label>
+                    <Textarea
+                      value={newTxn.remarks}
+                      onChange={e => setNewTxn({...newTxn, remarks: e.target.value})}
+                      placeholder="Optional notes"
+                      className="h-10 min-h-0"
+                    />
+                  </div>
+                </div>
+
+                {wouldGoNegative && (
+                  <p className="text-sm text-destructive mt-2 flex items-center gap-1">
+                    <AlertTriangle className="h-4 w-4" />
+                    Balance would go negative. Reduce issue quantity.
+                  </p>
+                )}
+
+                <Button
+                  onClick={submitTransaction}
+                  disabled={saving || (wouldGoNegative && !isAdminOrHigher())}
+                  className="mt-4 w-full sm:w-auto"
+                >
+                  {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                  Save Entry
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      {/* ===== BULK MODE (2+ POs selected) ===== */}
+      {isBulkMode && bulkLoaded && !loading && (
+        <>
+          {/* Step 2: Selected POs Summary */}
+          <Card className="overflow-hidden">
+            <CardHeader className="pb-3 px-3 sm:px-6">
+              <CardTitle className="text-base sm:text-lg">Step 2: Selected POs Summary</CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 sm:px-6">
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>PO NUMBER</TableHead>
+                      <TableHead>BUYER</TableHead>
+                      <TableHead>STYLE</TableHead>
+                      <TableHead className="text-right">BALANCE</TableHead>
+                      <TableHead>STATUS</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {bulkPreviews.map(item => (
+                      <TableRow key={item.workOrder.id}>
+                        <TableCell className="font-medium">{item.workOrder.po_number}</TableCell>
+                        <TableCell>{item.workOrder.buyer}</TableCell>
+                        <TableCell>{item.workOrder.style}</TableCell>
+                        <TableCell className="text-right">{item.lastBalance}</TableCell>
+                        <TableCell>
+                          {item.hasTodayTransaction ? (
+                            <Badge variant="warning" className="text-xs">Has entry</Badge>
+                          ) : item.isNew ? (
+                            <Badge variant="info" className="text-xs">New card</Badge>
+                          ) : (
+                            <Badge variant="success" className="text-xs">Ready</Badge>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              {bulkPreviews.some(item => item.hasTodayTransaction) && (
+                <p className="text-sm text-warning mt-3 flex items-center gap-1">
+                  <AlertTriangle className="h-4 w-4" />
+                  POs marked "Has entry" already have today's transaction and will be skipped.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Step 3: Bulk Transaction Entry */}
+          <Card className="overflow-hidden">
+            <CardHeader className="pb-3 px-3 sm:px-6">
+              <CardTitle className="text-base sm:text-lg">Step 3: Bulk Transaction Entry</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 px-3 sm:px-6">
+              <div className="border rounded-lg p-3 sm:p-4 bg-muted/30">
+                <h4 className="font-medium mb-3 flex items-center gap-2 text-sm sm:text-base">
+                  <Layers className="h-4 w-4" />
+                  Apply to {submittableBulk.length} PO{submittableBulk.length !== 1 ? 's' : ''} ({format(new Date(), "dd/MM/yyyy")})
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label>Receive Qty</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={bulkTxn.receive_qty}
+                      onChange={e => setBulkTxn({...bulkTxn, receive_qty: e.target.value})}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <Label>Issue Qty</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={bulkTxn.issue_qty}
+                      onChange={e => setBulkTxn({...bulkTxn, issue_qty: e.target.value})}
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+                <div className="mt-3">
                   <Label>Remarks</Label>
                   <Textarea
-                    value={newTxn.remarks}
-                    onChange={e => setNewTxn({...newTxn, remarks: e.target.value})}
-                    placeholder="Optional notes"
+                    value={bulkTxn.remarks}
+                    onChange={e => setBulkTxn({...bulkTxn, remarks: e.target.value})}
+                    placeholder="Optional notes (applies to all)"
                     className="h-10 min-h-0"
                   />
                 </div>
               </div>
-              
-              {wouldGoNegative && (
-                <p className="text-sm text-destructive mt-2 flex items-center gap-1">
+
+              {/* Per-PO preview */}
+              {(bulkReceive > 0 || bulkIssue > 0) && (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>PO</TableHead>
+                        <TableHead className="text-right">PREV BAL</TableHead>
+                        <TableHead className="text-right text-success">+RECEIVE</TableHead>
+                        <TableHead className="text-right text-destructive">-ISSUE</TableHead>
+                        <TableHead className="text-right">NEW BAL</TableHead>
+                        <TableHead>STATUS</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {bulkPreviews.map(item => (
+                        <TableRow key={item.workOrder.id} className={item.skipped ? "opacity-50" : ""}>
+                          <TableCell className="font-medium">{item.workOrder.po_number}</TableCell>
+                          <TableCell className="text-right">{item.lastBalance}</TableCell>
+                          <TableCell className="text-right text-success">{item.skipped ? '-' : `+${bulkReceive}`}</TableCell>
+                          <TableCell className="text-right text-destructive">{item.skipped ? '-' : `-${bulkIssue}`}</TableCell>
+                          <TableCell className={`text-right font-medium ${item.wouldGoNegative ? 'text-destructive' : ''}`}>
+                            {item.skipped ? '-' : item.previewBalance}
+                          </TableCell>
+                          <TableCell>
+                            {item.skipped ? (
+                              <span className="text-xs text-muted-foreground">Skipped</span>
+                            ) : item.wouldGoNegative ? (
+                              <Badge variant="destructive" className="text-xs">Negative</Badge>
+                            ) : (
+                              <Badge variant="success" className="text-xs">OK</Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+
+              {anyBulkNegative && !isAdminOrHigher() && (
+                <p className="text-sm text-destructive flex items-center gap-1">
                   <AlertTriangle className="h-4 w-4" />
-                  Balance would go negative. Reduce issue quantity.
+                  Some POs would go negative and will be excluded. Reduce issue quantity.
                 </p>
               )}
-              
-              <Button 
-                onClick={submitTransaction} 
-                disabled={saving || (wouldGoNegative && !isAdminOrHigher())}
-                className="mt-4 w-full sm:w-auto"
+
+              <Button
+                onClick={submitBulkTransactions}
+                disabled={saving || submittableBulk.length === 0}
+                className="w-full sm:w-auto"
               >
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                Save Entry
+                Submit {submittableBulk.length} {submittableBulk.length === 1 ? 'Entry' : 'Entries'}
               </Button>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </>
       )}
     </div>
   );
