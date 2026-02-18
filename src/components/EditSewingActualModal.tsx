@@ -16,6 +16,7 @@ interface SewingActual {
   rework_today: number;
   manpower_actual: number;
   ot_hours_actual: number;
+  ot_manpower_actual: number;
   cumulative_good_total: number;
   remarks?: string | null;
 }
@@ -59,6 +60,7 @@ export function EditSewingActualModal({ submission, open, onOpenChange, onSaved 
           rework_today: formData.rework_today ?? 0,
           manpower_actual: formData.manpower_actual ?? 0,
           ot_hours_actual: formData.ot_hours_actual ?? 0,
+          ot_manpower_actual: formData.ot_manpower_actual ?? 0,
           remarks: formData.remarks,
         })
         .eq('id', submission.id);
@@ -129,15 +131,26 @@ export function EditSewingActualModal({ submission, open, onOpenChange, onSaved 
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="ot_hours_actual">OT Hours</Label>
-            <Input
-              id="ot_hours_actual"
-              type="number"
-              step="0.5"
-              value={formData.ot_hours_actual ?? ''}
-              onChange={(e) => handleNumberChange('ot_hours_actual', e.target.value)}
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="ot_hours_actual">OT Hours</Label>
+              <Input
+                id="ot_hours_actual"
+                type="number"
+                step="0.5"
+                value={formData.ot_hours_actual ?? ''}
+                onChange={(e) => handleNumberChange('ot_hours_actual', e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ot_manpower_actual">OT Manpower</Label>
+              <Input
+                id="ot_manpower_actual"
+                type="number"
+                value={formData.ot_manpower_actual ?? ''}
+                onChange={(e) => handleNumberChange('ot_manpower_actual', e.target.value)}
+              />
+            </div>
           </div>
 
           <div className="space-y-2">

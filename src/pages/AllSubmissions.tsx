@@ -79,6 +79,7 @@ interface SewingActual {
   cumulative_good_total: number;
   manpower_actual: number;
   ot_hours_actual: number;
+  ot_manpower_actual: number;
   actual_stage_progress: number;
   has_blocker: boolean | null;
   blocker_description: string | null;
@@ -453,6 +454,7 @@ export default function AllSubmissions() {
         stage_progress: (actual as SewingActual).actual_stage_progress,
         next_milestone: null,
         ot_hours: (actual as SewingActual).ot_hours_actual,
+        ot_manpower: (actual as SewingActual).ot_manpower_actual ?? null,
       }),
       ...(department === 'finishing' && {
         day_qc_pass: (actual as FinishingActual).day_qc_pass,

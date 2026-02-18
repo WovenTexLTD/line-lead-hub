@@ -142,6 +142,7 @@ interface SewingActualRow {
   cumulative_good_total: number;
   manpower_actual: number;
   ot_hours_actual: number;
+  ot_manpower_actual: number;
   actual_stage_progress: number;
   has_blocker: boolean | null;
   blocker_description: string | null;
@@ -873,7 +874,7 @@ export default function TodayUpdates() {
                                 stage_progress: item.actual?.actual_stage_progress ?? item.target?.planned_stage_progress ?? null,
                                 next_milestone: item.target?.next_milestone || null,
                                 ot_hours: item.actual?.ot_hours_actual ?? item.target?.ot_hours_planned ?? null,
-                                ot_manpower: null,
+                                ot_manpower: item.actual?.ot_manpower_actual ?? null,
                                 has_blocker: item.actual?.has_blocker || false,
                                 blocker_description: item.actual?.blocker_description || null,
                                 blocker_impact: item.actual?.blocker_impact || null,
@@ -1213,7 +1214,7 @@ export default function TodayUpdates() {
                               stage_name: item.actual?.stages?.name || item.target?.stages?.name || null,
                               stage_progress: item.actual?.actual_stage_progress ?? item.target?.planned_stage_progress ?? null,
                               ot_hours: item.actual?.ot_hours_actual ?? item.target?.ot_hours_planned ?? null,
-                              ot_manpower: null,
+                              ot_manpower: item.actual?.ot_manpower_actual ?? null,
                               has_blocker: item.actual?.has_blocker || false,
                               blocker_description: item.actual?.blocker_description || null,
                               blocker_impact: item.actual?.blocker_impact || null,

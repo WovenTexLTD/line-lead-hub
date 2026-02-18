@@ -62,6 +62,7 @@ interface SewingActual {
   rework_today: number;
   manpower_actual: number;
   ot_hours_actual: number;
+  ot_manpower_actual: number;
   cumulative_good_total: number;
   work_order_id: string;
   line_id: string;
@@ -625,7 +626,7 @@ export default function SewingMySubmissions() {
           rework_qty: selectedActual.rework_today,
           stage_progress: null,
           ot_hours: selectedActual.ot_hours_actual,
-          ot_manpower: null,
+          ot_manpower: selectedActual.ot_manpower_actual ?? null,
           has_blocker: false,
           blocker_description: null,
           blocker_impact: null,

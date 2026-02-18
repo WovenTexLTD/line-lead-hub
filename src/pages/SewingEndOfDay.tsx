@@ -78,6 +78,7 @@ const sewingActualsSchema = z.object({
   rework_today: z.number().min(0, "Cannot be negative").max(100000, "Too high"),
   manpower_actual: z.number().min(1, "Must be at least 1").max(500, "Too high"),
   ot_hours_actual: z.number().min(0, "Cannot be negative").max(24, "Max 24 hours"),
+  ot_manpower_actual: z.number().min(0, "Cannot be negative").max(500, "Too high"),
   actual_stage_id: z.string().min(1, "Stage is required"),
   actual_stage_progress: z.string().min(1, "Progress is required"),
   remarks: z.string().max(1000, "Remarks too long").optional(),
@@ -110,6 +111,7 @@ export default function SewingEndOfDay() {
   const [previousCumulativeTotal, setPreviousCumulativeTotal] = useState(0);
   const [manpowerActual, setManpowerActual] = useState("");
   const [otHoursActual, setOtHoursActual] = useState("0");
+  const [otManpowerActual, setOtManpowerActual] = useState("0");
   const [actualStageId, setActualStageId] = useState("");
   const [actualStageProgress, setActualStageProgress] = useState("");
   const [remarks, setRemarks] = useState("");
@@ -255,6 +257,7 @@ export default function SewingEndOfDay() {
       rework_today: parseInt(reworkToday) || 0,
       manpower_actual: parseInt(manpowerActual) || 0,
       ot_hours_actual: parseFloat(otHoursActual) || 0,
+      ot_manpower_actual: parseInt(otManpowerActual) || 0,
       actual_stage_id: actualStageId,
       actual_stage_progress: actualStageProgress,
       remarks: remarks || undefined,
@@ -272,6 +275,7 @@ export default function SewingEndOfDay() {
       if (fieldErrors.rework_today) newErrors.reworkToday = t("forms.reworkRequired");
       if (fieldErrors.manpower_actual) newErrors.manpowerActual = t("forms.manpowerRequired");
       if (fieldErrors.ot_hours_actual) newErrors.otHoursActual = t("forms.otHoursRequired");
+      if (fieldErrors.ot_manpower_actual) newErrors.otManpowerActual = "OT Manpower is invalid";
       if (fieldErrors.actual_stage_id) newErrors.actualStage = t("forms.stageRequired");
       if (fieldErrors.actual_stage_progress) newErrors.actualStageProgress = t("forms.progressRequired");
       if (fieldErrors.remarks) newErrors.remarks = fieldErrors.remarks[0];
@@ -592,6 +596,20 @@ export default function SewingEndOfDay() {
                   className={errors.otHoursActual ? "border-destructive" : ""}
                 />
                 {errors.otHoursActual && <p className="text-sm text-destructive">{errors.otHoursActual}</p>}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>OT Manpower</Label>
+                <Input
+                  type="number"
+                  value={otManpowerActual}
+                  onChange={(e) => setOtManpowerActual(e.target.value)}
+                  placeholder="0"
+                  className={errors.otManpowerActual ? "border-destructive" : ""}
+                />
+                {errors.otManpowerActual && <p className="text-sm text-destructive">{errors.otManpowerActual}</p>}
               </div>
             </div>
           </CardContent>

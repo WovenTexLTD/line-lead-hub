@@ -451,7 +451,7 @@ export default function Dashboard() {
           stage_name: u.stages?.name || null,
           stage_progress: u.actual_stage_progress,
           ot_hours: u.ot_hours_actual,
-          ot_manpower: null, // Not in sewing_actuals
+          ot_manpower: u.ot_manpower_actual ?? null,
           notes: u.remarks,
         }));
 
