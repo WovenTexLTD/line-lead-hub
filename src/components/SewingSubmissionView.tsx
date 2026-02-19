@@ -167,26 +167,26 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange }: Sew
                   Morning Target
                 </h4>
 
-                {/* Target Metrics */}
+                {/* Targets */}
                 <div>
                   <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Targets</p>
                   <div className="grid grid-cols-2 gap-3">
-                    <FieldDisplay label="Per Hour Target" value={target.per_hour_target} className="text-lg text-primary" />
+                    <FieldDisplay label="Per Hour Target" value={target.per_hour_target} suffix=" /hr" className="text-lg text-primary" />
+                    {target.hours_planned != null && target.hours_planned > 0 && (
+                      <FieldDisplay label="Target Total Output" value={Math.round(target.per_hour_target * target.hours_planned)} className="text-lg text-primary" />
+                    )}
+                  </div>
+                </div>
+
+                {/* Resources */}
+                <div>
+                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Resources</p>
+                  <div className="grid grid-cols-2 gap-3">
                     <FieldDisplay label="Manpower Planned" value={target.manpower_planned} />
                     <FieldDisplay label="Hours Planned" value={target.hours_planned} />
                     <FieldDisplay label="OT Hours Planned" value={target.ot_hours_planned} />
                   </div>
                 </div>
-
-                {/* Derived Totals */}
-                {target.hours_planned != null && target.hours_planned > 0 && (
-                  <div>
-                    <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Derived Totals</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <FieldDisplay label="Target Total Output" value={Math.round(target.per_hour_target * target.hours_planned)} className="text-lg text-primary" />
-                    </div>
-                  </div>
-                )}
 
                 {/* Stage & Progress */}
                 {(target.stage_name || target.planned_stage_progress != null || target.next_milestone) && (
@@ -244,21 +244,14 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange }: Sew
                   <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Output</p>
                   <div className="grid grid-cols-2 gap-3">
                     <FieldDisplay label="Good Output" value={actual.good_today} className="text-lg text-success" />
+                    {actual.hours_actual != null && actual.hours_actual > 0 && (
+                      <FieldDisplay label="Output per Hour" value={Math.round((actual.good_today / actual.hours_actual) * 100) / 100} suffix=" /hr" className="text-lg text-success" />
+                    )}
                     <FieldDisplay label="Reject" value={actual.reject_today} />
                     <FieldDisplay label="Rework" value={actual.rework_today} />
                     <FieldDisplay label="Cumulative Good Total" value={actual.cumulative_good_total} className="text-lg" />
                   </div>
                 </div>
-
-                {/* Derived Rates */}
-                {actual.hours_actual != null && actual.hours_actual > 0 && (
-                  <div>
-                    <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Derived Rates</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <FieldDisplay label="Output per Hour" value={Math.round((actual.good_today / actual.hours_actual) * 100) / 100} suffix=" /hr" className="text-lg text-success" />
-                    </div>
-                  </div>
-                )}
 
                 {/* Resources */}
                 <div>

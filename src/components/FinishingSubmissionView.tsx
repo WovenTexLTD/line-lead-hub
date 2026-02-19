@@ -172,9 +172,9 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
                   Morning Target
                 </h4>
 
-                {/* Process Values (per hour) */}
+                {/* Process Values */}
                 <div>
-                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Process Targets (per hour)</p>
+                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Process Targets</p>
                   <div className="grid grid-cols-2 gap-3">
                     {PROCESS_ITEMS.map((item) => {
                       const value = target[item.key as keyof FinishingTargetData] as number;
@@ -188,19 +188,14 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
                         />
                       );
                     })}
+                    {target.planned_hours != null && target.planned_hours > 0 && (
+                      <>
+                        <FieldDisplay label="Target Total Poly" value={Math.round(target.poly * target.planned_hours)} className="text-success" />
+                        <FieldDisplay label="Target Total Carton" value={Math.round(target.carton * target.planned_hours)} className="text-lg text-warning" />
+                      </>
+                    )}
                   </div>
                 </div>
-
-                {/* Derived Totals */}
-                {target.planned_hours != null && target.planned_hours > 0 && (
-                  <div>
-                    <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Derived Totals</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <FieldDisplay label="Target Total Poly" value={Math.round(target.poly * target.planned_hours)} className="text-success" />
-                      <FieldDisplay label="Target Total Carton" value={Math.round(target.carton * target.planned_hours)} className="text-lg text-warning" />
-                    </div>
-                  </div>
-                )}
 
                 {/* Hours & Resources */}
                 <div>
@@ -244,9 +239,9 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
                   End of Day Output
                 </h4>
 
-                {/* Process Values (day totals) */}
+                {/* Process Values */}
                 <div>
-                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Process Output (day total)</p>
+                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Process Output</p>
                   <div className="grid grid-cols-2 gap-3">
                     {PROCESS_ITEMS.map((item) => {
                       const value = actual[item.key as keyof FinishingActualData] as number;
@@ -259,19 +254,14 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
                         />
                       );
                     })}
+                    {actual.actual_hours != null && actual.actual_hours > 0 && (
+                      <>
+                        <FieldDisplay label="Poly per Hour" value={Math.round((actual.poly / actual.actual_hours) * 100) / 100} suffix=" /hr" className="text-success" />
+                        <FieldDisplay label="Carton per Hour" value={Math.round((actual.carton / actual.actual_hours) * 100) / 100} suffix=" /hr" className="text-lg text-warning" />
+                      </>
+                    )}
                   </div>
                 </div>
-
-                {/* Derived Per-Hour Rates */}
-                {actual.actual_hours != null && actual.actual_hours > 0 && (
-                  <div>
-                    <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Derived Rates</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <FieldDisplay label="Poly per Hour" value={Math.round((actual.poly / actual.actual_hours) * 100) / 100} suffix=" /hr" className="text-success" />
-                      <FieldDisplay label="Carton per Hour" value={Math.round((actual.carton / actual.actual_hours) * 100) / 100} suffix=" /hr" className="text-lg text-warning" />
-                    </div>
-                  </div>
-                )}
 
                 {/* Hours & Resources */}
                 <div>
