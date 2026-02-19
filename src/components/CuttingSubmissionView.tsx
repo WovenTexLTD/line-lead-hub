@@ -175,7 +175,7 @@ export function CuttingSubmissionView({ target, actual, open, onOpenChange }: Cu
 
                 {/* Target Capacities */}
                 <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Capacities</p>
+                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Capacities</p>
                   <div className="grid grid-cols-2 gap-3">
                     <FieldDisplay label="Man Power" value={target.man_power} />
                     <FieldDisplay label="Marker Capacity" value={target.marker_capacity} />
@@ -196,7 +196,7 @@ export function CuttingSubmissionView({ target, actual, open, onOpenChange }: Cu
 
                 {/* Target Daily Output */}
                 <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Daily Output</p>
+                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Daily Output</p>
                   <div className="grid grid-cols-2 gap-3">
                     <FieldDisplay label="Day Cutting" value={target.day_cutting ?? 0} className="text-lg" />
                     <FieldDisplay label="Day Input" value={target.day_input ?? 0} className="text-lg text-primary" />
@@ -227,7 +227,7 @@ export function CuttingSubmissionView({ target, actual, open, onOpenChange }: Cu
 
                 {/* Actual Capacities */}
                 <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Capacities</p>
+                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Capacities</p>
                   <div className="grid grid-cols-2 gap-3">
                     <FieldDisplay label="Man Power" value={actual.man_power} />
                     <FieldDisplay label="Marker Capacity" value={actual.marker_capacity} />
@@ -248,7 +248,7 @@ export function CuttingSubmissionView({ target, actual, open, onOpenChange }: Cu
 
                 {/* Actual Daily Output */}
                 <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Daily Output</p>
+                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Daily Output</p>
                   <div className="grid grid-cols-2 gap-3">
                     <FieldDisplay label="Day Cutting" value={actual.day_cutting} className="text-lg" />
                     <FieldDisplay label="Day Input" value={actual.day_input} className="text-lg text-success" />
@@ -257,7 +257,7 @@ export function CuttingSubmissionView({ target, actual, open, onOpenChange }: Cu
 
                 {/* Cumulative Totals */}
                 <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Cumulative</p>
+                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Cumulative</p>
                   <div className="grid grid-cols-2 gap-3">
                     <FieldDisplay label="Total Cutting" value={actual.total_cutting} />
                     <FieldDisplay label="Total Input" value={actual.total_input} className="text-success" />

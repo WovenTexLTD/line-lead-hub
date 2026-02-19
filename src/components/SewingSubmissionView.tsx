@@ -169,7 +169,7 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange }: Sew
 
                 {/* Target Metrics */}
                 <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Targets</p>
+                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Targets</p>
                   <div className="grid grid-cols-2 gap-3">
                     <FieldDisplay label="Per Hour Target" value={target.per_hour_target} className="text-lg text-primary" />
                     <FieldDisplay label="Manpower Planned" value={target.manpower_planned} />
@@ -181,7 +181,7 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange }: Sew
                 {/* Stage & Progress */}
                 {(target.stage_name || target.planned_stage_progress != null || target.next_milestone) && (
                   <div>
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Stage & Progress</p>
+                    <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Stage & Progress</p>
                     <div className="grid grid-cols-2 gap-3">
                       {target.stage_name && (
                         <FieldDisplay label="Planned Stage" value={target.stage_name} />
@@ -202,7 +202,7 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange }: Sew
                 {/* Remarks */}
                 {target.remarks && (
                   <div>
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Remarks</p>
+                    <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-1">Remarks</p>
                     <p className="text-sm text-muted-foreground">{target.remarks}</p>
                   </div>
                 )}
@@ -231,7 +231,7 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange }: Sew
 
                 {/* Output */}
                 <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Output</p>
+                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Output</p>
                   <div className="grid grid-cols-2 gap-3">
                     <FieldDisplay label="Good Output" value={actual.good_today} className="text-lg text-success" />
                     <FieldDisplay label="Reject" value={actual.reject_today} />
@@ -242,7 +242,7 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange }: Sew
 
                 {/* Resources */}
                 <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Resources</p>
+                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Resources</p>
                   <div className="grid grid-cols-2 gap-3">
                     <FieldDisplay label="Manpower Actual" value={actual.manpower_actual} />
                     <FieldDisplay label="Hours Actual" value={actual.hours_actual} />
@@ -256,7 +256,7 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange }: Sew
                 {/* Stage & Progress */}
                 {(actual.stage_name || actual.actual_stage_progress != null) && (
                   <div>
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Stage & Progress</p>
+                    <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Stage & Progress</p>
                     <div className="grid grid-cols-2 gap-3">
                       {actual.stage_name && (
                         <FieldDisplay label="Actual Stage" value={actual.stage_name} />
@@ -303,7 +303,7 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange }: Sew
                 {/* Remarks */}
                 {actual.remarks && (
                   <div>
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Remarks</p>
+                    <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-1">Remarks</p>
                     <p className="text-sm text-muted-foreground">{actual.remarks}</p>
                   </div>
                 )}

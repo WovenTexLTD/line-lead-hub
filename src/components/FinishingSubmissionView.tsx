@@ -174,7 +174,7 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
 
                 {/* Process Values (per hour) */}
                 <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Process Targets (per hour)</p>
+                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Process Targets (per hour)</p>
                   <div className="grid grid-cols-2 gap-3">
                     {PROCESS_ITEMS.map((item) => {
                       const value = target[item.key as keyof FinishingTargetData] as number;
@@ -184,7 +184,7 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
                           label={item.label}
                           value={value}
                           suffix=" /hr"
-                          className={item.key === "carton" ? "text-lg text-primary" : ""}
+                          className={item.key === "carton" ? "text-lg text-warning" : item.key === "poly" ? "text-success" : ""}
                         />
                       );
                     })}
@@ -194,17 +194,17 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
                 {/* Derived Totals */}
                 {target.planned_hours != null && target.planned_hours > 0 && (
                   <div>
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Derived Totals</p>
+                    <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Derived Totals</p>
                     <div className="grid grid-cols-2 gap-3">
-                      <FieldDisplay label="Target Total Poly" value={Math.round(target.poly * target.planned_hours)} className="text-primary" />
-                      <FieldDisplay label="Target Total Carton" value={Math.round(target.carton * target.planned_hours)} className="text-lg text-primary" />
+                      <FieldDisplay label="Target Total Poly" value={Math.round(target.poly * target.planned_hours)} className="text-success" />
+                      <FieldDisplay label="Target Total Carton" value={Math.round(target.carton * target.planned_hours)} className="text-lg text-warning" />
                     </div>
                   </div>
                 )}
 
                 {/* Hours & Resources */}
                 <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Hours & Resources</p>
+                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Hours & Resources</p>
                   <div className="grid grid-cols-2 gap-3">
                     <FieldDisplay label="Planned Hours" value={target.planned_hours} />
                     <FieldDisplay label="OT Hours Planned" value={target.ot_hours_planned} />
@@ -217,7 +217,7 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
                 {/* Remarks */}
                 {target.remarks && (
                   <div>
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Remarks</p>
+                    <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-1">Remarks</p>
                     <p className="text-sm text-muted-foreground">{target.remarks}</p>
                   </div>
                 )}
@@ -246,7 +246,7 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
 
                 {/* Process Values (day totals) */}
                 <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Process Output (day total)</p>
+                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Process Output (day total)</p>
                   <div className="grid grid-cols-2 gap-3">
                     {PROCESS_ITEMS.map((item) => {
                       const value = actual[item.key as keyof FinishingActualData] as number;
@@ -255,7 +255,7 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
                           key={item.key}
                           label={item.label}
                           value={value}
-                          className={item.key === "carton" ? "text-lg text-success" : ""}
+                          className={item.key === "carton" ? "text-lg text-warning" : item.key === "poly" ? "text-success" : ""}
                         />
                       );
                     })}
@@ -265,17 +265,17 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
                 {/* Derived Per-Hour Rates */}
                 {actual.actual_hours != null && actual.actual_hours > 0 && (
                   <div>
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Derived Rates</p>
+                    <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Derived Rates</p>
                     <div className="grid grid-cols-2 gap-3">
                       <FieldDisplay label="Poly per Hour" value={Math.round((actual.poly / actual.actual_hours) * 100) / 100} suffix=" /hr" className="text-success" />
-                      <FieldDisplay label="Carton per Hour" value={Math.round((actual.carton / actual.actual_hours) * 100) / 100} suffix=" /hr" className="text-lg text-success" />
+                      <FieldDisplay label="Carton per Hour" value={Math.round((actual.carton / actual.actual_hours) * 100) / 100} suffix=" /hr" className="text-lg text-warning" />
                     </div>
                   </div>
                 )}
 
                 {/* Hours & Resources */}
                 <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Hours & Resources</p>
+                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Hours & Resources</p>
                   <div className="grid grid-cols-2 gap-3">
                     <FieldDisplay label="Actual Hours" value={actual.actual_hours} />
                     <FieldDisplay label="OT Hours Actual" value={actual.ot_hours_actual} />
@@ -288,7 +288,7 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
                 {/* Remarks */}
                 {actual.remarks && (
                   <div>
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Remarks</p>
+                    <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-1">Remarks</p>
                     <p className="text-sm text-muted-foreground">{actual.remarks}</p>
                   </div>
                 )}
