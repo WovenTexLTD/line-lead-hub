@@ -255,21 +255,6 @@ export function CuttingSubmissionView({ target, actual, open, onOpenChange }: Cu
                   </div>
                 </div>
 
-                {/* Cumulative Totals */}
-                <div>
-                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Cumulative</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <FieldDisplay label="Total Cutting" value={actual.total_cutting} />
-                    <FieldDisplay label="Total Input" value={actual.total_input} className="text-success" />
-                  </div>
-                  <div className="mt-3">
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Balance</p>
-                    <p className={`text-xl font-bold ${actual.balance != null && actual.balance < 0 ? "text-destructive" : ""}`}>
-                      {actual.balance?.toLocaleString() || "—"}
-                    </p>
-                  </div>
-                </div>
-
                 {/* Leftover / Fabric Saved */}
                 {actual.leftover_recorded && (
                   <div className="border-t border-success/10 pt-3">
@@ -334,6 +319,23 @@ export function CuttingSubmissionView({ target, actual, open, onOpenChange }: Cu
               </div>
             )}
           </div>
+
+          {/* Cumulative Totals (full width, below columns) */}
+          {hasActual && actual && (
+            <div className="border rounded-lg p-4 bg-muted/30">
+              <h4 className="font-semibold text-sm mb-3">Cumulative Totals</h4>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <FieldDisplay label="Total Cutting" value={actual.total_cutting} />
+                <FieldDisplay label="Total Input" value={actual.total_input} className="text-success" />
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Balance</p>
+                  <p className={`text-xl font-bold ${actual.balance != null && actual.balance < 0 ? "text-destructive" : ""}`}>
+                    {actual.balance?.toLocaleString() || "—"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Part B: Comparison table (full width, below columns) */}
           {isComparison && target && actual && (
