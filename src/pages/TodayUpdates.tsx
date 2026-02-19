@@ -1728,7 +1728,7 @@ export default function TodayUpdates() {
               leftover_quantity: selectedCutting.leftover_quantity,
               leftover_notes: selectedCutting.leftover_notes,
               leftover_location: selectedCutting.leftover_location,
-              leftover_photo_urls: null,
+              leftover_photo_urls: selectedCutting.leftover_photo_urls ?? null,
             } : null}
             open={cuttingModalOpen}
             onOpenChange={setCuttingModalOpen}
@@ -1873,7 +1873,7 @@ export default function TodayUpdates() {
               leftover_quantity: matchingActual.leftover_quantity,
               leftover_notes: matchingActual.leftover_notes,
               leftover_location: matchingActual.leftover_location,
-              leftover_photo_urls: null,
+              leftover_photo_urls: matchingActual.leftover_photo_urls ?? null,
             } : null}
             open={cuttingTargetModalOpen}
             onOpenChange={setCuttingTargetModalOpen}

@@ -675,8 +675,8 @@ export default function CuttingAllSubmissions() {
               under_qty: selectedTarget.under_qty,
               day_cutting: selectedTarget.day_cutting,
               day_input: selectedTarget.day_input,
-              ot_hours_planned: null,
-              ot_manpower_planned: null,
+              ot_hours_planned: selectedTarget.ot_hours_planned ?? null,
+              ot_manpower_planned: selectedTarget.ot_manpower_planned ?? null,
             }}
             actual={matchingActual ? {
               id: matchingActual.id,
@@ -740,8 +740,8 @@ export default function CuttingAllSubmissions() {
               under_qty: matchingTarget.under_qty,
               day_cutting: matchingTarget.day_cutting,
               day_input: matchingTarget.day_input,
-              ot_hours_planned: null,
-              ot_manpower_planned: null,
+              ot_hours_planned: matchingTarget.ot_hours_planned ?? null,
+              ot_manpower_planned: matchingTarget.ot_manpower_planned ?? null,
             } : null}
             actual={{
               id: selectedActual.id,
