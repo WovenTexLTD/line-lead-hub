@@ -173,14 +173,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (profileData) {
         if (profileData.invitation_status === 'pending') {
-          // Fire-and-forget: don't block on invitation status update
-          void supabase
-            .from('profiles')
-            .update({ invitation_status: 'active' })
-            .eq('id', userId)
-            .then(({ error }) => {
-              if (error) console.error('[AuthContext] Failed to update invitation_status:', error.message);
-            });
+          // Update invitation status to active now that user has logged in
+          try {
+            const { error: updateError } = await supabase
+              .from('profiles')
+              .update({ invitation_status: 'active' })
+              .eq('id', userId);
+            if (updateError) {
+              console.error('[AuthContext] Failed to update invitation_status:', updateError.message);
+            }
+          } catch (e) {
+            console.error('[AuthContext] Exception updating invitation_status:', e);
+          }
           profileData.invitation_status = 'active';
         }
 
