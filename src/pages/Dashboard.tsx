@@ -1417,11 +1417,33 @@ export default function Dashboard() {
         onOpenChange={setTargetModalOpen}
       />
 
-      <CuttingDetailModal
-        cutting={selectedCutting}
-        open={cuttingModalOpen}
-        onOpenChange={setCuttingModalOpen}
-      />
+      {(() => {
+        const matchingTarget = selectedCutting
+          ? cuttingTargets.find(t =>
+              t.production_date === selectedCutting.production_date &&
+              t.line_id === selectedCutting.line_id &&
+              t.work_order_id === selectedCutting.work_order_id
+            )
+          : null;
+        return (
+          <CuttingDetailModal
+            cutting={selectedCutting}
+            target={matchingTarget ? {
+              man_power: matchingTarget.man_power,
+              marker_capacity: matchingTarget.marker_capacity,
+              lay_capacity: matchingTarget.lay_capacity,
+              cutting_capacity: matchingTarget.cutting_capacity,
+              under_qty: matchingTarget.under_qty,
+              day_cutting: matchingTarget.day_cutting,
+              day_input: matchingTarget.day_input,
+              ot_hours_planned: matchingTarget.ot_hours_planned,
+              ot_manpower_planned: matchingTarget.ot_manpower_planned,
+            } : null}
+            open={cuttingModalOpen}
+            onOpenChange={setCuttingModalOpen}
+          />
+        );
+      })()}
 
       <CuttingTargetDetailModal
         target={selectedCuttingTarget ? {

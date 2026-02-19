@@ -657,6 +657,8 @@ export default function TodayUpdates() {
     setSelectedCutting({
       id: cutting.id,
       production_date: cutting.production_date,
+      line_id: cutting.line_id,
+      work_order_id: cutting.work_order_id,
       line_name: cutting.lines?.name || cutting.lines?.line_id || 'Unknown',
       buyer: (cutting.work_orders as any)?.buyer || null,
       style: (cutting.work_orders as any)?.style || null,
@@ -1665,11 +1667,32 @@ export default function TodayUpdates() {
       />
 
       {/* Cutting Detail Modal */}
-      <CuttingDetailModal
-        cutting={selectedCutting}
-        open={cuttingModalOpen}
-        onOpenChange={setCuttingModalOpen}
-      />
+      {(() => {
+        const matchingTarget = selectedCutting
+          ? cuttingTargets.find(t =>
+              t.line_id === selectedCutting.line_id &&
+              t.work_order_id === selectedCutting.work_order_id
+            )
+          : null;
+        return (
+          <CuttingDetailModal
+            cutting={selectedCutting}
+            target={matchingTarget ? {
+              man_power: matchingTarget.man_power,
+              marker_capacity: matchingTarget.marker_capacity,
+              lay_capacity: matchingTarget.lay_capacity,
+              cutting_capacity: matchingTarget.cutting_capacity,
+              under_qty: matchingTarget.under_qty,
+              day_cutting: matchingTarget.day_cutting,
+              day_input: matchingTarget.day_input,
+              ot_hours_planned: matchingTarget.ot_hours_planned,
+              ot_manpower_planned: matchingTarget.ot_manpower_planned,
+            } : null}
+            open={cuttingModalOpen}
+            onOpenChange={setCuttingModalOpen}
+          />
+        );
+      })()}
 
       {/* Storage Bin Card Detail Modal */}
       <StorageBinCardDetailModal
@@ -1684,33 +1707,71 @@ export default function TodayUpdates() {
       />
 
       {/* Finishing Log Detail Modal */}
-      <FinishingLogDetailModal
-        log={selectedFinishingLog ? {
-          ...selectedFinishingLog,
-          work_order_id: null,
-          shift: null,
-          thread_cutting: selectedFinishingLog.thread_cutting || 0,
-          inside_check: selectedFinishingLog.inside_check || 0,
-          top_side_check: selectedFinishingLog.top_side_check || 0,
-          buttoning: selectedFinishingLog.buttoning || 0,
-          iron: selectedFinishingLog.iron || 0,
-          get_up: selectedFinishingLog.get_up || 0,
-          poly: selectedFinishingLog.poly || 0,
-          carton: selectedFinishingLog.carton || 0,
-          is_locked: false,
-          planned_hours: selectedFinishingLog.planned_hours ?? 0,
-          actual_hours: selectedFinishingLog.actual_hours ?? 0,
-          submitted_at: selectedFinishingLog.submitted_at,
-          line: null,
-          work_order: selectedFinishingLog.work_orders ? {
-            po_number: selectedFinishingLog.work_orders.po_number,
-            style: selectedFinishingLog.work_orders.style,
-            buyer: selectedFinishingLog.work_orders.buyer
-          } : null
-        } : null}
-        open={finishingLogModalOpen}
-        onOpenChange={setFinishingLogModalOpen}
-      />
+      {(() => {
+        const counterpart = selectedFinishingLog
+          ? finishingDailyLogs.find(l =>
+              l.log_type !== selectedFinishingLog.log_type &&
+              l.production_date === selectedFinishingLog.production_date &&
+              l.work_order_id === selectedFinishingLog.work_order_id
+            )
+          : null;
+        return (
+          <FinishingLogDetailModal
+            log={selectedFinishingLog ? {
+              ...selectedFinishingLog,
+              work_order_id: selectedFinishingLog.work_order_id,
+              shift: null,
+              thread_cutting: selectedFinishingLog.thread_cutting || 0,
+              inside_check: selectedFinishingLog.inside_check || 0,
+              top_side_check: selectedFinishingLog.top_side_check || 0,
+              buttoning: selectedFinishingLog.buttoning || 0,
+              iron: selectedFinishingLog.iron || 0,
+              get_up: selectedFinishingLog.get_up || 0,
+              poly: selectedFinishingLog.poly || 0,
+              carton: selectedFinishingLog.carton || 0,
+              is_locked: false,
+              planned_hours: selectedFinishingLog.planned_hours ?? 0,
+              actual_hours: selectedFinishingLog.actual_hours ?? 0,
+              submitted_at: selectedFinishingLog.submitted_at,
+              line: null,
+              work_order: selectedFinishingLog.work_orders ? {
+                po_number: selectedFinishingLog.work_orders.po_number,
+                style: selectedFinishingLog.work_orders.style,
+                buyer: selectedFinishingLog.work_orders.buyer
+              } : null
+            } : null}
+            counterpart={counterpart ? {
+              id: counterpart.id,
+              production_date: counterpart.production_date,
+              line_id: counterpart.line_id,
+              work_order_id: counterpart.work_order_id,
+              log_type: counterpart.log_type,
+              shift: null,
+              thread_cutting: counterpart.thread_cutting || 0,
+              inside_check: counterpart.inside_check || 0,
+              top_side_check: counterpart.top_side_check || 0,
+              buttoning: counterpart.buttoning || 0,
+              iron: counterpart.iron || 0,
+              get_up: counterpart.get_up || 0,
+              poly: counterpart.poly || 0,
+              carton: counterpart.carton || 0,
+              planned_hours: counterpart.planned_hours ?? null,
+              actual_hours: counterpart.actual_hours ?? null,
+              remarks: counterpart.remarks || null,
+              submitted_at: counterpart.submitted_at,
+              is_locked: false,
+              line: null,
+              work_order: counterpart.work_orders ? {
+                po_number: counterpart.work_orders.po_number,
+                style: counterpart.work_orders.style,
+                buyer: counterpart.work_orders.buyer
+              } : null
+            } : null}
+            open={finishingLogModalOpen}
+            onOpenChange={setFinishingLogModalOpen}
+          />
+        );
+      })()}
 
       {/* Cutting Target Detail Modal */}
       <CuttingTargetDetailModal

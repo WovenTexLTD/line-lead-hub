@@ -350,11 +350,53 @@ export function FinishingDashboard() {
         </TabsContent>
       </Tabs>
 
-      <FinishingLogDetailModal
-        log={selectedLog}
-        open={detailModalOpen}
-        onOpenChange={setDetailModalOpen}
-      />
+      {(() => {
+        const counterpart = selectedLog
+          ? logs.find(l =>
+              l.log_type !== selectedLog.log_type &&
+              l.production_date === selectedLog.production_date &&
+              l.work_order_id === selectedLog.work_order_id
+            )
+          : null;
+        return (
+          <FinishingLogDetailModal
+            log={selectedLog}
+            counterpart={counterpart ? {
+              id: counterpart.id,
+              production_date: counterpart.production_date,
+              line_id: counterpart.line_id,
+              work_order_id: counterpart.work_order_id,
+              log_type: counterpart.log_type,
+              shift: null,
+              thread_cutting: counterpart.thread_cutting,
+              inside_check: counterpart.inside_check,
+              top_side_check: counterpart.top_side_check,
+              buttoning: counterpart.buttoning,
+              iron: counterpart.iron,
+              get_up: counterpart.get_up,
+              poly: counterpart.poly,
+              carton: counterpart.carton,
+              planned_hours: counterpart.planned_hours,
+              actual_hours: counterpart.actual_hours,
+              remarks: counterpart.remarks,
+              ot_hours_actual: counterpart.ot_hours_actual ?? null,
+              ot_manpower_actual: counterpart.ot_manpower_actual ?? null,
+              ot_hours_planned: counterpart.ot_hours_planned ?? null,
+              ot_manpower_planned: counterpart.ot_manpower_planned ?? null,
+              submitted_at: counterpart.submitted_at,
+              is_locked: false,
+              line: null,
+              work_order: counterpart.po_number ? {
+                po_number: counterpart.po_number,
+                style: counterpart.style || '',
+                buyer: counterpart.buyer || '',
+              } : null,
+            } : null}
+            open={detailModalOpen}
+            onOpenChange={setDetailModalOpen}
+          />
+        );
+      })()}
     </div>
   );
 }
