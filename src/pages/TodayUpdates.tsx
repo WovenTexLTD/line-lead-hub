@@ -88,6 +88,8 @@ interface CuttingActual {
   leftover_quantity: number | null;
   leftover_notes: string | null;
   leftover_location: string | null;
+  ot_hours_actual: number | null;
+  ot_manpower_actual: number | null;
   lines: { line_id: string; name: string | null } | null;
   work_orders: { po_number: string; buyer: string; style: string } | null;
 }
@@ -110,6 +112,8 @@ interface CuttingTargetFull {
   po_no: string | null;
   colour: string | null;
   submitted_at: string | null;
+  ot_hours_planned: number | null;
+  ot_manpower_planned: number | null;
   lines: { line_id: string; name: string | null } | null;
   work_orders: { po_number: string; buyer: string; style: string } | null;
 }
@@ -672,6 +676,8 @@ export default function TodayUpdates() {
       leftover_quantity: cutting.leftover_quantity,
       leftover_notes: cutting.leftover_notes,
       leftover_location: cutting.leftover_location,
+      ot_hours_actual: cutting.ot_hours_actual,
+      ot_manpower_actual: cutting.ot_manpower_actual,
     });
     setCuttingModalOpen(true);
   };
@@ -1721,6 +1727,8 @@ export default function TodayUpdates() {
           day_cutting: selectedCuttingTarget.day_cutting,
           day_input: selectedCuttingTarget.day_input,
           submitted_at: selectedCuttingTarget.submitted_at,
+          ot_hours_planned: selectedCuttingTarget.ot_hours_planned ?? null,
+          ot_manpower_planned: selectedCuttingTarget.ot_manpower_planned ?? null,
         } : null}
         open={cuttingTargetModalOpen}
         onOpenChange={setCuttingTargetModalOpen}
