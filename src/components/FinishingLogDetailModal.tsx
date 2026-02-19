@@ -20,6 +20,10 @@ interface FinishingDailyLog {
   carton: number;
   planned_hours: number | null;
   actual_hours: number | null;
+  ot_hours_actual?: number | null;
+  ot_manpower_actual?: number | null;
+  ot_hours_planned?: number | null;
+  ot_manpower_planned?: number | null;
   remarks: string | null;
   submitted_at: string;
   is_locked: boolean;
@@ -145,6 +149,39 @@ export function FinishingLogDetailModal({ log, open, onOpenChange }: FinishingLo
                   <div className="p-2 bg-muted/50 rounded">
                     <span className="text-xs text-muted-foreground">Actual</span>
                     <p className="font-medium">{log.actual_hours}h</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* OT Section */}
+          {(log.ot_hours_actual != null || log.ot_manpower_actual != null || log.ot_hours_planned != null || log.ot_manpower_planned != null) && (
+            <div className="border rounded-lg p-3">
+              <span className="font-medium">Overtime</span>
+              <div className="grid grid-cols-2 gap-3 mt-2">
+                {log.ot_hours_planned != null && (
+                  <div className="p-2 bg-muted/50 rounded">
+                    <span className="text-xs text-muted-foreground">OT Hours Planned</span>
+                    <p className="font-medium">{log.ot_hours_planned}h</p>
+                  </div>
+                )}
+                {log.ot_hours_actual != null && (
+                  <div className="p-2 bg-muted/50 rounded">
+                    <span className="text-xs text-muted-foreground">OT Hours Actual</span>
+                    <p className="font-medium">{log.ot_hours_actual}h</p>
+                  </div>
+                )}
+                {log.ot_manpower_planned != null && (
+                  <div className="p-2 bg-muted/50 rounded">
+                    <span className="text-xs text-muted-foreground">OT Manpower Planned</span>
+                    <p className="font-medium">{log.ot_manpower_planned}</p>
+                  </div>
+                )}
+                {log.ot_manpower_actual != null && (
+                  <div className="p-2 bg-muted/50 rounded">
+                    <span className="text-xs text-muted-foreground">OT Manpower Actual</span>
+                    <p className="font-medium">{log.ot_manpower_actual}</p>
                   </div>
                 )}
               </div>

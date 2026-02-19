@@ -37,6 +37,8 @@ interface CuttingDetailModalProps {
     leftover_notes?: string | null;
     leftover_location?: string | null;
     leftover_photo_urls?: string[] | null;
+    ot_hours_actual?: number | null;
+    ot_manpower_actual?: number | null;
   } | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -143,6 +145,16 @@ export function CuttingDetailModal({ cutting, open, onOpenChange }: CuttingDetai
               <div>
                 <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Input</p>
                 <p className="font-semibold text-success">{cutting.total_input?.toLocaleString() || "-"}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">OT Hours Actual</p>
+                <p className="font-semibold">{cutting.ot_hours_actual ?? "-"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">OT Manpower Actual</p>
+                <p className="font-semibold">{cutting.ot_manpower_actual ?? "-"}</p>
               </div>
             </div>
             <div className="mt-4">

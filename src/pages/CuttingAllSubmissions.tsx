@@ -70,6 +70,8 @@ interface CuttingActual {
   leftover_notes: string | null;
   leftover_location: string | null;
   leftover_photo_urls: string[] | null;
+  ot_hours_actual: number | null;
+  ot_manpower_actual: number | null;
   lines?: { line_id: string; name: string | null };
   work_orders?: { po_number: string; buyer: string; style: string };
 }
@@ -685,6 +687,8 @@ export default function CuttingAllSubmissions() {
             leftover_quantity: selectedActual.leftover_quantity,
             leftover_notes: selectedActual.leftover_notes,
             leftover_location: selectedActual.leftover_location,
+            ot_hours_actual: selectedActual.ot_hours_actual,
+            ot_manpower_actual: selectedActual.ot_manpower_actual,
           }}
           open={!!selectedActual}
           onOpenChange={(open) => !open && setSelectedActual(null)}

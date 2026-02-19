@@ -226,8 +226,8 @@ export function SubmissionDetailModal({ submission, open, onOpenChange, onDelete
                     <MetricCard label="Progress" value={(submission as SewingSubmission).stage_progress} suffix="%" />
                     <MetricCard label="Reject" value={(submission as SewingSubmission).reject_qty} />
                     <MetricCard label="Rework" value={(submission as SewingSubmission).rework_qty} />
-                    <MetricCard label="OT Hours" value={(submission as SewingSubmission).ot_hours} />
-                    <MetricCard label="OT Manpower" value={(submission as SewingSubmission).ot_manpower} />
+                    <MetricCard label="OT Hours Actual" value={(submission as SewingSubmission).ot_hours} />
+                    <MetricCard label="OT Manpower Actual" value={(submission as SewingSubmission).ot_manpower} />
                   </>
                 ) : (
                   <>

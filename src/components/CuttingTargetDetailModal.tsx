@@ -28,6 +28,8 @@ interface CuttingTargetDetailModalProps {
     day_input: number | null;
     submitted_at: string | null;
     submitted_by?: string | null;
+    ot_hours_planned?: number | null;
+    ot_manpower_planned?: number | null;
   } | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -114,6 +116,18 @@ export function CuttingTargetDetailModal({ target, open, onOpenChange }: Cutting
                 <p className="text-xs text-muted-foreground uppercase tracking-wide">Under Qty</p>
                 <p className="font-semibold">{target.under_qty?.toLocaleString() || "-"}</p>
               </div>
+              {target.ot_hours_planned != null && (
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">OT Hours Planned</p>
+                  <p className="font-semibold text-lg">{target.ot_hours_planned}</p>
+                </div>
+              )}
+              {target.ot_manpower_planned != null && (
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">OT Manpower Planned</p>
+                  <p className="font-semibold text-lg">{target.ot_manpower_planned}</p>
+                </div>
+              )}
             </div>
           </div>
 

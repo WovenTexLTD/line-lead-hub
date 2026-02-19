@@ -145,6 +145,8 @@ interface CuttingTarget {
   day_cutting: number;
   day_input: number;
   submitted_at: string | null;
+  ot_hours_planned: number | null;
+  ot_manpower_planned: number | null;
 }
 
 interface CuttingSubmission {
@@ -521,6 +523,8 @@ export default function Dashboard() {
         day_cutting: c.day_cutting || 0,
         day_input: c.day_input || 0,
         submitted_at: c.submitted_at,
+        ot_hours_planned: c.ot_hours_planned ?? null,
+        ot_manpower_planned: c.ot_manpower_planned ?? null,
       }));
 
       // Format cutting submissions (actuals)
@@ -1433,6 +1437,8 @@ export default function Dashboard() {
           day_cutting: selectedCuttingTarget.day_cutting,
           day_input: selectedCuttingTarget.day_input,
           submitted_at: selectedCuttingTarget.submitted_at,
+          ot_hours_planned: selectedCuttingTarget.ot_hours_planned ?? null,
+          ot_manpower_planned: selectedCuttingTarget.ot_manpower_planned ?? null,
         } : null}
         open={cuttingTargetModalOpen}
         onOpenChange={setCuttingTargetModalOpen}
