@@ -1327,32 +1327,9 @@ export default function TodayUpdates() {
                           key={item.key}
                           className="cursor-pointer hover:bg-muted/50"
                           onClick={() => {
-                            setSelectedSubmission({
-                              id: item.actual?.id || item.target?.id || '',
-                              type: 'sewing',
-                              line_name: item.line_name,
-                              po_number: item.po_number,
-                              buyer: item.buyer,
-                              style: item.style,
-                              output_qty: item.actual?.good_today ?? undefined,
-                              target_qty: item.target?.per_hour_target || null,
-                              manpower: item.actual?.manpower_actual ?? item.target?.manpower_planned ?? null,
-                              reject_qty: item.actual?.reject_today ?? null,
-                              rework_qty: item.actual?.rework_today ?? null,
-                              stage_name: item.actual?.stages?.name || item.target?.stages?.name || null,
-                              stage_progress: item.actual?.actual_stage_progress ?? item.target?.planned_stage_progress ?? null,
-                              ot_hours: item.actual?.ot_hours_actual ?? item.target?.ot_hours_planned ?? null,
-                              ot_manpower: item.actual?.ot_manpower_actual ?? null,
-                              has_blocker: item.actual?.has_blocker || false,
-                              blocker_description: item.actual?.blocker_description || null,
-                              blocker_impact: item.actual?.blocker_impact || null,
-                              blocker_owner: item.actual?.blocker_owner || null,
-                              blocker_status: null,
-                              notes: item.actual?.remarks || item.target?.remarks || null,
-                              submitted_at: item.submitted_at || '',
-                              production_date: item.actual?.production_date || item.target?.production_date || '',
-                            });
-                            setDetailModalOpen(true);
+                            setSelectedLegacySewing(null);
+                            setSewingViewKey(item.key);
+                            setSewingViewOpen(true);
                           }}
                         >
                           <TableCell className="font-mono text-sm">{item.submitted_at ? formatTime(item.submitted_at) : '-'}</TableCell>
