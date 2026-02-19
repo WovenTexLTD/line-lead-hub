@@ -178,6 +178,16 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange }: Sew
                   </div>
                 </div>
 
+                {/* Derived Totals */}
+                {target.hours_planned != null && target.hours_planned > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Derived Totals</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <FieldDisplay label="Target Total Output" value={Math.round(target.per_hour_target * target.hours_planned)} className="text-lg text-primary" />
+                    </div>
+                  </div>
+                )}
+
                 {/* Stage & Progress */}
                 {(target.stage_name || target.planned_stage_progress != null || target.next_milestone) && (
                   <div>
@@ -239,6 +249,16 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange }: Sew
                     <FieldDisplay label="Cumulative Good Total" value={actual.cumulative_good_total} className="text-lg" />
                   </div>
                 </div>
+
+                {/* Derived Rates */}
+                {actual.hours_actual != null && actual.hours_actual > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Derived Rates</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <FieldDisplay label="Output per Hour" value={Math.round((actual.good_today / actual.hours_actual) * 100) / 100} suffix=" /hr" className="text-lg text-success" />
+                    </div>
+                  </div>
+                )}
 
                 {/* Resources */}
                 <div>
