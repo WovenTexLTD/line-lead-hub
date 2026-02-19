@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
-import { Scissors, CheckCircle, Shirt, CircleDot, Flame, Package, Box, Archive, FileText, Calendar, User, Clock } from "lucide-react";
+import { Scissors, CheckCircle, Shirt, CircleDot, Flame, Package, Box, Archive, FileText, Calendar, User, Clock, TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 interface FinishingDailyLog {
   id: string;
@@ -40,6 +40,7 @@ interface FinishingDailyLog {
 
 interface FinishingLogDetailModalProps {
   log: FinishingDailyLog | null;
+  counterpart?: FinishingDailyLog | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -55,16 +56,26 @@ const PROCESS_ITEMS = [
   { key: "carton", label: "Carton", icon: Archive },
 ] as const;
 
-export function FinishingLogDetailModal({ log, open, onOpenChange }: FinishingLogDetailModalProps) {
+function VarianceIndicator({ actual, target }: { actual: number; target: number }) {
+  const diff = actual - target;
+  if (diff > 0) return <span className="text-green-600 dark:text-green-400 flex items-center gap-1"><TrendingUp className="h-3 w-3" />+{diff.toLocaleString()}</span>;
+  if (diff < 0) return <span className="text-destructive flex items-center gap-1"><TrendingDown className="h-3 w-3" />{diff.toLocaleString()}</span>;
+  return <span className="text-muted-foreground flex items-center gap-1"><Minus className="h-3 w-3" />0</span>;
+}
+
+export function FinishingLogDetailModal({ log, counterpart, open, onOpenChange }: FinishingLogDetailModalProps) {
   if (!log) return null;
 
   const calculateTotal = () => {
     return (log.carton || 0);
   };
 
+  // When viewing an OUTPUT with a TARGET counterpart, show comparison
+  const showComparison = log.log_type === "OUTPUT" && counterpart?.log_type === "TARGET";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
@@ -130,6 +141,52 @@ export function FinishingLogDetailModal({ log, open, onOpenChange }: FinishingLo
               })}
             </div>
           </div>
+
+          {/* Target vs Output Comparison */}
+          {showComparison && counterpart && (
+            <div className="border rounded-lg p-3 bg-primary/5">
+              <div className="flex items-center justify-between mb-3">
+                <span className="font-medium text-sm">Target vs Output</span>
+                <Badge variant="outline" className="text-xs">Comparison</Badge>
+              </div>
+              <div className="space-y-1">
+                <div className="grid grid-cols-4 gap-2 text-xs text-muted-foreground mb-2">
+                  <span>Process</span>
+                  <span className="text-right">Target</span>
+                  <span className="text-right">Output</span>
+                  <span className="text-right">Variance</span>
+                </div>
+                {PROCESS_ITEMS.map((item) => {
+                  const outputVal = (log[item.key as keyof typeof log] as number) || 0;
+                  const targetVal = (counterpart[item.key as keyof typeof counterpart] as number) || 0;
+                  return (
+                    <div key={item.key} className="grid grid-cols-4 gap-2 text-sm items-center">
+                      <span className="text-muted-foreground truncate text-xs">{item.label}</span>
+                      <span className="text-right text-muted-foreground">{targetVal}</span>
+                      <span className="text-right font-medium">{outputVal}</span>
+                      <div className="text-right text-xs">
+                        <VarianceIndicator actual={outputVal} target={targetVal} />
+                      </div>
+                    </div>
+                  );
+                })}
+                {(counterpart.planned_hours != null || log.actual_hours != null) && (
+                  <div className="grid grid-cols-4 gap-2 text-sm items-center border-t pt-1 mt-1">
+                    <span className="text-muted-foreground text-xs">Hours</span>
+                    <span className="text-right text-muted-foreground">{counterpart.planned_hours ?? "—"}</span>
+                    <span className="text-right font-medium">{log.actual_hours ?? "—"}</span>
+                    <div className="text-right text-xs">
+                      {counterpart.planned_hours != null && log.actual_hours != null ? (
+                        <VarianceIndicator actual={log.actual_hours} target={counterpart.planned_hours} />
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Hours */}
           {(log.planned_hours != null || log.actual_hours != null) && (

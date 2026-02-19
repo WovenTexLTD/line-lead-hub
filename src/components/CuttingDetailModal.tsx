@@ -4,10 +4,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Scissors, Package, ImageIcon } from "lucide-react";
+import { Scissors, Package, ImageIcon, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatDate, formatDateTimeInTimezone } from "@/lib/date-utils";
+
+interface CuttingTarget {
+  man_power?: number | null;
+  marker_capacity?: number | null;
+  lay_capacity?: number | null;
+  cutting_capacity?: number | null;
+  under_qty?: number | null;
+  day_cutting?: number | null;
+  day_input?: number | null;
+  ot_hours_planned?: number | null;
+  ot_manpower_planned?: number | null;
+}
 
 interface CuttingDetailModalProps {
   cutting: {
@@ -30,6 +42,8 @@ interface CuttingDetailModalProps {
     total_input: number | null;
     balance: number | null;
     submitted_at: string | null;
+    ot_hours_actual?: number | null;
+    ot_manpower_actual?: number | null;
     leftover_recorded?: boolean | null;
     leftover_type?: string | null;
     leftover_unit?: string | null;
@@ -37,14 +51,20 @@ interface CuttingDetailModalProps {
     leftover_notes?: string | null;
     leftover_location?: string | null;
     leftover_photo_urls?: string[] | null;
-    ot_hours_actual?: number | null;
-    ot_manpower_actual?: number | null;
   } | null;
+  target?: CuttingTarget | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function CuttingDetailModal({ cutting, open, onOpenChange }: CuttingDetailModalProps) {
+function VarianceIndicator({ actual, target }: { actual: number; target: number }) {
+  const diff = actual - target;
+  if (diff > 0) return <span className="text-green-600 dark:text-green-400 flex items-center gap-1 text-xs"><TrendingUp className="h-3 w-3" />+{diff.toLocaleString()}</span>;
+  if (diff < 0) return <span className="text-destructive flex items-center gap-1 text-xs"><TrendingDown className="h-3 w-3" />{diff.toLocaleString()}</span>;
+  return <span className="text-muted-foreground flex items-center gap-1 text-xs"><Minus className="h-3 w-3" />0</span>;
+}
+
+export function CuttingDetailModal({ cutting, target, open, onOpenChange }: CuttingDetailModalProps) {
   const { factory } = useAuth();
 
   // Helper to format datetime in factory timezone
@@ -102,6 +122,41 @@ export function CuttingDetailModal({ cutting, open, onOpenChange }: CuttingDetai
               <p className="font-semibold">{cutting.man_power || "-"}</p>
             </div>
           </div>
+
+          {/* Target vs Actual Comparison */}
+          {target && (
+            <div className="border rounded-lg p-3 bg-primary/5">
+              <h4 className="font-semibold text-sm mb-3 flex items-center justify-between">
+                <span>Target vs Actual</span>
+                <Badge variant="outline" className="text-xs">Comparison</Badge>
+              </h4>
+              <div className="space-y-2">
+                {[
+                  { label: "Day Cutting", actual: cutting.day_cutting, target: target.day_cutting },
+                  { label: "Day Input", actual: cutting.day_input, target: target.day_input },
+                  { label: "Man Power", actual: cutting.man_power, target: target.man_power },
+                  { label: "Cutting Capacity", actual: cutting.cutting_capacity, target: target.cutting_capacity },
+                  { label: "Marker Capacity", actual: cutting.marker_capacity, target: target.marker_capacity },
+                  { label: "Lay Capacity", actual: cutting.lay_capacity, target: target.lay_capacity },
+                ].map(({ label, actual, target: tgt }) => (
+                  <div key={label} className="grid grid-cols-4 gap-2 text-sm items-center">
+                    <span className="text-muted-foreground truncate">{label}</span>
+                    <span className="text-right text-muted-foreground">{(tgt ?? 0).toLocaleString()}</span>
+                    <span className="text-right font-medium">{(actual ?? 0).toLocaleString()}</span>
+                    <div className="text-right">
+                      <VarianceIndicator actual={actual ?? 0} target={tgt ?? 0} />
+                    </div>
+                  </div>
+                ))}
+                <div className="grid grid-cols-4 gap-2 text-xs text-muted-foreground pt-1 border-t">
+                  <span></span>
+                  <span className="text-right">Target</span>
+                  <span className="text-right">Actual</span>
+                  <span className="text-right">Variance</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Capacity Planning Section */}
           <div>

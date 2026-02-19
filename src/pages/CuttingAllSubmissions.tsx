@@ -659,41 +659,58 @@ export default function CuttingAllSubmissions() {
       )}
 
       {/* Actual Detail Modal */}
-      {selectedActual && (
-        <CuttingDetailModal
-          cutting={{
-            id: selectedActual.id,
-            production_date: selectedActual.production_date,
-            line_name: selectedActual.lines?.name || selectedActual.lines?.line_id || "—",
-            buyer: selectedActual.work_orders?.buyer || selectedActual.buyer,
-            style: selectedActual.work_orders?.style || selectedActual.style,
-            po_number: selectedActual.work_orders?.po_number || selectedActual.po_no,
-            colour: selectedActual.colour,
-            order_qty: selectedActual.order_qty,
-            man_power: selectedActual.man_power,
-            marker_capacity: selectedActual.marker_capacity,
-            lay_capacity: selectedActual.lay_capacity,
-            cutting_capacity: selectedActual.cutting_capacity,
-            under_qty: selectedActual.under_qty,
-            day_cutting: selectedActual.day_cutting,
-            total_cutting: selectedActual.total_cutting,
-            day_input: selectedActual.day_input,
-            total_input: selectedActual.total_input,
-            balance: selectedActual.balance,
-            submitted_at: selectedActual.submitted_at,
-            leftover_recorded: selectedActual.leftover_recorded,
-            leftover_type: selectedActual.leftover_type,
-            leftover_unit: selectedActual.leftover_unit,
-            leftover_quantity: selectedActual.leftover_quantity,
-            leftover_notes: selectedActual.leftover_notes,
-            leftover_location: selectedActual.leftover_location,
-            ot_hours_actual: selectedActual.ot_hours_actual,
-            ot_manpower_actual: selectedActual.ot_manpower_actual,
-          }}
-          open={!!selectedActual}
-          onOpenChange={(open) => !open && setSelectedActual(null)}
-        />
-      )}
+      {selectedActual && (() => {
+        // Find matching target for this actual (same date + line + work order)
+        const matchingTarget = targets.find(t =>
+          t.production_date === selectedActual.production_date &&
+          t.line_id === selectedActual.line_id &&
+          t.work_order_id === selectedActual.work_order_id
+        );
+        return (
+          <CuttingDetailModal
+            cutting={{
+              id: selectedActual.id,
+              production_date: selectedActual.production_date,
+              line_name: selectedActual.lines?.name || selectedActual.lines?.line_id || "—",
+              buyer: selectedActual.work_orders?.buyer || selectedActual.buyer,
+              style: selectedActual.work_orders?.style || selectedActual.style,
+              po_number: selectedActual.work_orders?.po_number || selectedActual.po_no,
+              colour: selectedActual.colour,
+              order_qty: selectedActual.order_qty,
+              man_power: selectedActual.man_power,
+              marker_capacity: selectedActual.marker_capacity,
+              lay_capacity: selectedActual.lay_capacity,
+              cutting_capacity: selectedActual.cutting_capacity,
+              under_qty: selectedActual.under_qty,
+              day_cutting: selectedActual.day_cutting,
+              total_cutting: selectedActual.total_cutting,
+              day_input: selectedActual.day_input,
+              total_input: selectedActual.total_input,
+              balance: selectedActual.balance,
+              submitted_at: selectedActual.submitted_at,
+              leftover_recorded: selectedActual.leftover_recorded,
+              leftover_type: selectedActual.leftover_type,
+              leftover_unit: selectedActual.leftover_unit,
+              leftover_quantity: selectedActual.leftover_quantity,
+              leftover_notes: selectedActual.leftover_notes,
+              leftover_location: selectedActual.leftover_location,
+              ot_hours_actual: selectedActual.ot_hours_actual,
+              ot_manpower_actual: selectedActual.ot_manpower_actual,
+            }}
+            target={matchingTarget ? {
+              man_power: matchingTarget.man_power,
+              marker_capacity: matchingTarget.marker_capacity,
+              lay_capacity: matchingTarget.lay_capacity,
+              cutting_capacity: matchingTarget.cutting_capacity,
+              under_qty: matchingTarget.under_qty,
+              day_cutting: matchingTarget.day_cutting,
+              day_input: matchingTarget.day_input,
+            } : null}
+            open={!!selectedActual}
+            onOpenChange={(open) => !open && setSelectedActual(null)}
+          />
+        );
+      })()}
     </div>
   );
 }

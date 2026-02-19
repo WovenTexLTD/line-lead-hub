@@ -420,6 +420,21 @@ export default function FinishingMySubmissions() {
 
       <FinishingLogDetailModal
         log={selectedLog}
+        counterpart={
+          selectedLog?.log_type === "OUTPUT"
+            ? logs.find(l =>
+                l.log_type === "TARGET" &&
+                l.production_date === selectedLog.production_date &&
+                l.work_order_id === selectedLog.work_order_id
+              ) || null
+            : selectedLog?.log_type === "TARGET"
+            ? logs.find(l =>
+                l.log_type === "OUTPUT" &&
+                l.production_date === selectedLog.production_date &&
+                l.work_order_id === selectedLog.work_order_id
+              ) || null
+            : null
+        }
         open={detailModalOpen}
         onOpenChange={setDetailModalOpen}
       />
