@@ -146,8 +146,14 @@ export default function Auth() {
           return;
         }
 
-        // Remaining workers go to sewing targets
-        navigate("/sewing/morning-targets", { replace: true });
+        // Legacy: sewing department workers
+        if (hasRole("worker")) {
+          navigate("/sewing/morning-targets", { replace: true });
+          return;
+        }
+
+        // No recognized role — go to index which shows an informative message
+        navigate("/", { replace: true });
       } else if (profile && !profile.is_active) {
         // User account is deactivated
         toast.error("Account Deactivated", { description: "Your account has been deactivated. Please contact your administrator." });
