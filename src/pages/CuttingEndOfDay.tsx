@@ -703,7 +703,7 @@ export default function CuttingEndOfDay() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>OT Manpower</Label>
+                <Label>OT Manpower Actual</Label>
                 <Input
                   type="number"
                   value={otManpowerActual}
