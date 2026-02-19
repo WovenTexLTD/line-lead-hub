@@ -191,6 +191,17 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
                   </div>
                 </div>
 
+                {/* Derived Totals */}
+                {target.planned_hours != null && target.planned_hours > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Derived Totals</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <FieldDisplay label="Target Total Poly" value={Math.round(target.poly * target.planned_hours)} className="text-primary" />
+                      <FieldDisplay label="Target Total Carton" value={Math.round(target.carton * target.planned_hours)} className="text-lg text-primary" />
+                    </div>
+                  </div>
+                )}
+
                 {/* Hours & Resources */}
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Hours & Resources</p>
@@ -250,6 +261,17 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
                     })}
                   </div>
                 </div>
+
+                {/* Derived Per-Hour Rates */}
+                {actual.actual_hours != null && actual.actual_hours > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Derived Rates</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <FieldDisplay label="Poly per Hour" value={Math.round((actual.poly / actual.actual_hours) * 100) / 100} suffix=" /hr" className="text-success" />
+                      <FieldDisplay label="Carton per Hour" value={Math.round((actual.carton / actual.actual_hours) * 100) / 100} suffix=" /hr" className="text-lg text-success" />
+                    </div>
+                  </div>
+                )}
 
                 {/* Hours & Resources */}
                 <div>
