@@ -171,6 +171,8 @@ interface CuttingSubmission {
   total_input: number | null;
   balance: number | null;
   submitted_at: string | null;
+  ot_hours_actual: number | null;
+  ot_manpower_actual: number | null;
   leftover_recorded: boolean | null;
   leftover_type: string | null;
   leftover_unit: string | null;
@@ -550,6 +552,8 @@ export default function Dashboard() {
         total_input: c.total_input,
         balance: c.balance,
         submitted_at: c.submitted_at,
+        ot_hours_actual: c.ot_hours_actual ?? null,
+        ot_manpower_actual: c.ot_manpower_actual ?? null,
         leftover_recorded: c.leftover_recorded || null,
         leftover_type: c.leftover_type || null,
         leftover_unit: c.leftover_unit || null,
