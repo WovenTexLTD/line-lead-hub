@@ -64,6 +64,10 @@ interface FinishingDailyLog {
   carton: number | null;
   planned_hours: number | null;
   actual_hours: number | null;
+  ot_hours_actual: number | null;
+  ot_manpower_actual: number | null;
+  ot_hours_planned: number | null;
+  ot_manpower_planned: number | null;
   remarks: string | null;
   lines: { line_id: string; name: string | null } | null;
   work_orders: { po_number: string; buyer: string; style: string } | null;
