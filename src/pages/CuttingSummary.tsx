@@ -53,6 +53,8 @@ interface CuttingSubmission {
   day_input: number;
   total_input: number | null;
   balance: number | null;
+  ot_hours_actual: number | null;
+  ot_manpower_actual: number | null;
   lines?: { line_id: string; name: string | null };
   work_orders?: { po_number: string; buyer: string; style: string };
 }
@@ -140,6 +142,8 @@ export default function CuttingSummary() {
           day_input: actual.day_input,
           total_input: actual.total_input,
           balance: actual.balance,
+          ot_hours_actual: actual.ot_hours_actual,
+          ot_manpower_actual: actual.ot_manpower_actual,
           lines: actual.lines,
           work_orders: actual.work_orders,
         };
@@ -500,6 +504,14 @@ export default function CuttingSummary() {
                     <p className={`font-medium ${selectedSubmission.balance && selectedSubmission.balance < 0 ? "text-destructive" : ""}`}>
                       {selectedSubmission.balance?.toLocaleString() || "—"}
                     </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase">OT Hours Actual</p>
+                    <p className="font-medium">{selectedSubmission.ot_hours_actual ?? "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase">OT Manpower Actual</p>
+                    <p className="font-medium">{selectedSubmission.ot_manpower_actual ?? "—"}</p>
                   </div>
                 </div>
               </div>
