@@ -39,6 +39,10 @@ interface DailyLogSummary {
   planned_hours: number | null;
   actual_hours: number | null;
   remarks: string | null;
+  ot_hours_actual: number | null;
+  ot_manpower_actual: number | null;
+  ot_hours_planned: number | null;
+  ot_manpower_planned: number | null;
   submitted_at: string;
   production_date: string;
 }
@@ -107,6 +111,10 @@ export function FinishingDashboard() {
         planned_hours: log.planned_hours ?? null,
         actual_hours: log.actual_hours ?? null,
         remarks: log.remarks || null,
+        ot_hours_actual: log.ot_hours_actual ?? null,
+        ot_manpower_actual: log.ot_manpower_actual ?? null,
+        ot_hours_planned: log.ot_hours_planned ?? null,
+        ot_manpower_planned: log.ot_manpower_planned ?? null,
         submitted_at: log.submitted_at,
         production_date: log.production_date,
       }));
@@ -269,6 +277,10 @@ export function FinishingDashboard() {
                           planned_hours: log.planned_hours,
                           actual_hours: log.actual_hours,
                           remarks: log.remarks,
+                          ot_hours_actual: log.ot_hours_actual ?? null,
+                          ot_manpower_actual: log.ot_manpower_actual ?? null,
+                          ot_hours_planned: log.ot_hours_planned ?? null,
+                          ot_manpower_planned: log.ot_manpower_planned ?? null,
                           submitted_at: log.submitted_at,
                           is_locked: false,
                           line: null,
