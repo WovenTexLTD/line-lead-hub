@@ -20,6 +20,7 @@ import { Factory, Package, Search, Download, RefreshCw, FileText, Calendar, Targ
 import { TableSkeleton, StatsCardsSkeleton } from "@/components/ui/table-skeleton";
 import { SubmissionDetailModal } from "@/components/SubmissionDetailModal";
 import { TargetDetailModal } from "@/components/TargetDetailModal";
+import { SewingSubmissionView, SewingTargetData, SewingActualData } from "@/components/SewingSubmissionView";
 import { ExportSubmissionsDialog } from "@/components/ExportSubmissionsDialog";
 import { CuttingSubmissionsTable } from "@/components/submissions/CuttingSubmissionsTable";
 import { FinishingDailySheetsTable } from "@/components/submissions/FinishingDailySheetsTable";
@@ -40,11 +41,13 @@ import {
 interface SewingTarget {
   id: string;
   line_id: string;
+  work_order_id: string;
   per_hour_target: number;
   manpower_planned: number;
   ot_hours_planned: number;
   planned_stage_progress: number;
   next_milestone: string | null;
+  estimated_ex_factory: string | null;
   remarks: string | null;
   submitted_at: string | null;
   production_date: string;
@@ -73,6 +76,7 @@ interface FinishingTarget {
 interface SewingActual {
   id: string;
   line_id: string;
+  work_order_id: string;
   good_today: number;
   reject_today: number;
   rework_today: number;
@@ -163,6 +167,8 @@ export default function AllSubmissions() {
   const [selectedActual, setSelectedActual] = useState<any>(null);
   const [targetModalOpen, setTargetModalOpen] = useState(false);
   const [actualModalOpen, setActualModalOpen] = useState(false);
+  const [sewingViewOpen, setSewingViewOpen] = useState(false);
+  const [sewingViewSource, setSewingViewSource] = useState<{ type: 'target' | 'actual'; id: string } | null>(null);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [pageSize, setPageSize] = useState(25);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -423,6 +429,11 @@ export default function AllSubmissions() {
   }
 
   const handleTargetClick = (target: SewingTarget | FinishingTarget) => {
+    if (department === 'sewing') {
+      setSewingViewSource({ type: 'target', id: target.id });
+      setSewingViewOpen(true);
+      return;
+    }
     setSelectedTarget({
       ...target,
       type: department,
@@ -432,6 +443,11 @@ export default function AllSubmissions() {
   };
 
   const handleActualClick = (actual: SewingActual | FinishingActual) => {
+    if (department === 'sewing') {
+      setSewingViewSource({ type: 'actual', id: actual.id });
+      setSewingViewOpen(true);
+      return;
+    }
     setSelectedActual({
       id: actual.id,
       type: department,
@@ -447,17 +463,6 @@ export default function AllSubmissions() {
       submitted_at: actual.submitted_at,
       production_date: actual.production_date,
       remarks: actual.remarks,
-      ...(department === 'sewing' && {
-        output_qty: (actual as SewingActual).good_today,
-        reject_qty: (actual as SewingActual).reject_today,
-        rework_qty: (actual as SewingActual).rework_today,
-        manpower: (actual as SewingActual).manpower_actual,
-        stage_name: (actual as SewingActual).stages?.name || null,
-        stage_progress: (actual as SewingActual).actual_stage_progress,
-        next_milestone: null,
-        ot_hours: (actual as SewingActual).ot_hours_actual,
-        ot_manpower: (actual as SewingActual).ot_manpower_actual ?? null,
-      }),
       ...(department === 'finishing' && {
         day_qc_pass: (actual as FinishingActual).day_qc_pass,
         total_qc_pass: (actual as FinishingActual).total_qc_pass,
@@ -956,7 +961,7 @@ export default function AllSubmissions() {
         onOpenChange={setTargetModalOpen}
       />
 
-      {/* Actual Detail Modal */}
+      {/* Actual Detail Modal (finishing only now) */}
       <SubmissionDetailModal
         submission={selectedActual}
         open={actualModalOpen}
@@ -964,6 +969,87 @@ export default function AllSubmissions() {
         onDeleted={fetchSubmissions}
         onUpdated={fetchSubmissions}
       />
+
+      {/* Sewing Submission View */}
+      {(() => {
+        if (!sewingViewSource) return null;
+        let sewingTarget: SewingTargetData | null = null;
+        let sewingActual: SewingActualData | null = null;
+
+        const buildTarget = (t: SewingTarget): SewingTargetData => ({
+          id: t.id,
+          production_date: t.production_date,
+          line_name: t.lines?.name || t.lines?.line_id || 'Unknown',
+          po_number: t.work_orders?.po_number || null,
+          buyer: t.work_orders?.buyer || null,
+          style: t.work_orders?.style || null,
+          order_qty: t.work_orders?.order_qty ?? null,
+          submitted_at: t.submitted_at,
+          per_hour_target: t.per_hour_target,
+          manpower_planned: t.manpower_planned,
+          ot_hours_planned: t.ot_hours_planned,
+          stage_name: t.stages?.name || null,
+          planned_stage_progress: t.planned_stage_progress,
+          next_milestone: t.next_milestone,
+          estimated_ex_factory: t.estimated_ex_factory ?? null,
+          remarks: t.remarks,
+        });
+
+        const buildActual = (a: SewingActual): SewingActualData => ({
+          id: a.id,
+          production_date: a.production_date,
+          line_name: a.lines?.name || a.lines?.line_id || 'Unknown',
+          po_number: a.work_orders?.po_number || null,
+          buyer: a.work_orders?.buyer || null,
+          style: a.work_orders?.style || null,
+          order_qty: a.work_orders?.order_qty ?? null,
+          submitted_at: a.submitted_at,
+          good_today: a.good_today,
+          reject_today: a.reject_today,
+          rework_today: a.rework_today,
+          cumulative_good_total: a.cumulative_good_total,
+          manpower_actual: a.manpower_actual,
+          ot_hours_actual: a.ot_hours_actual,
+          ot_manpower_actual: a.ot_manpower_actual,
+          stage_name: a.stages?.name || null,
+          actual_stage_progress: a.actual_stage_progress,
+          remarks: a.remarks,
+          has_blocker: a.has_blocker,
+          blocker_description: a.blocker_description,
+          blocker_impact: a.blocker_impact,
+          blocker_owner: a.blocker_owner,
+          blocker_status: null,
+        });
+
+        if (sewingViewSource.type === 'target') {
+          const t = sewingTargets.find(t => t.id === sewingViewSource.id);
+          if (t) {
+            sewingTarget = buildTarget(t);
+            const ma = sewingActuals.find(a =>
+              a.line_id === t.line_id && a.work_order_id === t.work_order_id && a.production_date === t.production_date
+            );
+            if (ma) sewingActual = buildActual(ma);
+          }
+        } else {
+          const a = sewingActuals.find(a => a.id === sewingViewSource.id);
+          if (a) {
+            sewingActual = buildActual(a);
+            const mt = sewingTargets.find(t =>
+              t.line_id === a.line_id && t.work_order_id === a.work_order_id && t.production_date === a.production_date
+            );
+            if (mt) sewingTarget = buildTarget(mt);
+          }
+        }
+
+        return (
+          <SewingSubmissionView
+            target={sewingTarget}
+            actual={sewingActual}
+            open={sewingViewOpen}
+            onOpenChange={setSewingViewOpen}
+          />
+        );
+      })()}
 
       {/* Export Dialog */}
       <ExportSubmissionsDialog

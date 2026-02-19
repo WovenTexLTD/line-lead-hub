@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SubmissionDetailModal } from "@/components/SubmissionDetailModal";
 import { TargetDetailModal } from "@/components/TargetDetailModal";
 import { CuttingSubmissionView } from "@/components/CuttingSubmissionView";
+import { SewingSubmissionView, SewingTargetData, SewingActualData } from "@/components/SewingSubmissionView";
 import { StorageBinCardDetailModal } from "@/components/StorageBinCardDetailModal";
 import { TargetVsActualComparison } from "@/components/insights/TargetVsActualComparison";
 import { FinishingDashboard } from "@/components/dashboard/FinishingDashboard";
@@ -104,6 +105,9 @@ interface EndOfDaySubmission {
   ot_hours?: number | null;
   ot_manpower?: number | null;
   notes?: string | null;
+  work_order_id?: string;
+  cumulative_good_total?: number | null;
+  actual_stage_progress?: number | null;
   // Finishing daily sheet specific
   hours_logged?: number;
   total_poly?: number;
@@ -242,6 +246,8 @@ export default function Dashboard() {
   const [selectedBinCard, setSelectedBinCard] = useState<StorageBinCard | null>(null);
   const [submissionModalOpen, setSubmissionModalOpen] = useState(false);
   const [targetModalOpen, setTargetModalOpen] = useState(false);
+  const [sewingViewOpen, setSewingViewOpen] = useState(false);
+  const [sewingViewSource, setSewingViewSource] = useState<{ type: 'actual' | 'target'; id: string } | null>(null);
   const [cuttingModalOpen, setCuttingModalOpen] = useState(false);
   const [cuttingTargetModalOpen, setCuttingTargetModalOpen] = useState(false);
   const [storageModalOpen, setStorageModalOpen] = useState(false);
@@ -474,6 +480,9 @@ export default function Dashboard() {
           ot_hours: u.ot_hours_actual,
           ot_manpower: u.ot_manpower_actual ?? null,
           notes: u.remarks,
+          work_order_id: u.work_order_id,
+          cumulative_good_total: u.cumulative_good_total,
+          actual_stage_progress: u.actual_stage_progress,
         }));
 
       // Format finishing daily logs (OUTPUT type only for end of day)
@@ -881,8 +890,8 @@ export default function Dashboard() {
                       <div
                         key={target.id}
                         onClick={() => {
-                          setSelectedTarget(target);
-                          setTargetModalOpen(true);
+                          setSewingViewSource({ type: 'target', id: target.id });
+                          setSewingViewOpen(true);
                         }}
                         className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
                       >
@@ -955,32 +964,8 @@ export default function Dashboard() {
                       <div
                         key={update.id}
                         onClick={() => {
-                          setSelectedSubmission({
-                            id: update.id,
-                            type: 'sewing' as const,
-                            line_name: update.line_name,
-                            po_number: update.po_number,
-                            buyer: update.buyer,
-                            style: update.style,
-                            output_qty: update.output,
-                            target_qty: update.target_qty,
-                            manpower: update.manpower,
-                            reject_qty: update.reject_qty,
-                            rework_qty: update.rework_qty,
-                            stage_name: update.stage_name || null,
-                            stage_progress: update.stage_progress,
-                            ot_hours: update.ot_hours,
-                            ot_manpower: update.ot_manpower,
-                            has_blocker: update.has_blocker,
-                            blocker_description: update.blocker_description,
-                            blocker_impact: update.blocker_impact,
-                            blocker_owner: update.blocker_owner,
-                            blocker_status: update.blocker_status,
-                            notes: update.notes,
-                            submitted_at: update.submitted_at,
-                            production_date: update.production_date,
-                          });
-                          setSubmissionModalOpen(true);
+                          setSewingViewSource({ type: 'actual', id: update.id });
+                          setSewingViewOpen(true);
                         }}
                         className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
                       >
@@ -1415,6 +1400,131 @@ export default function Dashboard() {
         open={targetModalOpen}
         onOpenChange={setTargetModalOpen}
       />
+
+      {(() => {
+        if (!sewingViewSource) return null;
+        let sewingTarget: SewingTargetData | null = null;
+        let sewingActual: SewingActualData | null = null;
+
+        if (sewingViewSource.type === 'actual') {
+          const eod = sewingEndOfDay.find(e => e.id === sewingViewSource.id);
+          if (eod) {
+            sewingActual = {
+              id: eod.id,
+              production_date: eod.production_date,
+              line_name: eod.line_name,
+              po_number: eod.po_number,
+              buyer: eod.buyer,
+              style: eod.style,
+              order_qty: null,
+              submitted_at: eod.submitted_at,
+              good_today: eod.output,
+              reject_today: eod.reject_qty ?? 0,
+              rework_today: eod.rework_qty ?? 0,
+              cumulative_good_total: eod.cumulative_good_total ?? 0,
+              manpower_actual: eod.manpower ?? 0,
+              ot_hours_actual: eod.ot_hours ?? 0,
+              ot_manpower_actual: eod.ot_manpower ?? null,
+              stage_name: eod.stage_name || null,
+              actual_stage_progress: eod.actual_stage_progress ?? eod.stage_progress ?? null,
+              remarks: eod.notes || null,
+              has_blocker: eod.has_blocker,
+              blocker_description: eod.blocker_description,
+              blocker_impact: eod.blocker_impact,
+              blocker_owner: eod.blocker_owner,
+              blocker_status: eod.blocker_status,
+            };
+            const mt = sewingTargets.find(t =>
+              t.line_uuid === eod.line_uuid &&
+              t.work_order_id === eod.work_order_id &&
+              t.production_date === eod.production_date
+            );
+            if (mt) {
+              sewingTarget = {
+                id: mt.id,
+                production_date: mt.production_date,
+                line_name: mt.line_name,
+                po_number: mt.po_number,
+                buyer: mt.buyer,
+                style: mt.style,
+                order_qty: mt.order_qty ?? null,
+                submitted_at: mt.submitted_at,
+                per_hour_target: mt.per_hour_target,
+                manpower_planned: mt.manpower_planned ?? null,
+                ot_hours_planned: mt.ot_hours_planned ?? null,
+                stage_name: mt.stage_name ?? null,
+                planned_stage_progress: mt.planned_stage_progress ?? null,
+                next_milestone: mt.next_milestone ?? null,
+                estimated_ex_factory: mt.estimated_ex_factory ?? null,
+                remarks: mt.remarks ?? null,
+              };
+            }
+          }
+        } else {
+          const tgt = sewingTargets.find(t => t.id === sewingViewSource.id);
+          if (tgt) {
+            sewingTarget = {
+              id: tgt.id,
+              production_date: tgt.production_date,
+              line_name: tgt.line_name,
+              po_number: tgt.po_number,
+              buyer: tgt.buyer,
+              style: tgt.style,
+              order_qty: tgt.order_qty ?? null,
+              submitted_at: tgt.submitted_at,
+              per_hour_target: tgt.per_hour_target,
+              manpower_planned: tgt.manpower_planned ?? null,
+              ot_hours_planned: tgt.ot_hours_planned ?? null,
+              stage_name: tgt.stage_name ?? null,
+              planned_stage_progress: tgt.planned_stage_progress ?? null,
+              next_milestone: tgt.next_milestone ?? null,
+              estimated_ex_factory: tgt.estimated_ex_factory ?? null,
+              remarks: tgt.remarks ?? null,
+            };
+            const ma = sewingEndOfDay.find(e =>
+              e.line_uuid === tgt.line_uuid &&
+              e.work_order_id === tgt.work_order_id &&
+              e.production_date === tgt.production_date
+            );
+            if (ma) {
+              sewingActual = {
+                id: ma.id,
+                production_date: ma.production_date,
+                line_name: ma.line_name,
+                po_number: ma.po_number,
+                buyer: ma.buyer,
+                style: ma.style,
+                order_qty: null,
+                submitted_at: ma.submitted_at,
+                good_today: ma.output,
+                reject_today: ma.reject_qty ?? 0,
+                rework_today: ma.rework_qty ?? 0,
+                cumulative_good_total: ma.cumulative_good_total ?? 0,
+                manpower_actual: ma.manpower ?? 0,
+                ot_hours_actual: ma.ot_hours ?? 0,
+                ot_manpower_actual: ma.ot_manpower ?? null,
+                stage_name: ma.stage_name || null,
+                actual_stage_progress: ma.actual_stage_progress ?? ma.stage_progress ?? null,
+                remarks: ma.notes || null,
+                has_blocker: ma.has_blocker,
+                blocker_description: ma.blocker_description,
+                blocker_impact: ma.blocker_impact,
+                blocker_owner: ma.blocker_owner,
+                blocker_status: ma.blocker_status,
+              };
+            }
+          }
+        }
+
+        return (
+          <SewingSubmissionView
+            target={sewingTarget}
+            actual={sewingActual}
+            open={sewingViewOpen}
+            onOpenChange={setSewingViewOpen}
+          />
+        );
+      })()}
 
       {(() => {
         const matchingTarget = selectedCutting
