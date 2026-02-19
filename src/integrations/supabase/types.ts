@@ -392,6 +392,8 @@ export type Database = {
           man_power: number
           marker_capacity: number
           order_qty: number | null
+          ot_hours_actual: number | null
+          ot_manpower_actual: number | null
           po_no: string | null
           production_date: string
           style: string | null
@@ -430,6 +432,8 @@ export type Database = {
           man_power?: number
           marker_capacity?: number
           order_qty?: number | null
+          ot_hours_actual?: number | null
+          ot_manpower_actual?: number | null
           po_no?: string | null
           production_date?: string
           style?: string | null
@@ -468,6 +472,8 @@ export type Database = {
           man_power?: number
           marker_capacity?: number
           order_qty?: number | null
+          ot_hours_actual?: number | null
+          ot_manpower_actual?: number | null
           po_no?: string | null
           production_date?: string
           style?: string | null
@@ -569,6 +575,8 @@ export type Database = {
           man_power: number
           marker_capacity: number
           order_qty: number | null
+          ot_hours_planned: number | null
+          ot_manpower_planned: number | null
           po_no: string | null
           production_date: string
           style: string | null
@@ -593,6 +601,8 @@ export type Database = {
           man_power?: number
           marker_capacity?: number
           order_qty?: number | null
+          ot_hours_planned?: number | null
+          ot_manpower_planned?: number | null
           po_no?: string | null
           production_date?: string
           style?: string | null
@@ -617,6 +627,8 @@ export type Database = {
           man_power?: number
           marker_capacity?: number
           order_qty?: number | null
+          ot_hours_planned?: number | null
+          ot_manpower_planned?: number | null
           po_no?: string | null
           production_date?: string
           style?: string | null
@@ -1123,6 +1135,10 @@ export type Database = {
           locked_at: string | null
           locked_by: string | null
           log_type: Database["public"]["Enums"]["finishing_log_type"]
+          ot_hours_actual: number | null
+          ot_hours_planned: number | null
+          ot_manpower_actual: number | null
+          ot_manpower_planned: number | null
           planned_hours: number | null
           poly: number | null
           production_date: string
@@ -1151,6 +1167,10 @@ export type Database = {
           locked_at?: string | null
           locked_by?: string | null
           log_type: Database["public"]["Enums"]["finishing_log_type"]
+          ot_hours_actual?: number | null
+          ot_hours_planned?: number | null
+          ot_manpower_actual?: number | null
+          ot_manpower_planned?: number | null
           planned_hours?: number | null
           poly?: number | null
           production_date?: string
@@ -1179,6 +1199,10 @@ export type Database = {
           locked_at?: string | null
           locked_by?: string | null
           log_type?: Database["public"]["Enums"]["finishing_log_type"]
+          ot_hours_actual?: number | null
+          ot_hours_planned?: number | null
+          ot_manpower_actual?: number | null
+          ot_manpower_planned?: number | null
           planned_hours?: number | null
           poly?: number | null
           production_date?: string
