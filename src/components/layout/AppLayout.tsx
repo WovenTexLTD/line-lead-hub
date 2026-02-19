@@ -6,6 +6,7 @@ import { Loader2, RefreshCw, AlertTriangle, Home } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { Button } from "@/components/ui/button";
 import { TrialExpirationBanner } from "@/components/TrialExpirationBanner";
+import { SetupProgressBanner } from "@/components/SetupProgressBanner";
 import { NetworkStatusIndicator } from "@/components/NetworkStatusIndicator";
 import { DMGWarningModal } from "@/components/DMGWarningModal";
 import { ChatWidget } from "@/components/chat";
@@ -70,6 +71,7 @@ export function AppLayout() {
         />
 
         <TrialExpirationBanner />
+        <SetupProgressBanner />
 
         <div className="flex flex-1 min-w-0 overflow-x-hidden">
           <AppSidebar />

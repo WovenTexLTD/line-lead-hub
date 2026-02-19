@@ -80,6 +80,10 @@ export default function FinishingDailyOutput() {
   const [remarks, setRemarks] = useState("");
   const [actualHours, setActualHours] = useState("");
 
+  // OT fields
+  const [otHoursActual, setOtHoursActual] = useState("0");
+  const [otManpowerActual, setOtManpowerActual] = useState("0");
+
   // Process category values
   const [processValues, setProcessValues] = useState<Record<ProcessKey, string>>({
     thread_cutting: "",
@@ -110,7 +114,6 @@ export default function FinishingDailyOutput() {
   useEffect(() => {
     if (selectedWorkOrderId && profile?.factory_id) {
       checkExistingLogs();
-      fetchPreviousCartonTotal();
     } else {
       setPreviousCartonTotal(0);
     }
@@ -186,6 +189,8 @@ export default function FinishingDailyOutput() {
         // Pre-fill form with existing data
         setRemarks(outputRes.data.remarks || "");
         setActualHours(outputRes.data.actual_hours?.toString() || "");
+        setOtHoursActual(outputRes.data.ot_hours_actual?.toString() || "0");
+        setOtManpowerActual(outputRes.data.ot_manpower_actual?.toString() || "0");
         setProcessValues({
           thread_cutting: outputRes.data.thread_cutting?.toString() || "",
           inside_check: outputRes.data.inside_check?.toString() || "",
@@ -202,6 +207,8 @@ export default function FinishingDailyOutput() {
         setIsEditing(false);
         // Prefill actual hours from target's planned_hours
         setActualHours(targetRes.data?.planned_hours?.toString() || "");
+        setOtHoursActual(targetRes.data?.ot_hours_planned?.toString() || "0");
+        setOtManpowerActual(targetRes.data?.ot_manpower_planned?.toString() || "0");
         // Reset form
         setProcessValues({
           thread_cutting: "",
@@ -214,17 +221,18 @@ export default function FinishingDailyOutput() {
           carton: "",
         });
       }
+
+      // Fetch previous carton total, passing existing log ID directly to avoid stale state
+      fetchPreviousCartonTotal(outputRes.data?.id || null);
     } catch (error) {
       console.error("Error checking existing logs:", error);
     }
   }
 
-  async function fetchPreviousCartonTotal() {
+  async function fetchPreviousCartonTotal(existingLogId: string | null) {
     if (!profile?.factory_id || !selectedWorkOrderId) return;
 
     try {
-      const today = format(new Date(), "yyyy-MM-dd");
-      
       // Fetch all carton values for this work order (excluding today's entry if editing)
       const { data, error } = await supabase
         .from("finishing_daily_logs")
@@ -238,7 +246,7 @@ export default function FinishingDailyOutput() {
       // Sum all carton values, excluding the current log if editing
       const total = (data || []).reduce((sum, log) => {
         // If we're editing, exclude the current log's carton from previous total
-        if (existingLog && log.id === existingLog.id) {
+        if (existingLogId && log.id === existingLogId) {
           return sum;
         }
         return sum + (log.carton || 0);
@@ -311,6 +319,8 @@ export default function FinishingDailyOutput() {
         carton: processValues.carton ? parseInt(processValues.carton) : 0,
         remarks: remarks || null,
         actual_hours: parseFloat(actualHours),
+        ot_hours_actual: parseFloat(otHoursActual) || 0,
+        ot_manpower_actual: parseInt(otManpowerActual) || 0,
         submitted_by: user.id,
       };
 
@@ -558,7 +568,7 @@ export default function FinishingDailyOutput() {
                     <VarianceIndicator variance={calculateTotal() - calculateTargetTotal()} />
                   </div>
                 </div>
-                {(targetLog?.planned_hours || actualHours) && (
+                {(targetLog?.planned_hours != null || actualHours) && (
                   <div className="border-t pt-2 mt-2 grid grid-cols-4 gap-2 text-sm">
                     <div className="flex items-center gap-1">
                       <Clock className="h-3 w-3 text-muted-foreground" />
@@ -567,7 +577,7 @@ export default function FinishingDailyOutput() {
                     <div className="text-right text-muted-foreground">{targetLog?.planned_hours ?? "—"}</div>
                     <div className="text-right font-medium">{actualHours || "—"}</div>
                     <div className="text-right">
-                      {targetLog?.planned_hours && actualHours ? (
+                      {targetLog?.planned_hours != null && actualHours ? (
                         <VarianceIndicator variance={parseFloat(actualHours) - targetLog.planned_hours} />
                       ) : (
                         <span className="text-muted-foreground">—</span>
@@ -654,6 +664,39 @@ export default function FinishingDailyOutput() {
                   Planned hours from target: {targetLog.planned_hours}h
                 </p>
               )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* OT Hours & Manpower */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Overtime
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>OT Hours Actual</Label>
+                <Input
+                  type="number"
+                  step="0.5"
+                  value={otHoursActual}
+                  onChange={(e) => setOtHoursActual(e.target.value)}
+                  placeholder="0"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>OT Manpower</Label>
+                <Input
+                  type="number"
+                  value={otManpowerActual}
+                  onChange={(e) => setOtManpowerActual(e.target.value)}
+                  placeholder="0"
+                />
+              </div>
             </div>
           </CardContent>
         </Card>

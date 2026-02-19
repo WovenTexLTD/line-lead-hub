@@ -251,7 +251,7 @@ export default function Dashboard() {
   } | null>(null);
 
   const canViewDashboard = isAdminOrHigher();
-  const onboarding = useOnboardingChecklist(hasRole("owner") ? profile?.factory_id : null);
+  const onboarding = useOnboardingChecklist(isAdminOrHigher() ? profile?.factory_id : null);
 
   useEffect(() => {
     if (authLoading) return;

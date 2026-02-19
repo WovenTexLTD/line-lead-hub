@@ -55,6 +55,7 @@ import { cn } from "@/lib/utils";
 import { openExternalUrl, isTauri } from "@/lib/capacitor";
 import { isRunningFromDMG } from "@/lib/dmg-detection";
 import { DMGWarningModal } from "@/components/DMGWarningModal";
+import { useOnboardingChecklist } from "@/hooks/useOnboardingChecklist";
 import logoSvg from "@/assets/logo.svg";
 
 // Web fallback version (desktop uses the runtime version from the installed app)
@@ -148,6 +149,12 @@ export function AppSidebar() {
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [appVersion, setAppVersion] = useState<string>(WEB_APP_VERSION);
   const [showDMGWarning, setShowDMGWarning] = useState(false);
+
+  // Setup progress badge for admin/owner sidebar
+  const isAdminOrOwner = roles.some(ur => ['admin', 'owner'].includes(ur.role));
+  const onboarding = useOnboardingChecklist(isAdminOrOwner ? profile?.factory_id : null);
+  const setupRemaining = onboarding.totalCount - onboarding.completedCount;
+  const showSetupBadge = isAdminOrOwner && !onboarding.loading && !onboarding.allComplete && onboarding.totalCount > 0;
 
   useEffect(() => {
     let cancelled = false;
@@ -474,8 +481,24 @@ export function AppSidebar() {
                             : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                         )}
                       >
-                        {Icon && <Icon className="h-5 w-5 shrink-0" />}
-                        {!collapsed && <span>{getNavLabel(item.label)}</span>}
+                        {Icon && (
+                          <div className="relative">
+                            <Icon className="h-5 w-5 shrink-0" />
+                            {collapsed && item.path === '/setup' && showSetupBadge && (
+                              <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-sidebar" />
+                            )}
+                          </div>
+                        )}
+                        {!collapsed && (
+                          <span className="flex items-center gap-2">
+                            {getNavLabel(item.label)}
+                            {item.path === '/setup' && showSetupBadge && (
+                              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground px-1">
+                                {setupRemaining}
+                              </span>
+                            )}
+                          </span>
+                        )}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

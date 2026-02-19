@@ -63,6 +63,10 @@ export default function FinishingDailyTarget() {
   const [remarks, setRemarks] = useState("");
   const [plannedHours, setPlannedHours] = useState("");
 
+  // OT fields
+  const [otHoursPlanned, setOtHoursPlanned] = useState("0");
+  const [otManpowerPlanned, setOtManpowerPlanned] = useState("0");
+
   // Process category values
   const [processValues, setProcessValues] = useState<Record<ProcessKey, string>>({
     thread_cutting: "",
@@ -158,9 +162,9 @@ export default function FinishingDailyTarget() {
         setExistingLog(data);
         // Pre-fill form with existing data
         setRemarks(data.remarks || "");
-        if (data.planned_hours != null) {
-          setPlannedHours(data.planned_hours.toString());
-        }
+        setPlannedHours(data.planned_hours != null ? data.planned_hours.toString() : "");
+        setOtHoursPlanned(data.ot_hours_planned?.toString() || "0");
+        setOtManpowerPlanned(data.ot_manpower_planned?.toString() || "0");
         setProcessValues({
           thread_cutting: data.thread_cutting?.toString() || "",
           inside_check: data.inside_check?.toString() || "",
@@ -254,6 +258,8 @@ export default function FinishingDailyTarget() {
         remarks: remarks || null,
         submitted_by: user.id,
         planned_hours: parseFloat(plannedHours),
+        ot_hours_planned: parseFloat(otHoursPlanned) || 0,
+        ot_manpower_planned: parseInt(otManpowerPlanned) || 0,
       };
 
       if (isEditing && existingLog) {
@@ -500,6 +506,39 @@ export default function FinishingDailyTarget() {
               <p className="text-xs text-muted-foreground">
                 Total working hours for the finishing department today (including overtime)
               </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* OT Hours & Manpower */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Overtime Planning
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>OT Hours Planned</Label>
+                <Input
+                  type="number"
+                  step="0.5"
+                  value={otHoursPlanned}
+                  onChange={(e) => setOtHoursPlanned(e.target.value)}
+                  placeholder="0"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>OT Manpower Planned</Label>
+                <Input
+                  type="number"
+                  value={otManpowerPlanned}
+                  onChange={(e) => setOtManpowerPlanned(e.target.value)}
+                  placeholder="0"
+                />
+              </div>
             </div>
           </CardContent>
         </Card>

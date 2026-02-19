@@ -25,6 +25,8 @@ import {
 } from "lucide-react";
 import { EmailScheduleSettings } from "@/components/insights/EmailScheduleSettings";
 import { EmptyState } from "@/components/EmptyState";
+import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
+import { useOnboardingChecklist } from "@/hooks/useOnboardingChecklist";
 
 interface FactoryStats {
   linesCount: number;
@@ -38,6 +40,7 @@ interface FactoryStats {
 export default function SetupHome() {
   const { profile, factory, isAdminOrHigher } = useAuth();
   const navigate = useNavigate();
+  const onboarding = useOnboardingChecklist(profile?.factory_id);
 
   
   const [loading, setLoading] = useState(true);
@@ -224,6 +227,18 @@ export default function SetupHome() {
           </p>
         </div>
       </div>
+
+      {/* Onboarding Checklist */}
+      {onboarding.visible && (
+        <div className="mb-6">
+          <OnboardingChecklist
+            steps={onboarding.steps}
+            completedCount={onboarding.completedCount}
+            totalCount={onboarding.totalCount}
+            onDismiss={onboarding.dismiss}
+          />
+        </div>
+      )}
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">

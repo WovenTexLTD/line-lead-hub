@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Rows3, ClipboardList, UserPlus, Target, type LucideIcon } from "lucide-react";
 
@@ -9,6 +9,8 @@ export interface ChecklistStep {
   href: string;
   icon: LucideIcon;
   completed: boolean;
+  locked: boolean;
+  stepNumber: number;
 }
 
 interface OnboardingCounts {
@@ -57,12 +59,20 @@ function getDismissKey(factoryId: string) {
   return `onboarding_dismissed_${factoryId}`;
 }
 
+function getBannerDismissKey(factoryId: string) {
+  return `onboarding_banner_dismissed_${factoryId}`;
+}
+
 export function useOnboardingChecklist(factoryId: string | null | undefined) {
   const [counts, setCounts] = useState<OnboardingCounts | null>(null);
   const [loading, setLoading] = useState(true);
   const [dismissed, setDismissed] = useState(() => {
     if (!factoryId) return false;
     return localStorage.getItem(getDismissKey(factoryId)) === "true";
+  });
+  const [bannerDismissed, setBannerDismissed] = useState(() => {
+    if (!factoryId) return false;
+    return localStorage.getItem(getBannerDismissKey(factoryId)) === "true";
   });
 
   useEffect(() => {
@@ -71,10 +81,12 @@ export function useOnboardingChecklist(factoryId: string | null | undefined) {
       return;
     }
     setDismissed(localStorage.getItem(getDismissKey(factoryId)) === "true");
+    setBannerDismissed(localStorage.getItem(getBannerDismissKey(factoryId)) === "true");
   }, [factoryId]);
 
   useEffect(() => {
-    if (!factoryId || dismissed) {
+    // Only skip fetch if BOTH card and banner are dismissed
+    if (!factoryId || (dismissed && bannerDismissed)) {
       setCounts(null);
       setLoading(false);
       return;
@@ -104,26 +116,43 @@ export function useOnboardingChecklist(factoryId: string | null | undefined) {
 
     fetchCounts();
     return () => { cancelled = true; };
-  }, [factoryId, dismissed]);
+  }, [factoryId, dismissed, bannerDismissed]);
 
-  const steps: ChecklistStep[] = STEP_DEFINITIONS.map((def) => ({
-    id: def.id,
-    title: def.title,
-    description: def.description,
-    href: def.href,
-    icon: def.icon,
-    completed: counts ? def.isComplete(counts) : false,
-  }));
+  const steps: ChecklistStep[] = useMemo(() =>
+    STEP_DEFINITIONS.map((def, index) => ({
+      id: def.id,
+      title: def.title,
+      description: def.description,
+      href: def.href,
+      icon: def.icon,
+      completed: counts ? def.isComplete(counts) : false,
+      locked: STEP_DEFINITIONS.slice(0, index).some(
+        (prev) => counts ? !prev.isComplete(counts) : true
+      ),
+      stepNumber: index + 1,
+    })),
+    [counts]
+  );
 
   const completedCount = steps.filter((s) => s.completed).length;
   const totalCount = steps.length;
   const allComplete = completedCount === totalCount;
+
+  const currentStepIndex = steps.findIndex((s) => !s.completed);
+  const currentStep = currentStepIndex >= 0 ? steps[currentStepIndex] : null;
 
   const dismiss = useCallback(() => {
     if (factoryId) {
       localStorage.setItem(getDismissKey(factoryId), "true");
     }
     setDismissed(true);
+  }, [factoryId]);
+
+  const dismissBanner = useCallback(() => {
+    if (factoryId) {
+      localStorage.setItem(getBannerDismissKey(factoryId), "true");
+    }
+    setBannerDismissed(true);
   }, [factoryId]);
 
   return {
@@ -133,7 +162,12 @@ export function useOnboardingChecklist(factoryId: string | null | undefined) {
     allComplete,
     dismissed,
     dismiss,
+    bannerDismissed,
+    dismissBanner,
     loading,
     visible: !!factoryId && !loading && !dismissed && !allComplete,
+    bannerVisible: !!factoryId && !loading && !bannerDismissed && !allComplete,
+    currentStep,
+    currentStepIndex,
   };
 }
