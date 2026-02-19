@@ -1,13 +1,27 @@
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { formatDate, formatDateTimeInTimezone } from "@/lib/date-utils";
+import { toast } from "sonner";
 import {
   Factory,
   Crosshair,
@@ -16,6 +30,9 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
+  Pencil,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 
 export interface SewingTargetData {
@@ -72,6 +89,10 @@ interface SewingSubmissionViewProps {
   actual?: SewingActualData | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onEditTarget?: () => void;
+  onEditActual?: () => void;
+  onDeleteTarget?: () => void;
+  onDeleteActual?: () => void;
 }
 
 function VarianceIndicator({ actual, target, decimals }: { actual: number; target: number; decimals?: number }) {
@@ -98,10 +119,35 @@ function FieldDisplay({ label, value, className, suffix }: {
   );
 }
 
-export function SewingSubmissionView({ target, actual, open, onOpenChange }: SewingSubmissionViewProps) {
+export function SewingSubmissionView({ target, actual, open, onOpenChange, onEditTarget, onEditActual, onDeleteTarget, onDeleteActual }: SewingSubmissionViewProps) {
   const { factory } = useAuth();
+  const [deleteType, setDeleteType] = useState<"target" | "actual" | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   if (!target && !actual) return null;
+
+  const handleDelete = async () => {
+    if (!deleteType) return;
+    setDeleting(true);
+    try {
+      const tableName = deleteType === "target" ? "sewing_targets" : "sewing_actuals";
+      const id = deleteType === "target" ? target?.id : actual?.id;
+      if (!id) return;
+
+      const { error } = await supabase.from(tableName).delete().eq("id", id);
+      if (error) throw error;
+
+      toast.success(`${deleteType === "target" ? "Target" : "Submission"} deleted successfully`);
+      setDeleteType(null);
+      onOpenChange(false);
+      if (deleteType === "target") onDeleteTarget?.();
+      else onDeleteActual?.();
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to delete");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const formatDateTime = (dateString: string) => {
     const timezone = factory?.timezone || "Asia/Dhaka";
@@ -231,6 +277,24 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange }: Sew
                     Submitted: {formatDateTime(target.submitted_at)}
                   </p>
                 )}
+
+                {/* Admin Actions */}
+                {(onEditTarget || onDeleteTarget) && (
+                  <div className="flex gap-2 pt-2 border-t border-primary/10">
+                    {onEditTarget && (
+                      <Button variant="outline" size="sm" onClick={onEditTarget}>
+                        <Pencil className="h-4 w-4 mr-1" />
+                        Edit
+                      </Button>
+                    )}
+                    {onDeleteTarget && (
+                      <Button variant="destructive" size="sm" onClick={() => setDeleteType("target")}>
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 p-4 flex flex-col items-center justify-center text-center min-h-[200px]">
@@ -344,6 +408,24 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange }: Sew
                     Submitted: {formatDateTime(actual.submitted_at)}
                   </p>
                 )}
+
+                {/* Admin Actions */}
+                {(onEditActual || onDeleteActual) && (
+                  <div className="flex gap-2 pt-2 border-t border-success/10">
+                    {onEditActual && (
+                      <Button variant="outline" size="sm" onClick={onEditActual}>
+                        <Pencil className="h-4 w-4 mr-1" />
+                        Edit
+                      </Button>
+                    )}
+                    {onDeleteActual && (
+                      <Button variant="destructive" size="sm" onClick={() => setDeleteType("actual")}>
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 p-4 flex flex-col items-center justify-center text-center min-h-[200px]">
@@ -405,6 +487,24 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange }: Sew
           )}
         </div>
       </DialogContent>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteType} onOpenChange={(open) => !open && setDeleteType(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {deleteType === "target" ? "Target" : "Submission"}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this {deleteType === "target" ? "morning target" : "end of day submission"}. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {deleting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Deleting...</> : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

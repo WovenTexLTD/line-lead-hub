@@ -21,6 +21,8 @@ import { TableSkeleton, StatsCardsSkeleton } from "@/components/ui/table-skeleto
 import { SubmissionDetailModal } from "@/components/SubmissionDetailModal";
 import { TargetDetailModal } from "@/components/TargetDetailModal";
 import { SewingSubmissionView, SewingTargetData, SewingActualData } from "@/components/SewingSubmissionView";
+import { EditSewingTargetModal } from "@/components/EditSewingTargetModal";
+import { EditSewingActualModal } from "@/components/EditSewingActualModal";
 import { ExportSubmissionsDialog } from "@/components/ExportSubmissionsDialog";
 import { CuttingSubmissionsTable } from "@/components/submissions/CuttingSubmissionsTable";
 import { FinishingDailySheetsTable } from "@/components/submissions/FinishingDailySheetsTable";
@@ -131,7 +133,7 @@ type CategoryType = 'targets' | 'actuals';
 type DepartmentType = 'sewing' | 'finishing' | 'cutting' | 'storage';
 
 export default function AllSubmissions() {
-  const { profile, factory } = useAuth();
+  const { profile, factory, isAdminOrHigher } = useAuth();
   const [searchParams] = useSearchParams();
 
   // Helper to format time in factory timezone
@@ -173,6 +175,8 @@ export default function AllSubmissions() {
   const [actualModalOpen, setActualModalOpen] = useState(false);
   const [sewingViewOpen, setSewingViewOpen] = useState(false);
   const [sewingViewSource, setSewingViewSource] = useState<{ type: 'target' | 'actual'; id: string } | null>(null);
+  const [editingSewingTarget, setEditingSewingTarget] = useState<SewingTarget | null>(null);
+  const [editingSewingActual, setEditingSewingActual] = useState<SewingActual | null>(null);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [pageSize, setPageSize] = useState(25);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -1029,25 +1033,32 @@ export default function AllSubmissions() {
           blocker_status: null,
         });
 
+        let rawTarget: SewingTarget | null = null;
+        let rawActual: SewingActual | null = null;
+
         if (sewingViewSource.type === 'target') {
           const t = sewingTargets.find(t => t.id === sewingViewSource.id);
           if (t) {
+            rawTarget = t;
             sewingTarget = buildTarget(t);
             const ma = sewingActuals.find(a =>
               a.line_id === t.line_id && a.work_order_id === t.work_order_id && a.production_date === t.production_date
             );
-            if (ma) sewingActual = buildActual(ma);
+            if (ma) { rawActual = ma; sewingActual = buildActual(ma); }
           }
         } else {
           const a = sewingActuals.find(a => a.id === sewingViewSource.id);
           if (a) {
+            rawActual = a;
             sewingActual = buildActual(a);
             const mt = sewingTargets.find(t =>
               t.line_id === a.line_id && t.work_order_id === a.work_order_id && t.production_date === a.production_date
             );
-            if (mt) sewingTarget = buildTarget(mt);
+            if (mt) { rawTarget = mt; sewingTarget = buildTarget(mt); }
           }
         }
+
+        const isAdmin = isAdminOrHigher();
 
         return (
           <SewingSubmissionView
@@ -1055,6 +1066,16 @@ export default function AllSubmissions() {
             actual={sewingActual}
             open={sewingViewOpen}
             onOpenChange={setSewingViewOpen}
+            onEditTarget={isAdmin && rawTarget ? () => {
+              setEditingSewingTarget(rawTarget);
+              setSewingViewOpen(false);
+            } : undefined}
+            onEditActual={isAdmin && rawActual ? () => {
+              setEditingSewingActual(rawActual);
+              setSewingViewOpen(false);
+            } : undefined}
+            onDeleteTarget={isAdmin && rawTarget ? () => fetchSubmissions() : undefined}
+            onDeleteActual={isAdmin && rawActual ? () => fetchSubmissions() : undefined}
           />
         );
       })()}
@@ -1065,6 +1086,20 @@ export default function AllSubmissions() {
         onOpenChange={setExportDialogOpen}
         data={getExportData()}
         dateRange={dateRange}
+      />
+
+      {/* Sewing Edit Modals */}
+      <EditSewingTargetModal
+        target={editingSewingTarget}
+        open={!!editingSewingTarget}
+        onOpenChange={(open) => !open && setEditingSewingTarget(null)}
+        onSaved={fetchSubmissions}
+      />
+      <EditSewingActualModal
+        submission={editingSewingActual}
+        open={!!editingSewingActual}
+        onOpenChange={(open) => !open && setEditingSewingActual(null)}
+        onSaved={fetchSubmissions}
       />
     </div>
   );
