@@ -105,6 +105,8 @@ interface FinishingActual {
   m_power_actual: number;
   day_hour_actual: number;
   day_over_time_actual: number;
+  total_hour: number | null;
+  total_over_time: number | null;
   average_production: number | null;
   has_blocker: boolean | null;
   blocker_description: string | null;
@@ -465,6 +467,11 @@ export default function AllSubmissions() {
         total_carton: (actual as FinishingActual).total_carton,
         m_power: (actual as FinishingActual).m_power_actual,
         average_production: (actual as FinishingActual).average_production,
+        day_over_time: (actual as FinishingActual).day_over_time_actual,
+        total_over_time: (actual as FinishingActual).total_over_time,
+        day_hour: (actual as FinishingActual).day_hour_actual,
+        total_hour: (actual as FinishingActual).total_hour,
+        order_quantity: (actual as FinishingActual).work_orders?.order_qty ?? null,
       }),
     });
     setActualModalOpen(true);
