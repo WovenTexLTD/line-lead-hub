@@ -245,6 +245,7 @@ export default function CuttingMorningTargets() {
     if (!markerCapacity || parseInt(markerCapacity) < 0) newErrors.markerCapacity = "Marker Capacity is required";
     if (!layCapacity || parseInt(layCapacity) < 0) newErrors.layCapacity = "Lay Capacity is required";
     if (!cuttingCapacity || parseInt(cuttingCapacity) < 0) newErrors.cuttingCapacity = "Cutting Capacity is required";
+    if (!hoursPlanned || parseFloat(hoursPlanned) < 0.5) newErrors.hoursPlanned = "Hours planned is required";
     if (!dayCutting || parseInt(dayCutting) < 0) newErrors.dayCutting = "Day Cutting is required";
     if (!dayInput || parseInt(dayInput) < 0) newErrors.dayInput = "Day Input is required";
 
@@ -292,7 +293,8 @@ export default function CuttingMorningTargets() {
         lay_capacity: parseInt(layCapacity),
         cutting_capacity: parseInt(cuttingCapacity),
         under_qty: parseInt(underQty) || 0,
-        hours_planned: hoursPlanned ? parseFloat(hoursPlanned) : null,
+        hours_planned: parseFloat(hoursPlanned),
+        target_per_hour: parseFloat(hoursPlanned) > 0 ? Math.round((parseInt(dayCutting) / parseFloat(hoursPlanned)) * 100) / 100 : null,
         ot_hours_planned: parseFloat(otHoursPlanned) || 0,
         ot_manpower_planned: parseInt(otManpowerPlanned) || 0,
         day_cutting: parseInt(dayCutting),
@@ -584,7 +586,7 @@ export default function CuttingMorningTargets() {
             </div>
 
             <div className="space-y-2">
-              <Label>Hours Planned</Label>
+              <Label>Hours Planned *</Label>
               <Input
                 type="number"
                 step="0.5"
@@ -593,7 +595,9 @@ export default function CuttingMorningTargets() {
                 value={hoursPlanned}
                 onChange={(e) => setHoursPlanned(e.target.value)}
                 placeholder="0"
+                className={errors.hoursPlanned ? "border-destructive" : ""}
               />
+              {errors.hoursPlanned && <p className="text-sm text-destructive">{errors.hoursPlanned}</p>}
             </div>
 
             <div className="grid grid-cols-2 gap-4">

@@ -41,6 +41,7 @@ interface CuttingTarget {
   hours_planned: number | null;
   ot_hours_planned: number | null;
   ot_manpower_planned: number | null;
+  target_per_hour: number | null;
   lines?: { line_id: string; name: string | null };
   work_orders?: { po_number: string; buyer: string; style: string };
 }
@@ -76,6 +77,7 @@ interface CuttingActual {
   ot_hours_actual: number | null;
   ot_manpower_actual: number | null;
   hours_actual: number | null;
+  actual_per_hour: number | null;
   lines?: { line_id: string; name: string | null };
   work_orders?: { po_number: string; buyer: string; style: string };
 }
@@ -682,6 +684,7 @@ export default function CuttingAllSubmissions() {
               ot_hours_planned: selectedTarget.ot_hours_planned ?? null,
               ot_manpower_planned: selectedTarget.ot_manpower_planned ?? null,
               hours_planned: selectedTarget.hours_planned ?? null,
+              target_per_hour: selectedTarget.target_per_hour ?? null,
             }}
             actual={matchingActual ? {
               id: matchingActual.id,
@@ -706,6 +709,7 @@ export default function CuttingAllSubmissions() {
               ot_hours_actual: matchingActual.ot_hours_actual,
               ot_manpower_actual: matchingActual.ot_manpower_actual,
               hours_actual: matchingActual.hours_actual ?? null,
+              actual_per_hour: matchingActual.actual_per_hour ?? null,
               leftover_recorded: matchingActual.leftover_recorded,
               leftover_type: matchingActual.leftover_type,
               leftover_unit: matchingActual.leftover_unit,
@@ -749,6 +753,7 @@ export default function CuttingAllSubmissions() {
               ot_hours_planned: matchingTarget.ot_hours_planned ?? null,
               ot_manpower_planned: matchingTarget.ot_manpower_planned ?? null,
               hours_planned: matchingTarget.hours_planned ?? null,
+              target_per_hour: matchingTarget.target_per_hour ?? null,
             } : null}
             actual={{
               id: selectedActual.id,
@@ -773,6 +778,7 @@ export default function CuttingAllSubmissions() {
               ot_hours_actual: selectedActual.ot_hours_actual,
               ot_manpower_actual: selectedActual.ot_manpower_actual,
               hours_actual: selectedActual.hours_actual ?? null,
+              actual_per_hour: selectedActual.actual_per_hour ?? null,
               leftover_recorded: selectedActual.leftover_recorded,
               leftover_type: selectedActual.leftover_type,
               leftover_unit: selectedActual.leftover_unit,

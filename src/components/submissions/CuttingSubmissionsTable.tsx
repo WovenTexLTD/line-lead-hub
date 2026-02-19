@@ -502,6 +502,7 @@ export function CuttingSubmissionsTable({
               ot_hours_planned: rawTarget.ot_hours_planned ?? null,
               ot_manpower_planned: rawTarget.ot_manpower_planned ?? null,
               hours_planned: rawTarget.hours_planned ?? null,
+              target_per_hour: rawTarget.target_per_hour ?? null,
             } : null}
             actual={rawActual ? {
               id: rawActual.id,
@@ -526,6 +527,7 @@ export function CuttingSubmissionsTable({
               ot_hours_actual: rawActual.ot_hours_actual ?? null,
               ot_manpower_actual: rawActual.ot_manpower_actual ?? null,
               hours_actual: rawActual.hours_actual ?? null,
+              actual_per_hour: rawActual.actual_per_hour ?? null,
               leftover_recorded: rawActual.leftover_recorded,
               leftover_type: rawActual.leftover_type,
               leftover_unit: rawActual.leftover_unit,

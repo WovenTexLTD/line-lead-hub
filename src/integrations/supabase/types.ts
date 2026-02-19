@@ -369,6 +369,7 @@ export type Database = {
           acknowledged: boolean | null
           acknowledged_at: string | null
           acknowledged_by: string | null
+          actual_per_hour: number | null
           balance: number | null
           buyer: string | null
           colour: string | null
@@ -410,6 +411,7 @@ export type Database = {
           acknowledged?: boolean | null
           acknowledged_at?: string | null
           acknowledged_by?: string | null
+          actual_per_hour?: number | null
           balance?: number | null
           buyer?: string | null
           colour?: string | null
@@ -451,6 +453,7 @@ export type Database = {
           acknowledged?: boolean | null
           acknowledged_at?: string | null
           acknowledged_by?: string | null
+          actual_per_hour?: number | null
           balance?: number | null
           buyer?: string | null
           colour?: string | null
@@ -586,6 +589,7 @@ export type Database = {
           style: string | null
           submitted_at: string | null
           submitted_by: string | null
+          target_per_hour: number | null
           under_qty: number | null
           work_order_id: string
         }
@@ -613,6 +617,7 @@ export type Database = {
           style?: string | null
           submitted_at?: string | null
           submitted_by?: string | null
+          target_per_hour?: number | null
           under_qty?: number | null
           work_order_id: string
         }
@@ -640,6 +645,7 @@ export type Database = {
           style?: string | null
           submitted_at?: string | null
           submitted_by?: string | null
+          target_per_hour?: number | null
           under_qty?: number | null
           work_order_id?: string
         }
@@ -2335,6 +2341,7 @@ export type Database = {
       sewing_actuals: {
         Row: {
           action_taken_today: string | null
+          actual_per_hour: number | null
           actual_stage_id: string | null
           actual_stage_progress: number
           blocker_description: string | null
@@ -2370,6 +2377,7 @@ export type Database = {
         }
         Insert: {
           action_taken_today?: string | null
+          actual_per_hour?: number | null
           actual_stage_id?: string | null
           actual_stage_progress?: number
           blocker_description?: string | null
@@ -2405,6 +2413,7 @@ export type Database = {
         }
         Update: {
           action_taken_today?: string | null
+          actual_per_hour?: number | null
           actual_stage_id?: string | null
           actual_stage_progress?: number
           blocker_description?: string | null
@@ -2500,6 +2509,7 @@ export type Database = {
           style_code: string | null
           submitted_at: string | null
           submitted_by: string | null
+          target_total_planned: number | null
           unit_name: string | null
           work_order_id: string
         }
@@ -2526,6 +2536,7 @@ export type Database = {
           style_code?: string | null
           submitted_at?: string | null
           submitted_by?: string | null
+          target_total_planned?: number | null
           unit_name?: string | null
           work_order_id: string
         }
@@ -2552,6 +2563,7 @@ export type Database = {
           style_code?: string | null
           submitted_at?: string | null
           submitted_by?: string | null
+          target_total_planned?: number | null
           unit_name?: string | null
           work_order_id?: string
         }

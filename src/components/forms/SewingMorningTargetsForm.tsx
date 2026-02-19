@@ -179,6 +179,7 @@ export default function SewingMorningTargetsForm() {
     workOrder: z.string().min(1, "PO is required"),
     perHourTarget: z.number().int().positive("Per hour target is required"),
     manpowerPlanned: z.number().int().positive("Manpower is required"),
+    hoursPlanned: z.number().min(0.5, "Hours planned is required").max(24, "Max 24 hours"),
     otHoursPlanned: z.number().min(0, "OT hours must be 0 or more"),
     plannedStage: z.string().min(1, "Stage is required"),
     plannedStageProgress: z.string().min(1, "Stage progress is required"),
@@ -191,6 +192,7 @@ export default function SewingMorningTargetsForm() {
       workOrder: selectedWorkOrderId,
       perHourTarget: parseInt(perHourTarget) || 0,
       manpowerPlanned: parseInt(manpowerPlanned) || 0,
+      hoursPlanned: hoursPlanned === "" ? 0 : parseFloat(hoursPlanned),
       otHoursPlanned: otHoursPlanned === "" ? -1 : parseFloat(otHoursPlanned),
       plannedStage: plannedStageId,
       plannedStageProgress: plannedStageProgress,
@@ -245,7 +247,8 @@ export default function SewingMorningTargetsForm() {
         order_qty: selectedWorkOrder?.order_qty || 0,
         per_hour_target: parseInt(perHourTarget),
         manpower_planned: parseInt(manpowerPlanned),
-        hours_planned: hoursPlanned ? parseFloat(hoursPlanned) : null,
+        hours_planned: parseFloat(hoursPlanned),
+        target_total_planned: Math.round(parseInt(perHourTarget) * parseFloat(hoursPlanned)),
         ot_hours_planned: parseFloat(otHoursPlanned),
         planned_stage_id: plannedStageId,
         planned_stage_progress: parseInt(plannedStageProgress),
@@ -456,7 +459,7 @@ export default function SewingMorningTargetsForm() {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Hours Planned</Label>
+              <Label>Hours Planned *</Label>
               <Input
                 type="number"
                 step="0.5"
@@ -465,7 +468,9 @@ export default function SewingMorningTargetsForm() {
                 value={hoursPlanned}
                 onChange={(e) => setHoursPlanned(e.target.value)}
                 placeholder="0"
+                className={errors.hoursPlanned ? "border-destructive" : ""}
               />
+              {errors.hoursPlanned && <p className="text-sm text-destructive">{errors.hoursPlanned}</p>}
             </div>
 
             <div className="space-y-2">

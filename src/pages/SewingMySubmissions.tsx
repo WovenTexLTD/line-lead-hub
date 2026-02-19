@@ -40,6 +40,7 @@ interface SewingTarget {
   manpower_planned: number;
   ot_hours_planned: number;
   hours_planned: number | null;
+  target_total_planned: number | null;
   work_order_id: string;
   line_id: string;
   is_late: boolean | null;
@@ -66,6 +67,7 @@ interface SewingActual {
   ot_hours_actual: number;
   ot_manpower_actual: number;
   hours_actual: number | null;
+  actual_per_hour: number | null;
   cumulative_good_total: number;
   work_order_id: string;
   line_id: string;
@@ -117,6 +119,7 @@ export default function SewingMySubmissions() {
           manpower_planned,
           ot_hours_planned,
           hours_planned,
+          target_total_planned,
           work_order_id,
           line_id,
           is_late,
@@ -144,6 +147,7 @@ export default function SewingMySubmissions() {
           ot_hours_actual,
           ot_manpower_actual,
           hours_actual,
+          actual_per_hour,
           cumulative_good_total,
           work_order_id,
           line_id,
@@ -613,6 +617,7 @@ export default function SewingMySubmissions() {
           manpower_planned: t.manpower_planned,
           ot_hours_planned: t.ot_hours_planned,
           hours_planned: t.hours_planned ?? null,
+          target_total_planned: t.target_total_planned ?? null,
           stage_name: null,
           planned_stage_progress: null,
           next_milestone: null,
@@ -639,6 +644,7 @@ export default function SewingMySubmissions() {
           ot_hours_actual: ma.ot_hours_actual,
           ot_manpower_actual: ma.ot_manpower_actual ?? null,
           hours_actual: ma.hours_actual ?? null,
+          actual_per_hour: ma.actual_per_hour ?? null,
           stage_name: null,
           actual_stage_progress: null,
           remarks: null,
@@ -679,6 +685,7 @@ export default function SewingMySubmissions() {
           ot_hours_actual: a.ot_hours_actual,
           ot_manpower_actual: a.ot_manpower_actual ?? null,
           hours_actual: a.hours_actual ?? null,
+          actual_per_hour: a.actual_per_hour ?? null,
           stage_name: null,
           actual_stage_progress: null,
           remarks: null,
@@ -704,6 +711,7 @@ export default function SewingMySubmissions() {
           manpower_planned: mt.manpower_planned,
           ot_hours_planned: mt.ot_hours_planned,
           hours_planned: mt.hours_planned ?? null,
+          target_total_planned: mt.target_total_planned ?? null,
           stage_name: null,
           planned_stage_progress: null,
           next_milestone: null,

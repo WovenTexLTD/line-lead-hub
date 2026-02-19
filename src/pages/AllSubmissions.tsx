@@ -46,6 +46,7 @@ interface SewingTarget {
   manpower_planned: number;
   ot_hours_planned: number;
   hours_planned: number | null;
+  target_total_planned: number | null;
   planned_stage_progress: number;
   next_milestone: string | null;
   estimated_ex_factory: string | null;
@@ -86,6 +87,7 @@ interface SewingActual {
   ot_hours_actual: number;
   ot_manpower_actual: number | null;
   hours_actual: number | null;
+  actual_per_hour: number | null;
   actual_stage_progress: number;
   has_blocker: boolean | null;
   blocker_description: string | null;
@@ -991,6 +993,7 @@ export default function AllSubmissions() {
           manpower_planned: t.manpower_planned,
           ot_hours_planned: t.ot_hours_planned,
           hours_planned: t.hours_planned ?? null,
+          target_total_planned: t.target_total_planned ?? null,
           stage_name: t.stages?.name || null,
           planned_stage_progress: t.planned_stage_progress,
           next_milestone: t.next_milestone,
@@ -1015,6 +1018,7 @@ export default function AllSubmissions() {
           ot_hours_actual: a.ot_hours_actual,
           ot_manpower_actual: a.ot_manpower_actual,
           hours_actual: a.hours_actual ?? null,
+          actual_per_hour: a.actual_per_hour ?? null,
           stage_name: a.stages?.name || null,
           actual_stage_progress: a.actual_stage_progress,
           remarks: a.remarks,

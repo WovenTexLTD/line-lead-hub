@@ -77,6 +77,7 @@ const sewingActualsSchema = z.object({
   reject_today: z.number().min(0, "Cannot be negative").max(100000, "Too high"),
   rework_today: z.number().min(0, "Cannot be negative").max(100000, "Too high"),
   manpower_actual: z.number().min(1, "Must be at least 1").max(500, "Too high"),
+  hours_actual: z.number().min(0.5, "Hours actual is required").max(24, "Max 24 hours"),
   ot_hours_actual: z.number().min(0, "Cannot be negative").max(24, "Max 24 hours"),
   ot_manpower_actual: z.number().min(0, "Cannot be negative").max(500, "Too high"),
   actual_stage_id: z.string().min(1, "Stage is required"),
@@ -257,6 +258,7 @@ export default function SewingEndOfDay() {
       reject_today: parseInt(rejectToday) || 0,
       rework_today: parseInt(reworkToday) || 0,
       manpower_actual: parseInt(manpowerActual) || 0,
+      hours_actual: hoursActual === "" ? 0 : parseFloat(hoursActual),
       ot_hours_actual: parseFloat(otHoursActual) || 0,
       ot_manpower_actual: parseInt(otManpowerActual) || 0,
       actual_stage_id: actualStageId,
@@ -275,6 +277,7 @@ export default function SewingEndOfDay() {
       if (fieldErrors.reject_today) newErrors.rejectToday = t("forms.rejectRequired");
       if (fieldErrors.rework_today) newErrors.reworkToday = t("forms.reworkRequired");
       if (fieldErrors.manpower_actual) newErrors.manpowerActual = t("forms.manpowerRequired");
+      if (fieldErrors.hours_actual) newErrors.hoursActual = "Hours actual is required";
       if (fieldErrors.ot_hours_actual) newErrors.otHoursActual = t("forms.otHoursRequired");
       if (fieldErrors.ot_manpower_actual) newErrors.otManpowerActual = "OT Manpower is invalid";
       if (fieldErrors.actual_stage_id) newErrors.actualStage = t("forms.stageRequired");
@@ -323,7 +326,8 @@ export default function SewingEndOfDay() {
         rework_today: parseInt(reworkToday),
         cumulative_good_total: cumulativeGoodTotal,
         manpower_actual: parseInt(manpowerActual),
-        hours_actual: hoursActual ? parseFloat(hoursActual) : null,
+        hours_actual: parseFloat(hoursActual),
+        actual_per_hour: parseFloat(hoursActual) > 0 ? Math.round((parseInt(goodToday) / parseFloat(hoursActual)) * 100) / 100 : null,
         ot_hours_actual: parseFloat(otHoursActual),
         ot_manpower_actual: parseInt(otManpowerActual) || 0,
         actual_stage_id: actualStageId,
@@ -589,7 +593,7 @@ export default function SewingEndOfDay() {
               </div>
 
               <div className="space-y-2">
-                <Label>Hours Actual</Label>
+                <Label>Hours Actual *</Label>
                 <Input
                   type="number"
                   step="0.5"
@@ -598,7 +602,9 @@ export default function SewingEndOfDay() {
                   value={hoursActual}
                   onChange={(e) => setHoursActual(e.target.value)}
                   placeholder="0"
+                  className={errors.hoursActual ? "border-destructive" : ""}
                 />
+                {errors.hoursActual && <p className="text-sm text-destructive">{errors.hoursActual}</p>}
               </div>
             </div>
 

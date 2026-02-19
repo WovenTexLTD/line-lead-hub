@@ -75,6 +75,7 @@ const sewingTargetSchema = z.object({
   work_order_id: z.string().min(1, "PO is required"),
   per_hour_target: z.number().min(1, "Must be at least 1").max(10000, "Too high"),
   manpower_planned: z.number().min(1, "Must be at least 1").max(500, "Too high"),
+  hours_planned: z.number().min(0.5, "Hours planned is required").max(24, "Max 24 hours"),
   ot_hours_planned: z.number().min(0, "Cannot be negative").max(24, "Max 24 hours"),
   planned_stage_id: z.string().min(1, "Stage is required"),
   planned_stage_progress: z.string().min(1, "Progress is required"),
@@ -207,6 +208,7 @@ export default function SewingMorningTargets() {
       work_order_id: selectedWorkOrderId,
       per_hour_target: parseInt(perHourTarget) || 0,
       manpower_planned: parseInt(manpowerPlanned) || 0,
+      hours_planned: hoursPlanned === "" ? 0 : parseFloat(hoursPlanned),
       ot_hours_planned: parseFloat(otHoursPlanned) || 0,
       planned_stage_id: plannedStageId,
       planned_stage_progress: plannedStageProgress,
@@ -224,6 +226,7 @@ export default function SewingMorningTargets() {
       if (fieldErrors.work_order_id) newErrors.workOrder = t("forms.poRequired");
       if (fieldErrors.per_hour_target) newErrors.perHourTarget = t("forms.targetRequired");
       if (fieldErrors.manpower_planned) newErrors.manpowerPlanned = t("forms.manpowerRequired");
+      if (fieldErrors.hours_planned) newErrors.hoursPlanned = "Hours planned is required";
       if (fieldErrors.ot_hours_planned) newErrors.otHoursPlanned = t("forms.otHoursRequired");
       if (fieldErrors.planned_stage_id) newErrors.plannedStage = t("forms.stageRequired");
       if (fieldErrors.planned_stage_progress) newErrors.plannedStageProgress = t("forms.progressRequired");
@@ -275,7 +278,8 @@ export default function SewingMorningTargets() {
         order_qty: selectedWorkOrder?.order_qty || 0,
         per_hour_target: parseInt(perHourTarget),
         manpower_planned: parseInt(manpowerPlanned),
-        hours_planned: hoursPlanned ? parseFloat(hoursPlanned) : null,
+        hours_planned: parseFloat(hoursPlanned),
+        target_total_planned: Math.round(parseInt(perHourTarget) * parseFloat(hoursPlanned)),
         ot_hours_planned: parseFloat(otHoursPlanned),
         planned_stage_id: plannedStageId,
         planned_stage_progress: parseInt(plannedStageProgress),
@@ -505,7 +509,7 @@ export default function SewingMorningTargets() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Hours Planned</Label>
+                <Label>Hours Planned *</Label>
                 <Input
                   type="number"
                   step="0.5"
@@ -514,7 +518,9 @@ export default function SewingMorningTargets() {
                   value={hoursPlanned}
                   onChange={(e) => setHoursPlanned(e.target.value)}
                   placeholder="0"
+                  className={errors.hoursPlanned ? "border-destructive" : ""}
                 />
+                {errors.hoursPlanned && <p className="text-sm text-destructive">{errors.hoursPlanned}</p>}
               </div>
 
               <div className="space-y-2">

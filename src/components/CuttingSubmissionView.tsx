@@ -35,6 +35,7 @@ export interface CuttingTargetData {
   day_cutting: number | null;
   day_input: number | null;
   hours_planned: number | null;
+  target_per_hour: number | null;
   ot_hours_planned: number | null;
   ot_manpower_planned: number | null;
 }
@@ -60,6 +61,7 @@ export interface CuttingActualData {
   total_input: number | null;
   balance: number | null;
   hours_actual: number | null;
+  actual_per_hour: number | null;
   ot_hours_actual: number | null;
   ot_manpower_actual: number | null;
   leftover_recorded: boolean | null;
@@ -78,10 +80,11 @@ interface CuttingSubmissionViewProps {
   onOpenChange: (open: boolean) => void;
 }
 
-function VarianceIndicator({ actual, target }: { actual: number; target: number }) {
+function VarianceIndicator({ actual, target, decimals }: { actual: number; target: number; decimals?: number }) {
   const diff = actual - target;
-  if (diff > 0) return <span className="text-green-600 dark:text-green-400 flex items-center gap-1 text-xs"><TrendingUp className="h-3 w-3" />+{diff.toLocaleString()}</span>;
-  if (diff < 0) return <span className="text-destructive flex items-center gap-1 text-xs"><TrendingDown className="h-3 w-3" />{diff.toLocaleString()}</span>;
+  const formatted = decimals != null ? diff.toFixed(decimals) : diff.toLocaleString();
+  if (diff > 0) return <span className="text-green-600 dark:text-green-400 flex items-center gap-1 text-xs"><TrendingUp className="h-3 w-3" />+{formatted}</span>;
+  if (diff < 0) return <span className="text-destructive flex items-center gap-1 text-xs"><TrendingDown className="h-3 w-3" />{formatted}</span>;
   return <span className="text-muted-foreground flex items-center gap-1 text-xs"><Minus className="h-3 w-3" />0</span>;
 }
 
@@ -350,40 +353,42 @@ export function CuttingSubmissionView({ target, actual, open, onOpenChange }: Cu
                     </tr>
                   </thead>
                   <tbody>
-                    {[
-                      { label: "Day Cutting", tgt: target.day_cutting, act: actual.day_cutting },
-                      { label: "Day Input", tgt: target.day_input, act: actual.day_input },
-                      { label: "Man Power", tgt: target.man_power, act: actual.man_power },
-                      { label: "Cutting Capacity", tgt: target.cutting_capacity, act: actual.cutting_capacity },
-                      { label: "Marker Capacity", tgt: target.marker_capacity, act: actual.marker_capacity },
-                      { label: "Lay Capacity", tgt: target.lay_capacity, act: actual.lay_capacity },
-                      { label: "Under Qty", tgt: target.under_qty, act: actual.under_qty },
-                      ...(target.hours_planned != null || actual.hours_actual != null
-                        ? [{ label: "Hours", tgt: target.hours_planned, act: actual.hours_actual }]
-                        : []),
-                      ...(target.ot_hours_planned != null || actual.ot_hours_actual != null
-                        ? [{ label: "OT Hours", tgt: target.ot_hours_planned, act: actual.ot_hours_actual }]
-                        : []),
-                      ...(target.ot_manpower_planned != null || actual.ot_manpower_actual != null
-                        ? [{ label: "OT Manpower", tgt: target.ot_manpower_planned, act: actual.ot_manpower_actual }]
-                        : []),
-                    ].map(({ label, tgt, act }) => (
-                      <tr key={label} className="border-b border-muted/50 last:border-0">
-                        <td className="py-2 pr-4 text-muted-foreground">{label}</td>
-                        <td className="py-2 px-3 text-right text-muted-foreground">
-                          {tgt != null ? tgt.toLocaleString() : "—"}
-                        </td>
-                        <td className="py-2 px-3 text-right font-medium">
-                          {act != null ? act.toLocaleString() : "—"}
-                        </td>
-                        <td className="py-2 pl-3 text-right">
-                          {tgt != null && act != null
-                            ? <VarianceIndicator actual={act} target={tgt} />
-                            : <span className="text-muted-foreground text-xs">—</span>
-                          }
-                        </td>
-                      </tr>
-                    ))}
+                    {(() => {
+                      const rows: { label: string; tgt: number | null | undefined; act: number | null | undefined; decimals?: number }[] = [
+                        { label: "Output per Hour", tgt: target.target_per_hour, act: actual.actual_per_hour, decimals: 2 },
+                        { label: "Day Cutting", tgt: target.day_cutting, act: actual.day_cutting },
+                        { label: "Day Input", tgt: target.day_input, act: actual.day_input },
+                        { label: "Hours", tgt: target.hours_planned, act: actual.hours_actual },
+                        { label: "Man Power", tgt: target.man_power, act: actual.man_power },
+                        { label: "Cutting Capacity", tgt: target.cutting_capacity, act: actual.cutting_capacity },
+                        { label: "Marker Capacity", tgt: target.marker_capacity, act: actual.marker_capacity },
+                        { label: "Lay Capacity", tgt: target.lay_capacity, act: actual.lay_capacity },
+                        { label: "Under Qty", tgt: target.under_qty, act: actual.under_qty },
+                        ...(target.ot_hours_planned != null || actual.ot_hours_actual != null
+                          ? [{ label: "OT Hours", tgt: target.ot_hours_planned, act: actual.ot_hours_actual }]
+                          : []),
+                        ...(target.ot_manpower_planned != null || actual.ot_manpower_actual != null
+                          ? [{ label: "OT Manpower", tgt: target.ot_manpower_planned, act: actual.ot_manpower_actual }]
+                          : []),
+                      ];
+                      return rows.map(({ label, tgt, act, decimals }) => (
+                        <tr key={label} className="border-b border-muted/50 last:border-0">
+                          <td className="py-2 pr-4 text-muted-foreground">{label}</td>
+                          <td className="py-2 px-3 text-right text-muted-foreground">
+                            {tgt != null ? (decimals != null ? Number(tgt).toFixed(decimals) : tgt.toLocaleString()) : "—"}
+                          </td>
+                          <td className="py-2 px-3 text-right font-medium">
+                            {act != null ? (decimals != null ? Number(act).toFixed(decimals) : act.toLocaleString()) : "—"}
+                          </td>
+                          <td className="py-2 pl-3 text-right">
+                            {tgt != null && act != null
+                              ? <VarianceIndicator actual={act} target={tgt} decimals={decimals} />
+                              : <span className="text-muted-foreground text-xs">—</span>
+                            }
+                          </td>
+                        </tr>
+                      ));
+                    })()}
                   </tbody>
                 </table>
               </div>

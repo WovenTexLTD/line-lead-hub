@@ -185,6 +185,7 @@ export default function SewingEndOfDayForm() {
       reworkToday: z.number().int().min(0, t("forms.reworkRequired")),
       cumulativeGoodTotal: z.number().int().min(0, t("forms.cumulativeRequired")),
       manpowerActual: z.number().int().positive(t("forms.manpowerRequired")),
+      hoursActual: z.number().min(0.5, "Hours actual is required").max(24, "Max 24 hours"),
       otHoursActual: z.number().min(0, t("forms.otHoursRequired")),
       actualStage: z.string().min(1, t("forms.stageRequired")),
       actualStageProgress: z.string().min(1, t("forms.progressRequired")),
@@ -198,6 +199,7 @@ export default function SewingEndOfDayForm() {
       reworkToday: reworkToday ? parseInt(reworkToday) : -1,
       cumulativeGoodTotal: cumulativeGoodTotal ? parseInt(cumulativeGoodTotal) : -1,
       manpowerActual: parseInt(manpowerActual) || 0,
+      hoursActual: hoursActual === "" ? 0 : parseFloat(hoursActual),
       otHoursActual: otHoursActual === "" ? -1 : parseFloat(otHoursActual),
       actualStage: actualStageId,
       actualStageProgress: actualStageProgress,
@@ -248,7 +250,8 @@ export default function SewingEndOfDayForm() {
         rework_today: parseInt(reworkToday),
         cumulative_good_total: parseInt(cumulativeGoodTotal),
         manpower_actual: parseInt(manpowerActual),
-        hours_actual: hoursActual ? parseFloat(hoursActual) : null,
+        hours_actual: parseFloat(hoursActual),
+        actual_per_hour: parseFloat(hoursActual) > 0 ? Math.round((parseInt(goodToday) / parseFloat(hoursActual)) * 100) / 100 : null,
         ot_hours_actual: parseFloat(otHoursActual),
         ot_manpower_actual: 0,
         actual_stage_id: actualStageId,
@@ -495,7 +498,7 @@ export default function SewingEndOfDayForm() {
             </div>
 
             <div className="space-y-2">
-              <Label>Hours Actual</Label>
+              <Label>Hours Actual *</Label>
               <Input
                 type="number"
                 step="0.5"
@@ -504,7 +507,9 @@ export default function SewingEndOfDayForm() {
                 value={hoursActual}
                 onChange={(e) => setHoursActual(e.target.value)}
                 placeholder="0"
+                className={errors.hoursActual ? "border-destructive" : ""}
               />
+              {errors.hoursActual && <p className="text-sm text-destructive">{errors.hoursActual}</p>}
             </div>
           </div>
 

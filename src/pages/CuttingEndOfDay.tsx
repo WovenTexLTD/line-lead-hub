@@ -340,6 +340,7 @@ export default function CuttingEndOfDay() {
     if (!markerCapacity || parseInt(markerCapacity) < 0) newErrors.markerCapacity = "Marker Capacity is required";
     if (!layCapacity || parseInt(layCapacity) < 0) newErrors.layCapacity = "Lay Capacity is required";
     if (!cuttingCapacity || parseInt(cuttingCapacity) < 0) newErrors.cuttingCapacity = "Cutting Capacity is required";
+    if (!hoursActual || parseFloat(hoursActual) < 0.5) newErrors.hoursActual = "Hours actual is required";
 
     // Leftover validation: if leftover is recorded, unit and quantity are required
     if (leftoverRecorded) {
@@ -397,7 +398,8 @@ export default function CuttingEndOfDay() {
         lay_capacity: parseInt(layCapacity),
         cutting_capacity: parseInt(cuttingCapacity),
         under_qty: parseInt(underQty) || 0,
-        hours_actual: hoursActual ? parseFloat(hoursActual) : null,
+        hours_actual: parseFloat(hoursActual),
+        actual_per_hour: parseFloat(hoursActual) > 0 ? Math.round((parseInt(dayCutting) / parseFloat(hoursActual)) * 100) / 100 : null,
         ot_hours_actual: parseFloat(otHoursActual) || 0,
         ot_manpower_actual: parseInt(otManpowerActual) || 0,
         is_late: isLate,
@@ -696,7 +698,7 @@ export default function CuttingEndOfDay() {
             </div>
 
             <div className="space-y-2">
-              <Label>Hours Actual</Label>
+              <Label>Hours Actual *</Label>
               <Input
                 type="number"
                 step="0.5"
@@ -705,7 +707,9 @@ export default function CuttingEndOfDay() {
                 value={hoursActual}
                 onChange={(e) => setHoursActual(e.target.value)}
                 placeholder="0"
+                className={errors.hoursActual ? "border-destructive" : ""}
               />
+              {errors.hoursActual && <p className="text-sm text-destructive">{errors.hoursActual}</p>}
             </div>
 
             <div className="grid grid-cols-2 gap-4">

@@ -75,6 +75,7 @@ interface TargetSubmission {
   estimated_ex_factory?: string | null;
   order_qty?: number | null;
   remarks?: string | null;
+  target_total_planned?: number | null;
   submitted_at: string | null;
   production_date: string;
 }
@@ -110,6 +111,7 @@ interface EndOfDaySubmission {
   work_order_id?: string;
   cumulative_good_total?: number | null;
   actual_stage_progress?: number | null;
+  actual_per_hour?: number | null;
   // Finishing daily sheet specific
   hours_logged?: number;
   total_poly?: number;
@@ -153,6 +155,7 @@ interface CuttingTarget {
   ot_hours_planned: number | null;
   ot_manpower_planned: number | null;
   hours_planned: number | null;
+  target_per_hour: number | null;
 }
 
 interface CuttingSubmission {
@@ -186,6 +189,7 @@ interface CuttingSubmission {
   leftover_quantity: number | null;
   leftover_notes: string | null;
   leftover_location: string | null;
+  actual_per_hour: number | null;
 }
 
 interface StorageBinCard {
@@ -419,6 +423,7 @@ export default function Dashboard() {
         manpower_planned: t.manpower_planned,
         ot_hours_planned: t.ot_hours_planned,
         hours_planned: t.hours_planned ?? null,
+        target_total_planned: t.target_total_planned ?? null,
         stage_name: t.stages?.name || null,
         planned_stage_progress: t.planned_stage_progress,
         next_milestone: t.next_milestone,
@@ -489,6 +494,7 @@ export default function Dashboard() {
           work_order_id: u.work_order_id,
           cumulative_good_total: u.cumulative_good_total,
           actual_stage_progress: u.actual_stage_progress,
+          actual_per_hour: u.actual_per_hour ?? null,
         }));
 
       // Format finishing daily logs (OUTPUT type only for end of day)
@@ -542,6 +548,7 @@ export default function Dashboard() {
         ot_hours_planned: c.ot_hours_planned ?? null,
         ot_manpower_planned: c.ot_manpower_planned ?? null,
         hours_planned: c.hours_planned ?? null,
+        target_per_hour: c.target_per_hour ?? null,
       }));
 
       // Format cutting submissions (actuals)
@@ -576,6 +583,7 @@ export default function Dashboard() {
         leftover_quantity: c.leftover_quantity || null,
         leftover_notes: c.leftover_notes || null,
         leftover_location: c.leftover_location || null,
+        actual_per_hour: c.actual_per_hour ?? null,
       }));
 
       // Format storage bin cards
@@ -1434,6 +1442,7 @@ export default function Dashboard() {
               ot_hours_actual: eod.ot_hours ?? 0,
               ot_manpower_actual: eod.ot_manpower ?? null,
               hours_actual: eod.hours_actual ?? null,
+              actual_per_hour: eod.actual_per_hour ?? null,
               stage_name: eod.stage_name || null,
               actual_stage_progress: eod.actual_stage_progress ?? eod.stage_progress ?? null,
               remarks: eod.notes || null,
@@ -1462,6 +1471,7 @@ export default function Dashboard() {
                 manpower_planned: mt.manpower_planned ?? null,
                 ot_hours_planned: mt.ot_hours_planned ?? null,
                 hours_planned: mt.hours_planned ?? null,
+                target_total_planned: mt.target_total_planned ?? null,
                 stage_name: mt.stage_name ?? null,
                 planned_stage_progress: mt.planned_stage_progress ?? null,
                 next_milestone: mt.next_milestone ?? null,
@@ -1486,6 +1496,7 @@ export default function Dashboard() {
               manpower_planned: tgt.manpower_planned ?? null,
               ot_hours_planned: tgt.ot_hours_planned ?? null,
               hours_planned: tgt.hours_planned ?? null,
+              target_total_planned: tgt.target_total_planned ?? null,
               stage_name: tgt.stage_name ?? null,
               planned_stage_progress: tgt.planned_stage_progress ?? null,
               next_milestone: tgt.next_milestone ?? null,
@@ -1515,6 +1526,7 @@ export default function Dashboard() {
                 ot_hours_actual: ma.ot_hours ?? 0,
                 ot_manpower_actual: ma.ot_manpower ?? null,
                 hours_actual: ma.hours_actual ?? null,
+                actual_per_hour: ma.actual_per_hour ?? null,
                 stage_name: ma.stage_name || null,
                 actual_stage_progress: ma.actual_stage_progress ?? ma.stage_progress ?? null,
                 remarks: ma.notes || null,
@@ -1565,9 +1577,10 @@ export default function Dashboard() {
               under_qty: matchingTarget.under_qty,
               day_cutting: matchingTarget.day_cutting,
               day_input: matchingTarget.day_input,
+              hours_planned: matchingTarget.hours_planned ?? null,
+              target_per_hour: matchingTarget.target_per_hour ?? null,
               ot_hours_planned: matchingTarget.ot_hours_planned,
               ot_manpower_planned: matchingTarget.ot_manpower_planned,
-              hours_planned: matchingTarget.hours_planned ?? null,
             } : null}
             actual={selectedCutting ? {
               id: selectedCutting.id,
@@ -1589,9 +1602,10 @@ export default function Dashboard() {
               total_cutting: selectedCutting.total_cutting,
               total_input: selectedCutting.total_input,
               balance: selectedCutting.balance,
+              hours_actual: selectedCutting.hours_actual ?? null,
+              actual_per_hour: selectedCutting.actual_per_hour ?? null,
               ot_hours_actual: selectedCutting.ot_hours_actual,
               ot_manpower_actual: selectedCutting.ot_manpower_actual,
-              hours_actual: selectedCutting.hours_actual ?? null,
               leftover_recorded: selectedCutting.leftover_recorded,
               leftover_type: selectedCutting.leftover_type,
               leftover_unit: selectedCutting.leftover_unit,
@@ -1633,9 +1647,10 @@ export default function Dashboard() {
               under_qty: selectedCuttingTarget.under_qty,
               day_cutting: selectedCuttingTarget.day_cutting,
               day_input: selectedCuttingTarget.day_input,
+              hours_planned: selectedCuttingTarget.hours_planned ?? null,
+              target_per_hour: selectedCuttingTarget.target_per_hour ?? null,
               ot_hours_planned: selectedCuttingTarget.ot_hours_planned ?? null,
               ot_manpower_planned: selectedCuttingTarget.ot_manpower_planned ?? null,
-              hours_planned: selectedCuttingTarget.hours_planned ?? null,
             } : null}
             actual={matchingActual ? {
               id: matchingActual.id,
@@ -1657,9 +1672,10 @@ export default function Dashboard() {
               total_cutting: matchingActual.total_cutting,
               total_input: matchingActual.total_input,
               balance: matchingActual.balance,
+              hours_actual: matchingActual.hours_actual ?? null,
+              actual_per_hour: matchingActual.actual_per_hour ?? null,
               ot_hours_actual: matchingActual.ot_hours_actual,
               ot_manpower_actual: matchingActual.ot_manpower_actual,
-              hours_actual: matchingActual.hours_actual ?? null,
               leftover_recorded: matchingActual.leftover_recorded,
               leftover_type: matchingActual.leftover_type,
               leftover_unit: matchingActual.leftover_unit,
