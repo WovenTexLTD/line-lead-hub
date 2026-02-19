@@ -3090,6 +3090,8 @@ export type Database = {
         | "superadmin"
         | "storage"
         | "cutting"
+        | "sewing"
+        | "finishing"
       blocker_impact: "low" | "medium" | "high" | "critical"
       blocker_status: "open" | "in_progress" | "resolved"
       extras_transaction_type:
@@ -3260,6 +3262,8 @@ export const Constants = {
         "superadmin",
         "storage",
         "cutting",
+        "sewing",
+        "finishing",
       ],
       blocker_impact: ["low", "medium", "high", "critical"],
       blocker_status: ["open", "in_progress", "resolved"],
