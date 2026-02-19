@@ -189,6 +189,7 @@ interface CuttingSubmission {
   leftover_quantity: number | null;
   leftover_notes: string | null;
   leftover_location: string | null;
+  leftover_photo_urls: string[] | null;
   actual_per_hour: number | null;
 }
 
@@ -583,6 +584,7 @@ export default function Dashboard() {
         leftover_quantity: c.leftover_quantity || null,
         leftover_notes: c.leftover_notes || null,
         leftover_location: c.leftover_location || null,
+        leftover_photo_urls: c.leftover_photo_urls ?? null,
         actual_per_hour: c.actual_per_hour ?? null,
       }));
 

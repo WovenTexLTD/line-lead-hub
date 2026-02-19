@@ -97,6 +97,7 @@ interface CuttingActual {
   leftover_quantity: number | null;
   leftover_notes: string | null;
   leftover_location: string | null;
+  leftover_photo_urls: string[] | null;
   ot_hours_actual: number | null;
   ot_manpower_actual: number | null;
   hours_actual: number | null;
