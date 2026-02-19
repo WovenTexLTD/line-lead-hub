@@ -172,9 +172,9 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
                   Morning Target
                 </h4>
 
-                {/* Process Values */}
+                {/* Process Values (per hour) */}
                 <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Process Values</p>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Process Targets (per hour)</p>
                   <div className="grid grid-cols-2 gap-3">
                     {PROCESS_ITEMS.map((item) => {
                       const value = target[item.key as keyof FinishingTargetData] as number;
@@ -183,6 +183,7 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
                           key={item.key}
                           label={item.label}
                           value={value}
+                          suffix=" /hr"
                           className={item.key === "carton" ? "text-lg text-primary" : ""}
                         />
                       );
@@ -232,9 +233,9 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
                   End of Day Output
                 </h4>
 
-                {/* Process Values */}
+                {/* Process Values (day totals) */}
                 <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Process Values</p>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Process Output (day total)</p>
                   <div className="grid grid-cols-2 gap-3">
                     {PROCESS_ITEMS.map((item) => {
                       const value = actual[item.key as keyof FinishingActualData] as number;
@@ -304,13 +305,30 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
                   </thead>
                   <tbody>
                     {(() => {
+                      const tgtHours = target.planned_hours;
+                      const actHours = actual.actual_hours;
+
+                      // Carton per-hour rate row (target is already per-hour; derive actual per-hour)
+                      const cartonPerHourActual = actHours && actHours > 0
+                        ? Math.round((actual.carton / actHours) * 100) / 100
+                        : null;
+
                       const rows: { label: string; tgt: number | null | undefined; act: number | null | undefined; decimals?: number }[] = [
-                        ...PROCESS_ITEMS.map(item => ({
-                          label: item.label,
-                          tgt: target[item.key as keyof FinishingTargetData] as number,
-                          act: actual[item.key as keyof FinishingActualData] as number,
-                        })),
-                        { label: "Hours", tgt: target.planned_hours, act: actual.actual_hours },
+                        // Per-hour rate comparison (carton = primary output metric)
+                        { label: "Carton per Hour", tgt: target.carton, act: cartonPerHourActual, decimals: 2 },
+                        // Total comparisons: target per-hour × planned_hours vs actual day total
+                        ...PROCESS_ITEMS.map(item => {
+                          const tgtPerHour = target[item.key as keyof FinishingTargetData] as number;
+                          const tgtTotal = tgtHours != null && tgtHours > 0
+                            ? Math.round(tgtPerHour * tgtHours)
+                            : null;
+                          return {
+                            label: `${item.label} (total)`,
+                            tgt: tgtTotal,
+                            act: actual[item.key as keyof FinishingActualData] as number,
+                          };
+                        }),
+                        { label: "Hours", tgt: tgtHours, act: actHours },
                       ];
 
                       // Add OT rows conditionally
