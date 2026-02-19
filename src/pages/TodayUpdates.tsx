@@ -16,7 +16,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Loader2, Factory, Package, Search, Download, RefreshCw, Scissors, Archive, CalendarDays, Layers, ChevronDown, ChevronRight } from "lucide-react";
-import { SubmissionDetailModal } from "@/components/SubmissionDetailModal";
 import { CuttingSubmissionView } from "@/components/CuttingSubmissionView";
 import { SewingSubmissionView, SewingTargetData, SewingActualData } from "@/components/SewingSubmissionView";
 import { formatTimeInTimezone } from "@/lib/date-utils";
@@ -211,37 +210,6 @@ interface GroupedStorageRow {
   style: string | null;
 }
 
-type ModalSubmission = {
-  id: string;
-  type: 'sewing' | 'finishing';
-  line_name: string;
-  po_number: string | null;
-  buyer?: string | null;
-  style?: string | null;
-  output_qty?: number;
-  target_qty?: number | null;
-  manpower?: number | null;
-  reject_qty?: number | null;
-  rework_qty?: number | null;
-  stage_name?: string | null;
-  stage_progress?: number | null;
-  next_milestone?: string | null;
-  ot_hours?: number | null;
-  ot_manpower?: number | null;
-  has_blocker: boolean;
-  blocker_description: string | null;
-  blocker_impact: string | null;
-  blocker_owner: string | null;
-  blocker_status: string | null;
-  notes?: string | null;
-  submitted_at: string;
-  production_date: string;
-  // Finishing daily sheet specific
-  hours_logged?: number;
-  total_poly?: number;
-  total_carton?: number;
-};
-
 export default function TodayUpdates() {
   const { profile, factory } = useAuth();
 
@@ -263,10 +231,9 @@ export default function TodayUpdates() {
   const [cuttingTargetModalOpen, setCuttingTargetModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("all");
-  const [selectedSubmission, setSelectedSubmission] = useState<ModalSubmission | null>(null);
-  const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [sewingViewOpen, setSewingViewOpen] = useState(false);
   const [sewingViewKey, setSewingViewKey] = useState<string | null>(null);
+  const [selectedLegacySewing, setSelectedLegacySewing] = useState<SewingUpdate | null>(null);
   const [selectedCutting, setSelectedCutting] = useState<any>(null);
   const [cuttingModalOpen, setCuttingModalOpen] = useState(false);
   const [selectedBinCard, setSelectedBinCard] = useState<any>(null);
@@ -630,33 +597,9 @@ export default function TodayUpdates() {
   const totalStorageReceived = storageTransactions.reduce((sum, s) => sum + (s.receive_qty || 0), 0);
 
   const handleSewingClick = (update: SewingUpdate) => {
-    setSelectedSubmission({
-      id: update.id,
-      type: 'sewing',
-      line_name: update.lines?.name || update.lines?.line_id || 'Unknown',
-      po_number: update.work_orders?.po_number || null,
-      buyer: update.work_orders?.buyer,
-      style: update.work_orders?.style,
-      output_qty: update.output_qty,
-      target_qty: update.target_qty,
-      manpower: update.manpower,
-      reject_qty: update.reject_qty,
-      rework_qty: update.rework_qty,
-      stage_name: null,
-      stage_progress: update.stage_progress,
-      next_milestone: null,
-      ot_hours: update.ot_hours,
-      ot_manpower: update.ot_manpower,
-      has_blocker: update.has_blocker ?? false,
-      blocker_description: update.blocker_description,
-      blocker_impact: update.blocker_impact,
-      blocker_owner: update.blocker_owner,
-      blocker_status: update.blocker_status,
-      notes: update.notes,
-      submitted_at: update.submitted_at || '',
-      production_date: update.production_date,
-    });
-    setDetailModalOpen(true);
+    setSewingViewKey(null);
+    setSelectedLegacySewing(update);
+    setSewingViewOpen(true);
   };
 
   const handleFinishingClick = (log: FinishingDailyLog) => {
@@ -1032,6 +975,7 @@ export default function TodayUpdates() {
                             key={item.key}
                             className="cursor-pointer hover:bg-muted/50"
                             onClick={() => {
+                              setSelectedLegacySewing(null);
                               setSewingViewKey(item.key);
                               setSewingViewOpen(true);
                             }}
@@ -1650,15 +1594,6 @@ export default function TodayUpdates() {
         </TabsContent>
       </Tabs>
 
-      {/* Submission Detail Modal (finishing only now) */}
-      <SubmissionDetailModal
-        submission={selectedSubmission as any}
-        open={detailModalOpen}
-        onOpenChange={setDetailModalOpen}
-        onDeleted={fetchTodayUpdates}
-        onUpdated={fetchTodayUpdates}
-      />
-
       {/* Sewing Submission View */}
       {(() => {
         const item = sewingViewKey ? mergedSewingData.find(m => m.key === sewingViewKey) : null;
@@ -1717,6 +1652,38 @@ export default function TodayUpdates() {
             blocker_impact: a.blocker_impact,
             blocker_owner: a.blocker_owner,
             blocker_status: null,
+          };
+        }
+
+        // Legacy sewing_updates fallback (old single-form data)
+        if (!item && selectedLegacySewing) {
+          const u = selectedLegacySewing;
+          sewingActual = {
+            id: u.id,
+            production_date: u.production_date,
+            line_name: u.lines?.name || u.lines?.line_id || "Unknown",
+            po_number: u.work_orders?.po_number || null,
+            buyer: u.work_orders?.buyer || null,
+            style: u.work_orders?.style || null,
+            order_qty: null,
+            submitted_at: u.submitted_at,
+            good_today: u.output_qty,
+            reject_today: u.reject_qty || 0,
+            rework_today: u.rework_qty || 0,
+            cumulative_good_total: 0,
+            manpower_actual: u.manpower || 0,
+            ot_hours_actual: u.ot_hours || 0,
+            ot_manpower_actual: u.ot_manpower || null,
+            hours_actual: null,
+            actual_per_hour: null,
+            stage_name: null,
+            actual_stage_progress: u.stage_progress,
+            remarks: u.notes,
+            has_blocker: u.has_blocker ?? false,
+            blocker_description: u.blocker_description,
+            blocker_impact: u.blocker_impact,
+            blocker_owner: u.blocker_owner,
+            blocker_status: u.blocker_status,
           };
         }
 
