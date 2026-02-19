@@ -172,9 +172,17 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange }: Sew
                   <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Targets</p>
                   <div className="grid grid-cols-2 gap-3">
                     <FieldDisplay label="Per Hour Target" value={target.per_hour_target} suffix=" /hr" className="text-lg text-primary" />
-                    {target.hours_planned != null && target.hours_planned > 0 && (
-                      <FieldDisplay label="Target Total Output" value={Math.round(target.per_hour_target * target.hours_planned)} className="text-lg text-primary" />
-                    )}
+                    <FieldDisplay
+                      label="Target Total Output"
+                      value={
+                        target.target_total_planned != null
+                          ? target.target_total_planned
+                          : target.hours_planned != null && target.hours_planned > 0
+                            ? Math.round(target.per_hour_target * target.hours_planned)
+                            : null
+                      }
+                      className="text-lg text-primary"
+                    />
                   </div>
                 </div>
 
@@ -243,9 +251,18 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange }: Sew
                 <div>
                   <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Output</p>
                   <div className="grid grid-cols-2 gap-3">
-                    {actual.hours_actual != null && actual.hours_actual > 0 && (
-                      <FieldDisplay label="Output per Hour" value={Math.round((actual.good_today / actual.hours_actual) * 100) / 100} suffix=" /hr" className="text-lg text-success" />
-                    )}
+                    <FieldDisplay
+                      label="Output per Hour"
+                      value={
+                        actual.actual_per_hour != null
+                          ? actual.actual_per_hour
+                          : actual.hours_actual != null && actual.hours_actual > 0
+                            ? Math.round((actual.good_today / actual.hours_actual) * 100) / 100
+                            : null
+                      }
+                      suffix=" /hr"
+                      className="text-lg text-success"
+                    />
                     <FieldDisplay label="Good Output" value={actual.good_today} className="text-lg text-success" />
                     <FieldDisplay label="Reject" value={actual.reject_today} />
                     <FieldDisplay label="Rework" value={actual.rework_today} />
