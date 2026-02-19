@@ -21,12 +21,7 @@ import { TablePagination } from "@/components/ui/table-pagination";
 import { usePagination } from "@/hooks/usePagination";
 import { useSortableTable } from "@/hooks/useSortableTable";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { CuttingSubmissionView } from "@/components/CuttingSubmissionView";
 
 interface CuttingSubmission {
   id: string;
@@ -71,6 +66,8 @@ export function CuttingSubmissionsTable({
 }: CuttingSubmissionsTableProps) {
   const [loading, setLoading] = useState(true);
   const [submissions, setSubmissions] = useState<CuttingSubmission[]>([]);
+  const [targetsMap, setTargetsMap] = useState<Map<string, any>>(new Map());
+  const [actualsMap, setActualsMap] = useState<Map<string, any>>(new Map());
   const [selectedSubmission, setSelectedSubmission] = useState<CuttingSubmission | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [pageSize, setPageSize] = useState(25);
@@ -100,17 +97,25 @@ export function CuttingSubmissionsTable({
           .lte("production_date", format(endDate, "yyyy-MM-dd")),
       ]);
 
-      const targetsMap = new Map<string, any>();
+      const tgtMap = new Map<string, any>();
       (targetsRes.data || []).forEach(t => {
         const key = `${t.production_date}-${t.line_id}-${t.work_order_id}`;
-        targetsMap.set(key, t);
+        tgtMap.set(key, t);
       });
+      setTargetsMap(tgtMap);
+
+      const actMap = new Map<string, any>();
+      (actualsRes.data || []).forEach(a => {
+        const key = `${a.production_date}-${a.line_id}-${a.work_order_id}`;
+        actMap.set(key, a);
+      });
+      setActualsMap(actMap);
 
       const matchedTargetKeys = new Set<string>();
 
       const mergedSubmissions: CuttingSubmission[] = (actualsRes.data || []).map(actual => {
         const key = `${actual.production_date}-${actual.line_id}-${actual.work_order_id}`;
-        const target = targetsMap.get(key);
+        const target = tgtMap.get(key);
         if (target) matchedTargetKeys.add(key);
         return {
           id: actual.id,
@@ -465,65 +470,73 @@ export function CuttingSubmissionsTable({
       </Card>
 
       {/* Detail Modal */}
-      <Dialog open={!!selectedSubmission} onOpenChange={() => setSelectedSubmission(null)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Scissors className="h-5 w-5" />
-              Cutting Details
-            </DialogTitle>
-          </DialogHeader>
-          {selectedSubmission && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase">Date</p>
-                  <p className="font-medium">{format(new Date(selectedSubmission.production_date), "MMM d, yyyy")}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase">Line</p>
-                  <p className="font-medium">{selectedSubmission.lines?.name || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase">PO Number</p>
-                  <p className="font-medium">{selectedSubmission.work_orders?.po_number || selectedSubmission.po_no || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase">Buyer</p>
-                  <p className="font-medium">{selectedSubmission.work_orders?.buyer || selectedSubmission.buyer || "—"}</p>
-                </div>
-              </div>
-              <div className="border-t pt-4">
-                <p className="text-sm font-medium mb-3">Production Data</p>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase">Day Cutting</p>
-                    <p className="font-medium text-lg">{selectedSubmission.day_cutting}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase">Total Cutting</p>
-                    <p className="font-medium text-lg text-primary">{selectedSubmission.total_cutting?.toLocaleString() || "—"}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase">Day Input</p>
-                    <p className="font-medium text-lg">{selectedSubmission.day_input}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase">Total Input</p>
-                    <p className="font-medium text-lg">{selectedSubmission.total_input?.toLocaleString() || "—"}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase">Balance</p>
-                    <p className={`font-medium text-lg ${selectedSubmission.balance && selectedSubmission.balance < 0 ? "text-destructive" : ""}`}>
-                      {selectedSubmission.balance?.toLocaleString() || "—"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {(() => {
+        if (!selectedSubmission) return null;
+        const key = `${selectedSubmission.production_date}-${selectedSubmission.line_id}-${selectedSubmission.work_order_id}`;
+        const rawTarget = targetsMap.get(key);
+        const rawActual = actualsMap.get(key);
+        const lineName = selectedSubmission.lines?.name || selectedSubmission.lines?.line_id || "—";
+        const buyer = selectedSubmission.work_orders?.buyer || selectedSubmission.buyer || null;
+        const style = selectedSubmission.work_orders?.style || selectedSubmission.style || null;
+        const poNumber = selectedSubmission.work_orders?.po_number || selectedSubmission.po_no || null;
+
+        return (
+          <CuttingSubmissionView
+            target={rawTarget ? {
+              id: rawTarget.id,
+              production_date: rawTarget.production_date,
+              line_name: rawTarget.lines?.name || rawTarget.lines?.line_id || lineName,
+              buyer: rawTarget.work_orders?.buyer || rawTarget.buyer || buyer,
+              style: rawTarget.work_orders?.style || rawTarget.style || style,
+              po_number: rawTarget.work_orders?.po_number || rawTarget.po_no || poNumber,
+              colour: rawTarget.colour || null,
+              order_qty: rawTarget.order_qty || selectedSubmission.order_qty,
+              submitted_at: rawTarget.submitted_at,
+              man_power: rawTarget.man_power,
+              marker_capacity: rawTarget.marker_capacity,
+              lay_capacity: rawTarget.lay_capacity,
+              cutting_capacity: rawTarget.cutting_capacity,
+              under_qty: rawTarget.under_qty,
+              day_cutting: rawTarget.day_cutting,
+              day_input: rawTarget.day_input,
+              ot_hours_planned: rawTarget.ot_hours_planned ?? null,
+              ot_manpower_planned: rawTarget.ot_manpower_planned ?? null,
+            } : null}
+            actual={rawActual ? {
+              id: rawActual.id,
+              production_date: rawActual.production_date,
+              line_name: rawActual.lines?.name || rawActual.lines?.line_id || lineName,
+              buyer: rawActual.work_orders?.buyer || rawActual.buyer || buyer,
+              style: rawActual.work_orders?.style || rawActual.style || style,
+              po_number: rawActual.work_orders?.po_number || rawActual.po_no || poNumber,
+              colour: rawActual.colour || null,
+              order_qty: rawActual.order_qty || selectedSubmission.order_qty,
+              submitted_at: rawActual.submitted_at,
+              man_power: rawActual.man_power,
+              marker_capacity: rawActual.marker_capacity,
+              lay_capacity: rawActual.lay_capacity,
+              cutting_capacity: rawActual.cutting_capacity,
+              under_qty: rawActual.under_qty,
+              day_cutting: rawActual.day_cutting,
+              day_input: rawActual.day_input,
+              total_cutting: rawActual.total_cutting,
+              total_input: rawActual.total_input,
+              balance: rawActual.balance,
+              ot_hours_actual: rawActual.ot_hours_actual ?? null,
+              ot_manpower_actual: rawActual.ot_manpower_actual ?? null,
+              leftover_recorded: rawActual.leftover_recorded,
+              leftover_type: rawActual.leftover_type,
+              leftover_unit: rawActual.leftover_unit,
+              leftover_quantity: rawActual.leftover_quantity,
+              leftover_notes: rawActual.leftover_notes,
+              leftover_location: rawActual.leftover_location,
+              leftover_photo_urls: rawActual.leftover_photo_urls,
+            } : null}
+            open={!!selectedSubmission}
+            onOpenChange={(open) => !open && setSelectedSubmission(null)}
+          />
+        );
+      })()}
     </div>
   );
 }

@@ -18,8 +18,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SubmissionDetailModal } from "@/components/SubmissionDetailModal";
 import { TargetDetailModal } from "@/components/TargetDetailModal";
-import { CuttingDetailModal } from "@/components/CuttingDetailModal";
-import { CuttingTargetDetailModal } from "@/components/CuttingTargetDetailModal";
+import { CuttingSubmissionView } from "@/components/CuttingSubmissionView";
 import { StorageBinCardDetailModal } from "@/components/StorageBinCardDetailModal";
 import { TargetVsActualComparison } from "@/components/insights/TargetVsActualComparison";
 import { FinishingDashboard } from "@/components/dashboard/FinishingDashboard";
@@ -1426,9 +1425,17 @@ export default function Dashboard() {
             )
           : null;
         return (
-          <CuttingDetailModal
-            cutting={selectedCutting}
+          <CuttingSubmissionView
             target={matchingTarget ? {
+              id: matchingTarget.id,
+              production_date: matchingTarget.production_date,
+              line_name: matchingTarget.line_name,
+              buyer: matchingTarget.buyer,
+              style: matchingTarget.style,
+              po_number: matchingTarget.po_number,
+              colour: matchingTarget.colour,
+              order_qty: matchingTarget.order_qty,
+              submitted_at: matchingTarget.submitted_at,
               man_power: matchingTarget.man_power,
               marker_capacity: matchingTarget.marker_capacity,
               lay_capacity: matchingTarget.lay_capacity,
@@ -1439,36 +1446,107 @@ export default function Dashboard() {
               ot_hours_planned: matchingTarget.ot_hours_planned,
               ot_manpower_planned: matchingTarget.ot_manpower_planned,
             } : null}
+            actual={selectedCutting ? {
+              id: selectedCutting.id,
+              production_date: selectedCutting.production_date,
+              line_name: selectedCutting.line_name,
+              buyer: selectedCutting.buyer,
+              style: selectedCutting.style,
+              po_number: selectedCutting.po_number,
+              colour: selectedCutting.colour,
+              order_qty: selectedCutting.order_qty,
+              submitted_at: selectedCutting.submitted_at,
+              man_power: selectedCutting.man_power,
+              marker_capacity: selectedCutting.marker_capacity,
+              lay_capacity: selectedCutting.lay_capacity,
+              cutting_capacity: selectedCutting.cutting_capacity,
+              under_qty: selectedCutting.under_qty,
+              day_cutting: selectedCutting.day_cutting,
+              day_input: selectedCutting.day_input,
+              total_cutting: selectedCutting.total_cutting,
+              total_input: selectedCutting.total_input,
+              balance: selectedCutting.balance,
+              ot_hours_actual: selectedCutting.ot_hours_actual,
+              ot_manpower_actual: selectedCutting.ot_manpower_actual,
+              leftover_recorded: selectedCutting.leftover_recorded,
+              leftover_type: selectedCutting.leftover_type,
+              leftover_unit: selectedCutting.leftover_unit,
+              leftover_quantity: selectedCutting.leftover_quantity,
+              leftover_notes: selectedCutting.leftover_notes,
+              leftover_location: selectedCutting.leftover_location,
+              leftover_photo_urls: null,
+            } : null}
             open={cuttingModalOpen}
             onOpenChange={setCuttingModalOpen}
           />
         );
       })()}
 
-      <CuttingTargetDetailModal
-        target={selectedCuttingTarget ? {
-          id: selectedCuttingTarget.id,
-          production_date: selectedCuttingTarget.production_date,
-          line_name: selectedCuttingTarget.line_name,
-          buyer: selectedCuttingTarget.buyer,
-          style: selectedCuttingTarget.style,
-          po_number: selectedCuttingTarget.po_number,
-          colour: selectedCuttingTarget.colour,
-          order_qty: selectedCuttingTarget.order_qty,
-          man_power: selectedCuttingTarget.man_power,
-          marker_capacity: selectedCuttingTarget.marker_capacity,
-          lay_capacity: selectedCuttingTarget.lay_capacity,
-          cutting_capacity: selectedCuttingTarget.cutting_capacity,
-          under_qty: selectedCuttingTarget.under_qty,
-          day_cutting: selectedCuttingTarget.day_cutting,
-          day_input: selectedCuttingTarget.day_input,
-          submitted_at: selectedCuttingTarget.submitted_at,
-          ot_hours_planned: selectedCuttingTarget.ot_hours_planned ?? null,
-          ot_manpower_planned: selectedCuttingTarget.ot_manpower_planned ?? null,
-        } : null}
-        open={cuttingTargetModalOpen}
-        onOpenChange={setCuttingTargetModalOpen}
-      />
+      {(() => {
+        const matchingActual = selectedCuttingTarget
+          ? cuttingSubmissions.find(a =>
+              a.production_date === selectedCuttingTarget.production_date &&
+              a.line_id === selectedCuttingTarget.line_id &&
+              a.work_order_id === selectedCuttingTarget.work_order_id
+            )
+          : null;
+        return (
+          <CuttingSubmissionView
+            target={selectedCuttingTarget ? {
+              id: selectedCuttingTarget.id,
+              production_date: selectedCuttingTarget.production_date,
+              line_name: selectedCuttingTarget.line_name,
+              buyer: selectedCuttingTarget.buyer,
+              style: selectedCuttingTarget.style,
+              po_number: selectedCuttingTarget.po_number,
+              colour: selectedCuttingTarget.colour,
+              order_qty: selectedCuttingTarget.order_qty,
+              submitted_at: selectedCuttingTarget.submitted_at,
+              man_power: selectedCuttingTarget.man_power,
+              marker_capacity: selectedCuttingTarget.marker_capacity,
+              lay_capacity: selectedCuttingTarget.lay_capacity,
+              cutting_capacity: selectedCuttingTarget.cutting_capacity,
+              under_qty: selectedCuttingTarget.under_qty,
+              day_cutting: selectedCuttingTarget.day_cutting,
+              day_input: selectedCuttingTarget.day_input,
+              ot_hours_planned: selectedCuttingTarget.ot_hours_planned ?? null,
+              ot_manpower_planned: selectedCuttingTarget.ot_manpower_planned ?? null,
+            } : null}
+            actual={matchingActual ? {
+              id: matchingActual.id,
+              production_date: matchingActual.production_date,
+              line_name: matchingActual.line_name,
+              buyer: matchingActual.buyer,
+              style: matchingActual.style,
+              po_number: matchingActual.po_number,
+              colour: matchingActual.colour,
+              order_qty: matchingActual.order_qty,
+              submitted_at: matchingActual.submitted_at,
+              man_power: matchingActual.man_power,
+              marker_capacity: matchingActual.marker_capacity,
+              lay_capacity: matchingActual.lay_capacity,
+              cutting_capacity: matchingActual.cutting_capacity,
+              under_qty: matchingActual.under_qty,
+              day_cutting: matchingActual.day_cutting,
+              day_input: matchingActual.day_input,
+              total_cutting: matchingActual.total_cutting,
+              total_input: matchingActual.total_input,
+              balance: matchingActual.balance,
+              ot_hours_actual: matchingActual.ot_hours_actual,
+              ot_manpower_actual: matchingActual.ot_manpower_actual,
+              leftover_recorded: matchingActual.leftover_recorded,
+              leftover_type: matchingActual.leftover_type,
+              leftover_unit: matchingActual.leftover_unit,
+              leftover_quantity: matchingActual.leftover_quantity,
+              leftover_notes: matchingActual.leftover_notes,
+              leftover_location: matchingActual.leftover_location,
+              leftover_photo_urls: null,
+            } : null}
+            open={cuttingTargetModalOpen}
+            onOpenChange={setCuttingTargetModalOpen}
+          />
+        );
+      })()}
 
       <StorageBinCardDetailModal
         binCard={selectedBinCard}

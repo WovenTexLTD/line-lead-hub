@@ -70,8 +70,10 @@ export function FinishingLogDetailModal({ log, counterpart, open, onOpenChange }
     return (log.carton || 0);
   };
 
-  // When viewing an OUTPUT with a TARGET counterpart, show comparison
-  const showComparison = log.log_type === "OUTPUT" && counterpart?.log_type === "TARGET";
+  // Show comparison when we have both a target and output (either direction)
+  const showComparison = !!counterpart && log.log_type !== counterpart.log_type;
+  const targetLog = log.log_type === "TARGET" ? log : counterpart;
+  const outputLog = log.log_type === "OUTPUT" ? log : counterpart;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -143,7 +145,7 @@ export function FinishingLogDetailModal({ log, counterpart, open, onOpenChange }
           </div>
 
           {/* Target vs Output Comparison */}
-          {showComparison && counterpart && (
+          {showComparison && targetLog && outputLog && (
             <div className="border rounded-lg p-3 bg-primary/5">
               <div className="flex items-center justify-between mb-3">
                 <span className="font-medium text-sm">Target vs Output</span>
@@ -157,8 +159,8 @@ export function FinishingLogDetailModal({ log, counterpart, open, onOpenChange }
                   <span className="text-right">Variance</span>
                 </div>
                 {PROCESS_ITEMS.map((item) => {
-                  const outputVal = (log[item.key as keyof typeof log] as number) || 0;
-                  const targetVal = (counterpart[item.key as keyof typeof counterpart] as number) || 0;
+                  const outputVal = (outputLog[item.key as keyof typeof outputLog] as number) || 0;
+                  const targetVal = (targetLog[item.key as keyof typeof targetLog] as number) || 0;
                   return (
                     <div key={item.key} className="grid grid-cols-4 gap-2 text-sm items-center">
                       <span className="text-muted-foreground truncate text-xs">{item.label}</span>
@@ -170,14 +172,14 @@ export function FinishingLogDetailModal({ log, counterpart, open, onOpenChange }
                     </div>
                   );
                 })}
-                {(counterpart.planned_hours != null || log.actual_hours != null) && (
+                {(targetLog.planned_hours != null || outputLog.actual_hours != null) && (
                   <div className="grid grid-cols-4 gap-2 text-sm items-center border-t pt-1 mt-1">
                     <span className="text-muted-foreground text-xs">Hours</span>
-                    <span className="text-right text-muted-foreground">{counterpart.planned_hours ?? "—"}</span>
-                    <span className="text-right font-medium">{log.actual_hours ?? "—"}</span>
+                    <span className="text-right text-muted-foreground">{targetLog.planned_hours ?? "—"}</span>
+                    <span className="text-right font-medium">{outputLog.actual_hours ?? "—"}</span>
                     <div className="text-right text-xs">
-                      {counterpart.planned_hours != null && log.actual_hours != null ? (
-                        <VarianceIndicator actual={log.actual_hours} target={counterpart.planned_hours} />
+                      {targetLog.planned_hours != null && outputLog.actual_hours != null ? (
+                        <VarianceIndicator actual={outputLog.actual_hours} target={targetLog.planned_hours} />
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}

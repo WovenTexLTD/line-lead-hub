@@ -18,7 +18,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { CuttingDetailModal } from "@/components/CuttingDetailModal";
+import { CuttingSubmissionView } from "@/components/CuttingSubmissionView";
 
 interface CuttingTarget {
   id: string;
@@ -650,25 +650,100 @@ export default function CuttingAllSubmissions() {
       </Tabs>
 
       {/* Target Detail Modal */}
-      {selectedTarget && (
-        <CuttingTargetDetailModal
-          target={selectedTarget}
-          open={!!selectedTarget}
-          onOpenChange={(open) => !open && setSelectedTarget(null)}
-        />
-      )}
+      {selectedTarget && (() => {
+        const matchingActual = actuals.find(a =>
+          a.production_date === selectedTarget.production_date &&
+          a.line_id === selectedTarget.line_id &&
+          a.work_order_id === selectedTarget.work_order_id
+        );
+        return (
+          <CuttingSubmissionView
+            target={{
+              id: selectedTarget.id,
+              production_date: selectedTarget.production_date,
+              line_name: selectedTarget.lines?.name || selectedTarget.lines?.line_id || "—",
+              buyer: selectedTarget.work_orders?.buyer || selectedTarget.buyer,
+              style: selectedTarget.work_orders?.style || selectedTarget.style,
+              po_number: selectedTarget.work_orders?.po_number || selectedTarget.po_no,
+              colour: selectedTarget.colour,
+              order_qty: selectedTarget.order_qty,
+              submitted_at: selectedTarget.submitted_at,
+              man_power: selectedTarget.man_power,
+              marker_capacity: selectedTarget.marker_capacity,
+              lay_capacity: selectedTarget.lay_capacity,
+              cutting_capacity: selectedTarget.cutting_capacity,
+              under_qty: selectedTarget.under_qty,
+              day_cutting: selectedTarget.day_cutting,
+              day_input: selectedTarget.day_input,
+              ot_hours_planned: null,
+              ot_manpower_planned: null,
+            }}
+            actual={matchingActual ? {
+              id: matchingActual.id,
+              production_date: matchingActual.production_date,
+              line_name: matchingActual.lines?.name || matchingActual.lines?.line_id || "—",
+              buyer: matchingActual.work_orders?.buyer || matchingActual.buyer,
+              style: matchingActual.work_orders?.style || matchingActual.style,
+              po_number: matchingActual.work_orders?.po_number || matchingActual.po_no,
+              colour: matchingActual.colour,
+              order_qty: matchingActual.order_qty,
+              submitted_at: matchingActual.submitted_at,
+              man_power: matchingActual.man_power,
+              marker_capacity: matchingActual.marker_capacity,
+              lay_capacity: matchingActual.lay_capacity,
+              cutting_capacity: matchingActual.cutting_capacity,
+              under_qty: matchingActual.under_qty,
+              day_cutting: matchingActual.day_cutting,
+              day_input: matchingActual.day_input,
+              total_cutting: matchingActual.total_cutting,
+              total_input: matchingActual.total_input,
+              balance: matchingActual.balance,
+              ot_hours_actual: matchingActual.ot_hours_actual,
+              ot_manpower_actual: matchingActual.ot_manpower_actual,
+              leftover_recorded: matchingActual.leftover_recorded,
+              leftover_type: matchingActual.leftover_type,
+              leftover_unit: matchingActual.leftover_unit,
+              leftover_quantity: matchingActual.leftover_quantity,
+              leftover_notes: matchingActual.leftover_notes,
+              leftover_location: matchingActual.leftover_location,
+              leftover_photo_urls: matchingActual.leftover_photo_urls,
+            } : null}
+            open={!!selectedTarget}
+            onOpenChange={(open) => !open && setSelectedTarget(null)}
+          />
+        );
+      })()}
 
       {/* Actual Detail Modal */}
       {selectedActual && (() => {
-        // Find matching target for this actual (same date + line + work order)
         const matchingTarget = targets.find(t =>
           t.production_date === selectedActual.production_date &&
           t.line_id === selectedActual.line_id &&
           t.work_order_id === selectedActual.work_order_id
         );
         return (
-          <CuttingDetailModal
-            cutting={{
+          <CuttingSubmissionView
+            target={matchingTarget ? {
+              id: matchingTarget.id,
+              production_date: matchingTarget.production_date,
+              line_name: matchingTarget.lines?.name || matchingTarget.lines?.line_id || "—",
+              buyer: matchingTarget.work_orders?.buyer || matchingTarget.buyer,
+              style: matchingTarget.work_orders?.style || matchingTarget.style,
+              po_number: matchingTarget.work_orders?.po_number || matchingTarget.po_no,
+              colour: matchingTarget.colour,
+              order_qty: matchingTarget.order_qty,
+              submitted_at: matchingTarget.submitted_at,
+              man_power: matchingTarget.man_power,
+              marker_capacity: matchingTarget.marker_capacity,
+              lay_capacity: matchingTarget.lay_capacity,
+              cutting_capacity: matchingTarget.cutting_capacity,
+              under_qty: matchingTarget.under_qty,
+              day_cutting: matchingTarget.day_cutting,
+              day_input: matchingTarget.day_input,
+              ot_hours_planned: null,
+              ot_manpower_planned: null,
+            } : null}
+            actual={{
               id: selectedActual.id,
               production_date: selectedActual.production_date,
               line_name: selectedActual.lines?.name || selectedActual.lines?.line_id || "—",
@@ -677,35 +752,27 @@ export default function CuttingAllSubmissions() {
               po_number: selectedActual.work_orders?.po_number || selectedActual.po_no,
               colour: selectedActual.colour,
               order_qty: selectedActual.order_qty,
+              submitted_at: selectedActual.submitted_at,
               man_power: selectedActual.man_power,
               marker_capacity: selectedActual.marker_capacity,
               lay_capacity: selectedActual.lay_capacity,
               cutting_capacity: selectedActual.cutting_capacity,
               under_qty: selectedActual.under_qty,
               day_cutting: selectedActual.day_cutting,
-              total_cutting: selectedActual.total_cutting,
               day_input: selectedActual.day_input,
+              total_cutting: selectedActual.total_cutting,
               total_input: selectedActual.total_input,
               balance: selectedActual.balance,
-              submitted_at: selectedActual.submitted_at,
+              ot_hours_actual: selectedActual.ot_hours_actual,
+              ot_manpower_actual: selectedActual.ot_manpower_actual,
               leftover_recorded: selectedActual.leftover_recorded,
               leftover_type: selectedActual.leftover_type,
               leftover_unit: selectedActual.leftover_unit,
               leftover_quantity: selectedActual.leftover_quantity,
               leftover_notes: selectedActual.leftover_notes,
               leftover_location: selectedActual.leftover_location,
-              ot_hours_actual: selectedActual.ot_hours_actual,
-              ot_manpower_actual: selectedActual.ot_manpower_actual,
+              leftover_photo_urls: selectedActual.leftover_photo_urls,
             }}
-            target={matchingTarget ? {
-              man_power: matchingTarget.man_power,
-              marker_capacity: matchingTarget.marker_capacity,
-              lay_capacity: matchingTarget.lay_capacity,
-              cutting_capacity: matchingTarget.cutting_capacity,
-              under_qty: matchingTarget.under_qty,
-              day_cutting: matchingTarget.day_cutting,
-              day_input: matchingTarget.day_input,
-            } : null}
             open={!!selectedActual}
             onOpenChange={(open) => !open && setSelectedActual(null)}
           />
@@ -715,120 +782,3 @@ export default function CuttingAllSubmissions() {
   );
 }
 
-// Target Detail Modal Component
-function CuttingTargetDetailModal({ 
-  target, 
-  open, 
-  onOpenChange 
-}: { 
-  target: CuttingTarget; 
-  open: boolean; 
-  onOpenChange: (open: boolean) => void;
-}) {
-  return (
-    <div
-      className={`fixed inset-0 z-50 ${open ? 'flex' : 'hidden'} items-center justify-center`}
-      onClick={() => onOpenChange(false)}
-    >
-      <div className="fixed inset-0 bg-black/50" />
-      <div 
-        className="relative bg-background rounded-lg shadow-lg max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="p-6">
-          <div className="flex items-center gap-2 mb-6">
-            <Target className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold">Target Details</h2>
-          </div>
-
-          <div className="space-y-6">
-            {/* Basic Info */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">Date</p>
-                <p className="font-semibold">{format(parseISO(target.production_date), "MMM d, yyyy")}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">Line</p>
-                <p className="font-semibold">{target.lines?.name || target.lines?.line_id || "—"}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">Buyer</p>
-                <p className="font-semibold">{target.work_orders?.buyer || target.buyer || "—"}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">Style</p>
-                <p className="font-semibold">{target.work_orders?.style || target.style || "—"}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">PO Number</p>
-                <p className="font-semibold">{target.work_orders?.po_number || target.po_no || "—"}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">Order Qty</p>
-                <p className="font-semibold">{target.order_qty?.toLocaleString() || "—"}</p>
-              </div>
-            </div>
-
-            {/* Target Capacities */}
-            <div>
-              <h4 className="font-semibold text-sm mb-3">Target Capacities</h4>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Man Power:</span>
-                  <span className="font-medium">{target.man_power?.toLocaleString() || 0}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Marker Capacity:</span>
-                  <span className="font-medium">{target.marker_capacity?.toLocaleString() || 0}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Lay Capacity:</span>
-                  <span className="font-medium">{target.lay_capacity?.toLocaleString() || 0}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Cutting Capacity:</span>
-                  <span className="font-medium">{target.cutting_capacity?.toLocaleString() || 0}</span>
-                </div>
-                <div className="flex justify-between col-span-2">
-                  <span className="text-muted-foreground">Under Qty:</span>
-                  <span className="font-medium">{target.under_qty?.toLocaleString() || 0}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Target Daily Actuals */}
-            <div>
-              <h4 className="font-semibold text-sm mb-3">Target Daily Actuals</h4>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-primary/10 rounded-lg p-4 text-center">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Day Cutting</p>
-                  <p className="text-2xl font-bold text-primary">{target.day_cutting?.toLocaleString() || 0}</p>
-                </div>
-                <div className="bg-success/10 rounded-lg p-4 text-center">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Day Input</p>
-                  <p className="text-2xl font-bold text-success">{target.day_input?.toLocaleString() || 0}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Submitted Info */}
-            {target.submitted_at && (
-              <p className="text-xs text-muted-foreground">
-                Submitted: {format(new Date(target.submitted_at), "MMM d, yyyy 'at' h:mm a")}
-              </p>
-            )}
-          </div>
-
-          <Button 
-            className="w-full mt-6" 
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-          >
-            Close
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
