@@ -176,7 +176,7 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
                 <div>
                   <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Process Targets</p>
                   <div className="grid grid-cols-2 gap-3">
-                    {PROCESS_ITEMS.map((item) => {
+                    {PROCESS_ITEMS.filter(item => item.key !== "poly" && item.key !== "carton").map((item) => {
                       const value = target[item.key as keyof FinishingTargetData] as number;
                       return (
                         <FieldDisplay
@@ -184,15 +184,16 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
                           label={item.label}
                           value={value}
                           suffix=" /hr"
-                          className={item.key === "carton" ? "text-lg text-warning" : item.key === "poly" ? "text-success" : ""}
                         />
                       );
                     })}
+                    <FieldDisplay label="Poly" value={target.poly} suffix=" /hr" className="text-success" />
                     {target.planned_hours != null && target.planned_hours > 0 && (
-                      <>
-                        <FieldDisplay label="Target Total Poly" value={Math.round(target.poly * target.planned_hours)} className="text-success" />
-                        <FieldDisplay label="Target Total Carton" value={Math.round(target.carton * target.planned_hours)} className="text-lg text-warning" />
-                      </>
+                      <FieldDisplay label="Target Total Poly" value={Math.round(target.poly * target.planned_hours)} className="text-success" />
+                    )}
+                    <FieldDisplay label="Carton" value={target.carton} suffix=" /hr" className="text-lg text-warning" />
+                    {target.planned_hours != null && target.planned_hours > 0 && (
+                      <FieldDisplay label="Target Total Carton" value={Math.round(target.carton * target.planned_hours)} className="text-lg text-warning" />
                     )}
                   </div>
                 </div>
@@ -243,23 +244,24 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
                 <div>
                   <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Process Output</p>
                   <div className="grid grid-cols-2 gap-3">
-                    {PROCESS_ITEMS.map((item) => {
+                    {PROCESS_ITEMS.filter(item => item.key !== "poly" && item.key !== "carton").map((item) => {
                       const value = actual[item.key as keyof FinishingActualData] as number;
                       return (
                         <FieldDisplay
                           key={item.key}
                           label={item.label}
                           value={value}
-                          className={item.key === "carton" ? "text-lg text-warning" : item.key === "poly" ? "text-success" : ""}
                         />
                       );
                     })}
                     {actual.actual_hours != null && actual.actual_hours > 0 && (
-                      <>
-                        <FieldDisplay label="Poly per Hour" value={Math.round((actual.poly / actual.actual_hours) * 100) / 100} suffix=" /hr" className="text-success" />
-                        <FieldDisplay label="Carton per Hour" value={Math.round((actual.carton / actual.actual_hours) * 100) / 100} suffix=" /hr" className="text-lg text-warning" />
-                      </>
+                      <FieldDisplay label="Poly per Hour" value={Math.round((actual.poly / actual.actual_hours) * 100) / 100} suffix=" /hr" className="text-success" />
                     )}
+                    <FieldDisplay label="Poly" value={actual.poly} className="text-success" />
+                    {actual.actual_hours != null && actual.actual_hours > 0 && (
+                      <FieldDisplay label="Carton per Hour" value={Math.round((actual.carton / actual.actual_hours) * 100) / 100} suffix=" /hr" className="text-lg text-warning" />
+                    )}
+                    <FieldDisplay label="Carton" value={actual.carton} className="text-lg text-warning" />
                   </div>
                 </div>
 

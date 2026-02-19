@@ -243,10 +243,10 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange }: Sew
                 <div>
                   <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Output</p>
                   <div className="grid grid-cols-2 gap-3">
-                    <FieldDisplay label="Good Output" value={actual.good_today} className="text-lg text-success" />
                     {actual.hours_actual != null && actual.hours_actual > 0 && (
                       <FieldDisplay label="Output per Hour" value={Math.round((actual.good_today / actual.hours_actual) * 100) / 100} suffix=" /hr" className="text-lg text-success" />
                     )}
+                    <FieldDisplay label="Good Output" value={actual.good_today} className="text-lg text-success" />
                     <FieldDisplay label="Reject" value={actual.reject_today} />
                     <FieldDisplay label="Rework" value={actual.rework_today} />
                     <FieldDisplay label="Cumulative Good Total" value={actual.cumulative_good_total} className="text-lg" />
