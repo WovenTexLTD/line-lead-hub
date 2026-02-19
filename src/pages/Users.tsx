@@ -351,7 +351,7 @@ export default function UsersPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {['storage', 'finishing', 'cutting'].includes(user.role || '') ? (
+                      {['admin', 'owner', 'storage', 'finishing', 'cutting'].includes(user.role || '') ? (
                         <span className="text-xs bg-muted px-2 py-0.5 rounded">All lines</span>
                       ) : user.assigned_line_names.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
