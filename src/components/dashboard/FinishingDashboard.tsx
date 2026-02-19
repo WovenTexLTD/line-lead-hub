@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FinishingLogDetailModal } from "@/components/FinishingLogDetailModal";
+import { FinishingSubmissionView, FinishingTargetData, FinishingActualData } from "@/components/FinishingSubmissionView";
 import {
   Package,
   Clock,
@@ -66,7 +66,7 @@ export function FinishingDashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"targets" | "outputs">("targets");
-  const [selectedLog, setSelectedLog] = useState<any>(null);
+  const [selectedLog, setSelectedLog] = useState<DailyLogSummary | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
 
   useEffect(() => {
@@ -259,37 +259,7 @@ export function FinishingDashboard() {
                     <div
                       key={log.id}
                       onClick={() => {
-                        setSelectedLog({
-                          id: log.id,
-                          production_date: log.production_date,
-                          line_id: log.line_id,
-                          work_order_id: log.work_order_id,
-                          log_type: log.log_type,
-                          shift: null,
-                          thread_cutting: log.thread_cutting,
-                          inside_check: log.inside_check,
-                          top_side_check: log.top_side_check,
-                          buttoning: log.buttoning,
-                          iron: log.iron,
-                          get_up: log.get_up,
-                          poly: log.poly,
-                          carton: log.carton,
-                          planned_hours: log.planned_hours,
-                          actual_hours: log.actual_hours,
-                          remarks: log.remarks,
-                          ot_hours_actual: log.ot_hours_actual ?? null,
-                          ot_manpower_actual: log.ot_manpower_actual ?? null,
-                          ot_hours_planned: log.ot_hours_planned ?? null,
-                          ot_manpower_planned: log.ot_manpower_planned ?? null,
-                          submitted_at: log.submitted_at,
-                          is_locked: false,
-                          line: null,
-                          work_order: log.po_number ? {
-                            po_number: log.po_number,
-                            style: log.style || '',
-                            buyer: log.buyer || '',
-                          } : null,
-                        });
+                        setSelectedLog(log);
                         setDetailModalOpen(true);
                       }}
                       className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors cursor-pointer"
@@ -351,47 +321,63 @@ export function FinishingDashboard() {
       </Tabs>
 
       {(() => {
-        const counterpart = selectedLog
-          ? logs.find(l =>
-              l.log_type !== selectedLog.log_type &&
-              l.production_date === selectedLog.production_date &&
-              l.work_order_id === selectedLog.work_order_id
-            )
-          : null;
+        if (!selectedLog) return null;
+
+        const counterpart = logs.find(l =>
+          l.log_type !== selectedLog.log_type &&
+          l.production_date === selectedLog.production_date &&
+          l.work_order_id === selectedLog.work_order_id
+        ) ?? null;
+
+        const targetLog = selectedLog.log_type === "TARGET" ? selectedLog : counterpart;
+        const actualLog = selectedLog.log_type === "OUTPUT" ? selectedLog : counterpart;
+
+        const target: FinishingTargetData | null = targetLog ? {
+          id: targetLog.id,
+          production_date: targetLog.production_date,
+          submitted_at: targetLog.submitted_at,
+          po_number: targetLog.po_number ?? null,
+          buyer: targetLog.buyer ?? null,
+          style: targetLog.style ?? null,
+          thread_cutting: targetLog.thread_cutting,
+          inside_check: targetLog.inside_check,
+          top_side_check: targetLog.top_side_check,
+          buttoning: targetLog.buttoning,
+          iron: targetLog.iron,
+          get_up: targetLog.get_up,
+          poly: targetLog.poly,
+          carton: targetLog.carton,
+          planned_hours: targetLog.planned_hours ?? null,
+          ot_hours_planned: targetLog.ot_hours_planned ?? null,
+          ot_manpower_planned: targetLog.ot_manpower_planned ?? null,
+          remarks: targetLog.remarks ?? null,
+        } : null;
+
+        const actual: FinishingActualData | null = actualLog ? {
+          id: actualLog.id,
+          production_date: actualLog.production_date,
+          submitted_at: actualLog.submitted_at,
+          po_number: actualLog.po_number ?? null,
+          buyer: actualLog.buyer ?? null,
+          style: actualLog.style ?? null,
+          thread_cutting: actualLog.thread_cutting,
+          inside_check: actualLog.inside_check,
+          top_side_check: actualLog.top_side_check,
+          buttoning: actualLog.buttoning,
+          iron: actualLog.iron,
+          get_up: actualLog.get_up,
+          poly: actualLog.poly,
+          carton: actualLog.carton,
+          actual_hours: actualLog.actual_hours ?? null,
+          ot_hours_actual: actualLog.ot_hours_actual ?? null,
+          ot_manpower_actual: actualLog.ot_manpower_actual ?? null,
+          remarks: actualLog.remarks ?? null,
+        } : null;
+
         return (
-          <FinishingLogDetailModal
-            log={selectedLog}
-            counterpart={counterpart ? {
-              id: counterpart.id,
-              production_date: counterpart.production_date,
-              line_id: counterpart.line_id,
-              work_order_id: counterpart.work_order_id,
-              log_type: counterpart.log_type,
-              shift: null,
-              thread_cutting: counterpart.thread_cutting,
-              inside_check: counterpart.inside_check,
-              top_side_check: counterpart.top_side_check,
-              buttoning: counterpart.buttoning,
-              iron: counterpart.iron,
-              get_up: counterpart.get_up,
-              poly: counterpart.poly,
-              carton: counterpart.carton,
-              planned_hours: counterpart.planned_hours,
-              actual_hours: counterpart.actual_hours,
-              remarks: counterpart.remarks,
-              ot_hours_actual: counterpart.ot_hours_actual ?? null,
-              ot_manpower_actual: counterpart.ot_manpower_actual ?? null,
-              ot_hours_planned: counterpart.ot_hours_planned ?? null,
-              ot_manpower_planned: counterpart.ot_manpower_planned ?? null,
-              submitted_at: counterpart.submitted_at,
-              is_locked: false,
-              line: null,
-              work_order: counterpart.po_number ? {
-                po_number: counterpart.po_number,
-                style: counterpart.style || '',
-                buyer: counterpart.buyer || '',
-              } : null,
-            } : null}
+          <FinishingSubmissionView
+            target={target}
+            actual={actual}
             open={detailModalOpen}
             onOpenChange={setDetailModalOpen}
           />

@@ -21,7 +21,7 @@ import {
 import { Package, Search, ClipboardList, Eye, Target, TrendingUp, Download, X } from "lucide-react";
 import { TableSkeleton, StatsCardsSkeleton } from "@/components/ui/table-skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
-import { FinishingLogDetailModal } from "@/components/FinishingLogDetailModal";
+import { FinishingSubmissionView, FinishingTargetData, FinishingActualData } from "@/components/FinishingSubmissionView";
 import { TablePagination } from "@/components/ui/table-pagination";
 import { usePagination } from "@/hooks/usePagination";
 import { useSortableTable } from "@/hooks/useSortableTable";
@@ -527,7 +527,7 @@ export function FinishingDailySheetsTable({
               />
             </CardContent>
           </Card>
-      {/* Finishing Log Detail Modal */}
+      {/* Finishing Submission View */}
       {(() => {
         const counterpart = selectedLog
           ? logs.find(l =>
@@ -536,70 +536,56 @@ export function FinishingDailySheetsTable({
               l.work_order_id === selectedLog.work_order_id
             )
           : null;
+
+        const targetLog = selectedLog?.log_type === "TARGET" ? selectedLog : counterpart?.log_type === "TARGET" ? counterpart : null;
+        const actualLog = selectedLog?.log_type === "OUTPUT" ? selectedLog : counterpart?.log_type === "OUTPUT" ? counterpart : null;
+
+        const target: FinishingTargetData | null = targetLog ? {
+          id: targetLog.id,
+          production_date: targetLog.production_date,
+          submitted_at: targetLog.submitted_at,
+          po_number: targetLog.po_number,
+          buyer: targetLog.buyer,
+          style: targetLog.style,
+          thread_cutting: targetLog.thread_cutting,
+          inside_check: targetLog.inside_check,
+          top_side_check: targetLog.top_side_check,
+          buttoning: targetLog.buttoning,
+          iron: targetLog.iron,
+          get_up: targetLog.get_up,
+          poly: targetLog.poly,
+          carton: targetLog.carton,
+          planned_hours: targetLog.planned_hours ?? null,
+          ot_hours_planned: (targetLog as any).ot_hours_planned ?? null,
+          ot_manpower_planned: (targetLog as any).ot_manpower_planned ?? null,
+          remarks: targetLog.remarks ?? null,
+        } : null;
+
+        const actual: FinishingActualData | null = actualLog ? {
+          id: actualLog.id,
+          production_date: actualLog.production_date,
+          submitted_at: actualLog.submitted_at,
+          po_number: actualLog.po_number,
+          buyer: actualLog.buyer,
+          style: actualLog.style,
+          thread_cutting: actualLog.thread_cutting,
+          inside_check: actualLog.inside_check,
+          top_side_check: actualLog.top_side_check,
+          buttoning: actualLog.buttoning,
+          iron: actualLog.iron,
+          get_up: actualLog.get_up,
+          poly: actualLog.poly,
+          carton: actualLog.carton,
+          actual_hours: actualLog.actual_hours ?? null,
+          ot_hours_actual: (actualLog as any).ot_hours_actual ?? null,
+          ot_manpower_actual: (actualLog as any).ot_manpower_actual ?? null,
+          remarks: actualLog.remarks ?? null,
+        } : null;
+
         return (
-          <FinishingLogDetailModal
-            log={selectedLog ? {
-              id: selectedLog.id,
-              production_date: selectedLog.production_date,
-              line_id: selectedLog.line_id,
-              work_order_id: selectedLog.work_order_id,
-              log_type: selectedLog.log_type,
-              shift: null,
-              thread_cutting: selectedLog.thread_cutting,
-              inside_check: selectedLog.inside_check,
-              top_side_check: selectedLog.top_side_check,
-              buttoning: selectedLog.buttoning,
-              iron: selectedLog.iron,
-              get_up: selectedLog.get_up,
-              poly: selectedLog.poly,
-              carton: selectedLog.carton,
-              planned_hours: selectedLog.planned_hours,
-              actual_hours: selectedLog.actual_hours,
-              remarks: selectedLog.remarks,
-              ot_hours_actual: (selectedLog as any).ot_hours_actual ?? null,
-              ot_manpower_actual: (selectedLog as any).ot_manpower_actual ?? null,
-              ot_hours_planned: (selectedLog as any).ot_hours_planned ?? null,
-              ot_manpower_planned: (selectedLog as any).ot_manpower_planned ?? null,
-              submitted_at: selectedLog.submitted_at,
-              is_locked: selectedLog.is_locked,
-              line: null,
-              work_order: selectedLog.po_number ? {
-                po_number: selectedLog.po_number,
-                style: selectedLog.style || "",
-                buyer: selectedLog.buyer || ""
-              } : null
-            } : null}
-            counterpart={counterpart ? {
-              id: counterpart.id,
-              production_date: counterpart.production_date,
-              line_id: counterpart.line_id,
-              work_order_id: counterpart.work_order_id,
-              log_type: counterpart.log_type,
-              shift: null,
-              thread_cutting: counterpart.thread_cutting,
-              inside_check: counterpart.inside_check,
-              top_side_check: counterpart.top_side_check,
-              buttoning: counterpart.buttoning,
-              iron: counterpart.iron,
-              get_up: counterpart.get_up,
-              poly: counterpart.poly,
-              carton: counterpart.carton,
-              planned_hours: counterpart.planned_hours,
-              actual_hours: counterpart.actual_hours,
-              remarks: counterpart.remarks,
-              ot_hours_actual: (counterpart as any).ot_hours_actual ?? null,
-              ot_manpower_actual: (counterpart as any).ot_manpower_actual ?? null,
-              ot_hours_planned: (counterpart as any).ot_hours_planned ?? null,
-              ot_manpower_planned: (counterpart as any).ot_manpower_planned ?? null,
-              submitted_at: counterpart.submitted_at,
-              is_locked: counterpart.is_locked,
-              line: null,
-              work_order: counterpart.po_number ? {
-                po_number: counterpart.po_number,
-                style: counterpart.style || "",
-                buyer: counterpart.buyer || ""
-              } : null
-            } : null}
+          <FinishingSubmissionView
+            target={target}
+            actual={actual}
             open={detailModalOpen}
             onOpenChange={setDetailModalOpen}
           />

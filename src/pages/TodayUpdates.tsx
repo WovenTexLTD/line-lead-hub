@@ -21,7 +21,7 @@ import { CuttingSubmissionView } from "@/components/CuttingSubmissionView";
 import { SewingSubmissionView, SewingTargetData, SewingActualData } from "@/components/SewingSubmissionView";
 import { formatTimeInTimezone } from "@/lib/date-utils";
 import { StorageBinCardDetailModal } from "@/components/StorageBinCardDetailModal";
-import { FinishingLogDetailModal } from "@/components/FinishingLogDetailModal";
+import { FinishingSubmissionView, FinishingTargetData, FinishingActualData } from "@/components/FinishingSubmissionView";
 import { ExportSubmissionsDialog } from "@/components/ExportSubmissionsDialog";
 
 interface SewingUpdate {
@@ -1821,58 +1821,61 @@ export default function TodayUpdates() {
               l.work_order_id === selectedFinishingLog.work_order_id
             )
           : null;
+
+        const targetLog = selectedFinishingLog?.log_type === 'TARGET' ? selectedFinishingLog
+          : counterpart?.log_type === 'TARGET' ? counterpart
+          : null;
+
+        const actualLog = selectedFinishingLog?.log_type === 'OUTPUT' ? selectedFinishingLog
+          : counterpart?.log_type === 'OUTPUT' ? counterpart
+          : null;
+
+        const target: FinishingTargetData | null = targetLog ? {
+          id: targetLog.id,
+          production_date: targetLog.production_date,
+          submitted_at: targetLog.submitted_at,
+          po_number: targetLog.work_orders?.po_number ?? null,
+          buyer: targetLog.work_orders?.buyer ?? null,
+          style: targetLog.work_orders?.style ?? null,
+          thread_cutting: targetLog.thread_cutting || 0,
+          inside_check: targetLog.inside_check || 0,
+          top_side_check: targetLog.top_side_check || 0,
+          buttoning: targetLog.buttoning || 0,
+          iron: targetLog.iron || 0,
+          get_up: targetLog.get_up || 0,
+          poly: targetLog.poly || 0,
+          carton: targetLog.carton || 0,
+          planned_hours: targetLog.planned_hours ?? null,
+          ot_hours_planned: targetLog.ot_hours_planned ?? null,
+          ot_manpower_planned: targetLog.ot_manpower_planned ?? null,
+          remarks: targetLog.remarks ?? null,
+        } : null;
+
+        const actual: FinishingActualData | null = actualLog ? {
+          id: actualLog.id,
+          production_date: actualLog.production_date,
+          submitted_at: actualLog.submitted_at,
+          po_number: actualLog.work_orders?.po_number ?? null,
+          buyer: actualLog.work_orders?.buyer ?? null,
+          style: actualLog.work_orders?.style ?? null,
+          thread_cutting: actualLog.thread_cutting || 0,
+          inside_check: actualLog.inside_check || 0,
+          top_side_check: actualLog.top_side_check || 0,
+          buttoning: actualLog.buttoning || 0,
+          iron: actualLog.iron || 0,
+          get_up: actualLog.get_up || 0,
+          poly: actualLog.poly || 0,
+          carton: actualLog.carton || 0,
+          actual_hours: actualLog.actual_hours ?? null,
+          ot_hours_actual: actualLog.ot_hours_actual ?? null,
+          ot_manpower_actual: actualLog.ot_manpower_actual ?? null,
+          remarks: actualLog.remarks ?? null,
+        } : null;
+
         return (
-          <FinishingLogDetailModal
-            log={selectedFinishingLog ? {
-              ...selectedFinishingLog,
-              work_order_id: selectedFinishingLog.work_order_id,
-              shift: null,
-              thread_cutting: selectedFinishingLog.thread_cutting || 0,
-              inside_check: selectedFinishingLog.inside_check || 0,
-              top_side_check: selectedFinishingLog.top_side_check || 0,
-              buttoning: selectedFinishingLog.buttoning || 0,
-              iron: selectedFinishingLog.iron || 0,
-              get_up: selectedFinishingLog.get_up || 0,
-              poly: selectedFinishingLog.poly || 0,
-              carton: selectedFinishingLog.carton || 0,
-              is_locked: false,
-              planned_hours: selectedFinishingLog.planned_hours ?? 0,
-              actual_hours: selectedFinishingLog.actual_hours ?? 0,
-              submitted_at: selectedFinishingLog.submitted_at,
-              line: null,
-              work_order: selectedFinishingLog.work_orders ? {
-                po_number: selectedFinishingLog.work_orders.po_number,
-                style: selectedFinishingLog.work_orders.style,
-                buyer: selectedFinishingLog.work_orders.buyer
-              } : null
-            } : null}
-            counterpart={counterpart ? {
-              id: counterpart.id,
-              production_date: counterpart.production_date,
-              line_id: counterpart.line_id,
-              work_order_id: counterpart.work_order_id,
-              log_type: counterpart.log_type,
-              shift: null,
-              thread_cutting: counterpart.thread_cutting || 0,
-              inside_check: counterpart.inside_check || 0,
-              top_side_check: counterpart.top_side_check || 0,
-              buttoning: counterpart.buttoning || 0,
-              iron: counterpart.iron || 0,
-              get_up: counterpart.get_up || 0,
-              poly: counterpart.poly || 0,
-              carton: counterpart.carton || 0,
-              planned_hours: counterpart.planned_hours ?? null,
-              actual_hours: counterpart.actual_hours ?? null,
-              remarks: counterpart.remarks || null,
-              submitted_at: counterpart.submitted_at,
-              is_locked: false,
-              line: null,
-              work_order: counterpart.work_orders ? {
-                po_number: counterpart.work_orders.po_number,
-                style: counterpart.work_orders.style,
-                buyer: counterpart.work_orders.buyer
-              } : null
-            } : null}
+          <FinishingSubmissionView
+            target={target}
+            actual={actual}
             open={finishingLogModalOpen}
             onOpenChange={setFinishingLogModalOpen}
           />

@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/table";
 import { format, isToday, parseISO, startOfWeek, endOfWeek, isWithinInterval } from "date-fns";
 import { FileText, Clock, Target, TrendingUp, Search, Package, Edit2, Eye } from "lucide-react";
-import { FinishingLogDetailModal } from "@/components/FinishingLogDetailModal";
+import { FinishingSubmissionView, FinishingTargetData, FinishingActualData } from "@/components/FinishingSubmissionView";
 import { useEditPermission } from "@/hooks/useEditPermission";
 
 interface FinishingDailyLog {
@@ -45,6 +45,10 @@ interface FinishingDailyLog {
   carton: number;
   planned_hours: number | null;
   actual_hours: number | null;
+  ot_hours_planned: number | null;
+  ot_manpower_planned: number | null;
+  ot_hours_actual: number | null;
+  ot_manpower_actual: number | null;
   remarks: string | null;
   submitted_at: string;
   is_locked: boolean;
@@ -418,26 +422,79 @@ export default function FinishingMySubmissions() {
         </TabsContent>
       </Tabs>
 
-      <FinishingLogDetailModal
-        log={selectedLog}
-        counterpart={
-          selectedLog?.log_type === "OUTPUT"
-            ? logs.find(l =>
-                l.log_type === "TARGET" &&
-                l.production_date === selectedLog.production_date &&
-                l.work_order_id === selectedLog.work_order_id
-              ) || null
-            : selectedLog?.log_type === "TARGET"
-            ? logs.find(l =>
-                l.log_type === "OUTPUT" &&
-                l.production_date === selectedLog.production_date &&
-                l.work_order_id === selectedLog.work_order_id
-              ) || null
-            : null
+      {(() => {
+        if (!selectedLog) {
+          return (
+            <FinishingSubmissionView
+              target={null}
+              actual={null}
+              open={detailModalOpen}
+              onOpenChange={setDetailModalOpen}
+            />
+          );
         }
-        open={detailModalOpen}
-        onOpenChange={setDetailModalOpen}
-      />
+
+        const counterpart = logs.find(
+          (l) =>
+            l.log_type !== selectedLog.log_type &&
+            l.production_date === selectedLog.production_date &&
+            l.work_order_id === selectedLog.work_order_id
+        ) ?? null;
+
+        const targetLog = selectedLog.log_type === "TARGET" ? selectedLog : counterpart?.log_type === "TARGET" ? counterpart : null;
+        const actualLog = selectedLog.log_type === "OUTPUT" ? selectedLog : counterpart?.log_type === "OUTPUT" ? counterpart : null;
+
+        const target: FinishingTargetData | null = targetLog ? {
+          id: targetLog.id,
+          production_date: targetLog.production_date,
+          submitted_at: targetLog.submitted_at,
+          po_number: targetLog.work_order?.po_number ?? null,
+          buyer: targetLog.work_order?.buyer ?? null,
+          style: targetLog.work_order?.style ?? null,
+          thread_cutting: targetLog.thread_cutting,
+          inside_check: targetLog.inside_check,
+          top_side_check: targetLog.top_side_check,
+          buttoning: targetLog.buttoning,
+          iron: targetLog.iron,
+          get_up: targetLog.get_up,
+          poly: targetLog.poly,
+          carton: targetLog.carton,
+          planned_hours: targetLog.planned_hours ?? null,
+          ot_hours_planned: targetLog.ot_hours_planned ?? null,
+          ot_manpower_planned: targetLog.ot_manpower_planned ?? null,
+          remarks: targetLog.remarks ?? null,
+        } : null;
+
+        const actual: FinishingActualData | null = actualLog ? {
+          id: actualLog.id,
+          production_date: actualLog.production_date,
+          submitted_at: actualLog.submitted_at,
+          po_number: actualLog.work_order?.po_number ?? null,
+          buyer: actualLog.work_order?.buyer ?? null,
+          style: actualLog.work_order?.style ?? null,
+          thread_cutting: actualLog.thread_cutting,
+          inside_check: actualLog.inside_check,
+          top_side_check: actualLog.top_side_check,
+          buttoning: actualLog.buttoning,
+          iron: actualLog.iron,
+          get_up: actualLog.get_up,
+          poly: actualLog.poly,
+          carton: actualLog.carton,
+          actual_hours: actualLog.actual_hours ?? null,
+          ot_hours_actual: actualLog.ot_hours_actual ?? null,
+          ot_manpower_actual: actualLog.ot_manpower_actual ?? null,
+          remarks: actualLog.remarks ?? null,
+        } : null;
+
+        return (
+          <FinishingSubmissionView
+            target={target}
+            actual={actual}
+            open={detailModalOpen}
+            onOpenChange={setDetailModalOpen}
+          />
+        );
+      })()}
     </div>
   );
 }
