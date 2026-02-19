@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { getTodayInTimezone } from "@/lib/date-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -245,7 +246,7 @@ export default function SewingUpdate() {
       setNextMilestoneOptions(nextMilestoneRes.data || []);
 
       // Fetch today's KPI stats
-      const today = new Date().toISOString().split('T')[0];
+      const today = getTodayInTimezone(factory?.timezone || "Asia/Dhaka");
       const { data: todayData } = await supabase
         .from('production_updates_sewing')
         .select('output_qty, reject_qty')
@@ -316,7 +317,7 @@ export default function SewingUpdate() {
         factory_id: profile?.factory_id,
         line_id: selectedLine,
         work_order_id: selectedPO || null,
-        production_date: new Date().toISOString().split('T')[0],
+        production_date: getTodayInTimezone(factory?.timezone || "Asia/Dhaka"),
         
         // Auto-filled from PO (stored for historical record)
         buyer_name: buyerName,
@@ -415,7 +416,7 @@ export default function SewingUpdate() {
           <div>
             <h1 className="text-xl font-bold">{t('sewing.title')}</h1>
             <p className="text-sm text-muted-foreground">
-              {new Date().toLocaleDateString(i18n.language === 'bn' ? 'bn-BD' : 'en-US', { dateStyle: 'full' })}
+              {new Date(getTodayInTimezone(factory?.timezone || "Asia/Dhaka") + "T00:00:00").toLocaleDateString(i18n.language === 'bn' ? 'bn-BD' : 'en-US', { dateStyle: 'full' })}
             </p>
           </div>
         </div>

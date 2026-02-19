@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { getTodayInTimezone } from "@/lib/date-utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2 } from "lucide-react";
@@ -55,7 +56,7 @@ interface DropdownOption {
 
 export default function FinishingEndOfDay() {
   const navigate = useNavigate();
-  const { user, profile, isAdminOrHigher } = useAuth();
+  const { user, profile, factory, isAdminOrHigher } = useAuth();
   const { t, i18n } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -267,7 +268,7 @@ export default function FinishingEndOfDay() {
         </Button>
         <div>
           <h1 className="text-xl font-bold">{t("forms.finishingEndOfDayTitle")}</h1>
-          <p className="text-sm text-muted-foreground">{new Date().toLocaleDateString(dateLocale, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+          <p className="text-sm text-muted-foreground">{new Date(getTodayInTimezone(factory?.timezone || "Asia/Dhaka") + "T00:00:00").toLocaleDateString(dateLocale, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
         </div>
       </div>
 

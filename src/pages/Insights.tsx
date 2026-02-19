@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { getTodayInTimezone } from "@/lib/date-utils";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -102,7 +103,7 @@ interface PreviousPeriodData {
 }
 
 export default function Insights() {
-  const { profile } = useAuth();
+  const { profile, factory } = useAuth();
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<'7' | '14' | '30'>('7');
   const [dailyData, setDailyData] = useState<DailyData[]>([]);
@@ -155,12 +156,12 @@ export default function Insights() {
     setLoading(true);
 
     try {
-      const now = new Date();
+      const tz = factory?.timezone || "Asia/Dhaka";
+      const today = getTodayInTimezone(tz);
       const days = parseInt(period);
-      const startDate = new Date(now);
+      const startDate = new Date(today + "T00:00:00");
       startDate.setDate(startDate.getDate() - days);
       const startDateStr = startDate.toISOString().split('T')[0];
-      const today = now.toISOString().split('T')[0];
 
       // Store date range for drill-down
       setDateRange({ start: startDateStr, end: today });

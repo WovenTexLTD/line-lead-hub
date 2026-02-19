@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { getTodayInTimezone } from "@/lib/date-utils";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
@@ -24,7 +25,7 @@ interface DailyStats {
 }
 
 export default function ThisWeek() {
-  const { profile } = useAuth();
+  const { profile, factory } = useAuth();
   const [loading, setLoading] = useState(true);
   const [weekOffset, setWeekOffset] = useState(0); // 0 = current week, -1 = last week, etc.
   const [weekStats, setWeekStats] = useState<DailyStats[]>([]);
@@ -50,7 +51,8 @@ export default function ThisWeek() {
     setLoading(true);
 
     try {
-      const today = new Date();
+      const todayStr = getTodayInTimezone(factory?.timezone || "Asia/Dhaka");
+      const today = new Date(todayStr + "T00:00:00");
       const currentWeekStart = new Date(today);
       currentWeekStart.setDate(today.getDate() - today.getDay()); // Start of current week (Sunday)
       
@@ -70,7 +72,7 @@ export default function ThisWeek() {
       for (let i = 0; i <= 6; i++) {
         const date = new Date(weekStart);
         date.setDate(weekStart.getDate() + i);
-        const dateStr = date.toISOString().split('T')[0];
+        const dateStr = format(date, "yyyy-MM-dd");
         
         if (date > today) {
           days.push({
@@ -220,13 +222,13 @@ export default function ThisWeek() {
     );
   }
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayInTimezone(factory?.timezone || "Asia/Dhaka");
 
   // Get week date range for display
   const getWeekRange = () => {
-    const today = new Date();
-    const currentWeekStart = new Date(today);
-    currentWeekStart.setDate(today.getDate() - today.getDay());
+    const todayDate = new Date(today + "T00:00:00");
+    const currentWeekStart = new Date(todayDate);
+    currentWeekStart.setDate(todayDate.getDate() - todayDate.getDay());
     
     const weekStart = new Date(currentWeekStart);
     weekStart.setDate(currentWeekStart.getDate() + (weekOffset * 7));

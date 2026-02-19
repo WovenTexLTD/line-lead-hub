@@ -1,0 +1,508 @@
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { subDays, format } from "date-fns";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { getTodayInTimezone, toISODate, formatShortDate } from "@/lib/date-utils";
+import type {
+  TimeRange,
+  LinePerformanceData,
+  POBreakdown,
+  DailyTrendPoint,
+  LineTrendData,
+  LineFilters,
+  FactorySummary,
+  AnomalyFlag,
+} from "./types";
+
+function extractLineNumber(lineId: string): number {
+  const match = lineId.match(/(\d+)/);
+  return match ? parseInt(match[1], 10) : 0;
+}
+
+function resolveTarget(row: {
+  target_total_planned: number | null;
+  per_hour_target: number | null;
+  hours_planned: number | null;
+}): number {
+  if (row.target_total_planned != null) return row.target_total_planned;
+  const perHour = row.per_hour_target ?? 0;
+  const hours = row.hours_planned ?? 8;
+  return Math.round(perHour * hours);
+}
+
+function detectAnomaly(totalTarget: number, totalOutput: number, achievementPct: number): AnomalyFlag {
+  if (totalTarget > 0 && totalOutput === 0) return "no-output";
+  if (achievementPct > 0 && achievementPct < 50) return "critically-low";
+  if (achievementPct > 150) return "unusually-high";
+  return null;
+}
+
+export function useLinePerformance() {
+  const { profile, factory, isAdminOrHigher } = useAuth();
+  const timezone = factory?.timezone || "Asia/Dhaka";
+
+  const [loading, setLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState<Date>(() => {
+    const todayStr = getTodayInTimezone(timezone);
+    return new Date(todayStr + "T00:00:00");
+  });
+  const [hasUserPickedDate, setHasUserPickedDate] = useState(false);
+  const [timeRange, setTimeRange] = useState<TimeRange>("daily");
+  const [filters, setFilters] = useState<LineFilters>({
+    searchTerm: "",
+    unitFilter: null,
+    floorFilter: null,
+  });
+
+  // Raw data from queries
+  const [rawLines, setRawLines] = useState<any[]>([]);
+  const [rawTargets, setRawTargets] = useState<any[]>([]);
+  const [rawActuals, setRawActuals] = useState<any[]>([]);
+  const [rawAssignments, setRawAssignments] = useState<any[]>([]);
+  const [userLineIds, setUserLineIds] = useState<Set<string>>(new Set());
+
+  // Re-sync selectedDate when factory timezone loads (only if user hasn't manually picked)
+  useEffect(() => {
+    if (!hasUserPickedDate && factory?.timezone) {
+      const todayStr = getTodayInTimezone(factory.timezone);
+      setSelectedDate(new Date(todayStr + "T00:00:00"));
+    }
+  }, [factory?.timezone, hasUserPickedDate]);
+
+  // Wrap setSelectedDate to track user-initiated changes
+  const handleDateChange = useCallback((date: Date) => {
+    setHasUserPickedDate(true);
+    setSelectedDate(date);
+  }, []);
+
+  const factoryId = profile?.factory_id;
+  const userId = profile?.id;
+
+  // Compute date range
+  const dateRange = useMemo(() => {
+    const todayStr = getTodayInTimezone(timezone);
+    if (timeRange === "daily") {
+      const dateStr = toISODate(selectedDate, timezone);
+      return { start: dateStr, end: dateStr };
+    }
+    const days = parseInt(timeRange);
+    const start = format(subDays(new Date(todayStr), days - 1), "yyyy-MM-dd");
+    return { start, end: todayStr };
+  }, [selectedDate, timeRange, timezone]);
+
+  const fetchData = useCallback(async () => {
+    if (!factoryId) return;
+    setLoading(true);
+
+    try {
+      const dateFilter = timeRange === "daily"
+        ? { eq: dateRange.start }
+        : { gte: dateRange.start, lte: dateRange.end };
+
+      const linesQuery = supabase
+        .from("lines")
+        .select("*, units(id, name), floors(id, name)")
+        .eq("factory_id", factoryId)
+        .order("line_id");
+
+      let targetsQuery = supabase
+        .from("sewing_targets")
+        .select("line_id, work_order_id, production_date, per_hour_target, target_total_planned, hours_planned, manpower_planned")
+        .eq("factory_id", factoryId);
+
+      let actualsQuery = supabase
+        .from("sewing_actuals")
+        .select("line_id, work_order_id, production_date, good_today, manpower_actual, has_blocker")
+        .eq("factory_id", factoryId);
+
+      if (timeRange === "daily") {
+        targetsQuery = targetsQuery.eq("production_date", dateFilter.eq!);
+        actualsQuery = actualsQuery.eq("production_date", dateFilter.eq!);
+      } else {
+        targetsQuery = targetsQuery
+          .gte("production_date", dateFilter.gte!)
+          .lte("production_date", dateFilter.lte!)
+          .limit(5000);
+        actualsQuery = actualsQuery
+          .gte("production_date", dateFilter.gte!)
+          .lte("production_date", dateFilter.lte!)
+          .limit(5000);
+      }
+
+      const assignmentsQuery = supabase
+        .from("work_order_line_assignments")
+        .select("line_id, work_orders(id, po_number, buyer, style, item, is_active)")
+        .eq("factory_id", factoryId);
+
+      const queries: Promise<any>[] = [
+        linesQuery,
+        targetsQuery,
+        actualsQuery,
+        assignmentsQuery,
+      ];
+
+      // Only fetch user line assignments if not admin
+      if (userId && !isAdminOrHigher()) {
+        queries.push(
+          supabase
+            .from("user_line_assignments")
+            .select("line_id")
+            .eq("user_id", userId)
+        );
+      }
+
+      const results = await Promise.all(queries);
+      const [linesRes, targetsRes, actualsRes, assignmentsRes] = results;
+
+      setRawLines(linesRes.data || []);
+      setRawTargets(targetsRes.data || []);
+      setRawActuals(actualsRes.data || []);
+      setRawAssignments(assignmentsRes.data || []);
+
+      if (results[4]) {
+        const ids = new Set<string>((results[4].data || []).map((r: any) => r.line_id));
+        setUserLineIds(ids);
+      }
+    } catch (error) {
+      console.error("Error fetching line performance data:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [factoryId, userId, dateRange, timeRange, isAdminOrHigher]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Build work order map from assignments
+  const woMap = useMemo(() => {
+    const map = new Map<string, Map<string, { id: string; poNumber: string; buyer: string; style: string; item: string; isActive: boolean }>>();
+    rawAssignments.forEach((a: any) => {
+      const wo = a.work_orders;
+      if (!wo || !a.line_id) return;
+      if (!map.has(a.line_id)) map.set(a.line_id, new Map());
+      const lineMap = map.get(a.line_id)!;
+      if (!lineMap.has(wo.id)) {
+        lineMap.set(wo.id, {
+          id: wo.id,
+          poNumber: wo.po_number || "",
+          buyer: wo.buyer || "",
+          style: wo.style || "",
+          item: wo.item || "",
+          isActive: wo.is_active ?? false,
+        });
+      }
+    });
+    return map;
+  }, [rawAssignments]);
+
+  // Extract unique units and floors
+  const units = useMemo(() => {
+    const seen = new Map<string, string>();
+    rawLines.forEach((l: any) => {
+      if (l.units?.id && l.units?.name) seen.set(l.units.id, l.units.name);
+    });
+    return Array.from(seen.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [rawLines]);
+
+  const floors = useMemo(() => {
+    const seen = new Map<string, string>();
+    rawLines.forEach((l: any) => {
+      if (l.floors?.id && l.floors?.name) seen.set(l.floors.id, l.floors.name);
+    });
+    return Array.from(seen.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [rawLines]);
+
+  // Compute line performance data
+  const lines = useMemo((): LinePerformanceData[] => {
+    // Group targets by line_id + work_order_id
+    const targetsByLine = new Map<string, Map<string, { total: number; manpower: number; dates: Set<string> }>>();
+    rawTargets.forEach((t: any) => {
+      if (!targetsByLine.has(t.line_id)) targetsByLine.set(t.line_id, new Map());
+      const lineTargets = targetsByLine.get(t.line_id)!;
+      if (!lineTargets.has(t.work_order_id)) {
+        lineTargets.set(t.work_order_id, { total: 0, manpower: 0, dates: new Set() });
+      }
+      const entry = lineTargets.get(t.work_order_id)!;
+      entry.total += resolveTarget(t);
+      entry.manpower += t.manpower_planned || 0;
+      entry.dates.add(t.production_date);
+    });
+
+    // Group actuals by line_id + work_order_id
+    const actualsByLine = new Map<string, Map<string, { total: number; manpower: number; blockers: number; dates: Set<string> }>>();
+    rawActuals.forEach((a: any) => {
+      if (!actualsByLine.has(a.line_id)) actualsByLine.set(a.line_id, new Map());
+      const lineActuals = actualsByLine.get(a.line_id)!;
+      if (!lineActuals.has(a.work_order_id)) {
+        lineActuals.set(a.work_order_id, { total: 0, manpower: 0, blockers: 0, dates: new Set() });
+      }
+      const entry = lineActuals.get(a.work_order_id)!;
+      entry.total += a.good_today || 0;
+      entry.manpower += a.manpower_actual || 0;
+      if (a.has_blocker) entry.blockers += 1;
+      entry.dates.add(a.production_date);
+    });
+
+    const result: LinePerformanceData[] = rawLines.map((line: any) => {
+      const lineTargetMap = targetsByLine.get(line.id);
+      const lineActualMap = actualsByLine.get(line.id);
+      const lineWOs = woMap.get(line.id) || new Map();
+
+      let totalTarget = 0;
+      let totalOutput = 0;
+      let totalManpower = 0;
+      let totalBlockers = 0;
+      let dayCount = 0;
+
+      const poBreakdown: POBreakdown[] = [];
+
+      // Collect all WO IDs that have data (targets or actuals)
+      const allWoIds = new Set<string>();
+      lineTargetMap?.forEach((_, woId) => allWoIds.add(woId));
+      lineActualMap?.forEach((_, woId) => allWoIds.add(woId));
+
+      allWoIds.forEach((woId) => {
+        const woInfo = lineWOs.get(woId);
+        const targetData = lineTargetMap?.get(woId);
+        const actualData = lineActualMap?.get(woId);
+
+        const poTarget = targetData?.total || 0;
+        const poOutput = actualData?.total || 0;
+
+        totalTarget += poTarget;
+        totalOutput += poOutput;
+        totalManpower += actualData?.manpower || 0;
+        totalBlockers += actualData?.blockers || 0;
+
+        const dates = new Set<string>();
+        targetData?.dates.forEach((d) => dates.add(d));
+        actualData?.dates.forEach((d) => dates.add(d));
+        dayCount = Math.max(dayCount, dates.size);
+
+        poBreakdown.push({
+          workOrderId: woId,
+          poNumber: woInfo?.poNumber || "Unknown PO",
+          buyer: woInfo?.buyer || "",
+          style: woInfo?.style || "",
+          item: woInfo?.item || "",
+          isActive: woInfo?.isActive ?? false,
+          target: poTarget,
+          output: poOutput,
+          achievementPct: poTarget > 0 ? Math.round((poOutput / poTarget) * 100) : 0,
+          targetContributionPct: 0, // computed after totals
+          outputContributionPct: 0,
+        });
+      });
+
+      // Compute contribution percentages
+      poBreakdown.forEach((po) => {
+        po.targetContributionPct = totalTarget > 0 ? Math.round((po.target / totalTarget) * 100) : 0;
+        po.outputContributionPct = totalOutput > 0 ? Math.round((po.output / totalOutput) * 100) : 0;
+      });
+
+      // Sort POs by output descending
+      poBreakdown.sort((a, b) => b.output - a.output);
+
+      const achievementPct = totalTarget > 0 ? Math.round((totalOutput / totalTarget) * 100) : 0;
+      const avgManpower = dayCount > 0 ? Math.round(totalManpower / dayCount) : totalManpower;
+
+      return {
+        id: line.id,
+        lineId: line.line_id,
+        name: line.name,
+        unitName: line.units?.name || null,
+        floorName: line.floors?.name || null,
+        isActive: line.is_active,
+        totalTarget,
+        totalOutput,
+        achievementPct,
+        variance: totalOutput - totalTarget,
+        avgManpower,
+        totalBlockers,
+        targetSubmitted: (lineTargetMap?.size || 0) > 0,
+        eodSubmitted: (lineActualMap?.size || 0) > 0,
+        anomaly: detectAnomaly(totalTarget, totalOutput, achievementPct),
+        poBreakdown,
+      };
+    });
+
+    // Sort by line number
+    result.sort((a, b) => extractLineNumber(a.lineId) - extractLineNumber(b.lineId));
+    return result;
+  }, [rawLines, rawTargets, rawActuals, woMap]);
+
+  // Build trend data per line (only for range modes)
+  const trendData = useMemo((): Map<string, LineTrendData> => {
+    if (timeRange === "daily") return new Map();
+
+    const map = new Map<string, LineTrendData>();
+
+    // Group targets by line_id + date
+    const targetsByLineDate = new Map<string, Map<string, number>>();
+    rawTargets.forEach((t: any) => {
+      const key = t.line_id;
+      if (!targetsByLineDate.has(key)) targetsByLineDate.set(key, new Map());
+      const dateMap = targetsByLineDate.get(key)!;
+      dateMap.set(t.production_date, (dateMap.get(t.production_date) || 0) + resolveTarget(t));
+    });
+
+    // Group actuals by line_id + date
+    const actualsByLineDate = new Map<string, Map<string, { output: number; manpower: number; blockers: number }>>();
+    rawActuals.forEach((a: any) => {
+      const key = a.line_id;
+      if (!actualsByLineDate.has(key)) actualsByLineDate.set(key, new Map());
+      const dateMap = actualsByLineDate.get(key)!;
+      const existing = dateMap.get(a.production_date) || { output: 0, manpower: 0, blockers: 0 };
+      existing.output += a.good_today || 0;
+      existing.manpower += a.manpower_actual || 0;
+      if (a.has_blocker) existing.blockers += 1;
+      dateMap.set(a.production_date, existing);
+    });
+
+    // Group actuals by line_id + date + work_order_id for PO daily
+    const poActualsByLineDate = new Map<string, Map<string, Map<string, number>>>();
+    rawActuals.forEach((a: any) => {
+      if (!poActualsByLineDate.has(a.line_id)) poActualsByLineDate.set(a.line_id, new Map());
+      const lineMap = poActualsByLineDate.get(a.line_id)!;
+      if (!lineMap.has(a.production_date)) lineMap.set(a.production_date, new Map());
+      const dateMap = lineMap.get(a.production_date)!;
+      dateMap.set(a.work_order_id, (dateMap.get(a.work_order_id) || 0) + (a.good_today || 0));
+    });
+
+    // Build trend data for each line
+    const allDates = new Set<string>();
+    targetsByLineDate.forEach((dateMap) => dateMap.forEach((_, d) => allDates.add(d)));
+    actualsByLineDate.forEach((dateMap) => dateMap.forEach((_, d) => allDates.add(d)));
+    const sortedDates = Array.from(allDates).sort();
+
+    rawLines.forEach((line: any) => {
+      const lineId = line.id;
+      const targetDates = targetsByLineDate.get(lineId);
+      const actualDates = actualsByLineDate.get(lineId);
+      const poActualDates = poActualsByLineDate.get(lineId);
+
+      if (!targetDates && !actualDates) return;
+
+      const daily: DailyTrendPoint[] = sortedDates.map((date) => {
+        const target = targetDates?.get(date) || 0;
+        const actual = actualDates?.get(date) || { output: 0, manpower: 0, blockers: 0 };
+        return {
+          date,
+          displayDate: formatShortDate(date),
+          target,
+          output: actual.output,
+          achievementPct: target > 0 ? Math.round((actual.output / target) * 100) : 0,
+          manpower: actual.manpower,
+          blockers: actual.blockers,
+        };
+      }).filter((d) => d.target > 0 || d.output > 0);
+
+      // Build PO daily breakdown
+      const poDaily: Record<string, { poNumber: string; points: DailyTrendPoint[] }> = {};
+      const lineWOs = woMap.get(lineId) || new Map();
+
+      poActualDates?.forEach((dateMap, date) => {
+        dateMap.forEach((output, woId) => {
+          if (!poDaily[woId]) {
+            const woInfo = lineWOs.get(woId);
+            poDaily[woId] = { poNumber: woInfo?.poNumber || woId, points: [] };
+          }
+          poDaily[woId].points.push({
+            date,
+            displayDate: formatShortDate(date),
+            target: 0,
+            output,
+            achievementPct: 0,
+            manpower: 0,
+            blockers: 0,
+          });
+        });
+      });
+
+      map.set(lineId, { daily, poDaily });
+    });
+
+    return map;
+  }, [rawLines, rawTargets, rawActuals, woMap, timeRange]);
+
+  // Apply filters (client-side)
+  const filteredLines = useMemo(() => {
+    let result = lines;
+
+    // Role-based: non-admin users only see assigned lines
+    if (!isAdminOrHigher() && userLineIds.size > 0) {
+      result = result.filter((l) => userLineIds.has(l.id));
+    }
+
+    // Only show active lines by default
+    result = result.filter((l) => l.isActive);
+
+    const { searchTerm, unitFilter, floorFilter } = filters;
+
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(
+        (l) =>
+          (l.name || l.lineId).toLowerCase().includes(term) ||
+          (l.unitName || "").toLowerCase().includes(term) ||
+          (l.floorName || "").toLowerCase().includes(term)
+      );
+    }
+
+    if (unitFilter) {
+      result = result.filter((l) => l.unitName === unitFilter);
+    }
+
+    if (floorFilter) {
+      result = result.filter((l) => l.floorName === floorFilter);
+    }
+
+    return result;
+  }, [lines, filters, isAdminOrHigher, userLineIds]);
+
+  // Factory summary
+  const factorySummary = useMemo((): FactorySummary => {
+    const activeLines = filteredLines;
+    const totalTarget = activeLines.reduce((s, l) => s + l.totalTarget, 0);
+    const totalOutput = activeLines.reduce((s, l) => s + l.totalOutput, 0);
+    const overallAchievement = totalTarget > 0 ? Math.round((totalOutput / totalTarget) * 100) : 0;
+
+    const linesWithTarget = activeLines.filter((l) => l.totalTarget > 0);
+    const linesOnTarget = linesWithTarget.filter((l) => l.achievementPct >= 90).length;
+    const linesBelowTarget = linesWithTarget.filter((l) => l.achievementPct < 90).length;
+
+    // Best / worst among lines with target
+    let bestLine: FactorySummary["bestLine"] = null;
+    let worstLine: FactorySummary["worstLine"] = null;
+
+    if (linesWithTarget.length > 0) {
+      const sorted = [...linesWithTarget].sort((a, b) => b.achievementPct - a.achievementPct);
+      bestLine = { name: sorted[0].name || sorted[0].lineId, pct: sorted[0].achievementPct };
+      worstLine = {
+        name: sorted[sorted.length - 1].name || sorted[sorted.length - 1].lineId,
+        pct: sorted[sorted.length - 1].achievementPct,
+      };
+    }
+
+    return { totalTarget, totalOutput, overallAchievement, linesOnTarget, linesBelowTarget, bestLine, worstLine };
+  }, [filteredLines]);
+
+  return {
+    loading,
+    selectedDate,
+    setSelectedDate: handleDateChange,
+    timeRange,
+    setTimeRange,
+    filters,
+    setFilters,
+    filteredLines,
+    trendData,
+    units,
+    floors,
+    factorySummary,
+    refetch: fetchData,
+    timezone,
+    dateRange,
+  };
+}

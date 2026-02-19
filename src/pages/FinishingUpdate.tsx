@@ -5,6 +5,7 @@ import { z } from "zod";
 import { useAuth } from "@/contexts/AuthContext";
 import type { AppRole } from "@/lib/constants";
 import { supabase } from "@/integrations/supabase/client";
+import { getTodayInTimezone } from "@/lib/date-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -319,7 +320,7 @@ export default function FinishingUpdate() {
         factory_id: profile?.factory_id,
         line_id: selectedLine,
         work_order_id: selectedPO,
-        production_date: new Date().toISOString().split('T')[0],
+        production_date: getTodayInTimezone(factory?.timezone || "Asia/Dhaka"),
         submitted_by: user?.id,
         
         // Stored snapshots from PO/Line
@@ -440,7 +441,7 @@ export default function FinishingUpdate() {
           <div>
             <h1 className="text-xl font-bold">{t('finishing.title')}</h1>
             <p className="text-sm text-muted-foreground">
-              {new Date().toLocaleDateString(i18n.language === 'bn' ? 'bn-BD' : 'en-US', { dateStyle: 'full' })}
+              {new Date(getTodayInTimezone(factory?.timezone || "Asia/Dhaka") + "T00:00:00").toLocaleDateString(i18n.language === 'bn' ? 'bn-BD' : 'en-US', { dateStyle: 'full' })}
             </p>
           </div>
         </div>

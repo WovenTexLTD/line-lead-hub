@@ -358,7 +358,7 @@ export default function SewingMorningTargets() {
       <div className="mb-6">
         <h1 className="text-xl font-bold">{t("forms.sewingMorningTargets")}</h1>
         <p className="text-sm text-muted-foreground">
-          {new Date().toLocaleDateString(dateLocale, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          {new Date(getTodayInTimezone(factory?.timezone || "Asia/Dhaka") + "T00:00:00").toLocaleDateString(dateLocale, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </p>
       </div>
 

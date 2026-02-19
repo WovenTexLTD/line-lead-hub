@@ -15,10 +15,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, Factory, Package, Search, Download, RefreshCw, Scissors, Archive, CalendarDays, Layers, ChevronDown, ChevronRight } from "lucide-react";
+import { Loader2, Factory, Package, Search, Download, RefreshCw, Scissors, Archive, CalendarDays, Layers, ChevronDown, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CuttingSubmissionView } from "@/components/CuttingSubmissionView";
 import { SewingSubmissionView, SewingTargetData, SewingActualData } from "@/components/SewingSubmissionView";
-import { formatTimeInTimezone } from "@/lib/date-utils";
+import { formatTimeInTimezone, getTodayInTimezone, toISODate } from "@/lib/date-utils";
+import { subDays, format } from "date-fns";
 import { StorageBinCardDetailModal } from "@/components/StorageBinCardDetailModal";
 import { FinishingSubmissionView, FinishingTargetData, FinishingActualData } from "@/components/FinishingSubmissionView";
 import { ExportSubmissionsDialog } from "@/components/ExportSubmissionsDialog";
@@ -252,16 +255,36 @@ export default function TodayUpdates() {
   const [finishingLogModalOpen, setFinishingLogModalOpen] = useState(false);
   const [expandedStorageGroups, setExpandedStorageGroups] = useState<Set<string>>(new Set());
 
+  // Date picker state
+  const timezone = factory?.timezone || "Asia/Dhaka";
+  const todayStr = getTodayInTimezone(timezone);
+  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date(todayStr + "T00:00:00"));
+
+  // Re-sync when factory timezone loads
+  useEffect(() => {
+    if (factory?.timezone) {
+      const factoryToday = getTodayInTimezone(factory.timezone);
+      const currentStr = format(selectedDate, "yyyy-MM-dd");
+      // Only re-sync if we're still on the initial date
+      if (currentStr === todayStr || currentStr === format(new Date(), "yyyy-MM-dd")) {
+        setSelectedDate(new Date(factoryToday + "T00:00:00"));
+      }
+    }
+  }, [factory?.timezone]);
+
+  const selectedDateStr = toISODate(selectedDate, timezone);
+  const isToday = selectedDateStr === todayStr;
+
   useEffect(() => {
     if (profile?.factory_id) {
       fetchTodayUpdates();
     }
-  }, [profile?.factory_id]);
+  }, [profile?.factory_id, selectedDateStr]);
 
   async function fetchTodayUpdates() {
     if (!profile?.factory_id) return;
     setLoading(true);
-    const today = new Date().toISOString().split('T')[0];
+    const today = selectedDateStr;
 
     try {
       const [sewingRes, sewingTargetsRes, sewingActualsRes, finishingRes, cuttingRes, cuttingTargetsRes, storageRes] = await Promise.all([
@@ -771,11 +794,40 @@ export default function TodayUpdates() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <CalendarDays className="h-6 w-6" />
-            Today's Updates
+            {isToday ? "Today's Updates" : "Updates"}
           </h1>
           <p className="text-muted-foreground">
-            {new Date().toLocaleDateString('en-US', { dateStyle: 'full' })}
+            {selectedDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button size="sm" className="mt-2 !bg-blue-600 hover:!bg-blue-700 !text-white">
+                <CalendarIcon className="h-4 w-4 mr-1.5" />
+                {isToday ? "Today" : format(selectedDate, "MMM d, yyyy")}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={(date) => date && setSelectedDate(date)}
+                disabled={(date) => date > new Date() || date < subDays(new Date(), 30)}
+                initialFocus
+              />
+              {!isToday && (
+                <div className="border-t p-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-xs"
+                    onClick={() => setSelectedDate(new Date(todayStr + "T00:00:00"))}
+                  >
+                    Back to Today
+                  </Button>
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={fetchTodayUpdates}>
@@ -794,7 +846,7 @@ export default function TodayUpdates() {
         {/* Updates Count Card */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Today's Updates</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{isToday ? "Today's Updates" : `Updates for ${format(selectedDate, "MMM d")}`}</CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
             <div className="grid grid-cols-4 gap-4">

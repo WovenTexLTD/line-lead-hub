@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { useAuth } from "@/contexts/AuthContext";
+import { getTodayInTimezone } from "@/lib/date-utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Search } from "lucide-react";
@@ -88,7 +89,7 @@ const sewingActualsSchema = z.object({
 export default function SewingEndOfDay() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
-  const { user, profile, isAdminOrHigher } = useAuth();
+  const { user, profile, factory, isAdminOrHigher } = useAuth();
   const { canEditSubmission } = useEditPermission();
   const [loading, setLoading] = useState(true);
   
@@ -404,7 +405,7 @@ export default function SewingEndOfDay() {
       <div className="mb-6">
         <h1 className="text-xl font-bold">{t("forms.sewing")} — {t("forms.endOfDayOutput")}</h1>
         <p className="text-sm text-muted-foreground">
-          {new Date().toLocaleDateString(dateLocale, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          {new Date(getTodayInTimezone(factory?.timezone || "Asia/Dhaka") + "T00:00:00").toLocaleDateString(dateLocale, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </p>
       </div>
 

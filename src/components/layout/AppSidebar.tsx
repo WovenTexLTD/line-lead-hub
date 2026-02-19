@@ -137,6 +137,7 @@ interface NavItem {
   label: string;
   icon: string;
   children?: NavItem[];
+  bottom?: boolean;
 }
 
 export function AppSidebar() {
@@ -380,7 +381,7 @@ export function AppSidebar() {
           )}
           <SidebarGroupContent>
             <SidebarMenu>
-              {(navItems as NavItem[]).map((item) => {
+              {(navItems as NavItem[]).filter(item => !item.bottom).map((item) => {
                 const Icon = iconMap[item.icon];
                 const hasChildren = item.children && item.children.length > 0;
                 const isExpanded = expandedMenus.includes(item.path);
@@ -507,6 +508,62 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Bottom navigation items (settings section) */}
+        {(navItems as NavItem[]).some(item => item.bottom) && (
+          <SidebarGroup className="mt-auto">
+            {!collapsed && (
+              <SidebarGroupLabel className="text-sidebar-foreground/50">
+Settings
+              </SidebarGroupLabel>
+            )}
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {(navItems as NavItem[]).filter(item => item.bottom).map((item) => {
+                  const Icon = iconMap[item.icon];
+                  return (
+                    <SidebarMenuItem key={item.path}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={isActive(item.path)}
+                        tooltip={collapsed ? getNavLabel(item.label) : undefined}
+                      >
+                        <Link
+                          to={item.path}
+                          className={cn(
+                            "flex items-center gap-3 rounded-lg px-3 py-2 transition-colors",
+                            isActive(item.path)
+                              ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                              : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                          )}
+                        >
+                          {Icon && (
+                            <div className="relative">
+                              <Icon className="h-5 w-5 shrink-0" />
+                              {collapsed && item.path === '/setup' && showSetupBadge && (
+                                <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-sidebar" />
+                              )}
+                            </div>
+                          )}
+                          {!collapsed && (
+                            <span className="flex items-center gap-2">
+                              {getNavLabel(item.label)}
+                              {item.path === '/setup' && showSetupBadge && (
+                                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground px-1">
+                                  {setupRemaining}
+                                </span>
+                              )}
+                            </span>
+                          )}
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter className={cn("border-t border-sidebar-border", collapsed ? "p-2" : "p-4")}>

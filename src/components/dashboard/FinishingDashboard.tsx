@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
-import { formatTimeInTimezone } from "@/lib/date-utils";
+import { formatTimeInTimezone, getTodayInTimezone } from "@/lib/date-utils";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -79,7 +79,7 @@ export function FinishingDashboard() {
     if (!profile?.factory_id) return;
     
     setLoading(true);
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayInTimezone(factory?.timezone || "Asia/Dhaka");
 
     try {
       // Fetch today's daily logs from new table

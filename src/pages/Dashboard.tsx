@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
-import { formatTimeInTimezone } from "@/lib/date-utils";
+import { formatTimeInTimezone, getTodayInTimezone } from "@/lib/date-utils";
 import { supabase } from "@/integrations/supabase/client";
 import { KPICard } from "@/components/ui/kpi-card";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -307,7 +307,7 @@ export default function Dashboard() {
     if (!profile?.factory_id) return;
     
     setLoading(true);
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayInTimezone(factory?.timezone || "Asia/Dhaka");
 
     try {
       // Fetch all active lines
@@ -795,7 +795,7 @@ export default function Dashboard() {
         <div>
           <h1 className="text-2xl font-bold">{t('dashboard.title')}</h1>
           <p className="text-muted-foreground">
-            {new Date().toLocaleDateString(i18n.language === 'bn' ? 'bn-BD' : 'en-US', {
+            {new Date(getTodayInTimezone(factory?.timezone || "Asia/Dhaka") + "T00:00:00").toLocaleDateString(i18n.language === 'bn' ? 'bn-BD' : 'en-US', {
               weekday: 'long',
               year: 'numeric',
               month: 'long',

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { getTodayInTimezone } from "@/lib/date-utils";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -305,7 +306,7 @@ export default function ReportBlocker() {
         factory_id: profile?.factory_id,
         line_id: lineId,
         work_order_id: selectedPO,
-        production_date: new Date().toISOString().split("T")[0],
+        production_date: getTodayInTimezone(factory?.timezone || "Asia/Dhaka"),
         submitted_by: user?.id,
         submitted_at: new Date().toISOString(),
 
@@ -459,7 +460,7 @@ export default function ReportBlocker() {
           <div>
             <h1 className="text-xl font-bold">{t('reportBlocker.title')}</h1>
             <p className="text-sm text-muted-foreground">
-              {new Date().toLocaleDateString(i18n.language === 'bn' ? 'bn-BD' : 'en-US', { dateStyle: "full" })}
+              {new Date(getTodayInTimezone(factory?.timezone || "Asia/Dhaka") + "T00:00:00").toLocaleDateString(i18n.language === 'bn' ? 'bn-BD' : 'en-US', { dateStyle: "full" })}
             </p>
           </div>
         </div>
