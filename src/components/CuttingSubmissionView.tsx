@@ -126,7 +126,7 @@ export function CuttingSubmissionView({ target, actual, open, onOpenChange }: Cu
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Icon className="h-5 w-5 text-primary" />
@@ -148,7 +148,7 @@ export function CuttingSubmissionView({ target, actual, open, onOpenChange }: Cu
 
         <div className="space-y-5">
           {/* Section B: Order Info */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <FieldDisplay label="Date" value={formatDate(primary.production_date)} />
             <FieldDisplay label="Line" value={primary.line_name} />
             <FieldDisplay label="Buyer" value={primary.buyer} />
@@ -158,194 +158,226 @@ export function CuttingSubmissionView({ target, actual, open, onOpenChange }: Cu
             <FieldDisplay label="Order Qty" value={primary.order_qty} />
           </div>
 
-          {/* Section C: Performance Summary (comparison mode) */}
-          {isComparison && target && actual && (
-            <div className="border rounded-lg p-3 bg-primary/5">
-              <h4 className="font-semibold text-sm mb-3 flex items-center justify-between">
-                <span>Target vs Actual</span>
-                <Badge variant="outline" className="text-xs">Comparison</Badge>
-              </h4>
-              <div className="space-y-2">
-                <div className="grid grid-cols-4 gap-2 text-xs text-muted-foreground mb-1">
-                  <span></span>
-                  <span className="text-right">Target</span>
-                  <span className="text-right">Actual</span>
-                  <span className="text-right">Variance</span>
-                </div>
-                {[
-                  { label: "Day Cutting", tgt: target.day_cutting, act: actual.day_cutting },
-                  { label: "Day Input", tgt: target.day_input, act: actual.day_input },
-                  { label: "Man Power", tgt: target.man_power, act: actual.man_power },
-                  { label: "Cutting Capacity", tgt: target.cutting_capacity, act: actual.cutting_capacity },
-                  { label: "Marker Capacity", tgt: target.marker_capacity, act: actual.marker_capacity },
-                  { label: "Lay Capacity", tgt: target.lay_capacity, act: actual.lay_capacity },
-                  ...(target.ot_hours_planned != null || actual.ot_hours_actual != null
-                    ? [{ label: "OT Hours", tgt: target.ot_hours_planned, act: actual.ot_hours_actual }]
-                    : []),
-                  ...(target.ot_manpower_planned != null || actual.ot_manpower_actual != null
-                    ? [{ label: "OT Manpower", tgt: target.ot_manpower_planned, act: actual.ot_manpower_actual }]
-                    : []),
-                ].map(({ label, tgt, act }) => (
-                  <div key={label} className="grid grid-cols-4 gap-2 text-sm items-center">
-                    <span className="text-muted-foreground truncate text-xs">{label}</span>
-                    <span className="text-right text-muted-foreground">{(tgt ?? 0).toLocaleString()}</span>
-                    <span className="text-right font-medium">{(act ?? 0).toLocaleString()}</span>
-                    <div className="text-right">
-                      <VarianceIndicator actual={act ?? 0} target={tgt ?? 0} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Part A: Two-column Target & Actual display */}
+          <div className={`grid gap-4 ${isComparison ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-2'}`}>
+            {/* Left Column: Target (blue) or placeholder */}
+            {hasTarget && target ? (
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-4">
+                <h4 className="font-semibold text-sm flex items-center gap-2 text-primary">
+                  <Target className="h-4 w-4" />
+                  Morning Target
+                </h4>
 
-          {/* Section D: Target Details (target-only mode) */}
-          {hasTarget && !hasActual && target && (
-            <>
-              <div>
-                <h4 className="font-semibold text-sm mb-3 text-primary">Target Capacities</h4>
-                <div className="grid grid-cols-2 gap-4 p-3 bg-primary/5 rounded-lg">
-                  <FieldDisplay label="Man Power" value={target.man_power} className="text-lg" />
-                  <FieldDisplay label="Marker Capacity" value={target.marker_capacity} className="text-lg" />
-                  <FieldDisplay label="Lay Capacity" value={target.lay_capacity} className="text-lg" />
-                  <FieldDisplay label="Cutting Capacity" value={target.cutting_capacity} className="text-lg text-primary" />
-                  <FieldDisplay label="Under Qty" value={target.under_qty} />
-                  {target.ot_hours_planned != null && (
-                    <FieldDisplay label="OT Hours Planned" value={target.ot_hours_planned} className="text-lg" />
-                  )}
-                  {target.ot_manpower_planned != null && (
-                    <FieldDisplay label="OT Manpower Planned" value={target.ot_manpower_planned} className="text-lg" />
-                  )}
-                </div>
-              </div>
-              <div>
-                <h4 className="font-semibold text-sm mb-3 text-success">Target Daily Output</h4>
-                <div className="grid grid-cols-2 gap-4 p-3 bg-success/5 rounded-lg">
-                  <FieldDisplay label="Day Cutting Target" value={target.day_cutting ?? 0} className="text-xl" />
-                  <FieldDisplay label="Day Input Target" value={target.day_input ?? 0} className="text-xl text-success" />
-                </div>
-              </div>
-              <div className="text-center py-4 text-muted-foreground border rounded-lg bg-muted/30">
-                <Scissors className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                <p className="text-sm">End of day not submitted yet</p>
-              </div>
-            </>
-          )}
-
-          {/* Section E: Actual Details */}
-          {hasActual && actual && (
-            <>
-              {/* When actual-only, show capacity fields */}
-              {!hasTarget && (
+                {/* Target Capacities */}
                 <div>
-                  <h4 className="font-semibold text-sm mb-3">Capacities</h4>
-                  <div className="grid grid-cols-2 gap-4">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Capacities</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <FieldDisplay label="Man Power" value={target.man_power} />
+                    <FieldDisplay label="Marker Capacity" value={target.marker_capacity} />
+                    <FieldDisplay label="Lay Capacity" value={target.lay_capacity} />
+                    <FieldDisplay label="Cutting Capacity" value={target.cutting_capacity} className="text-primary" />
+                    <FieldDisplay label="Under Qty" value={target.under_qty} />
+                    {target.ot_hours_planned != null && (
+                      <FieldDisplay label="OT Hours Planned" value={target.ot_hours_planned} />
+                    )}
+                    {target.ot_manpower_planned != null && (
+                      <FieldDisplay label="OT Manpower Planned" value={target.ot_manpower_planned} />
+                    )}
+                  </div>
+                </div>
+
+                {/* Target Daily Output */}
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Daily Output</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <FieldDisplay label="Day Cutting" value={target.day_cutting ?? 0} className="text-lg" />
+                    <FieldDisplay label="Day Input" value={target.day_input ?? 0} className="text-lg text-primary" />
+                  </div>
+                </div>
+
+                {/* Target Timestamp */}
+                {target.submitted_at && (
+                  <p className="text-xs text-muted-foreground pt-2 border-t border-primary/10">
+                    Submitted: {formatDateTime(target.submitted_at)}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 p-4 flex flex-col items-center justify-center text-center min-h-[200px]">
+                <Target className="h-8 w-8 mb-2 opacity-40 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">Morning target not submitted</p>
+              </div>
+            )}
+
+            {/* Right Column: Actual (green) or placeholder */}
+            {hasActual && actual ? (
+              <div className="rounded-lg border border-success/20 bg-success/5 p-4 space-y-4">
+                <h4 className="font-semibold text-sm flex items-center gap-2 text-success">
+                  <Scissors className="h-4 w-4" />
+                  End of Day Actual
+                </h4>
+
+                {/* Actual Capacities */}
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Capacities</p>
+                  <div className="grid grid-cols-2 gap-3">
                     <FieldDisplay label="Man Power" value={actual.man_power} />
                     <FieldDisplay label="Marker Capacity" value={actual.marker_capacity} />
                     <FieldDisplay label="Lay Capacity" value={actual.lay_capacity} />
-                    <FieldDisplay label="Cutting Capacity" value={actual.cutting_capacity} className="text-primary" />
+                    <FieldDisplay label="Cutting Capacity" value={actual.cutting_capacity} className="text-success" />
                     <FieldDisplay label="Under Qty" value={actual.under_qty} />
+                    {actual.ot_hours_actual != null && (
+                      <FieldDisplay label="OT Hours Actual" value={actual.ot_hours_actual} />
+                    )}
+                    {actual.ot_manpower_actual != null && (
+                      <FieldDisplay label="OT Manpower Actual" value={actual.ot_manpower_actual} />
+                    )}
                   </div>
                 </div>
-              )}
 
-              <div>
-                <h4 className="font-semibold text-sm mb-3">
-                  {isComparison ? "Cumulative Totals" : "Daily Output"}
-                </h4>
-                <div className="grid grid-cols-2 gap-4">
-                  {!isComparison && (
-                    <>
-                      <FieldDisplay label="Day Cutting" value={actual.day_cutting} />
-                      <FieldDisplay label="Day Input" value={actual.day_input} className="text-success" />
-                    </>
-                  )}
-                  <FieldDisplay label="Total Cutting" value={actual.total_cutting} />
-                  <FieldDisplay label="Total Input" value={actual.total_input} className="text-success" />
-                </div>
-                {(actual.ot_hours_actual != null || actual.ot_manpower_actual != null) && !isComparison && (
-                  <div className="grid grid-cols-2 gap-4 mt-4">
-                    <FieldDisplay label="OT Hours Actual" value={actual.ot_hours_actual} />
-                    <FieldDisplay label="OT Manpower Actual" value={actual.ot_manpower_actual} />
-                  </div>
-                )}
-                <div className="mt-4">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Balance</p>
-                  <p className={`text-xl font-bold ${actual.balance != null && actual.balance < 0 ? "text-destructive" : ""}`}>
-                    {actual.balance?.toLocaleString() || "-"}
-                  </p>
-                </div>
-              </div>
-
-              {/* When actual-only, show "target not submitted" message */}
-              {!hasTarget && (
-                <div className="text-center py-4 text-muted-foreground border rounded-lg bg-muted/30">
-                  <Target className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                  <p className="text-sm">Morning target not submitted</p>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* Section F: Leftover / Fabric Saved */}
-          {actual?.leftover_recorded && (
-            <div className="border-t pt-4">
-              <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                <Package className="h-4 w-4" />
-                Left Over / Fabric Saved
-              </h4>
-              <div className="grid grid-cols-2 gap-4">
-                <FieldDisplay label="Type" value={actual.leftover_type} />
+                {/* Actual Daily Output */}
                 <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Quantity</p>
-                  <p className="font-semibold">
-                    {actual.leftover_quantity?.toLocaleString() || "-"} {actual.leftover_unit || ""}
-                  </p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Daily Output</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <FieldDisplay label="Day Cutting" value={actual.day_cutting} className="text-lg" />
+                    <FieldDisplay label="Day Input" value={actual.day_input} className="text-lg text-success" />
+                  </div>
                 </div>
-                {actual.leftover_location && (
-                  <div className="col-span-2">
-                    <FieldDisplay label="Stored Location" value={actual.leftover_location} />
+
+                {/* Cumulative Totals */}
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Cumulative</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <FieldDisplay label="Total Cutting" value={actual.total_cutting} />
+                    <FieldDisplay label="Total Input" value={actual.total_input} className="text-success" />
+                  </div>
+                  <div className="mt-3">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Balance</p>
+                    <p className={`text-xl font-bold ${actual.balance != null && actual.balance < 0 ? "text-destructive" : ""}`}>
+                      {actual.balance?.toLocaleString() || "—"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Leftover / Fabric Saved */}
+                {actual.leftover_recorded && (
+                  <div className="border-t border-success/10 pt-3">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
+                      <Package className="h-3 w-3" />
+                      Left Over / Fabric Saved
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <FieldDisplay label="Type" value={actual.leftover_type} />
+                      <div>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide">Quantity</p>
+                        <p className="font-semibold">
+                          {actual.leftover_quantity?.toLocaleString() || "—"} {actual.leftover_unit || ""}
+                        </p>
+                      </div>
+                      {actual.leftover_location && (
+                        <div className="col-span-2">
+                          <FieldDisplay label="Stored Location" value={actual.leftover_location} />
+                        </div>
+                      )}
+                      {actual.leftover_notes && (
+                        <div className="col-span-2">
+                          <FieldDisplay label="Notes" value={actual.leftover_notes} className="text-sm" />
+                        </div>
+                      )}
+                    </div>
+                    {actual.leftover_photo_urls && actual.leftover_photo_urls.length > 0 && (
+                      <div className="mt-3">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
+                          <ImageIcon className="h-3 w-3" />
+                          Photos
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {actual.leftover_photo_urls.map((url, index) => (
+                            <a
+                              key={index}
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="w-16 h-16 rounded-lg overflow-hidden border hover:opacity-80 transition-opacity"
+                            >
+                              <img src={url} alt={`Leftover ${index + 1}`} className="w-full h-full object-cover" />
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
-                {actual.leftover_notes && (
-                  <div className="col-span-2">
-                    <FieldDisplay label="Notes" value={actual.leftover_notes} className="text-sm" />
-                  </div>
+
+                {/* Actual Timestamp */}
+                {actual.submitted_at && (
+                  <p className="text-xs text-muted-foreground pt-2 border-t border-success/10">
+                    Submitted: {formatDateTime(actual.submitted_at)}
+                  </p>
                 )}
               </div>
-              {actual.leftover_photo_urls && actual.leftover_photo_urls.length > 0 && (
-                <div className="mt-3">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
-                    <ImageIcon className="h-3 w-3" />
-                    Photos
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {actual.leftover_photo_urls.map((url, index) => (
-                      <a
-                        key={index}
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-16 h-16 rounded-lg overflow-hidden border hover:opacity-80 transition-opacity"
-                      >
-                        <img src={url} alt={`Leftover ${index + 1}`} className="w-full h-full object-cover" />
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Section G: Timestamps */}
-          <div className="text-xs text-muted-foreground space-y-1 border-t pt-3">
-            {target?.submitted_at && (
-              <p>Target submitted: {formatDateTime(target.submitted_at)}</p>
-            )}
-            {actual?.submitted_at && (
-              <p>Actual submitted: {formatDateTime(actual.submitted_at)}</p>
+            ) : (
+              <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 p-4 flex flex-col items-center justify-center text-center min-h-[200px]">
+                <Scissors className="h-8 w-8 mb-2 opacity-40 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">End of day not submitted yet</p>
+              </div>
             )}
           </div>
+
+          {/* Part B: Comparison table (full width, below columns) */}
+          {isComparison && target && actual && (
+            <div className="border rounded-lg p-4 bg-muted/30">
+              <h4 className="font-semibold text-sm mb-3 flex items-center justify-between">
+                <span>Target vs Actual Comparison</span>
+                <Badge variant="outline" className="text-xs">Variance</Badge>
+              </h4>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs text-muted-foreground border-b">
+                      <th className="text-left py-2 pr-4 font-medium">Metric</th>
+                      <th className="text-right py-2 px-3 font-medium">Target</th>
+                      <th className="text-right py-2 px-3 font-medium">Actual</th>
+                      <th className="text-right py-2 pl-3 font-medium">Variance</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { label: "Day Cutting", tgt: target.day_cutting, act: actual.day_cutting },
+                      { label: "Day Input", tgt: target.day_input, act: actual.day_input },
+                      { label: "Man Power", tgt: target.man_power, act: actual.man_power },
+                      { label: "Cutting Capacity", tgt: target.cutting_capacity, act: actual.cutting_capacity },
+                      { label: "Marker Capacity", tgt: target.marker_capacity, act: actual.marker_capacity },
+                      { label: "Lay Capacity", tgt: target.lay_capacity, act: actual.lay_capacity },
+                      { label: "Under Qty", tgt: target.under_qty, act: actual.under_qty },
+                      ...(target.ot_hours_planned != null || actual.ot_hours_actual != null
+                        ? [{ label: "OT Hours", tgt: target.ot_hours_planned, act: actual.ot_hours_actual }]
+                        : []),
+                      ...(target.ot_manpower_planned != null || actual.ot_manpower_actual != null
+                        ? [{ label: "OT Manpower", tgt: target.ot_manpower_planned, act: actual.ot_manpower_actual }]
+                        : []),
+                    ].map(({ label, tgt, act }) => (
+                      <tr key={label} className="border-b border-muted/50 last:border-0">
+                        <td className="py-2 pr-4 text-muted-foreground">{label}</td>
+                        <td className="py-2 px-3 text-right text-muted-foreground">
+                          {tgt != null ? tgt.toLocaleString() : "—"}
+                        </td>
+                        <td className="py-2 px-3 text-right font-medium">
+                          {act != null ? act.toLocaleString() : "—"}
+                        </td>
+                        <td className="py-2 pl-3 text-right">
+                          {tgt != null && act != null
+                            ? <VarianceIndicator actual={act} target={tgt} />
+                            : <span className="text-muted-foreground text-xs">—</span>
+                          }
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
