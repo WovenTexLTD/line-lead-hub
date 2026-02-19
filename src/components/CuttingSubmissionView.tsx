@@ -322,8 +322,8 @@ export function CuttingSubmissionView({ target, actual, open, onOpenChange }: Cu
 
           {/* Cumulative Totals (full width, below columns) */}
           {hasActual && actual && (
-            <div className="border rounded-lg p-4 bg-muted/30">
-              <h4 className="font-semibold text-sm mb-3">Cumulative Totals</h4>
+            <div className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-4">
+              <h4 className="font-semibold text-sm mb-3 text-orange-700 dark:text-orange-400">Cumulative Totals</h4>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <FieldDisplay label="Total Cutting" value={actual.total_cutting} />
                 <FieldDisplay label="Total Input" value={actual.total_input} className="text-success" />
