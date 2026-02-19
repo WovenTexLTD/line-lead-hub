@@ -29,6 +29,7 @@ export interface SewingTargetData {
   submitted_at: string | null;
   per_hour_target: number;
   manpower_planned: number | null;
+  hours_planned: number | null;
   ot_hours_planned: number | null;
   stage_name: string | null;
   planned_stage_progress: number | null;
@@ -51,6 +52,7 @@ export interface SewingActualData {
   rework_today: number;
   cumulative_good_total: number;
   manpower_actual: number;
+  hours_actual: number | null;
   ot_hours_actual: number;
   ot_manpower_actual: number | null;
   stage_name: string | null;
@@ -168,6 +170,7 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange }: Sew
                   <div className="grid grid-cols-2 gap-3">
                     <FieldDisplay label="Per Hour Target" value={target.per_hour_target} className="text-lg text-primary" />
                     <FieldDisplay label="Manpower Planned" value={target.manpower_planned} />
+                    <FieldDisplay label="Hours Planned" value={target.hours_planned} />
                     <FieldDisplay label="OT Hours Planned" value={target.ot_hours_planned} />
                   </div>
                 </div>
@@ -239,6 +242,7 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange }: Sew
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Resources</p>
                   <div className="grid grid-cols-2 gap-3">
                     <FieldDisplay label="Manpower Actual" value={actual.manpower_actual} />
+                    <FieldDisplay label="Hours Actual" value={actual.hours_actual} />
                     <FieldDisplay label="OT Hours Actual" value={actual.ot_hours_actual} />
                     {actual.ot_manpower_actual != null && actual.ot_manpower_actual > 0 && (
                       <FieldDisplay label="OT Manpower Actual" value={actual.ot_manpower_actual} />
@@ -336,6 +340,7 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange }: Sew
                   <tbody>
                     {[
                       { label: "Manpower", tgt: target.manpower_planned, act: actual.manpower_actual },
+                      { label: "Hours", tgt: target.hours_planned, act: actual.hours_actual },
                       { label: "OT Hours", tgt: target.ot_hours_planned, act: actual.ot_hours_actual },
                       { label: "Stage Progress", tgt: target.planned_stage_progress, act: actual.actual_stage_progress },
                     ].map(({ label, tgt, act }) => (

@@ -15,6 +15,7 @@ interface SewingActual {
   reject_today: number;
   rework_today: number;
   manpower_actual: number;
+  hours_actual: number | null;
   ot_hours_actual: number;
   ot_manpower_actual: number;
   cumulative_good_total: number;
@@ -59,6 +60,7 @@ export function EditSewingActualModal({ submission, open, onOpenChange, onSaved 
           reject_today: formData.reject_today ?? 0,
           rework_today: formData.rework_today ?? 0,
           manpower_actual: formData.manpower_actual ?? 0,
+          hours_actual: formData.hours_actual || null,
           ot_hours_actual: formData.ot_hours_actual ?? 0,
           ot_manpower_actual: formData.ot_manpower_actual ?? 0,
           remarks: formData.remarks,
@@ -129,6 +131,19 @@ export function EditSewingActualModal({ submission, open, onOpenChange, onSaved 
                 onChange={(e) => handleNumberChange('manpower_actual', e.target.value)}
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="hours_actual">Hours Actual</Label>
+            <Input
+              id="hours_actual"
+              type="number"
+              step="0.5"
+              min="0"
+              max="24"
+              value={formData.hours_actual ?? ''}
+              onChange={(e) => handleNumberChange('hours_actual', e.target.value)}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">

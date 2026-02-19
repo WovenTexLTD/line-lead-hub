@@ -53,6 +53,7 @@ interface ExistingTarget {
   under_qty: number | null;
   day_cutting: number;
   day_input: number;
+  hours_planned: number | null;
   ot_hours_planned: number | null;
   ot_manpower_planned: number | null;
 }
@@ -83,7 +84,8 @@ export default function CuttingMorningTargets() {
   const [cuttingCapacity, setCuttingCapacity] = useState("");
   const [underQty, setUnderQty] = useState("0");
 
-  // OT fields
+  // Hours fields
+  const [hoursPlanned, setHoursPlanned] = useState("");
   const [otHoursPlanned, setOtHoursPlanned] = useState("0");
   const [otManpowerPlanned, setOtManpowerPlanned] = useState("0");
 
@@ -182,7 +184,7 @@ export default function CuttingMorningTargets() {
     try {
       const { data, error } = await supabase
         .from("cutting_targets")
-        .select("id, man_power, marker_capacity, lay_capacity, cutting_capacity, under_qty, day_cutting, day_input, ot_hours_planned, ot_manpower_planned")
+        .select("id, man_power, marker_capacity, lay_capacity, cutting_capacity, under_qty, day_cutting, day_input, hours_planned, ot_hours_planned, ot_manpower_planned")
         .eq("factory_id", profile.factory_id)
         .eq("line_id", selectedLine.id)
         .eq("work_order_id", selectedWorkOrder.id)
@@ -205,6 +207,7 @@ export default function CuttingMorningTargets() {
         setUnderQty(String(data.under_qty || 0));
         setDayCutting(String(data.day_cutting || 0));
         setDayInput(String(data.day_input || 0));
+        setHoursPlanned(data.hours_planned ? String(data.hours_planned) : "");
         setOtHoursPlanned(String(data.ot_hours_planned || 0));
         setOtManpowerPlanned(String(data.ot_manpower_planned || 0));
       } else {
@@ -219,6 +222,7 @@ export default function CuttingMorningTargets() {
           setUnderQty("0");
           setDayCutting("");
           setDayInput("");
+          setHoursPlanned("");
           setOtHoursPlanned("0");
           setOtManpowerPlanned("0");
         }
@@ -288,6 +292,7 @@ export default function CuttingMorningTargets() {
         lay_capacity: parseInt(layCapacity),
         cutting_capacity: parseInt(cuttingCapacity),
         under_qty: parseInt(underQty) || 0,
+        hours_planned: hoursPlanned ? parseFloat(hoursPlanned) : null,
         ot_hours_planned: parseFloat(otHoursPlanned) || 0,
         ot_manpower_planned: parseInt(otManpowerPlanned) || 0,
         day_cutting: parseInt(dayCutting),
@@ -574,6 +579,19 @@ export default function CuttingMorningTargets() {
                 type="number"
                 value={underQty}
                 onChange={(e) => setUnderQty(e.target.value)}
+                placeholder="0"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Hours Planned</Label>
+              <Input
+                type="number"
+                step="0.5"
+                min="0"
+                max="24"
+                value={hoursPlanned}
+                onChange={(e) => setHoursPlanned(e.target.value)}
                 placeholder="0"
               />
             </div>

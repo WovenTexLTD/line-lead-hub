@@ -66,6 +66,7 @@ interface TargetSubmission {
   manpower_planned?: number | null;
   m_power_planned?: number | null;
   ot_hours_planned?: number | null;
+  hours_planned?: number | null;
   day_hour_planned?: number | null;
   day_over_time_planned?: number | null;
   stage_name?: string | null;
@@ -104,6 +105,7 @@ interface EndOfDaySubmission {
   stage_progress?: number | null;
   ot_hours?: number | null;
   ot_manpower?: number | null;
+  hours_actual?: number | null;
   notes?: string | null;
   work_order_id?: string;
   cumulative_good_total?: number | null;
@@ -150,6 +152,7 @@ interface CuttingTarget {
   submitted_at: string | null;
   ot_hours_planned: number | null;
   ot_manpower_planned: number | null;
+  hours_planned: number | null;
 }
 
 interface CuttingSubmission {
@@ -176,6 +179,7 @@ interface CuttingSubmission {
   submitted_at: string | null;
   ot_hours_actual: number | null;
   ot_manpower_actual: number | null;
+  hours_actual: number | null;
   leftover_recorded: boolean | null;
   leftover_type: string | null;
   leftover_unit: string | null;
@@ -414,6 +418,7 @@ export default function Dashboard() {
         per_hour_target: t.per_hour_target,
         manpower_planned: t.manpower_planned,
         ot_hours_planned: t.ot_hours_planned,
+        hours_planned: t.hours_planned ?? null,
         stage_name: t.stages?.name || null,
         planned_stage_progress: t.planned_stage_progress,
         next_milestone: t.next_milestone,
@@ -479,6 +484,7 @@ export default function Dashboard() {
           stage_progress: u.actual_stage_progress,
           ot_hours: u.ot_hours_actual,
           ot_manpower: u.ot_manpower_actual ?? null,
+          hours_actual: u.hours_actual ?? null,
           notes: u.remarks,
           work_order_id: u.work_order_id,
           cumulative_good_total: u.cumulative_good_total,
@@ -535,6 +541,7 @@ export default function Dashboard() {
         submitted_at: c.submitted_at,
         ot_hours_planned: c.ot_hours_planned ?? null,
         ot_manpower_planned: c.ot_manpower_planned ?? null,
+        hours_planned: c.hours_planned ?? null,
       }));
 
       // Format cutting submissions (actuals)
@@ -562,6 +569,7 @@ export default function Dashboard() {
         submitted_at: c.submitted_at,
         ot_hours_actual: c.ot_hours_actual ?? null,
         ot_manpower_actual: c.ot_manpower_actual ?? null,
+        hours_actual: c.hours_actual ?? null,
         leftover_recorded: c.leftover_recorded || null,
         leftover_type: c.leftover_type || null,
         leftover_unit: c.leftover_unit || null,
@@ -1425,6 +1433,7 @@ export default function Dashboard() {
               manpower_actual: eod.manpower ?? 0,
               ot_hours_actual: eod.ot_hours ?? 0,
               ot_manpower_actual: eod.ot_manpower ?? null,
+              hours_actual: eod.hours_actual ?? null,
               stage_name: eod.stage_name || null,
               actual_stage_progress: eod.actual_stage_progress ?? eod.stage_progress ?? null,
               remarks: eod.notes || null,
@@ -1452,6 +1461,7 @@ export default function Dashboard() {
                 per_hour_target: mt.per_hour_target,
                 manpower_planned: mt.manpower_planned ?? null,
                 ot_hours_planned: mt.ot_hours_planned ?? null,
+                hours_planned: mt.hours_planned ?? null,
                 stage_name: mt.stage_name ?? null,
                 planned_stage_progress: mt.planned_stage_progress ?? null,
                 next_milestone: mt.next_milestone ?? null,
@@ -1475,6 +1485,7 @@ export default function Dashboard() {
               per_hour_target: tgt.per_hour_target,
               manpower_planned: tgt.manpower_planned ?? null,
               ot_hours_planned: tgt.ot_hours_planned ?? null,
+              hours_planned: tgt.hours_planned ?? null,
               stage_name: tgt.stage_name ?? null,
               planned_stage_progress: tgt.planned_stage_progress ?? null,
               next_milestone: tgt.next_milestone ?? null,
@@ -1503,6 +1514,7 @@ export default function Dashboard() {
                 manpower_actual: ma.manpower ?? 0,
                 ot_hours_actual: ma.ot_hours ?? 0,
                 ot_manpower_actual: ma.ot_manpower ?? null,
+                hours_actual: ma.hours_actual ?? null,
                 stage_name: ma.stage_name || null,
                 actual_stage_progress: ma.actual_stage_progress ?? ma.stage_progress ?? null,
                 remarks: ma.notes || null,
@@ -1555,6 +1567,7 @@ export default function Dashboard() {
               day_input: matchingTarget.day_input,
               ot_hours_planned: matchingTarget.ot_hours_planned,
               ot_manpower_planned: matchingTarget.ot_manpower_planned,
+              hours_planned: matchingTarget.hours_planned ?? null,
             } : null}
             actual={selectedCutting ? {
               id: selectedCutting.id,
@@ -1578,6 +1591,7 @@ export default function Dashboard() {
               balance: selectedCutting.balance,
               ot_hours_actual: selectedCutting.ot_hours_actual,
               ot_manpower_actual: selectedCutting.ot_manpower_actual,
+              hours_actual: selectedCutting.hours_actual ?? null,
               leftover_recorded: selectedCutting.leftover_recorded,
               leftover_type: selectedCutting.leftover_type,
               leftover_unit: selectedCutting.leftover_unit,
@@ -1621,6 +1635,7 @@ export default function Dashboard() {
               day_input: selectedCuttingTarget.day_input,
               ot_hours_planned: selectedCuttingTarget.ot_hours_planned ?? null,
               ot_manpower_planned: selectedCuttingTarget.ot_manpower_planned ?? null,
+              hours_planned: selectedCuttingTarget.hours_planned ?? null,
             } : null}
             actual={matchingActual ? {
               id: matchingActual.id,
@@ -1644,6 +1659,7 @@ export default function Dashboard() {
               balance: matchingActual.balance,
               ot_hours_actual: matchingActual.ot_hours_actual,
               ot_manpower_actual: matchingActual.ot_manpower_actual,
+              hours_actual: matchingActual.hours_actual ?? null,
               leftover_recorded: matchingActual.leftover_recorded,
               leftover_type: matchingActual.leftover_type,
               leftover_unit: matchingActual.leftover_unit,

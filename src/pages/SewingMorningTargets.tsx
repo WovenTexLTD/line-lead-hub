@@ -107,6 +107,7 @@ export default function SewingMorningTargets() {
   const [selectedWorkOrderId, setSelectedWorkOrderId] = useState("");
   const [perHourTarget, setPerHourTarget] = useState("");
   const [manpowerPlanned, setManpowerPlanned] = useState("");
+  const [hoursPlanned, setHoursPlanned] = useState("");
   const [otHoursPlanned, setOtHoursPlanned] = useState("0");
   const [plannedStageId, setPlannedStageId] = useState("");
   const [plannedStageProgress, setPlannedStageProgress] = useState("");
@@ -274,6 +275,7 @@ export default function SewingMorningTargets() {
         order_qty: selectedWorkOrder?.order_qty || 0,
         per_hour_target: parseInt(perHourTarget),
         manpower_planned: parseInt(manpowerPlanned),
+        hours_planned: hoursPlanned ? parseFloat(hoursPlanned) : null,
         ot_hours_planned: parseFloat(otHoursPlanned),
         planned_stage_id: plannedStageId,
         planned_stage_progress: parseInt(plannedStageProgress),
@@ -501,17 +503,32 @@ export default function SewingMorningTargets() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>{t("forms.otHoursPlanned")} *</Label>
-              <Input
-                type="number"
-                step="0.5"
-                value={otHoursPlanned}
-                onChange={(e) => setOtHoursPlanned(e.target.value)}
-                placeholder="0"
-                className={errors.otHoursPlanned ? "border-destructive" : ""}
-              />
-              {errors.otHoursPlanned && <p className="text-sm text-destructive">{errors.otHoursPlanned}</p>}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Hours Planned</Label>
+                <Input
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  max="24"
+                  value={hoursPlanned}
+                  onChange={(e) => setHoursPlanned(e.target.value)}
+                  placeholder="0"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>{t("forms.otHoursPlanned")} *</Label>
+                <Input
+                  type="number"
+                  step="0.5"
+                  value={otHoursPlanned}
+                  onChange={(e) => setOtHoursPlanned(e.target.value)}
+                  placeholder="0"
+                  className={errors.otHoursPlanned ? "border-destructive" : ""}
+                />
+                {errors.otHoursPlanned && <p className="text-sm text-destructive">{errors.otHoursPlanned}</p>}
+              </div>
             </div>
           </CardContent>
         </Card>

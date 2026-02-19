@@ -378,6 +378,7 @@ export type Database = {
           day_cutting: number
           day_input: number
           factory_id: string
+          hours_actual: number | null
           id: string
           is_late: boolean | null
           lay_capacity: number
@@ -418,6 +419,7 @@ export type Database = {
           day_cutting?: number
           day_input?: number
           factory_id: string
+          hours_actual?: number | null
           id?: string
           is_late?: boolean | null
           lay_capacity?: number
@@ -458,6 +460,7 @@ export type Database = {
           day_cutting?: number
           day_input?: number
           factory_id?: string
+          hours_actual?: number | null
           id?: string
           is_late?: boolean | null
           lay_capacity?: number
@@ -568,6 +571,7 @@ export type Database = {
           day_cutting: number
           day_input: number
           factory_id: string
+          hours_planned: number | null
           id: string
           is_late: boolean | null
           lay_capacity: number
@@ -594,6 +598,7 @@ export type Database = {
           day_cutting?: number
           day_input?: number
           factory_id: string
+          hours_planned?: number | null
           id?: string
           is_late?: boolean | null
           lay_capacity?: number
@@ -620,6 +625,7 @@ export type Database = {
           day_cutting?: number
           day_input?: number
           factory_id?: string
+          hours_planned?: number | null
           id?: string
           is_late?: boolean | null
           lay_capacity?: number
@@ -2343,6 +2349,7 @@ export type Database = {
           floor_name: string | null
           good_today: number
           has_blocker: boolean | null
+          hours_actual: number | null
           id: string
           item_name: string | null
           line_id: string
@@ -2377,6 +2384,7 @@ export type Database = {
           floor_name?: string | null
           good_today?: number
           has_blocker?: boolean | null
+          hours_actual?: number | null
           id?: string
           item_name?: string | null
           line_id: string
@@ -2411,6 +2419,7 @@ export type Database = {
           floor_name?: string | null
           good_today?: number
           has_blocker?: boolean | null
+          hours_actual?: number | null
           id?: string
           item_name?: string | null
           line_id?: string
@@ -2474,6 +2483,7 @@ export type Database = {
           estimated_ex_factory: string | null
           factory_id: string
           floor_name: string | null
+          hours_planned: number | null
           id: string
           is_late: boolean | null
           item_name: string | null
@@ -2499,6 +2509,7 @@ export type Database = {
           estimated_ex_factory?: string | null
           factory_id: string
           floor_name?: string | null
+          hours_planned?: number | null
           id?: string
           is_late?: boolean | null
           item_name?: string | null
@@ -2524,6 +2535,7 @@ export type Database = {
           estimated_ex_factory?: string | null
           factory_id?: string
           floor_name?: string | null
+          hours_planned?: number | null
           id?: string
           is_late?: boolean | null
           item_name?: string | null

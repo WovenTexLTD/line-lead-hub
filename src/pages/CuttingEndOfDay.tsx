@@ -77,6 +77,7 @@ interface ExistingActual {
   leftover_notes: string | null;
   leftover_location: string | null;
   leftover_photo_urls: string[] | null;
+  hours_actual: number | null;
   ot_hours_actual: number | null;
   ot_manpower_actual: number | null;
 }
@@ -111,7 +112,8 @@ export default function CuttingEndOfDay() {
   const [cuttingCapacity, setCuttingCapacity] = useState("");
   const [underQty, setUnderQty] = useState("0");
 
-  // OT fields
+  // Hours fields
+  const [hoursActual, setHoursActual] = useState("");
   const [otHoursActual, setOtHoursActual] = useState("0");
   const [otManpowerActual, setOtManpowerActual] = useState("0");
 
@@ -229,7 +231,7 @@ export default function CuttingEndOfDay() {
       // Check for today's actual
       const { data: actualData, error } = await supabase
         .from("cutting_actuals")
-        .select("id, day_cutting, day_input, total_cutting, total_input, balance, man_power, marker_capacity, lay_capacity, cutting_capacity, under_qty, leftover_recorded, leftover_type, leftover_unit, leftover_quantity, leftover_notes, leftover_location, leftover_photo_urls, ot_hours_actual, ot_manpower_actual")
+        .select("id, day_cutting, day_input, total_cutting, total_input, balance, man_power, marker_capacity, lay_capacity, cutting_capacity, under_qty, leftover_recorded, leftover_type, leftover_unit, leftover_quantity, leftover_notes, leftover_location, leftover_photo_urls, hours_actual, ot_hours_actual, ot_manpower_actual")
         .eq("factory_id", profile.factory_id)
         .eq("line_id", selectedLine.id)
         .eq("work_order_id", selectedWorkOrder.id)
@@ -248,6 +250,7 @@ export default function CuttingEndOfDay() {
         setLayCapacity(String(actualData.lay_capacity || 0));
         setCuttingCapacity(String(actualData.cutting_capacity || 0));
         setUnderQty(String(actualData.under_qty || 0));
+        setHoursActual(actualData.hours_actual ? String(actualData.hours_actual) : "");
         setOtHoursActual(String(actualData.ot_hours_actual || 0));
         setOtManpowerActual(String(actualData.ot_manpower_actual || 0));
         // Load leftover data if it exists
@@ -394,6 +397,7 @@ export default function CuttingEndOfDay() {
         lay_capacity: parseInt(layCapacity),
         cutting_capacity: parseInt(cuttingCapacity),
         under_qty: parseInt(underQty) || 0,
+        hours_actual: hoursActual ? parseFloat(hoursActual) : null,
         ot_hours_actual: parseFloat(otHoursActual) || 0,
         ot_manpower_actual: parseInt(otManpowerActual) || 0,
         is_late: isLate,
@@ -687,6 +691,19 @@ export default function CuttingEndOfDay() {
                 type="number"
                 value={underQty}
                 onChange={(e) => setUnderQty(e.target.value)}
+                placeholder="0"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Hours Actual</Label>
+              <Input
+                type="number"
+                step="0.5"
+                min="0"
+                max="24"
+                value={hoursActual}
+                onChange={(e) => setHoursActual(e.target.value)}
                 placeholder="0"
               />
             </div>

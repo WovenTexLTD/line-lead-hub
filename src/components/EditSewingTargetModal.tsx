@@ -13,6 +13,7 @@ interface SewingTarget {
   production_date: string;
   per_hour_target: number;
   manpower_planned: number;
+  hours_planned: number | null;
   ot_hours_planned: number;
   remarks?: string | null;
 }
@@ -53,6 +54,7 @@ export function EditSewingTargetModal({ target, open, onOpenChange, onSaved }: E
         .update({
           per_hour_target: formData.per_hour_target ?? 0,
           manpower_planned: formData.manpower_planned ?? 0,
+          hours_planned: formData.hours_planned || null,
           ot_hours_planned: formData.ot_hours_planned ?? 0,
           remarks: formData.remarks,
         })
@@ -103,15 +105,28 @@ export function EditSewingTargetModal({ target, open, onOpenChange, onSaved }: E
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="ot_hours_planned">OT Hours Planned</Label>
+              <Label htmlFor="hours_planned">Hours Planned</Label>
               <Input
-                id="ot_hours_planned"
+                id="hours_planned"
                 type="number"
                 step="0.5"
-                value={formData.ot_hours_planned ?? ''}
-                onChange={(e) => handleNumberChange('ot_hours_planned', e.target.value)}
+                min="0"
+                max="24"
+                value={formData.hours_planned ?? ''}
+                onChange={(e) => handleNumberChange('hours_planned', e.target.value)}
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="ot_hours_planned">OT Hours Planned</Label>
+            <Input
+              id="ot_hours_planned"
+              type="number"
+              step="0.5"
+              value={formData.ot_hours_planned ?? ''}
+              onChange={(e) => handleNumberChange('ot_hours_planned', e.target.value)}
+            />
           </div>
 
           <div className="space-y-2">

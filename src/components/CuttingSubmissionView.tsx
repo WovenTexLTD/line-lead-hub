@@ -34,6 +34,7 @@ export interface CuttingTargetData {
   under_qty: number | null;
   day_cutting: number | null;
   day_input: number | null;
+  hours_planned: number | null;
   ot_hours_planned: number | null;
   ot_manpower_planned: number | null;
 }
@@ -58,6 +59,7 @@ export interface CuttingActualData {
   total_cutting: number | null;
   total_input: number | null;
   balance: number | null;
+  hours_actual: number | null;
   ot_hours_actual: number | null;
   ot_manpower_actual: number | null;
   leftover_recorded: boolean | null;
@@ -177,6 +179,9 @@ export function CuttingSubmissionView({ target, actual, open, onOpenChange }: Cu
                     <FieldDisplay label="Lay Capacity" value={target.lay_capacity} />
                     <FieldDisplay label="Cutting Capacity" value={target.cutting_capacity} className="text-primary" />
                     <FieldDisplay label="Under Qty" value={target.under_qty} />
+                    {target.hours_planned != null && (
+                      <FieldDisplay label="Hours Planned" value={target.hours_planned} />
+                    )}
                     {target.ot_hours_planned != null && (
                       <FieldDisplay label="OT Hours Planned" value={target.ot_hours_planned} />
                     )}
@@ -226,6 +231,9 @@ export function CuttingSubmissionView({ target, actual, open, onOpenChange }: Cu
                     <FieldDisplay label="Lay Capacity" value={actual.lay_capacity} />
                     <FieldDisplay label="Cutting Capacity" value={actual.cutting_capacity} className="text-success" />
                     <FieldDisplay label="Under Qty" value={actual.under_qty} />
+                    {actual.hours_actual != null && (
+                      <FieldDisplay label="Hours Actual" value={actual.hours_actual} />
+                    )}
                     {actual.ot_hours_actual != null && (
                       <FieldDisplay label="OT Hours Actual" value={actual.ot_hours_actual} />
                     )}
@@ -350,6 +358,9 @@ export function CuttingSubmissionView({ target, actual, open, onOpenChange }: Cu
                       { label: "Marker Capacity", tgt: target.marker_capacity, act: actual.marker_capacity },
                       { label: "Lay Capacity", tgt: target.lay_capacity, act: actual.lay_capacity },
                       { label: "Under Qty", tgt: target.under_qty, act: actual.under_qty },
+                      ...(target.hours_planned != null || actual.hours_actual != null
+                        ? [{ label: "Hours", tgt: target.hours_planned, act: actual.hours_actual }]
+                        : []),
                       ...(target.ot_hours_planned != null || actual.ot_hours_actual != null
                         ? [{ label: "OT Hours", tgt: target.ot_hours_planned, act: actual.ot_hours_actual }]
                         : []),

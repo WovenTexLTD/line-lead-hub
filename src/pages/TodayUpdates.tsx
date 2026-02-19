@@ -99,6 +99,7 @@ interface CuttingActual {
   leftover_location: string | null;
   ot_hours_actual: number | null;
   ot_manpower_actual: number | null;
+  hours_actual: number | null;
   lines: { line_id: string; name: string | null } | null;
   work_orders: { po_number: string; buyer: string; style: string } | null;
 }
@@ -123,6 +124,7 @@ interface CuttingTargetFull {
   submitted_at: string | null;
   ot_hours_planned: number | null;
   ot_manpower_planned: number | null;
+  hours_planned: number | null;
   lines: { line_id: string; name: string | null } | null;
   work_orders: { po_number: string; buyer: string; style: string } | null;
 }
@@ -135,6 +137,7 @@ interface SewingTargetRow {
   per_hour_target: number;
   manpower_planned: number;
   ot_hours_planned: number;
+  hours_planned: number | null;
   planned_stage_progress: number;
   next_milestone: string | null;
   estimated_ex_factory: string | null;
@@ -158,6 +161,7 @@ interface SewingActualRow {
   manpower_actual: number;
   ot_hours_actual: number;
   ot_manpower_actual: number | null;
+  hours_actual: number | null;
   actual_stage_progress: number;
   has_blocker: boolean | null;
   blocker_description: string | null;
@@ -689,6 +693,7 @@ export default function TodayUpdates() {
       leftover_quantity: cutting.leftover_quantity,
       leftover_notes: cutting.leftover_notes,
       leftover_location: cutting.leftover_location,
+      hours_actual: cutting.hours_actual ?? null,
       ot_hours_actual: cutting.ot_hours_actual,
       ot_manpower_actual: cutting.ot_manpower_actual,
     });
@@ -1668,6 +1673,7 @@ export default function TodayUpdates() {
             per_hour_target: t.per_hour_target,
             manpower_planned: t.manpower_planned,
             ot_hours_planned: t.ot_hours_planned,
+            hours_planned: t.hours_planned ?? null,
             stage_name: t.stages?.name || null,
             planned_stage_progress: t.planned_stage_progress,
             next_milestone: t.next_milestone,
@@ -1694,6 +1700,7 @@ export default function TodayUpdates() {
             manpower_actual: a.manpower_actual,
             ot_hours_actual: a.ot_hours_actual,
             ot_manpower_actual: a.ot_manpower_actual,
+            hours_actual: a.hours_actual ?? null,
             stage_name: a.stages?.name || null,
             actual_stage_progress: a.actual_stage_progress,
             remarks: a.remarks,
@@ -1742,6 +1749,7 @@ export default function TodayUpdates() {
               under_qty: matchingTarget.under_qty,
               day_cutting: matchingTarget.day_cutting,
               day_input: matchingTarget.day_input,
+              hours_planned: matchingTarget.hours_planned ?? null,
               ot_hours_planned: matchingTarget.ot_hours_planned,
               ot_manpower_planned: matchingTarget.ot_manpower_planned,
             } : null}
@@ -1765,6 +1773,7 @@ export default function TodayUpdates() {
               total_cutting: selectedCutting.total_cutting,
               total_input: selectedCutting.total_input,
               balance: selectedCutting.balance,
+              hours_actual: selectedCutting.hours_actual ?? null,
               ot_hours_actual: selectedCutting.ot_hours_actual,
               ot_manpower_actual: selectedCutting.ot_manpower_actual,
               leftover_recorded: selectedCutting.leftover_recorded,
@@ -1887,6 +1896,7 @@ export default function TodayUpdates() {
               under_qty: selectedCuttingTarget.under_qty,
               day_cutting: selectedCuttingTarget.day_cutting,
               day_input: selectedCuttingTarget.day_input,
+              hours_planned: selectedCuttingTarget.hours_planned ?? null,
               ot_hours_planned: selectedCuttingTarget.ot_hours_planned ?? null,
               ot_manpower_planned: selectedCuttingTarget.ot_manpower_planned ?? null,
             } : null}
@@ -1910,6 +1920,7 @@ export default function TodayUpdates() {
               total_cutting: matchingActual.total_cutting,
               total_input: matchingActual.total_input,
               balance: matchingActual.balance,
+              hours_actual: matchingActual.hours_actual ?? null,
               ot_hours_actual: matchingActual.ot_hours_actual,
               ot_manpower_actual: matchingActual.ot_manpower_actual,
               leftover_recorded: matchingActual.leftover_recorded,

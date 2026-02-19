@@ -16,6 +16,7 @@ interface CuttingActual {
   total_cutting: number | null;
   total_input: number | null;
   balance: number | null;
+  hours_actual: number | null;
   order_qty: number | null;
 }
 
@@ -54,6 +55,7 @@ export function EditCuttingActualModal({ submission, open, onOpenChange, onSaved
           total_cutting: formData.total_cutting,
           total_input: formData.total_input,
           balance: formData.balance,
+          hours_actual: formData.hours_actual || null,
         })
         .eq('id', submission.id);
 
@@ -123,14 +125,28 @@ export function EditCuttingActualModal({ submission, open, onOpenChange, onSaved
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="balance">Balance</Label>
-            <Input
-              id="balance"
-              type="number"
-              value={formData.balance ?? ''}
-              onChange={(e) => handleNumberChange('balance', e.target.value)}
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="balance">Balance</Label>
+              <Input
+                id="balance"
+                type="number"
+                value={formData.balance ?? ''}
+                onChange={(e) => handleNumberChange('balance', e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="hours_actual">Hours Actual</Label>
+              <Input
+                id="hours_actual"
+                type="number"
+                step="0.5"
+                min="0"
+                max="24"
+                value={formData.hours_actual ?? ''}
+                onChange={(e) => handleNumberChange('hours_actual', e.target.value)}
+              />
+            </div>
           </div>
         </div>
 

@@ -110,6 +110,7 @@ export default function SewingEndOfDay() {
   const [reworkToday, setReworkToday] = useState("");
   const [previousCumulativeTotal, setPreviousCumulativeTotal] = useState(0);
   const [manpowerActual, setManpowerActual] = useState("");
+  const [hoursActual, setHoursActual] = useState("");
   const [otHoursActual, setOtHoursActual] = useState("0");
   const [otManpowerActual, setOtManpowerActual] = useState("0");
   const [actualStageId, setActualStageId] = useState("");
@@ -322,6 +323,7 @@ export default function SewingEndOfDay() {
         rework_today: parseInt(reworkToday),
         cumulative_good_total: cumulativeGoodTotal,
         manpower_actual: parseInt(manpowerActual),
+        hours_actual: hoursActual ? parseFloat(hoursActual) : null,
         ot_hours_actual: parseFloat(otHoursActual),
         ot_manpower_actual: parseInt(otManpowerActual) || 0,
         actual_stage_id: actualStageId,
@@ -586,6 +588,21 @@ export default function SewingEndOfDay() {
                 {errors.manpowerActual && <p className="text-sm text-destructive">{errors.manpowerActual}</p>}
               </div>
 
+              <div className="space-y-2">
+                <Label>Hours Actual</Label>
+                <Input
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  max="24"
+                  value={hoursActual}
+                  onChange={(e) => setHoursActual(e.target.value)}
+                  placeholder="0"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>{t("forms.otHoursActual")} *</Label>
                 <Input
