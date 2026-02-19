@@ -689,7 +689,7 @@ export default function FinishingDailyOutput() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>OT Manpower</Label>
+                <Label>OT Manpower Actual</Label>
                 <Input
                   type="number"
                   value={otManpowerActual}
