@@ -135,20 +135,21 @@ export function useLinePerformance() {
         .eq("factory_id", factoryId);
 
       const queries = [
-        linesQuery.then(r => r),
-        targetsQuery.then(r => r),
-        actualsQuery.then(r => r),
-        assignmentsQuery.then(r => r),
-      ];
+        Promise.resolve(linesQuery),
+        Promise.resolve(targetsQuery),
+        Promise.resolve(actualsQuery),
+        Promise.resolve(assignmentsQuery),
+      ] as Promise<any>[];
 
       // Only fetch user line assignments if not admin
       if (userId && !isAdminOrHigher()) {
         queries.push(
-          supabase
-            .from("user_line_assignments")
-            .select("line_id")
-            .eq("user_id", userId)
-            .then(r => r)
+          Promise.resolve(
+            supabase
+              .from("user_line_assignments")
+              .select("line_id")
+              .eq("user_id", userId)
+          )
         );
       }
 
