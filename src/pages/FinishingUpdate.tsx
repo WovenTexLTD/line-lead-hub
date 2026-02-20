@@ -60,6 +60,7 @@ interface WorkOrder {
 interface Factory {
   id: string;
   name: string;
+  timezone: string | null;
 }
 
 const finishingSchema = z.object({
@@ -224,7 +225,7 @@ export default function FinishingUpdate() {
           .eq('is_active', true),
         supabase
           .from('factory_accounts')
-          .select('id, name')
+          .select('id, name, timezone')
           .eq('id', profile.factory_id)
           .maybeSingle(),
       ]);
