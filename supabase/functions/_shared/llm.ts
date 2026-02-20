@@ -342,7 +342,7 @@ export async function generateChatResponse(
 /**
  * Detect language from text (simple heuristic)
  */
-export function detectLanguage(text: string): "en" | "bn" {
+export function detectLanguage(text: string): "en" | "bn" | "zh" {
   // Bengali Unicode range: \u0980-\u09FF
   const bengaliRegex = /[\u0980-\u09FF]/;
   const bengaliMatches = text.match(new RegExp(bengaliRegex, "g")) || [];
@@ -350,6 +350,14 @@ export function detectLanguage(text: string): "en" | "bn" {
   // If more than 10% of characters are Bengali, consider it Bengali
   if (bengaliMatches.length > text.length * 0.1) {
     return "bn";
+  }
+
+  // Chinese Unicode ranges: CJK Unified Ideographs \u4E00-\u9FFF
+  const chineseRegex = /[\u4E00-\u9FFF]/;
+  const chineseMatches = text.match(new RegExp(chineseRegex, "g")) || [];
+
+  if (chineseMatches.length > text.length * 0.1) {
+    return "zh";
   }
 
   return "en";

@@ -20,11 +20,12 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 
-type Language = 'en' | 'bn';
+type Language = 'en' | 'bn' | 'zh';
 
 const LANGUAGES = [
   { value: 'en', label: 'English', nativeLabel: 'English' },
   { value: 'bn', label: 'বাংলা', nativeLabel: 'Bangla' },
+  { value: 'zh', label: '中文', nativeLabel: 'Chinese' },
 ] as const;
 
 export default function Preferences() {
@@ -64,7 +65,7 @@ export default function Preferences() {
 
   const handleSaveProfile = async () => {
     if (!user || !fullName.trim()) {
-      toast.error("Name is required");
+      toast.error(t('modals.nameRequired'));
       return;
     }
 
@@ -76,9 +77,9 @@ export default function Preferences() {
         .eq('id', user.id);
 
       if (error) throw error;
-      toast.success("Profile updated");
+      toast.success(t('modals.profileUpdated'));
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to update profile";
+      const message = err instanceof Error ? err.message : t('modals.failedToUpdateProfile');
       toast.error(message);
     } finally {
       setProfileSaving(false);
@@ -89,11 +90,11 @@ export default function Preferences() {
     if (!user || !currentPassword || !newPassword) return;
 
     if (newPassword.length < 8) {
-      toast.error("New password must be at least 8 characters");
+      toast.error(t('modals.newPasswordMinLength'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      toast.error("New passwords don't match");
+      toast.error(t('modals.newPasswordsDontMatch'));
       return;
     }
 
@@ -105,7 +106,7 @@ export default function Preferences() {
         password: currentPassword,
       });
       if (signInError) {
-        toast.error("Current password is incorrect");
+        toast.error(t('modals.currentPasswordIncorrect'));
         return;
       }
 
@@ -113,12 +114,12 @@ export default function Preferences() {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
 
-      toast.success("Password updated successfully");
+      toast.success(t('modals.passwordUpdated'));
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to update password";
+      const message = err instanceof Error ? err.message : t('modals.failedToUpdatePassword');
       toast.error(message);
     } finally {
       setPasswordSaving(false);
@@ -185,31 +186,31 @@ export default function Preferences() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <User className="h-5 w-5 text-muted-foreground" />
-            <CardTitle>Profile & Security</CardTitle>
+            <CardTitle>{t('modals.profileAndSecurity')}</CardTitle>
           </div>
           <CardDescription>
-            Your account information
+            {t('modals.accountInfo')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Read-only summary */}
           <div className="grid gap-3 text-sm">
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Name</span>
+              <span className="text-muted-foreground">{t('modals.name')}</span>
               <span className="font-medium">{profile?.full_name}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Email</span>
+              <span className="text-muted-foreground">{t('modals.email')}</span>
               <span className="font-medium">{user?.email}</span>
             </div>
             {profile?.phone && (
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Phone</span>
+                <span className="text-muted-foreground">{t('modals.phone')}</span>
                 <span className="font-medium">{profile.phone}</span>
               </div>
             )}
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Password</span>
+              <span className="text-muted-foreground">{t('modals.password')}</span>
               <span className="font-medium">••••••••</span>
             </div>
           </div>
@@ -219,35 +220,35 @@ export default function Preferences() {
             <CollapsibleTrigger asChild>
               <Button variant="outline" size="sm" className="w-full">
                 <Pencil className="h-3.5 w-3.5 mr-2" />
-                Edit Profile
+                {t('modals.editProfile')}
                 <ChevronDown className={`h-3.5 w-3.5 ml-auto transition-transform ${editingProfile ? 'rotate-180' : ''}`} />
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="pt-4 space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name</Label>
+                <Label htmlFor="fullName">{t('modals.fullName')}</Label>
                 <Input
                   id="fullName"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Your full name"
+                  placeholder={t('modals.fullNamePlaceholder')}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
+                <Label htmlFor="phone">{t('modals.phone')}</Label>
                 <Input
                   id="phone"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="Phone number (optional)"
+                  placeholder={t('modals.phonePlaceholder')}
                 />
               </div>
               <div className="flex gap-2">
                 <Button onClick={handleSaveProfile} disabled={profileSaving || !fullName.trim()}>
                   {profileSaving ? (
-                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {t('modals.saving')}</>
                   ) : (
-                    'Save'
+                    t('modals.save')
                   )}
                 </Button>
                 <Button variant="ghost" onClick={() => {
@@ -255,7 +256,7 @@ export default function Preferences() {
                   setFullName(profile?.full_name || '');
                   setPhone(profile?.phone || '');
                 }}>
-                  Cancel
+                  {t('modals.cancel')}
                 </Button>
               </div>
             </CollapsibleContent>
@@ -266,20 +267,20 @@ export default function Preferences() {
             <CollapsibleTrigger asChild>
               <Button variant="outline" size="sm" className="w-full">
                 <KeyRound className="h-3.5 w-3.5 mr-2" />
-                Change Password
+                {t('modals.changePassword')}
                 <ChevronDown className={`h-3.5 w-3.5 ml-auto transition-transform ${editingPassword ? 'rotate-180' : ''}`} />
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="pt-4 space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="currentPassword">Current Password</Label>
+                <Label htmlFor="currentPassword">{t('modals.currentPassword')}</Label>
                 <div className="relative">
                   <Input
                     id="currentPassword"
                     type={showCurrentPassword ? "text" : "password"}
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="Enter current password"
+                    placeholder={t('modals.currentPasswordPlaceholder')}
                   />
                   <Button
                     type="button"
@@ -293,14 +294,14 @@ export default function Preferences() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="newPassword">New Password</Label>
+                <Label htmlFor="newPassword">{t('modals.newPassword')}</Label>
                 <div className="relative">
                   <Input
                     id="newPassword"
                     type={showNewPassword ? "text" : "password"}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="At least 8 characters"
+                    placeholder={t('modals.newPasswordPlaceholder')}
                   />
                   <Button
                     type="button"
@@ -314,16 +315,16 @@ export default function Preferences() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                <Label htmlFor="confirmPassword">{t('modals.confirmNewPassword')}</Label>
                 <Input
                   id="confirmPassword"
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Re-enter new password"
+                  placeholder={t('modals.confirmNewPasswordPlaceholder')}
                 />
                 {confirmPassword && newPassword !== confirmPassword && (
-                  <p className="text-xs text-destructive">Passwords don't match</p>
+                  <p className="text-xs text-destructive">{t('modals.passwordsDontMatch')}</p>
                 )}
               </div>
               <div className="flex gap-2">
@@ -332,9 +333,9 @@ export default function Preferences() {
                   disabled={passwordSaving || !currentPassword || !newPassword || newPassword !== confirmPassword}
                 >
                   {passwordSaving ? (
-                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Updating...</>
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {t('modals.updatingPassword')}</>
                   ) : (
-                    'Update Password'
+                    t('modals.updatePassword')
                   )}
                 </Button>
                 <Button variant="ghost" onClick={() => {
@@ -343,7 +344,7 @@ export default function Preferences() {
                   setNewPassword('');
                   setConfirmPassword('');
                 }}>
-                  Cancel
+                  {t('modals.cancel')}
                 </Button>
               </div>
             </CollapsibleContent>
@@ -429,7 +430,7 @@ export default function Preferences() {
                   <SelectItem key={lang.value} value={lang.value}>
                     <span className="flex items-center gap-2">
                       <span>{lang.label}</span>
-                      {lang.value === 'bn' && (
+                      {lang.value !== 'en' && (
                         <span className="text-muted-foreground">({lang.nativeLabel})</span>
                       )}
                     </span>
@@ -462,19 +463,19 @@ export default function Preferences() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-destructive" />
-            <CardTitle className="text-destructive">Danger Zone</CardTitle>
+            <CardTitle className="text-destructive">{t('modals.dangerZone')}</CardTitle>
           </div>
           <CardDescription>
-            Irreversible actions that will permanently affect your account.
+            {t('modals.dangerZoneDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 rounded-lg border border-destructive/30 bg-destructive/5">
               <div className="space-y-1">
-                <p className="font-medium">Terminate Account</p>
+                <p className="font-medium">{t('modals.terminateAccount')}</p>
                 <p className="text-sm text-muted-foreground">
-                  Permanently delete your account and all associated data. This cannot be undone.
+                  {t('modals.terminateActionPermanent')}
                 </p>
               </div>
               <TerminateAccountDialog />

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -50,6 +51,7 @@ const inviteUserSchema = z.object({
 });
 
 export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDialogProps) {
+  const { t } = useTranslation();
   const { profile, hasRole } = useAuth();
   const [loading, setLoading] = useState(false);
   const [lines, setLines] = useState<Line[]>([]);
@@ -186,8 +188,8 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
 
       toast.success(
         useTemporaryPassword
-          ? `User ${formData.fullName} created with temporary password`
-          : `User ${formData.fullName} invited successfully`
+          ? t('modals.userCreatedWithPassword', { name: formData.fullName })
+          : t('modals.userInvitedSuccess', { name: formData.fullName })
       );
       onSuccess();
       onOpenChange(false);
@@ -198,7 +200,7 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
       setShowPassword(false);
     } catch (error) {
       console.error("Error inviting user:", error);
-      toast.error("Failed to invite user");
+      toast.error(t('modals.failedToInviteUser'));
     } finally {
       setLoading(false);
     }
@@ -210,10 +212,10 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5" />
-            Invite New User
+            {t('modals.inviteNewUser')}
           </DialogTitle>
           <DialogDescription>
-            Add a new user to your factory. They will receive an email to set their password.
+            {t('modals.inviteDescription')}
           </DialogDescription>
         </DialogHeader>
 
@@ -221,13 +223,13 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
           <div className="space-y-2">
             <Label htmlFor="fullName" className="flex items-center gap-2">
               <User className="h-4 w-4 text-muted-foreground" />
-              Full Name
+              {t('modals.fullName')}
             </Label>
             <Input
               id="fullName"
               value={formData.fullName}
               onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-              placeholder="Enter full name"
+              placeholder={t('modals.enterFullName')}
               required
             />
             {formErrors.fullName && <p className="text-sm text-destructive">{formErrors.fullName}</p>}
@@ -236,14 +238,14 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
           <div className="space-y-2">
             <Label htmlFor="email" className="flex items-center gap-2">
               <Mail className="h-4 w-4 text-muted-foreground" />
-              Email Address
+              {t('modals.emailAddress')}
             </Label>
             <Input
               id="email"
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              placeholder="user@example.com"
+              placeholder={t('modals.emailPlaceholder')}
               required
             />
             {formErrors.email && <p className="text-sm text-destructive">{formErrors.email}</p>}
@@ -255,10 +257,10 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
               <Key className="h-4 w-4 text-muted-foreground" />
               <div>
                 <Label htmlFor="usePassword" className="text-sm font-medium cursor-pointer">
-                  Set temporary password
+                  {t('modals.setTempPassword')}
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  For in-person onboarding without email
+                  {t('modals.forOnboarding')}
                 </p>
               </div>
             </div>
@@ -274,7 +276,7 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
             <div className="space-y-2">
               <Label htmlFor="temporaryPassword" className="flex items-center gap-2">
                 <Key className="h-4 w-4 text-muted-foreground" />
-                Temporary Password
+                {t('modals.tempPassword')}
               </Label>
               <div className="relative">
                 <Input
@@ -282,7 +284,7 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
                   type={showPassword ? "text" : "password"}
                   value={temporaryPassword}
                   onChange={(e) => setTemporaryPassword(e.target.value)}
-                  placeholder="Enter a temporary password"
+                  placeholder={t('modals.enterTempPassword')}
                   minLength={6}
                   required={useTemporaryPassword}
                   className="pr-10"
@@ -302,7 +304,7 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Share this password with the user. They should change it after first login.
+                {t('modals.shareTempPassword')}
               </p>
               {formErrors.temporaryPassword && <p className="text-sm text-destructive">{formErrors.temporaryPassword}</p>}
             </div>
@@ -311,14 +313,14 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
           <div className="space-y-2">
             <Label htmlFor="role" className="flex items-center gap-2">
               <Shield className="h-4 w-4 text-muted-foreground" />
-              Role
+              {t('modals.role')}
             </Label>
             <Select
               value={formData.role}
               onValueChange={(value: AppRole) => setFormData({ ...formData, role: value })}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select role" />
+                <SelectValue placeholder={t('modals.selectRole')} />
               </SelectTrigger>
               <SelectContent>
                 {availableRoles.map((role) => (
@@ -335,17 +337,17 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <GitBranch className="h-4 w-4 text-muted-foreground" />
-                Assigned Lines
+                {t('modals.assignedLines')}
                 {selectedLineIds.length > 0 && (
                   <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                    {selectedLineIds.length} selected
+                    {selectedLineIds.length} {t('modals.selected')}
                   </span>
                 )}
               </Label>
               <ScrollArea className="h-32 border rounded-md p-2">
                 {lines.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">
-                    No lines available
+                    {t('modals.noLinesAvailable')}
                   </p>
                 ) : (
                   <div className="space-y-2">
@@ -368,7 +370,7 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
                 )}
               </ScrollArea>
               <p className="text-xs text-muted-foreground">
-                Select which lines this user can submit updates for.
+                {t('modals.selectWhichLines')}
               </p>
             </div>
           )}
@@ -377,19 +379,19 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
           {isDeptWide && (
             <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 border text-sm text-muted-foreground">
               <Info className="h-4 w-4 mt-0.5 shrink-0" />
-              <span>This role has access to all lines and POs.</span>
+              <span>{t('modals.roleAllAccess')}</span>
             </div>
           )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {t('modals.cancel')}
             </Button>
             <Button type="submit" disabled={loading}>
               {loading ? (
-                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Inviting...</>
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {t('modals.inviting')}</>
               ) : (
-                'Invite User'
+                t('modals.inviteUser')
               )}
             </Button>
           </DialogFooter>

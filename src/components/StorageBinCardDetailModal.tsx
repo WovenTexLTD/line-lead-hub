@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import { Package, Calendar, ArrowDownToLine, ArrowUpFromLine, Scale, Layers } from "lucide-react";
 import { format } from "date-fns";
+import { useTranslation } from "react-i18next";
 
 interface Transaction {
   id: string;
@@ -59,8 +60,10 @@ interface StorageBinCardDetailModalProps {
 }
 
 function TransactionTable({ transactions }: { transactions: Transaction[] }) {
+  const { t } = useTranslation();
+
   if (transactions.length === 0) {
-    return <p className="text-sm text-muted-foreground text-center py-4">No transactions recorded yet</p>;
+    return <p className="text-sm text-muted-foreground text-center py-4">{t('modals.noTransactions')}</p>;
   }
 
   return (
@@ -68,12 +71,12 @@ function TransactionTable({ transactions }: { transactions: Transaction[] }) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Date</TableHead>
-            <TableHead className="text-right">Receive Qty</TableHead>
-            <TableHead className="text-right">Ttl Receive</TableHead>
-            <TableHead className="text-right">Issue Qty</TableHead>
-            <TableHead className="text-right">Balance Qty</TableHead>
-            <TableHead>Remarks</TableHead>
+            <TableHead>{t('modals.date')}</TableHead>
+            <TableHead className="text-right">{t('modals.receiveQty')}</TableHead>
+            <TableHead className="text-right">{t('modals.ttlReceive')}</TableHead>
+            <TableHead className="text-right">{t('modals.issueQty')}</TableHead>
+            <TableHead className="text-right">{t('modals.balanceQty')}</TableHead>
+            <TableHead>{t('modals.remarks')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -83,7 +86,7 @@ function TransactionTable({ transactions }: { transactions: Transaction[] }) {
                 {format(new Date(txn.transaction_date), 'dd/MM/yyyy')}
                 {txn.batch_id && (
                   <Badge variant="outline" className="ml-2 text-xs py-0">
-                    <Layers className="h-3 w-3 mr-1" />Bulk
+                    <Layers className="h-3 w-3 mr-1" />{t('modals.bulk')}
                   </Badge>
                 )}
               </TableCell>
@@ -115,6 +118,7 @@ function TransactionTable({ transactions }: { transactions: Transaction[] }) {
 }
 
 function SummaryCards({ transactions }: { transactions: Transaction[] }) {
+  const { t } = useTranslation();
   const latestBalance = transactions.length > 0
     ? transactions[transactions.length - 1].balance_qty
     : 0;
@@ -126,21 +130,21 @@ function SummaryCards({ transactions }: { transactions: Transaction[] }) {
       <div className="flex items-center gap-3 p-3 rounded-lg bg-success/10 border border-success/20">
         <ArrowDownToLine className="h-5 w-5 text-success" />
         <div>
-          <p className="text-xs text-muted-foreground">Total Received</p>
+          <p className="text-xs text-muted-foreground">{t('modals.totalReceived')}</p>
           <p className="text-lg font-bold text-success">{totalReceived.toLocaleString()}</p>
         </div>
       </div>
       <div className="flex items-center gap-3 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
         <ArrowUpFromLine className="h-5 w-5 text-destructive" />
         <div>
-          <p className="text-xs text-muted-foreground">Total Issued</p>
+          <p className="text-xs text-muted-foreground">{t('modals.totalIssued')}</p>
           <p className="text-lg font-bold text-destructive">{totalIssued.toLocaleString()}</p>
         </div>
       </div>
       <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/10 border border-primary/20">
         <Scale className="h-5 w-5 text-primary" />
         <div>
-          <p className="text-xs text-muted-foreground">Current Balance</p>
+          <p className="text-xs text-muted-foreground">{t('modals.currentBalance')}</p>
           <p className="text-lg font-bold text-primary">{latestBalance.toLocaleString()}</p>
         </div>
       </div>
@@ -155,6 +159,8 @@ export function StorageBinCardDetailModal({
   transactions,
   groupedCards,
 }: StorageBinCardDetailModalProps) {
+  const { t } = useTranslation();
+
   // Grouped view
   if (groupedCards) {
     const allTxns = groupedCards.cards.flatMap(c => c.transactions);
@@ -175,7 +181,7 @@ export function StorageBinCardDetailModal({
           {/* Group Header Info */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <p className="text-xs text-muted-foreground">POs</p>
+              <p className="text-xs text-muted-foreground">{t('modals.pos')}</p>
               <div className="flex flex-wrap gap-1 mt-0.5">
                 {poNumbers.map((po, i) => (
                   <Badge key={i} variant="outline" className="text-xs">{po}</Badge>
@@ -183,15 +189,15 @@ export function StorageBinCardDetailModal({
               </div>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Buyer{uniqueBuyers.length > 1 ? 's' : ''}</p>
+              <p className="text-xs text-muted-foreground">{t('modals.buyer')}</p>
               <p className="font-medium">{uniqueBuyers.join(", ") || '-'}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Supplier{uniqueSuppliers.length > 1 ? 's' : ''}</p>
+              <p className="text-xs text-muted-foreground">{t('modals.supplier')}</p>
               <p className="font-medium">{uniqueSuppliers.join(", ") || '-'}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Prepared By</p>
+              <p className="text-xs text-muted-foreground">{t('modals.preparedBy')}</p>
               <p className="font-medium">{groupedCards.cards[0]?.binCard.prepared_by || '-'}</p>
             </div>
           </div>
@@ -237,26 +243,26 @@ export function StorageBinCardDetailModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Package className="h-5 w-5 text-primary" />
-            Bin Card Details
+            {t('modals.binCardDetails')}
           </DialogTitle>
         </DialogHeader>
 
         {/* Header Info */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
-            <p className="text-xs text-muted-foreground">PO Number</p>
+            <p className="text-xs text-muted-foreground">{t('modals.poNumber')}</p>
             <p className="font-medium">{binCard.po_number || '-'}</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Buyer</p>
+            <p className="text-xs text-muted-foreground">{t('modals.buyer')}</p>
             <p className="font-medium">{binCard.buyer || '-'}</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Style</p>
+            <p className="text-xs text-muted-foreground">{t('modals.style')}</p>
             <p className="font-medium">{binCard.style || '-'}</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Color</p>
+            <p className="text-xs text-muted-foreground">{t('modals.color')}</p>
             <p className="font-medium">{binCard.color || '-'}</p>
           </div>
         </div>
@@ -266,27 +272,27 @@ export function StorageBinCardDetailModal({
         {/* Additional Details */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
-            <p className="text-xs text-muted-foreground">Supplier</p>
+            <p className="text-xs text-muted-foreground">{t('modals.supplier')}</p>
             <p className="font-medium text-sm">{binCard.supplier_name || '-'}</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Description</p>
+            <p className="text-xs text-muted-foreground">{t('modals.description')}</p>
             <p className="font-medium text-sm">{binCard.description || '-'}</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Construction</p>
+            <p className="text-xs text-muted-foreground">{t('modals.construction')}</p>
             <p className="font-medium text-sm">{binCard.construction || '-'}</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Width</p>
+            <p className="text-xs text-muted-foreground">{t('modals.width')}</p>
             <p className="font-medium text-sm">{binCard.width || '-'}</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Package Qty</p>
+            <p className="text-xs text-muted-foreground">{t('modals.packageQty')}</p>
             <p className="font-medium text-sm">{binCard.package_qty || '-'}</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Prepared By</p>
+            <p className="text-xs text-muted-foreground">{t('modals.preparedBy')}</p>
             <p className="font-medium text-sm">{binCard.prepared_by || '-'}</p>
           </div>
         </div>
@@ -299,7 +305,7 @@ export function StorageBinCardDetailModal({
         <div>
           <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
             <Calendar className="h-4 w-4" />
-            Transaction History ({transactions.length})
+            {t('modals.transactionHistoryCount', { count: transactions.length })}
           </h4>
           <TransactionTable transactions={transactions} />
         </div>

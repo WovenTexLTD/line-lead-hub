@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { format, subDays } from "date-fns";
+import { useTranslation } from "react-i18next";
 
 interface CuttingHandoff {
   id: string;
@@ -62,6 +63,7 @@ type DateFilter = "today" | "7days" | "30days" | "all";
 
 export default function CuttingHandoffs() {
   const { user, profile, isAdminOrHigher } = useAuth();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [handoffs, setHandoffs] = useState<CuttingHandoff[]>([]);
   const [dateFilter, setDateFilter] = useState<DateFilter>("today");
@@ -161,7 +163,7 @@ export default function CuttingHandoffs() {
       setHandoffs((data as unknown as CuttingHandoff[]) || []);
     } catch (error) {
       console.error("Error fetching cutting handoffs:", error);
-      toast.error("Failed to load cutting handoffs");
+      toast.error(t('cutting.failedToLoadSubmission'));
     } finally {
       setLoading(false);
     }
@@ -183,12 +185,12 @@ export default function CuttingHandoffs() {
 
       if (error) throw error;
 
-      toast.success("Handoff acknowledged successfully");
+      toast.success(t('cutting.handoffAcknowledged'));
       setSelectedHandoff(null);
       fetchHandoffs();
     } catch (error) {
       console.error("Error acknowledging handoff:", error);
-      toast.error("Failed to acknowledge handoff");
+      toast.error(t('cutting.acknowledgeFailed'));
     } finally {
       setAcknowledging(false);
     }
@@ -220,7 +222,7 @@ export default function CuttingHandoffs() {
   if (!profile?.factory_id) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center p-4">
-        <p className="text-muted-foreground">No factory assigned</p>
+        <p className="text-muted-foreground">{t('cutting.noFactoryAssigned')}</p>
       </div>
     );
   }
@@ -230,9 +232,9 @@ export default function CuttingHandoffs() {
       <div className="flex min-h-[50vh] items-center justify-center p-4">
         <div className="text-center">
           <Scissors className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h2 className="text-lg font-semibold mb-2">No Lines Assigned</h2>
+          <h2 className="text-lg font-semibold mb-2">{t('cutting.noLinesAssigned')}</h2>
           <p className="text-muted-foreground">
-            You don't have any sewing lines assigned. Contact your supervisor to get line assignments.
+            {t('cutting.noLinesAssignedDesc')}
           </p>
         </div>
       </div>
@@ -248,9 +250,9 @@ export default function CuttingHandoffs() {
             <Scissors className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-xl font-bold">Cutting Handoffs</h1>
+            <h1 className="text-xl font-bold">{t('cutting.cuttingHandoffs')}</h1>
             <p className="text-sm text-muted-foreground">
-              Cut bundles/panels transferred to your sewing lines
+              {t('cutting.cutBundlesTransferred')}
             </p>
           </div>
         </div>
@@ -269,9 +271,9 @@ export default function CuttingHandoffs() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="today">Today</SelectItem>
-            <SelectItem value="7days">Last 7 Days</SelectItem>
-            <SelectItem value="30days">Last 30 Days</SelectItem>
-            {isAdminOrHigher() && <SelectItem value="all">All Time</SelectItem>}
+            <SelectItem value="7days">{t('cutting.last7Days')}</SelectItem>
+            <SelectItem value="30days">{t('cutting.last30Days')}</SelectItem>
+            {isAdminOrHigher() && <SelectItem value="all">{t('cutting.allTime')}</SelectItem>}
           </SelectContent>
         </Select>
       </div>
@@ -280,13 +282,13 @@ export default function CuttingHandoffs() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Today's Handoffs</p>
+            <p className="text-xs text-muted-foreground">{t('cutting.todaysHandoffs')}</p>
             <p className="text-2xl font-bold">{stats.todayCount}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Unacknowledged</p>
+            <p className="text-xs text-muted-foreground">{t('cutting.unacknowledged')}</p>
             <p className="text-2xl font-bold text-amber-500">{stats.unacknowledgedCount}</p>
           </CardContent>
         </Card>
@@ -313,20 +315,20 @@ export default function CuttingHandoffs() {
           {handoffs.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Scissors className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p>No cutting handoffs found for the selected period</p>
+              <p>{t('cutting.noHandoffsFound')}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>PO / Style</TableHead>
-                    <TableHead>Colour</TableHead>
-                    <TableHead className="text-right">Day Cutting</TableHead>
-                    <TableHead className="text-right">Day Input</TableHead>
-                    <TableHead>To Line</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>{t('cutting.date')}</TableHead>
+                    <TableHead>{t('cutting.po')} / {t('cutting.style')}</TableHead>
+                    <TableHead>{t('cutting.colour')}</TableHead>
+                    <TableHead className="text-right">{t('cutting.dayCutting')}</TableHead>
+                    <TableHead className="text-right">{t('cutting.dayInput')}</TableHead>
+                    <TableHead>{t('cutting.toLine')}</TableHead>
+                    <TableHead>{t('cutting.status')}</TableHead>
                     <TableHead></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -360,11 +362,11 @@ export default function CuttingHandoffs() {
                         {handoff.acknowledged ? (
                           <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                             <Check className="h-3 w-3 mr-1" />
-                            Received
+                            {t('cutting.received')}
                           </Badge>
                         ) : (
                           <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-                            Pending
+                            {t('cutting.pending')}
                           </Badge>
                         )}
                       </TableCell>
@@ -396,29 +398,29 @@ export default function CuttingHandoffs() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <p className="text-muted-foreground">Date</p>
+                  <p className="text-muted-foreground">{t('cutting.date')}</p>
                   <p className="font-medium">
                     {format(new Date(selectedHandoff.production_date), "dd MMM yyyy")}
                   </p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">PO Number</p>
+                  <p className="text-muted-foreground">{t('cutting.po')}</p>
                   <p className="font-medium">{selectedHandoff.po_no || "-"}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Buyer</p>
+                  <p className="text-muted-foreground">{t('cutting.buyer')}</p>
                   <p className="font-medium">{selectedHandoff.buyer || "-"}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Style</p>
+                  <p className="text-muted-foreground">{t('cutting.style')}</p>
                   <p className="font-medium">{selectedHandoff.style || "-"}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Colour</p>
+                  <p className="text-muted-foreground">{t('cutting.colour')}</p>
                   <p className="font-medium">{selectedHandoff.colour || "-"}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Order Qty</p>
+                  <p className="text-muted-foreground">{t('cutting.orderQtyLabel')}</p>
                   <p className="font-medium">{selectedHandoff.order_qty?.toLocaleString() || "-"}</p>
                 </div>
               </div>
@@ -427,24 +429,24 @@ export default function CuttingHandoffs() {
                 <h4 className="font-medium mb-3">Production Data</h4>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div className="p-3 bg-muted rounded-lg text-center">
-                    <p className="text-xs text-muted-foreground">DAY CUTTING</p>
+                    <p className="text-xs text-muted-foreground">{t('cutting.dayCutting')}</p>
                     <p className="text-xl font-bold">{selectedHandoff.day_cutting?.toLocaleString() || 0}</p>
                   </div>
                   <div className="p-3 bg-muted rounded-lg text-center">
-                    <p className="text-xs text-muted-foreground">DAY INPUT</p>
+                    <p className="text-xs text-muted-foreground">{t('cutting.dayInput')}</p>
                     <p className="text-xl font-bold">{selectedHandoff.day_input?.toLocaleString() || 0}</p>
                   </div>
                   <div className="p-3 bg-muted rounded-lg text-center">
-                    <p className="text-xs text-muted-foreground">TOTAL CUTTING</p>
+                    <p className="text-xs text-muted-foreground">{t('cutting.totalCutting')}</p>
                     <p className="text-lg font-bold">{selectedHandoff.total_cutting?.toLocaleString() || 0}</p>
                   </div>
                   <div className="p-3 bg-muted rounded-lg text-center">
-                    <p className="text-xs text-muted-foreground">TOTAL INPUT</p>
+                    <p className="text-xs text-muted-foreground">{t('cutting.totalInput')}</p>
                     <p className="text-lg font-bold">{selectedHandoff.total_input?.toLocaleString() || 0}</p>
                   </div>
                 </div>
                 <div className={`mt-3 p-3 rounded-lg text-center ${(selectedHandoff.balance ?? 0) < 0 ? 'bg-destructive/10' : 'bg-primary/10'}`}>
-                  <p className="text-xs text-muted-foreground">BALANCE</p>
+                  <p className="text-xs text-muted-foreground">{t('cutting.balance')}</p>
                   <p className={`text-xl font-bold ${(selectedHandoff.balance ?? 0) < 0 ? 'text-destructive' : ''}`}>
                     {selectedHandoff.balance?.toLocaleString() || 0}
                   </p>
@@ -466,7 +468,7 @@ export default function CuttingHandoffs() {
                   </div>
                   {selectedHandoff.submitted_at && (
                     <div className="col-span-2">
-                      <p className="text-muted-foreground">Submitted At</p>
+                      <p className="text-muted-foreground">{t('cutting.submitted')}</p>
                       <p className="font-medium">
                         {format(new Date(selectedHandoff.submitted_at), "dd MMM yyyy, hh:mm a")}
                       </p>
@@ -481,7 +483,7 @@ export default function CuttingHandoffs() {
                   <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg">
                     <Check className="h-5 w-5 text-green-600" />
                     <div>
-                      <p className="font-medium text-green-800">Received</p>
+                      <p className="font-medium text-green-800">{t('cutting.received')}</p>
                       {selectedHandoff.acknowledged_at && (
                         <p className="text-xs text-green-600">
                           Acknowledged on {format(new Date(selectedHandoff.acknowledged_at), "dd MMM yyyy, hh:mm a")}
@@ -503,7 +505,7 @@ export default function CuttingHandoffs() {
                     ) : (
                       <>
                         <Check className="mr-2 h-4 w-4" />
-                        Acknowledge Received
+                        {t('cutting.acknowledgeReceived')}
                       </>
                     )}
                   </Button>

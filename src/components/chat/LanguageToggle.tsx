@@ -8,13 +8,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 interface LanguageToggleProps {
-  language: "en" | "bn";
-  onToggle: (lang: "en" | "bn") => void;
+  language: "en" | "bn" | "zh";
+  onToggle: (lang: "en" | "bn" | "zh") => void;
 }
 
 const LANGUAGES = [
   { code: "en" as const, label: "English", flag: "🇬🇧" },
   { code: "bn" as const, label: "বাংলা", flag: "🇧🇩" },
+  { code: "zh" as const, label: "中文", flag: "🇨🇳" },
 ];
 
 export function LanguageToggle({ language, onToggle }: LanguageToggleProps) {

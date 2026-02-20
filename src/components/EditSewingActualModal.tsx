@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,7 @@ interface EditSewingActualModalProps {
 }
 
 export function EditSewingActualModal({ submission, open, onOpenChange, onSaved }: EditSewingActualModalProps) {
+  const { t } = useTranslation();
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<Record<string, any>>({});
 
@@ -69,12 +71,12 @@ export function EditSewingActualModal({ submission, open, onOpenChange, onSaved 
 
       if (error) throw error;
 
-      toast.success("Submission updated successfully");
+      toast.success(t('modals.submissionUpdatedSuccess'));
       onOpenChange(false);
       onSaved();
     } catch (error: any) {
       console.error('Error updating submission:', error);
-      toast.error(error?.message || "Failed to update submission");
+      toast.error(error?.message || t('modals.failedToUpdateSubmission'));
     } finally {
       setSaving(false);
     }
@@ -86,14 +88,14 @@ export function EditSewingActualModal({ submission, open, onOpenChange, onSaved 
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Factory className="h-5 w-5 text-primary" />
-            Edit Sewing Submission
+            {t('modals.editSewingSubmission')}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="good_today">Good Today</Label>
+              <Label htmlFor="good_today">{t('modals.goodToday')}</Label>
               <Input
                 id="good_today"
                 type="number"
@@ -102,7 +104,7 @@ export function EditSewingActualModal({ submission, open, onOpenChange, onSaved 
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="reject_today">Reject Today</Label>
+              <Label htmlFor="reject_today">{t('modals.rejectToday')}</Label>
               <Input
                 id="reject_today"
                 type="number"
@@ -114,7 +116,7 @@ export function EditSewingActualModal({ submission, open, onOpenChange, onSaved 
           
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="rework_today">Rework Today</Label>
+              <Label htmlFor="rework_today">{t('modals.reworkToday')}</Label>
               <Input
                 id="rework_today"
                 type="number"
@@ -123,7 +125,7 @@ export function EditSewingActualModal({ submission, open, onOpenChange, onSaved 
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="manpower_actual">Manpower</Label>
+              <Label htmlFor="manpower_actual">{t('modals.manpower')}</Label>
               <Input
                 id="manpower_actual"
                 type="number"
@@ -134,7 +136,7 @@ export function EditSewingActualModal({ submission, open, onOpenChange, onSaved 
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="hours_actual">Hours Actual</Label>
+            <Label htmlFor="hours_actual">{t('modals.hoursActual')}</Label>
             <Input
               id="hours_actual"
               type="number"
@@ -148,7 +150,7 @@ export function EditSewingActualModal({ submission, open, onOpenChange, onSaved 
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="ot_hours_actual">OT Hours</Label>
+              <Label htmlFor="ot_hours_actual">{t('modals.otHours')}</Label>
               <Input
                 id="ot_hours_actual"
                 type="number"
@@ -158,7 +160,7 @@ export function EditSewingActualModal({ submission, open, onOpenChange, onSaved 
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="ot_manpower_actual">OT Manpower</Label>
+              <Label htmlFor="ot_manpower_actual">{t('modals.otManpower')}</Label>
               <Input
                 id="ot_manpower_actual"
                 type="number"
@@ -169,7 +171,7 @@ export function EditSewingActualModal({ submission, open, onOpenChange, onSaved 
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="remarks">Remarks</Label>
+            <Label htmlFor="remarks">{t('modals.remarks')}</Label>
             <Textarea
               id="remarks"
               value={formData.remarks ?? ''}
@@ -181,13 +183,13 @@ export function EditSewingActualModal({ submission, open, onOpenChange, onSaved 
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Cancel
+            {t('modals.cancel')}
           </Button>
           <Button onClick={handleSave} disabled={saving}>
             {saving ? (
-              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {t('modals.saving')}</>
             ) : (
-              'Save Changes'
+              t('modals.saveChanges')
             )}
           </Button>
         </DialogFooter>

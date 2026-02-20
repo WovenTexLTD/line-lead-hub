@@ -27,8 +27,8 @@ export interface UseChatReturn {
   isLoading: boolean;
   error: string | null;
   conversationId: string | null;
-  language: "en" | "bn";
-  setLanguage: (lang: "en" | "bn") => void;
+  language: "en" | "bn" | "zh";
+  setLanguage: (lang: "en" | "bn" | "zh") => void;
   sendMessage: (content: string) => Promise<void>;
   submitFeedback: (messageId: string, feedback: "thumbs_up" | "thumbs_down", comment?: string) => Promise<void>;
   clearConversation: () => void;
@@ -40,19 +40,19 @@ export function useChat(): UseChatReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [language, setLanguage] = useState<"en" | "bn">("en");
+  const [language, setLanguage] = useState<"en" | "bn" | "zh">("en");
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Load language preference
   useEffect(() => {
     const savedLang = localStorage.getItem("chat-language");
-    if (savedLang === "en" || savedLang === "bn") {
+    if (savedLang === "en" || savedLang === "bn" || savedLang === "zh") {
       setLanguage(savedLang);
     }
   }, []);
 
   // Save language preference
-  const handleSetLanguage = useCallback((lang: "en" | "bn") => {
+  const handleSetLanguage = useCallback((lang: "en" | "bn" | "zh") => {
     setLanguage(lang);
     localStorage.setItem("chat-language", lang);
   }, []);

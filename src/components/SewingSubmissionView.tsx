@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -121,6 +122,7 @@ function FieldDisplay({ label, value, className, suffix }: {
 
 export function SewingSubmissionView({ target, actual, open, onOpenChange, onEditTarget, onEditActual, onDeleteTarget, onDeleteActual }: SewingSubmissionViewProps) {
   const { factory } = useAuth();
+  const { t } = useTranslation();
   const [deleteType, setDeleteType] = useState<"target" | "actual" | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -137,13 +139,13 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange, onEdi
       const { error } = await supabase.from(tableName).delete().eq("id", id);
       if (error) throw error;
 
-      toast.success(`${deleteType === "target" ? "Target" : "Submission"} deleted successfully`);
+      toast.success(`${deleteType === "target" ? t('modals.target') : t('modals.output')} ${t('modals.deletedSuccess')}`);
       setDeleteType(null);
       onOpenChange(false);
       if (deleteType === "target") onDeleteTarget?.();
       else onDeleteActual?.();
     } catch (error: any) {
-      toast.error(error?.message || "Failed to delete");
+      toast.error(error?.message || t('modals.failedToDelete'));
     } finally {
       setDeleting(false);
     }
@@ -163,10 +165,10 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange, onEdi
 
   // Title and icon based on mode
   const title = isComparison
-    ? "Sewing Submission"
+    ? t('modals.sewingSubmission')
     : hasActual
-      ? "Sewing End of Day"
-      : "Sewing Target";
+      ? t('modals.sewingEndOfDay')
+      : t('modals.sewingTarget');
 
   const Icon = hasActual ? Factory : Crosshair;
 
@@ -180,12 +182,12 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange, onEdi
             <div className="flex gap-1.5 ml-auto">
               {hasTarget && (
                 <Badge variant="outline" className="bg-primary/10 text-xs">
-                  Target
+                  {t('modals.target')}
                 </Badge>
               )}
               {hasActual && (
                 <Badge variant="outline" className="bg-green-500/10 text-green-700 dark:text-green-400 text-xs">
-                  Actual
+                  {t('modals.actual')}
                 </Badge>
               )}
             </div>
@@ -195,12 +197,12 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange, onEdi
         <div className="space-y-5">
           {/* Order Info */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <FieldDisplay label="Date" value={formatDate(primary.production_date)} />
-            <FieldDisplay label="Line" value={primary.line_name} />
-            <FieldDisplay label="Buyer" value={primary.buyer} />
-            <FieldDisplay label="Style" value={primary.style} />
-            <FieldDisplay label="PO Number" value={primary.po_number} />
-            <FieldDisplay label="Order Qty" value={primary.order_qty} />
+            <FieldDisplay label={t('modals.date')} value={formatDate(primary.production_date)} />
+            <FieldDisplay label={t('modals.line')} value={primary.line_name} />
+            <FieldDisplay label={t('modals.buyer')} value={primary.buyer} />
+            <FieldDisplay label={t('modals.style')} value={primary.style} />
+            <FieldDisplay label={t('modals.poNumber')} value={primary.po_number} />
+            <FieldDisplay label={t('modals.orderQty')} value={primary.order_qty} />
           </div>
 
           {/* Two-column Target & Actual display */}
@@ -210,16 +212,16 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange, onEdi
               <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-4">
                 <h4 className="font-semibold text-sm flex items-center gap-2 text-primary">
                   <Crosshair className="h-4 w-4" />
-                  Morning Target
+                  {t('modals.morningTarget')}
                 </h4>
 
                 {/* Targets */}
                 <div>
-                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Targets</p>
+                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">{t('modals.targets')}</p>
                   <div className="grid grid-cols-2 gap-3">
-                    <FieldDisplay label="Per Hour Target" value={target.per_hour_target} suffix=" /hr" className="text-lg text-primary" />
+                    <FieldDisplay label={t('modals.perHourTarget')} value={target.per_hour_target} suffix=" /hr" className="text-lg text-primary" />
                     <FieldDisplay
-                      label="Target Total Output"
+                      label={t('modals.targetTotalOutput')}
                       value={
                         target.target_total_planned != null
                           ? target.target_total_planned
@@ -234,30 +236,30 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange, onEdi
 
                 {/* Resources */}
                 <div>
-                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Resources</p>
+                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">{t('modals.resources')}</p>
                   <div className="grid grid-cols-2 gap-3">
-                    <FieldDisplay label="Manpower Planned" value={target.manpower_planned} />
-                    <FieldDisplay label="Hours Planned" value={target.hours_planned} />
-                    <FieldDisplay label="OT Hours Planned" value={target.ot_hours_planned} />
+                    <FieldDisplay label={t('modals.manpowerPlanned')} value={target.manpower_planned} />
+                    <FieldDisplay label={t('modals.hoursPlanned')} value={target.hours_planned} />
+                    <FieldDisplay label={t('modals.otHoursPlanned')} value={target.ot_hours_planned} />
                   </div>
                 </div>
 
                 {/* Stage & Progress */}
                 {(target.stage_name || target.planned_stage_progress != null || target.next_milestone) && (
                   <div>
-                    <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Stage & Progress</p>
+                    <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">{t('modals.stageAndProgress')}</p>
                     <div className="grid grid-cols-2 gap-3">
                       {target.stage_name && (
-                        <FieldDisplay label="Planned Stage" value={target.stage_name} />
+                        <FieldDisplay label={t('modals.plannedStage')} value={target.stage_name} />
                       )}
                       {target.planned_stage_progress != null && (
-                        <FieldDisplay label="Stage Progress" value={target.planned_stage_progress} suffix="%" />
+                        <FieldDisplay label={t('modals.stageProgress')} value={target.planned_stage_progress} suffix="%" />
                       )}
                       {target.next_milestone && (
-                        <FieldDisplay label="Next Milestone" value={target.next_milestone} />
+                        <FieldDisplay label={t('modals.nextMilestone')} value={target.next_milestone} />
                       )}
                       {target.estimated_ex_factory && (
-                        <FieldDisplay label="Est. Ex-Factory" value={formatDate(target.estimated_ex_factory)} />
+                        <FieldDisplay label={t('modals.estExFactory')} value={formatDate(target.estimated_ex_factory)} />
                       )}
                     </div>
                   </div>
@@ -266,7 +268,7 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange, onEdi
                 {/* Remarks */}
                 {target.remarks && (
                   <div>
-                    <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-1">Remarks</p>
+                    <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-1">{t('modals.remarks')}</p>
                     <p className="text-sm text-muted-foreground">{target.remarks}</p>
                   </div>
                 )}
@@ -274,7 +276,7 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange, onEdi
                 {/* Target Timestamp */}
                 {target.submitted_at && (
                   <p className="text-xs text-muted-foreground pt-2 border-t border-primary/10">
-                    Submitted: {formatDateTime(target.submitted_at)}
+                    {t('modals.submitted')}: {formatDateTime(target.submitted_at)}
                   </p>
                 )}
 
@@ -284,13 +286,13 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange, onEdi
                     {onEditTarget && (
                       <Button variant="outline" size="sm" onClick={onEditTarget}>
                         <Pencil className="h-4 w-4 mr-1" />
-                        Edit
+                        {t('modals.edit')}
                       </Button>
                     )}
                     {onDeleteTarget && (
                       <Button variant="destructive" size="sm" onClick={() => setDeleteType("target")}>
                         <Trash2 className="h-4 w-4 mr-1" />
-                        Delete
+                        {t('modals.delete')}
                       </Button>
                     )}
                   </div>
@@ -299,7 +301,7 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange, onEdi
             ) : (
               <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 p-4 flex flex-col items-center justify-center text-center min-h-[200px]">
                 <Crosshair className="h-8 w-8 mb-2 opacity-40 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">Morning target not submitted</p>
+                <p className="text-sm text-muted-foreground">{t('modals.morningTargetNotSubmitted')}</p>
               </div>
             )}
 
@@ -308,15 +310,15 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange, onEdi
               <div className="rounded-lg border border-success/20 bg-success/5 p-4 space-y-4">
                 <h4 className="font-semibold text-sm flex items-center gap-2 text-success">
                   <Factory className="h-4 w-4" />
-                  End of Day Actual
+                  {t('modals.endOfDayActual')}
                 </h4>
 
                 {/* Output */}
                 <div>
-                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Output</p>
+                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">{t('modals.output')}</p>
                   <div className="grid grid-cols-2 gap-3">
                     <FieldDisplay
-                      label="Output per Hour"
+                      label={t('modals.outputPerHour')}
                       value={
                         actual.actual_per_hour != null
                           ? actual.actual_per_hour
@@ -327,22 +329,22 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange, onEdi
                       suffix=" /hr"
                       className="text-lg text-success"
                     />
-                    <FieldDisplay label="Good Output" value={actual.good_today} className="text-lg text-success" />
-                    <FieldDisplay label="Reject" value={actual.reject_today} />
-                    <FieldDisplay label="Rework" value={actual.rework_today} />
-                    <FieldDisplay label="Cumulative Good Total" value={actual.cumulative_good_total} className="text-lg" />
+                    <FieldDisplay label={t('modals.goodOutput')} value={actual.good_today} className="text-lg text-success" />
+                    <FieldDisplay label={t('modals.reject')} value={actual.reject_today} />
+                    <FieldDisplay label={t('modals.rework')} value={actual.rework_today} />
+                    <FieldDisplay label={t('modals.cumulativeGoodTotal')} value={actual.cumulative_good_total} className="text-lg" />
                   </div>
                 </div>
 
                 {/* Resources */}
                 <div>
-                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Resources</p>
+                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">{t('modals.resources')}</p>
                   <div className="grid grid-cols-2 gap-3">
-                    <FieldDisplay label="Manpower Actual" value={actual.manpower_actual} />
-                    <FieldDisplay label="Hours Actual" value={actual.hours_actual} />
-                    <FieldDisplay label="OT Hours Actual" value={actual.ot_hours_actual} />
+                    <FieldDisplay label={t('modals.manpowerActual')} value={actual.manpower_actual} />
+                    <FieldDisplay label={t('modals.hoursActual')} value={actual.hours_actual} />
+                    <FieldDisplay label={t('modals.otHoursActual')} value={actual.ot_hours_actual} />
                     {actual.ot_manpower_actual != null && actual.ot_manpower_actual > 0 && (
-                      <FieldDisplay label="OT Manpower Actual" value={actual.ot_manpower_actual} />
+                      <FieldDisplay label={t('modals.otManpowerActual')} value={actual.ot_manpower_actual} />
                     )}
                   </div>
                 </div>
@@ -350,13 +352,13 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange, onEdi
                 {/* Stage & Progress */}
                 {(actual.stage_name || actual.actual_stage_progress != null) && (
                   <div>
-                    <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Stage & Progress</p>
+                    <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">{t('modals.stageAndProgress')}</p>
                     <div className="grid grid-cols-2 gap-3">
                       {actual.stage_name && (
-                        <FieldDisplay label="Actual Stage" value={actual.stage_name} />
+                        <FieldDisplay label={t('modals.actualStage')} value={actual.stage_name} />
                       )}
                       {actual.actual_stage_progress != null && (
-                        <FieldDisplay label="Stage Progress" value={actual.actual_stage_progress} suffix="%" />
+                        <FieldDisplay label={t('modals.stageProgress')} value={actual.actual_stage_progress} suffix="%" />
                       )}
                     </div>
                   </div>
@@ -372,7 +374,7 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange, onEdi
                   }`}>
                     <div className="flex items-center gap-2 mb-2">
                       <AlertTriangle className="h-4 w-4 text-warning" />
-                      <span className="font-semibold text-xs uppercase tracking-wide">Blocker</span>
+                      <span className="font-semibold text-xs uppercase tracking-wide">{t('modals.blocker')}</span>
                       {actual.blocker_impact && (
                         <StatusBadge variant={actual.blocker_impact as any} size="sm">
                           {actual.blocker_impact}
@@ -384,11 +386,11 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange, onEdi
                         </StatusBadge>
                       )}
                     </div>
-                    <p className="text-sm">{actual.blocker_description || 'No description'}</p>
+                    <p className="text-sm">{actual.blocker_description || t('modals.noDescription')}</p>
                     {actual.blocker_owner && (
                       <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                         <User className="h-3 w-3" />
-                        Owner: {actual.blocker_owner}
+                        {t('modals.owner')}: {actual.blocker_owner}
                       </p>
                     )}
                   </div>
@@ -397,7 +399,7 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange, onEdi
                 {/* Remarks */}
                 {actual.remarks && (
                   <div>
-                    <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-1">Remarks</p>
+                    <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-1">{t('modals.remarks')}</p>
                     <p className="text-sm text-muted-foreground">{actual.remarks}</p>
                   </div>
                 )}
@@ -405,7 +407,7 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange, onEdi
                 {/* Actual Timestamp */}
                 {actual.submitted_at && (
                   <p className="text-xs text-muted-foreground pt-2 border-t border-success/10">
-                    Submitted: {formatDateTime(actual.submitted_at)}
+                    {t('modals.submitted')}: {formatDateTime(actual.submitted_at)}
                   </p>
                 )}
 
@@ -415,13 +417,13 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange, onEdi
                     {onEditActual && (
                       <Button variant="outline" size="sm" onClick={onEditActual}>
                         <Pencil className="h-4 w-4 mr-1" />
-                        Edit
+                        {t('modals.edit')}
                       </Button>
                     )}
                     {onDeleteActual && (
                       <Button variant="destructive" size="sm" onClick={() => setDeleteType("actual")}>
                         <Trash2 className="h-4 w-4 mr-1" />
-                        Delete
+                        {t('modals.delete')}
                       </Button>
                     )}
                   </div>
@@ -430,7 +432,7 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange, onEdi
             ) : (
               <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 p-4 flex flex-col items-center justify-center text-center min-h-[200px]">
                 <Factory className="h-8 w-8 mb-2 opacity-40 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">End of day not submitted yet</p>
+                <p className="text-sm text-muted-foreground">{t('modals.endOfDayNotSubmitted')}</p>
               </div>
             )}
           </div>
@@ -439,28 +441,28 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange, onEdi
           {isComparison && target && actual && (
             <div className="border rounded-lg p-4 bg-muted/30">
               <h4 className="font-semibold text-sm mb-3 flex items-center justify-between">
-                <span>Target vs Actual Comparison</span>
-                <Badge variant="outline" className="text-xs">Variance</Badge>
+                <span>{t('modals.targetVsActual')}</span>
+                <Badge variant="outline" className="text-xs">{t('modals.variance')}</Badge>
               </h4>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-xs text-muted-foreground border-b">
-                      <th className="text-left py-2 pr-4 font-medium">Metric</th>
-                      <th className="text-right py-2 px-3 font-medium">Target</th>
-                      <th className="text-right py-2 px-3 font-medium">Actual</th>
-                      <th className="text-right py-2 pl-3 font-medium">Variance</th>
+                      <th className="text-left py-2 pr-4 font-medium">{t('modals.metric')}</th>
+                      <th className="text-right py-2 px-3 font-medium">{t('modals.target')}</th>
+                      <th className="text-right py-2 px-3 font-medium">{t('modals.actual')}</th>
+                      <th className="text-right py-2 pl-3 font-medium">{t('modals.variance')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {(() => {
                       const rows: { label: string; tgt: number | null | undefined; act: number | null | undefined; suffix?: string; decimals?: number }[] = [
-                        { label: "Output per Hour", tgt: target.per_hour_target, act: actual.actual_per_hour, decimals: 2 },
-                        { label: "Total Output", tgt: target.target_total_planned, act: actual.good_today },
-                        { label: "Hours", tgt: target.hours_planned, act: actual.hours_actual },
-                        { label: "Manpower", tgt: target.manpower_planned, act: actual.manpower_actual },
-                        { label: "OT Hours", tgt: target.ot_hours_planned, act: actual.ot_hours_actual },
-                        { label: "Stage Progress", tgt: target.planned_stage_progress, act: actual.actual_stage_progress, suffix: "%" },
+                        { label: t('modals.outputPerHour'), tgt: target.per_hour_target, act: actual.actual_per_hour, decimals: 2 },
+                        { label: t('modals.totalOutput'), tgt: target.target_total_planned, act: actual.good_today },
+                        { label: t('modals.hours'), tgt: target.hours_planned, act: actual.hours_actual },
+                        { label: t('modals.manpower'), tgt: target.manpower_planned, act: actual.manpower_actual },
+                        { label: t('modals.otHours'), tgt: target.ot_hours_planned, act: actual.ot_hours_actual },
+                        { label: t('modals.stageProgress'), tgt: target.planned_stage_progress, act: actual.actual_stage_progress, suffix: "%" },
                       ];
                       return rows.map(({ label, tgt, act, suffix, decimals }) => (
                         <tr key={label} className="border-b border-muted/50 last:border-0">
@@ -492,15 +494,15 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange, onEdi
       <AlertDialog open={!!deleteType} onOpenChange={(open) => !open && setDeleteType(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete {deleteType === "target" ? "Target" : "Submission"}?</AlertDialogTitle>
+            <AlertDialogTitle>{t('modals.delete')} {deleteType === "target" ? t('modals.target') : t('modals.output')}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete this {deleteType === "target" ? "morning target" : "end of day submission"}. This action cannot be undone.
+              {deleteType === "target" ? t('modals.deleteTargetConfirm') : t('modals.deleteSubmissionConfirm')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}>{t('modals.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              {deleting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Deleting...</> : "Delete"}
+              {deleting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {t('modals.deleting')}</> : t('modals.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

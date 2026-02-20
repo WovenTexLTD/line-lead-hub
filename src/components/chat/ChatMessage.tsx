@@ -32,7 +32,7 @@ interface ChatMessageProps {
   onFeedback?: (messageId: string, feedback: "thumbs_up" | "thumbs_down") => void;
   onViewSource?: (chunkId: string) => Promise<any>;
   onSendSuggestion?: (question: string) => void;
-  language: "en" | "bn";
+  language: "en" | "bn" | "zh";
 }
 
 // ---------------------------------------------------------------------------

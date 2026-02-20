@@ -92,9 +92,11 @@ function AppRoutes() {
       const currentLang = i18n.language || 'en';
       document.documentElement.lang = currentLang;
 
-      // Add Bengali font to body if language is Bengali
+      // Add language-specific font to body
       if (currentLang === 'bn') {
         document.body.style.fontFamily = "'Noto Sans Bengali', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif";
+      } else if (currentLang === 'zh') {
+        document.body.style.fontFamily = "'Noto Sans SC', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif";
       } else {
         document.body.style.fontFamily = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif";
       }

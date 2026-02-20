@@ -85,13 +85,13 @@ interface ExistingActual {
 export default function CuttingEndOfDay() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user, profile, factory, isAdminOrHigher } = useAuth();
   const { submit: offlineSubmit } = useOfflineSubmission();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  const dateLocale = i18n.language === 'bn' ? 'bn-BD' : 'en-US';
+  const dateLocale = i18n.language === 'bn' ? 'bn-BD' : i18n.language === 'zh' ? 'zh-CN' : 'en-US';
 
   // Master data
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
@@ -216,7 +216,7 @@ export default function CuttingEndOfDay() {
       }
     } catch (error) {
       console.error("Error fetching form data:", error);
-      toast.error("Failed to load form data");
+      toast.error(t('cutting.failedToLoadSubmission'));
     } finally {
       setLoading(false);
     }
@@ -332,15 +332,15 @@ export default function CuttingEndOfDay() {
   function validateForm(): boolean {
     const newErrors: Record<string, string> = {};
 
-    if (!selectedLine) newErrors.line = "Line is required";
-    if (!selectedWorkOrder) newErrors.workOrder = "PO is required";
-    if (!dayCutting || parseInt(dayCutting) < 0) newErrors.dayCutting = "Day Cutting is required";
-    if (!dayInput || parseInt(dayInput) < 0) newErrors.dayInput = "Day Input is required";
-    if (!manPower || parseInt(manPower) < 0) newErrors.manPower = "Man Power is required";
-    if (!markerCapacity || parseInt(markerCapacity) < 0) newErrors.markerCapacity = "Marker Capacity is required";
-    if (!layCapacity || parseInt(layCapacity) < 0) newErrors.layCapacity = "Lay Capacity is required";
-    if (!cuttingCapacity || parseInt(cuttingCapacity) < 0) newErrors.cuttingCapacity = "Cutting Capacity is required";
-    if (!hoursActual || parseFloat(hoursActual) < 0.5) newErrors.hoursActual = "Hours actual is required";
+    if (!selectedLine) newErrors.line = t('cutting.lineRequired');
+    if (!selectedWorkOrder) newErrors.workOrder = t('cutting.poRequired');
+    if (!dayCutting || parseInt(dayCutting) < 0) newErrors.dayCutting = t('cutting.dayCuttingRequired');
+    if (!dayInput || parseInt(dayInput) < 0) newErrors.dayInput = t('cutting.dayInputRequired');
+    if (!manPower || parseInt(manPower) < 0) newErrors.manPower = t('cutting.manPowerRequired');
+    if (!markerCapacity || parseInt(markerCapacity) < 0) newErrors.markerCapacity = t('cutting.markerCapacityRequired');
+    if (!layCapacity || parseInt(layCapacity) < 0) newErrors.layCapacity = t('cutting.layCapacityRequired');
+    if (!cuttingCapacity || parseInt(cuttingCapacity) < 0) newErrors.cuttingCapacity = t('cutting.cuttingCapacityRequired');
+    if (!hoursActual || parseFloat(hoursActual) < 0.5) newErrors.hoursActual = t('cutting.hoursRequired');
 
     // Leftover validation: if leftover is recorded, unit and quantity are required
     if (leftoverRecorded) {
@@ -357,7 +357,7 @@ export default function CuttingEndOfDay() {
     e.preventDefault();
 
     if (!validateForm()) {
-      toast.error("Please fill all required fields");
+      toast.error(t('cutting.fillAllRequired'));
       return;
     }
 
@@ -471,7 +471,7 @@ export default function CuttingEndOfDay() {
   if (!profile?.factory_id) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center p-4">
-        <p className="text-muted-foreground">No factory assigned</p>
+        <p className="text-muted-foreground">{t('cutting.noFactoryAssigned')}</p>
       </div>
     );
   }
@@ -485,9 +485,9 @@ export default function CuttingEndOfDay() {
         </div>
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold">Cutting End of Day</h1>
+            <h1 className="text-xl font-bold">{t('cutting.cuttingEndOfDay')}</h1>
             {isEditing && (
-              <Badge variant="secondary">Editing</Badge>
+              <Badge variant="secondary">{t('cutting.editing')}</Badge>
             )}
           </div>
           <p className="text-sm text-muted-foreground">
@@ -500,7 +500,7 @@ export default function CuttingEndOfDay() {
         {/* Line Selector */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Line No.</CardTitle>
+            <CardTitle className="text-base">{t('cutting.lineNo')}</CardTitle>
           </CardHeader>
           <CardContent>
             <Popover open={lineSearchOpen} onOpenChange={setLineSearchOpen}>
@@ -510,16 +510,16 @@ export default function CuttingEndOfDay() {
                   className={`w-full justify-start ${errors.line ? 'border-destructive' : ''}`}
                 >
                   <Search className="mr-2 h-4 w-4" />
-                  {selectedLine 
+                  {selectedLine
                     ? (selectedLine.name || selectedLine.line_id)
-                    : "Select a line..."}
+                    : t('cutting.selectALine')}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[350px] p-0" align="start">
                 <Command shouldFilter={true}>
-                  <CommandInput placeholder="Search lines..." />
+                  <CommandInput placeholder={t('cutting.searchLines')} />
                   <CommandList>
-                    <CommandEmpty>No lines found.</CommandEmpty>
+                    <CommandEmpty>{t('cutting.noLinesFound')}</CommandEmpty>
                     <CommandGroup>
                       {lines.map(line => (
                         <CommandItem 
@@ -546,7 +546,7 @@ export default function CuttingEndOfDay() {
         {/* PO Selector */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Select PO / Work Order</CardTitle>
+            <CardTitle className="text-base">{t('cutting.selectPO')}</CardTitle>
           </CardHeader>
           <CardContent>
             <Popover open={searchOpen} onOpenChange={setSearchOpen}>
@@ -560,15 +560,15 @@ export default function CuttingEndOfDay() {
                   <span className="truncate">
                     {selectedWorkOrder
                       ? `${selectedWorkOrder.po_number} - ${selectedWorkOrder.buyer} / ${selectedWorkOrder.style}`
-                      : selectedLine ? "Search by PO, Buyer, Style..." : "Select a line first"}
+                      : selectedLine ? t('cutting.searchPO') : t('cutting.selectALine')}
                   </span>
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[350px] p-0" align="start">
                 <Command shouldFilter={true}>
-                  <CommandInput placeholder="Search PO, buyer, style, item..." />
+                  <CommandInput placeholder={t('cutting.searchPOLong')} />
                   <CommandList>
-                    <CommandEmpty>No work orders found.</CommandEmpty>
+                    <CommandEmpty>{t('cutting.noWorkOrdersFound')}</CommandEmpty>
                     <CommandGroup>
                       {filteredWorkOrders.map(wo => (
                         <CommandItem
@@ -601,28 +601,28 @@ export default function CuttingEndOfDay() {
         {selectedWorkOrder && (
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Order Details</CardTitle>
+              <CardTitle className="text-base">{t('cutting.orderDetails')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="text-muted-foreground">BUYER:</span>
+                  <span className="text-muted-foreground">{t('cutting.buyerLabel')}</span>
                   <p className="font-medium">{selectedWorkOrder.buyer}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">STYLE:</span>
+                  <span className="text-muted-foreground">{t('cutting.styleLabel')}</span>
                   <p className="font-medium">{selectedWorkOrder.style}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">PO - NO:</span>
+                  <span className="text-muted-foreground">{t('cutting.poNoLabel')}</span>
                   <p className="font-medium">{selectedWorkOrder.po_number}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">COLOUR:</span>
+                  <span className="text-muted-foreground">{t('cutting.colourLabel')}</span>
                   <p className="font-medium">{selectedWorkOrder.color || "-"}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">ORDER QTY:</span>
+                  <span className="text-muted-foreground">{t('cutting.orderQtyLabel')}</span>
                   <p className="font-medium">{selectedWorkOrder.order_qty.toLocaleString()}</p>
                 </div>
               </div>
@@ -635,12 +635,12 @@ export default function CuttingEndOfDay() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Scissors className="h-4 w-4" />
-              Actual Capacities
+              {t('cutting.actualCapacities')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>MAN POWER *</Label>
+              <Label>{t('cutting.manPower')} *</Label>
               <Input
                 type="number"
                 value={manPower}
@@ -652,7 +652,7 @@ export default function CuttingEndOfDay() {
             </div>
 
             <div className="space-y-2">
-              <Label>MARKER CAPACITY *</Label>
+              <Label>{t('cutting.markerCapacity')} *</Label>
               <Input
                 type="number"
                 value={markerCapacity}
@@ -664,7 +664,7 @@ export default function CuttingEndOfDay() {
             </div>
 
             <div className="space-y-2">
-              <Label>LAY CAPACITY *</Label>
+              <Label>{t('cutting.layCapacity')} *</Label>
               <Input
                 type="number"
                 value={layCapacity}
@@ -676,7 +676,7 @@ export default function CuttingEndOfDay() {
             </div>
 
             <div className="space-y-2">
-              <Label>CUTTING CAPACITY *</Label>
+              <Label>{t('cutting.cuttingCapacity')} *</Label>
               <Input
                 type="number"
                 value={cuttingCapacity}
@@ -688,7 +688,7 @@ export default function CuttingEndOfDay() {
             </div>
 
             <div className="space-y-2">
-              <Label>UNDER QTY</Label>
+              <Label>{t('cutting.underQty')}</Label>
               <Input
                 type="number"
                 value={underQty}
@@ -698,7 +698,7 @@ export default function CuttingEndOfDay() {
             </div>
 
             <div className="space-y-2">
-              <Label>Hours Actual *</Label>
+              <Label>{t('cutting.hoursActual')} *</Label>
               <Input
                 type="number"
                 step="0.5"
@@ -714,7 +714,7 @@ export default function CuttingEndOfDay() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>OT Hours Actual</Label>
+                <Label>{t('cutting.otHoursActual')}</Label>
                 <Input
                   type="number"
                   step="0.5"
@@ -724,7 +724,7 @@ export default function CuttingEndOfDay() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>OT Manpower Actual</Label>
+                <Label>{t('cutting.otManpowerActual')}</Label>
                 <Input
                   type="number"
                   value={otManpowerActual}
@@ -741,12 +741,12 @@ export default function CuttingEndOfDay() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Scissors className="h-4 w-4" />
-              Actual Daily Output
+              {t('cutting.actualDailyOutput')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>DAY CUTTING *</Label>
+              <Label>{t('cutting.dayCutting')} *</Label>
               <Input
                 type="number"
                 value={dayCutting}
@@ -758,7 +758,7 @@ export default function CuttingEndOfDay() {
             </div>
 
             <div className="space-y-2">
-              <Label>DAY INPUT *</Label>
+              <Label>{t('cutting.dayInput')} *</Label>
               <Input
                 type="number"
                 value={dayInput}
@@ -775,23 +775,23 @@ export default function CuttingEndOfDay() {
         {selectedWorkOrder && (
           <Card className="bg-muted/50">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Cumulative Totals</CardTitle>
+              <CardTitle className="text-base">{t('cutting.cumulativeTotals')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div className="p-3 rounded-lg bg-background">
                   <p className="text-2xl font-bold text-primary">{totalCutting.toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground">TOTAL CUTTING</p>
+                  <p className="text-xs text-muted-foreground">{t('cutting.totalCutting')}</p>
                 </div>
                 <div className="p-3 rounded-lg bg-background">
                   <p className="text-2xl font-bold text-primary">{totalInput.toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground">TOTAL INPUT</p>
+                  <p className="text-xs text-muted-foreground">{t('cutting.totalInput')}</p>
                 </div>
                 <div className="p-3 rounded-lg bg-background">
                   <p className={`text-2xl font-bold ${balance < 0 ? 'text-destructive' : 'text-primary'}`}>
                     {balance.toLocaleString()}
                   </p>
-                  <p className="text-xs text-muted-foreground">BALANCE</p>
+                  <p className="text-xs text-muted-foreground">{t('cutting.balance')}</p>
                 </div>
               </div>
             </CardContent>
@@ -806,7 +806,7 @@ export default function CuttingEndOfDay() {
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base flex items-center gap-2">
                     <Package className="h-4 w-4" />
-                    Add Left Over / Fabric Saved
+                    {t('cutting.addLeftOverFabric')}
                   </CardTitle>
                   <div className="flex items-center gap-2">
                     {leftoverRecorded && (
@@ -841,10 +841,10 @@ export default function CuttingEndOfDay() {
                   <>
                     {/* Left Over Type */}
                     <div className="space-y-2">
-                      <Label>Left Over Type *</Label>
+                      <Label>{t('cutting.leftOverType')} *</Label>
                       <Select value={leftoverType} onValueChange={setLeftoverType}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select type..." />
+                          <SelectValue placeholder={t('cutting.selectType')} />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="Left Over Fabric">Left Over Fabric</SelectItem>

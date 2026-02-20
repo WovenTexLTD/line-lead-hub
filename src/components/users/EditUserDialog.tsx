@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -69,6 +70,7 @@ const editUserSchema = z.object({
 });
 
 export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUserDialogProps) {
+  const { t } = useTranslation();
   const { profile, hasRole, user: currentUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -227,7 +229,7 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
         }
       }
 
-      toast.success("User updated successfully");
+      toast.success(t('modals.userUpdated'));
       onSuccess();
       onOpenChange(false);
     } catch (error) {
@@ -256,7 +258,7 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
         return;
       }
 
-      toast.success("User access removed");
+      toast.success(t('modals.userAccessRemoved'));
       onSuccess();
       onOpenChange(false);
       setShowDeleteConfirm(false);
@@ -286,10 +288,10 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <UserCog className="h-5 w-5" />
-              Edit User
+              {t('modals.editUser')}
             </DialogTitle>
             <DialogDescription>
-              Update user role, line assignments, and access settings.
+              {t('modals.editUserDescription')}
             </DialogDescription>
           </DialogHeader>
 
@@ -312,7 +314,7 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
             <div className="space-y-2">
               <Label htmlFor="role" className="flex items-center gap-2">
                 <Shield className="h-4 w-4 text-muted-foreground" />
-                Role
+                {t('modals.role')}
               </Label>
               <Select
                 value={formData.role}
@@ -320,7 +322,7 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
                 disabled={isCurrentUser || isOwnerOrHigher}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select role" />
+                  <SelectValue placeholder={t('modals.selectRole')} />
                 </SelectTrigger>
                 <SelectContent>
                   {availableRoles.map((role) => (
@@ -331,10 +333,10 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
                 </SelectContent>
               </Select>
               {isCurrentUser && (
-                <p className="text-xs text-muted-foreground">You cannot change your own role</p>
+                <p className="text-xs text-muted-foreground">{t('modals.cannotChangeOwnRole')}</p>
               )}
               {isOwnerOrHigher && !isCurrentUser && (
-                <p className="text-xs text-muted-foreground">Owner/Admin roles cannot be changed here</p>
+                <p className="text-xs text-muted-foreground">{t('modals.ownerRoleNote')}</p>
               )}
               {formErrors.role && <p className="text-sm text-destructive">{formErrors.role}</p>}
             </div>
@@ -344,17 +346,17 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
                   <GitBranch className="h-4 w-4 text-muted-foreground" />
-                  Assigned Lines
+                  {t('modals.assignedLines')}
                   {selectedLineIds.length > 0 && (
                     <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                      {selectedLineIds.length} selected
+                      {selectedLineIds.length} {t('modals.selected')}
                     </span>
                   )}
                 </Label>
                 <ScrollArea className="h-32 border rounded-md p-2">
                   {lines.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-4">
-                      No lines available
+                      {t('modals.noLinesAvailable')}
                     </p>
                   ) : (
                     <div className="space-y-2">
@@ -377,7 +379,7 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
                   )}
                 </ScrollArea>
                 <p className="text-xs text-muted-foreground">
-                  Lines this sewing user can submit updates for.
+                  {t('modals.linesSewingNote')}
                 </p>
               </div>
             )}
@@ -386,16 +388,16 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
             {isDeptWide && (
               <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 border text-sm text-muted-foreground">
                 <Info className="h-4 w-4 mt-0.5 shrink-0" />
-                <span>This role has access to all lines and POs.</span>
+                <span>{t('modals.roleAllAccess')}</span>
               </div>
             )}
 
             {/* Active Status */}
             <div className="flex items-center justify-between p-3 border rounded-lg">
               <div>
-                <Label htmlFor="active">Active Status</Label>
+                <Label htmlFor="active">{t('modals.activeStatus')}</Label>
                 <p className="text-sm text-muted-foreground">
-                  Inactive users cannot log in
+                  {t('modals.inactiveCannotLogin')}
                 </p>
               </div>
               <Switch
@@ -414,20 +416,20 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
                 onClick={() => setShowDeleteConfirm(true)}
               >
                 <Trash2 className="h-4 w-4 mr-2" />
-                Remove Access
+                {t('modals.removeAccess')}
               </Button>
             )}
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {t('modals.cancel')}
             </Button>
             <Button onClick={handleSave} disabled={loading || isOwnerOrHigher}>
               {loading ? (
-                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {t('modals.saving')}</>
               ) : (
-                'Save Changes'
+                t('modals.saveChanges')
               )}
             </Button>
           </DialogFooter>
@@ -438,21 +440,21 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove User Access?</AlertDialogTitle>
+            <AlertDialogTitle>{t('modals.removeUserAccess')}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove {user.full_name}'s access to your factory. They will no longer be able to view or submit production data. This action can be undone by re-inviting them.
+              {t('modals.removeUserAccessDesc', { name: user.full_name })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('modals.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleRemoveAccess}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {loading ? (
-                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Removing...</>
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {t('modals.removing')}</>
               ) : (
-                'Remove Access'
+                t('modals.removeAccess')
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

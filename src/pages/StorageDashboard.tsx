@@ -33,6 +33,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 interface BinCardWithWorkOrder {
   id: string;
@@ -100,6 +101,7 @@ interface DashboardStats {
 
 export default function StorageDashboard() {
   const { profile, isAdminOrHigher, factory } = useAuth();
+  const { t } = useTranslation();
   const lowStockThreshold = factory?.low_stock_threshold ?? 10;
   const navigate = useNavigate();
   
@@ -530,8 +532,8 @@ export default function StorageDashboard() {
     return (
       <EmptyState
         icon={AlertTriangle}
-        title="Access Denied"
-        description="Only admins can access the Storage Dashboard."
+        title={t('storagePage.accessDenied')}
+        description={t('storagePage.adminOnlyDashboard')}
         iconClassName="text-warning"
       />
     );
@@ -544,13 +546,13 @@ export default function StorageDashboard() {
         <div className="flex items-center gap-3">
           <Package className="h-8 w-8 text-primary" />
           <div>
-            <h1 className="text-2xl font-bold">Storage Dashboard</h1>
-            <p className="text-sm text-muted-foreground">Overview of bin card records</p>
+            <h1 className="text-2xl font-bold">{t('storagePage.storageDashboard')}</h1>
+            <p className="text-sm text-muted-foreground">{t('storagePage.overviewOfBinCards')}</p>
           </div>
         </div>
         <Button onClick={() => navigate("/storage")}>
           <Package className="mr-2 h-4 w-4" />
-          New Entry
+          {t('storagePage.newEntry')}
         </Button>
       </div>
 
@@ -568,19 +570,19 @@ export default function StorageDashboard() {
             <Card>
               <CardContent className="pt-6">
                 <div className="text-2xl font-bold text-primary">{stats.totalCurrentBalance.toLocaleString()}</div>
-                <p className="text-sm text-muted-foreground">Total Stock Balance</p>
+                <p className="text-sm text-muted-foreground">{t('storagePage.totalStockBalance')}</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-6">
                 <div className="text-2xl font-bold text-green-600">{stats.monthlyReceived.toLocaleString()}</div>
-                <p className="text-sm text-muted-foreground">Received This Month</p>
+                <p className="text-sm text-muted-foreground">{t('storagePage.receivedThisMonth')}</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-6">
                 <div className="text-2xl font-bold text-blue-600">{stats.monthlyIssued.toLocaleString()}</div>
-                <p className="text-sm text-muted-foreground">Issued This Month</p>
+                <p className="text-sm text-muted-foreground">{t('storagePage.issuedThisMonth')}</p>
               </CardContent>
             </Card>
             <Card>
@@ -601,7 +603,7 @@ export default function StorageDashboard() {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    placeholder="Search by PO, buyer, style..."
+                    placeholder={t('storagePage.searchByPOBuyer')}
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
                     className="pl-10"
@@ -673,7 +675,7 @@ export default function StorageDashboard() {
           {/* Cards list */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg">All Bin Cards ({displayRows.length})</CardTitle>
+              <CardTitle className="text-lg">{t('storagePage.allBinCards')} ({displayRows.length})</CardTitle>
               {filteredCards.length > 0 && (
                 <Button variant="outline" size="sm" onClick={exportBinCardsToCSV}>
                   <Download className="mr-2 h-4 w-4" />
@@ -685,7 +687,7 @@ export default function StorageDashboard() {
               {displayRows.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <Package className="mx-auto h-12 w-12 mb-2" />
-                  <p>No bin cards found</p>
+                  <p>{t('storagePage.noRecordsFound')}</p>
                 </div>
               ) : (
                 <TooltipProvider>
@@ -693,13 +695,13 @@ export default function StorageDashboard() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Status</TableHead>
-                        <TableHead>PO Number</TableHead>
-                        <TableHead>Group</TableHead>
-                        <TableHead>Buyer</TableHead>
-                        <TableHead>Style</TableHead>
-                        <TableHead>Balance</TableHead>
-                        <TableHead>Last Updated</TableHead>
+                        <TableHead>{t('storagePage.statusCol')}</TableHead>
+                        <TableHead>{t('storagePage.poNumberCol')}</TableHead>
+                        <TableHead>{t('storagePage.groupCol')}</TableHead>
+                        <TableHead>{t('storagePage.buyerCol')}</TableHead>
+                        <TableHead>{t('storagePage.styleCol')}</TableHead>
+                        <TableHead>{t('storagePage.balanceColumn')}</TableHead>
+                        <TableHead>{t('storagePage.lastUpdated')}</TableHead>
                         <TableHead></TableHead>
                       </TableRow>
                     </TableHeader>
@@ -822,11 +824,11 @@ export default function StorageDashboard() {
                             <TableCell>
                               {row.type === "group" ? (
                                 <Button variant="ghost" size="sm" onClick={() => openGroupDetail(row)}>
-                                  View Ledger
+                                  {t('storagePage.viewDetails')}
                                 </Button>
                               ) : (
                                 <Button variant="ghost" size="sm" onClick={() => openCardDetail(row.cards[0])}>
-                                  View Ledger
+                                  {t('storagePage.viewDetails')}
                                 </Button>
                               )}
                             </TableCell>
@@ -848,7 +850,7 @@ export default function StorageDashboard() {
         <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
-              <span>Bin Card Ledger - {selectedCard?.work_orders.po_number}</span>
+              <span>{t('storagePage.binCardLedger')} - {selectedCard?.work_orders.po_number}</span>
               <Button variant="outline" size="sm" onClick={exportToCSV}>
                 <Download className="mr-2 h-4 w-4" />
                 Export CSV
@@ -861,35 +863,35 @@ export default function StorageDashboard() {
               {/* Header info */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm border-b pb-4">
                 <div>
-                  <span className="text-muted-foreground">Buyer:</span>
+                  <span className="text-muted-foreground">{t('storagePage.buyerLabel')}</span>
                   <p className="font-medium">{selectedCard.buyer || selectedCard.work_orders.buyer}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Style:</span>
+                  <span className="text-muted-foreground">{t('storagePage.styleLabel')}</span>
                   <p className="font-medium">{selectedCard.style || selectedCard.work_orders.style}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Supplier:</span>
+                  <span className="text-muted-foreground">{t('storagePage.supplierLabel')}</span>
                   <p className="font-medium">{selectedCard.supplier_name || "-"}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Description:</span>
+                  <span className="text-muted-foreground">{t('storagePage.descriptionLabel')}</span>
                   <p className="font-medium">{selectedCard.description || "-"}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Construction:</span>
+                  <span className="text-muted-foreground">{t('storagePage.constructionLabel')}</span>
                   <p className="font-medium">{selectedCard.construction || "-"}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Color:</span>
+                  <span className="text-muted-foreground">{t('storagePage.colorLabel')}</span>
                   <p className="font-medium">{selectedCard.color || "-"}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Width:</span>
+                  <span className="text-muted-foreground">{t('storagePage.widthLabel')}</span>
                   <p className="font-medium">{selectedCard.width || "-"}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Package Qty:</span>
+                  <span className="text-muted-foreground">{t('storagePage.packageQtyLabel')}</span>
                   <p className="font-medium">{selectedCard.package_qty || "-"}</p>
                 </div>
               </div>
@@ -950,7 +952,7 @@ export default function StorageDashboard() {
                       {transactions.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                            No transactions recorded
+                            {t('storagePage.noTransactionHistory')}
                           </TableCell>
                         </TableRow>
                       ) : (
@@ -992,19 +994,19 @@ export default function StorageDashboard() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                 <div>
-                  <span className="text-muted-foreground">Supplier:</span>
+                  <span className="text-muted-foreground">{t('storagePage.supplierLabel')}</span>
                   <p className="font-medium">{selectedGroup.cards[0].supplier_name || "-"}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Prepared By:</span>
+                  <span className="text-muted-foreground">{t('storagePage.preparedByLabel')}</span>
                   <p className="font-medium">{selectedGroup.cards[0].prepared_by || "-"}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Last Updated:</span>
+                  <span className="text-muted-foreground">{t('storagePage.lastUpdatedLabel')}</span>
                   <p className="font-medium">{format(new Date(selectedGroup.updatedAt), "dd/MM/yyyy")}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">POs in Group:</span>
+                  <span className="text-muted-foreground">{t('storagePage.posInGroupLabel')}</span>
                   <p className="font-medium">{selectedGroup.poNumbers.length}</p>
                 </div>
               </div>
@@ -1047,21 +1049,21 @@ export default function StorageDashboard() {
                     <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
                       <ArrowDownToLine className="h-4 w-4 text-green-600" />
                       <div>
-                        <p className="text-xs text-muted-foreground">Total Received</p>
+                        <p className="text-xs text-muted-foreground">{t('storagePage.totalReceived')}</p>
                         <p className="text-lg font-bold text-green-600">{totalReceived.toLocaleString()}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
                       <ArrowUpFromLine className="h-4 w-4 text-destructive" />
                       <div>
-                        <p className="text-xs text-muted-foreground">Total Issued</p>
+                        <p className="text-xs text-muted-foreground">{t('storagePage.totalIssued')}</p>
                         <p className="text-lg font-bold text-destructive">{totalIssued.toLocaleString()}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20">
                       <Scale className="h-4 w-4 text-primary" />
                       <div>
-                        <p className="text-xs text-muted-foreground">Total Balance</p>
+                        <p className="text-xs text-muted-foreground">{t('storagePage.currentBalance')}</p>
                         <p className="text-lg font-bold text-primary">{totalBalance.toLocaleString()}</p>
                       </div>
                     </div>

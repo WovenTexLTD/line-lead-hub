@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -95,6 +96,7 @@ interface BulkBinCardInfo {
 export default function StorageBinCard() {
   const navigate = useNavigate();
   const { user, profile, isStorageUser, isAdminOrHigher } = useAuth();
+  const { t } = useTranslation();
 
   const { submit: offlineSubmit } = useOfflineSubmission();
 
@@ -784,8 +786,8 @@ export default function StorageBinCard() {
     return (
       <EmptyState
         icon={AlertTriangle}
-        title="Access Denied"
-        description="You need the Storage role to access this page."
+        title={t('storagePage.accessDenied')}
+        description={t('storagePage.storageRoleRequired')}
         iconClassName="text-warning"
       />
     );
@@ -797,8 +799,8 @@ export default function StorageBinCard() {
       <div className="flex items-center gap-3">
         <Package className="h-7 w-7 md:h-8 md:w-8 text-primary shrink-0" />
         <div className="min-w-0">
-          <h1 className="text-xl md:text-2xl font-bold">BIN CARD RECORD</h1>
-          <p className="text-xs md:text-sm text-muted-foreground">Daily storage entry form</p>
+          <h1 className="text-xl md:text-2xl font-bold">{t('storagePage.binCardRecord')}</h1>
+          <p className="text-xs md:text-sm text-muted-foreground">{t('storagePage.dailyStorageEntry')}</p>
         </div>
       </div>
 
@@ -806,10 +808,10 @@ export default function StorageBinCard() {
       <Card className="overflow-hidden">
         <CardHeader className="pb-3 px-3 sm:px-6">
           <CardTitle className="text-base sm:text-lg flex items-center justify-between">
-            <span>Step 1: Select PO / Work Order</span>
+            <span>{t('storagePage.step1SelectPO')}</span>
             {selectedWorkOrders.length > 0 && (
               <Button variant="ghost" size="sm" onClick={resetSelection} className="text-xs">
-                Clear All
+                {t('storagePage.clearAll')}
               </Button>
             )}
           </CardTitle>
@@ -821,7 +823,7 @@ export default function StorageBinCard() {
                 <Search className="mr-2 h-4 w-4" />
                 <span className="truncate">
                   {selectedWorkOrders.length === 0
-                    ? "Search by PO, Buyer, Style, Item..."
+                    ? t('storagePage.searchByPOBuyer')
                     : selectedWorkOrders.length === 1
                       ? `${selectedWorkOrders[0].po_number} - ${selectedWorkOrders[0].buyer} / ${selectedWorkOrders[0].style}`
                       : `${selectedWorkOrders.length} POs selected`}
@@ -830,7 +832,7 @@ export default function StorageBinCard() {
             </PopoverTrigger>
             <PopoverContent className="w-[var(--radix-popover-trigger-width)] max-w-[400px] p-0" align="start">
               <Command shouldFilter={true}>
-                <CommandInput placeholder="Search PO, buyer, style, item..." />
+                <CommandInput placeholder={t('storagePage.searchByPOBuyer')} />
                 <CommandList>
                   <CommandEmpty>No work orders found.</CommandEmpty>
                   <CommandGroup>
@@ -888,7 +890,7 @@ export default function StorageBinCard() {
               {isBulkMode && (
                 <Badge variant="info" className="text-xs">
                   <Layers className="h-3 w-3 mr-1" />
-                  Bulk Entry
+                  {t('storagePage.bulkEntry')}
                 </Badge>
               )}
             </div>
@@ -910,11 +912,11 @@ export default function StorageBinCard() {
           <Card className="overflow-hidden">
             <CardHeader className="pb-3 px-3 sm:px-6">
               <CardTitle className="text-base sm:text-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <span>Step 2: Bin Card Header</span>
+                <span>{t('storagePage.step2BinCardHeader')}</span>
                 <div className="flex items-center gap-2">
                   {binCard.is_header_locked && (
                     <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-1 rounded">
-                      Locked
+                      {t('storagePage.locked')}
                     </span>
                   )}
                   {binCard.is_header_locked && (isAdminOrHigher() || isStorageUser()) && (
@@ -930,7 +932,7 @@ export default function StorageBinCard() {
                       ) : (
                         <Unlock className="mr-2 h-4 w-4" />
                       )}
-                      Unlock
+                      {t('storagePage.unlock')}
                     </Button>
                   )}
                 </div>
@@ -939,15 +941,15 @@ export default function StorageBinCard() {
             <CardContent className="px-3 sm:px-6">
               <div className="grid grid-cols-1 gap-3">
                 <div>
-                  <Label>BUYER</Label>
+                  <Label>{t('storagePage.buyerLabel')}</Label>
                   <Input value={selectedWorkOrder?.buyer || ""} disabled className="bg-muted" />
                 </div>
                 <div>
-                  <Label>STYLE</Label>
+                  <Label>{t('storagePage.styleLabel')}</Label>
                   <Input value={selectedWorkOrder?.style || ""} disabled className="bg-muted" />
                 </div>
                 <div>
-                  <Label>SUPPLIER NAME</Label>
+                  <Label>{t('storagePage.supplierName')}</Label>
                   <Input
                     value={headerFields.supplier_name}
                     onChange={e => setHeaderFields({...headerFields, supplier_name: e.target.value})}
@@ -956,7 +958,7 @@ export default function StorageBinCard() {
                   />
                 </div>
                 <div>
-                  <Label>DESCRIPTION</Label>
+                  <Label>{t('storagePage.descriptionLabel')}</Label>
                   <Input
                     value={headerFields.description}
                     onChange={e => setHeaderFields({...headerFields, description: e.target.value})}
@@ -965,7 +967,7 @@ export default function StorageBinCard() {
                   />
                 </div>
                 <div>
-                  <Label>CONSTRUCTION</Label>
+                  <Label>{t('storagePage.constructionLabel')}</Label>
                   <Input
                     value={headerFields.construction}
                     onChange={e => setHeaderFields({...headerFields, construction: e.target.value})}
@@ -974,7 +976,7 @@ export default function StorageBinCard() {
                   />
                 </div>
                 <div>
-                  <Label>PREPARED BY</Label>
+                  <Label>{t('storagePage.preparedByLabel')}</Label>
                   <Input
                     value={headerFields.prepared_by}
                     onChange={e => setHeaderFields({...headerFields, prepared_by: e.target.value})}
@@ -982,7 +984,7 @@ export default function StorageBinCard() {
                   />
                 </div>
                 <div>
-                  <Label>COLOR</Label>
+                  <Label>{t('storagePage.colorLabel')}</Label>
                   <Input
                     value={headerFields.color}
                     onChange={e => setHeaderFields({...headerFields, color: e.target.value})}
@@ -991,7 +993,7 @@ export default function StorageBinCard() {
                   />
                 </div>
                 <div>
-                  <Label>WIDTH</Label>
+                  <Label>{t('storagePage.widthLabel')}</Label>
                   <Input
                     value={headerFields.width}
                     onChange={e => setHeaderFields({...headerFields, width: e.target.value})}
@@ -1000,7 +1002,7 @@ export default function StorageBinCard() {
                   />
                 </div>
                 <div>
-                  <Label>PACKAGE QTY</Label>
+                  <Label>{t('storagePage.packageQtyLabel')}</Label>
                   <Input
                     value={headerFields.package_qty}
                     onChange={e => setHeaderFields({...headerFields, package_qty: e.target.value})}
@@ -1016,7 +1018,7 @@ export default function StorageBinCard() {
                   ) : (
                     <Save className="mr-2 h-4 w-4" />
                   )}
-                  Save & Lock Header
+                  {t('storagePage.saveAndLockHeader')}
                 </Button>
               )}
             </CardContent>
@@ -1025,7 +1027,7 @@ export default function StorageBinCard() {
           {/* Step 3: Transaction Grid (Single Mode) */}
           <Card className="overflow-hidden">
             <CardHeader className="pb-3 px-3 sm:px-6">
-              <CardTitle className="text-base sm:text-lg">Step 3: Daily Transaction Entry</CardTitle>
+              <CardTitle className="text-base sm:text-lg">{t('storagePage.step3DailyTransaction')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 px-3 sm:px-6">
               {/* Existing transactions table */}
@@ -1039,19 +1041,19 @@ export default function StorageBinCard() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>DATE</TableHead>
-                          <TableHead className="text-right">RECEIVE QTY</TableHead>
-                          <TableHead className="text-right">TTL RECEIVE</TableHead>
-                          <TableHead className="text-right">ISSUE QTY</TableHead>
-                          <TableHead className="text-right">BALANCE QTY</TableHead>
-                          <TableHead>REMARKS</TableHead>
+                          <TableHead>{t('storagePage.dateCol')}</TableHead>
+                          <TableHead className="text-right">{t('storagePage.receiveQtyCol')}</TableHead>
+                          <TableHead className="text-right">{t('storagePage.ttlReceiveCol')}</TableHead>
+                          <TableHead className="text-right">{t('storagePage.issueQtyCol')}</TableHead>
+                          <TableHead className="text-right">{t('storagePage.balanceCol')}</TableHead>
+                          <TableHead>{t('storagePage.remarksCol')}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {transactions.length === 0 ? (
                           <TableRow>
                             <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                              No transactions yet. Add your first entry below.
+                              {t('storagePage.noTransactions')}
                             </TableCell>
                           </TableRow>
                         ) : (

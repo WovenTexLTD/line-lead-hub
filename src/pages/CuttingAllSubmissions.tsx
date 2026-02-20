@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays, isToday, parseISO } from "date-fns";
@@ -90,6 +91,7 @@ interface Line {
 
 export default function CuttingAllSubmissions() {
   const { profile } = useAuth();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [targets, setTargets] = useState<CuttingTarget[]>([]);
   const [actuals, setActuals] = useState<CuttingActual[]>([]);
@@ -317,18 +319,18 @@ export default function CuttingAllSubmissions() {
             <Scissors className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-xl font-bold">All Cutting Submissions</h1>
-            <p className="text-sm text-muted-foreground">View targets and actuals</p>
+            <h1 className="text-xl font-bold">{t('cutting.allCuttingSubmissions')}</h1>
+            <p className="text-sm text-muted-foreground">{t('cutting.viewTargetsAndActuals')}</p>
           </div>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => fetchData()}>
             <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
+            {t('cutting.refresh')}
           </Button>
           <Button variant="outline" size="sm" onClick={exportToCSV}>
             <Download className="h-4 w-4 mr-2" />
-            Export
+            {t('cutting.export')}
           </Button>
         </div>
       </div>
@@ -338,7 +340,7 @@ export default function CuttingAllSubmissions() {
         <CardContent className="pt-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="space-y-2">
-              <Label>From Date</Label>
+              <Label>{t('cutting.from')}</Label>
               <Input
                 type="date"
                 value={dateFrom}
@@ -346,7 +348,7 @@ export default function CuttingAllSubmissions() {
               />
             </div>
             <div className="space-y-2">
-              <Label>To Date</Label>
+              <Label>{t('cutting.to')}</Label>
               <Input
                 type="date"
                 value={dateTo}
@@ -354,13 +356,13 @@ export default function CuttingAllSubmissions() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Line</Label>
+              <Label>{t('cutting.line')}</Label>
               <Select value={selectedLine} onValueChange={setSelectedLine}>
                 <SelectTrigger>
-                  <SelectValue placeholder="All Lines" />
+                  <SelectValue placeholder={t('cutting.allLines')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Lines</SelectItem>
+                  <SelectItem value="all">{t('cutting.allLines')}</SelectItem>
                   {lines.map(l => (
                     <SelectItem key={l.id} value={l.id}>{l.name || l.line_id}</SelectItem>
                   ))}
@@ -368,13 +370,13 @@ export default function CuttingAllSubmissions() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>PO Number</Label>
+              <Label>{t('cutting.po')}</Label>
               <Select value={selectedPO} onValueChange={setSelectedPO}>
                 <SelectTrigger>
-                  <SelectValue placeholder="All POs" />
+                  <SelectValue placeholder={t('cutting.allPOs')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All POs</SelectItem>
+                  <SelectItem value="all">{t('cutting.allPOs')}</SelectItem>
                   {uniquePOs.map(po => (
                     <SelectItem key={po} value={po}>{po}</SelectItem>
                   ))}
@@ -389,13 +391,13 @@ export default function CuttingAllSubmissions() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="border-l-4 border-l-primary">
           <CardContent className="pt-4">
-            <p className="text-xs text-muted-foreground uppercase tracking-wider">Targets Today</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">{t('cutting.targetsToday')}</p>
             <p className="text-2xl font-bold">{stats.targetsToday}</p>
           </CardContent>
         </Card>
         <Card className="border-l-4 border-l-success">
           <CardContent className="pt-4">
-            <p className="text-xs text-muted-foreground uppercase tracking-wider">Actuals Today</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">{t('cutting.actualsToday')}</p>
             <p className="text-2xl font-bold">{stats.actualsToday}</p>
           </CardContent>
         </Card>
@@ -418,15 +420,15 @@ export default function CuttingAllSubmissions() {
         <TabsList className="grid w-full grid-cols-3 max-w-lg">
           <TabsTrigger value="targets" className="flex items-center gap-2">
             <Target className="h-4 w-4" />
-            Targets ({filteredTargets.length})
+            {t('cutting.targets')} ({filteredTargets.length})
           </TabsTrigger>
           <TabsTrigger value="actuals" className="flex items-center gap-2">
             <ClipboardCheck className="h-4 w-4" />
-            Actuals ({filteredActuals.length})
+            {t('cutting.actuals')} ({filteredActuals.length})
           </TabsTrigger>
           <TabsTrigger value="leftover" className="flex items-center gap-2">
             <Package className="h-4 w-4" />
-            Left Over ({leftoverByPO.length})
+            {t('cutting.leftOvers')} ({leftoverByPO.length})
           </TabsTrigger>
         </TabsList>
 
@@ -450,7 +452,7 @@ export default function CuttingAllSubmissions() {
                     <div className="flex items-center justify-between">
                       <Badge variant="outline" className="bg-primary/10">
                         <Target className="h-3 w-3 mr-1" />
-                        Target
+                        {t('cutting.target')}
                       </Badge>
                       {isToday(parseISO(target.production_date)) && (
                         <Badge variant="secondary" className="text-xs">Today</Badge>
@@ -463,19 +465,19 @@ export default function CuttingAllSubmissions() {
                   <CardContent>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Date:</span>
+                        <span className="text-muted-foreground">{t('cutting.date')}:</span>
                         <span className="font-medium">{format(parseISO(target.production_date), "MMM d, yyyy")}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">PO:</span>
+                        <span className="text-muted-foreground">{t('cutting.po')}:</span>
                         <span className="font-medium">{target.work_orders?.po_number || target.po_no || "—"}</span>
                       </div>
                       <div className="flex justify-between border-t pt-2 mt-2">
-                        <span className="text-muted-foreground">Day Cutting:</span>
+                        <span className="text-muted-foreground">{t('cutting.dayCutting')}:</span>
                         <span className="font-bold text-primary">{target.day_cutting?.toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Day Input:</span>
+                        <span className="text-muted-foreground">{t('cutting.dayInput')}:</span>
                         <span className="font-bold text-success">{target.day_input?.toLocaleString()}</span>
                       </div>
                     </div>
@@ -506,7 +508,7 @@ export default function CuttingAllSubmissions() {
                       <div className="flex items-center justify-between">
                         <Badge variant="outline" className="bg-success/10 text-success">
                           <ClipboardCheck className="h-3 w-3 mr-1" />
-                          Actual
+                          {t('cutting.actual')}
                         </Badge>
                         {isToday(parseISO(actual.production_date)) && (
                           <Badge variant="secondary" className="text-xs">Today</Badge>
@@ -519,23 +521,23 @@ export default function CuttingAllSubmissions() {
                     <CardContent>
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Date:</span>
+                          <span className="text-muted-foreground">{t('cutting.date')}:</span>
                           <span className="font-medium">{format(parseISO(actual.production_date), "MMM d, yyyy")}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">PO:</span>
+                          <span className="text-muted-foreground">{t('cutting.po')}:</span>
                           <span className="font-medium">{actual.work_orders?.po_number || actual.po_no || "—"}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Day Cutting:</span>
+                          <span className="text-muted-foreground">{t('cutting.dayCutting')}:</span>
                           <span className="font-bold">{actual.day_cutting?.toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Day Input:</span>
+                          <span className="text-muted-foreground">{t('cutting.dayInput')}:</span>
                           <span className="font-bold text-success">{actual.day_input?.toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between border-t pt-2 mt-2">
-                          <span className="text-muted-foreground">Balance:</span>
+                          <span className="text-muted-foreground">{t('cutting.balance')}:</span>
                           <span className={`font-bold ${actual.balance && actual.balance < 0 ? 'text-destructive' : ''}`}>
                             {actual.balance?.toLocaleString() || "—"}
                           </span>
@@ -544,7 +546,7 @@ export default function CuttingAllSubmissions() {
                           <div className="flex items-center gap-2 pt-2 mt-2 border-t">
                             <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30">
                               <Package className="h-3 w-3 mr-1" />
-                              Left Over: {actual.leftover_quantity} {actual.leftover_unit}
+                              {t('cutting.leftOvers')}: {actual.leftover_quantity} {actual.leftover_unit}
                             </Badge>
                           </div>
                         )}
@@ -573,7 +575,7 @@ export default function CuttingAllSubmissions() {
                       <div className="flex items-center gap-3">
                         <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30">
                           <Package className="h-3 w-3 mr-1" />
-                          Left Over
+                          {t('cutting.leftOvers')}
                         </Badge>
                         <CardTitle className="text-base">{poData.po_number}</CardTitle>
                       </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -42,6 +43,7 @@ interface ExtrasOverviewModalProps {
 }
 
 export function ExtrasOverviewModal({ open, onOpenChange }: ExtrasOverviewModalProps) {
+  const { t } = useTranslation();
   const { profile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<ExtrasOverviewData[]>([]);
@@ -183,7 +185,7 @@ export function ExtrasOverviewModal({ open, onOpenChange }: ExtrasOverviewModalP
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Package className="h-5 w-5" />
-              Extras Overview - All POs
+              {t('modals.extrasOverview')}
             </DialogTitle>
           </DialogHeader>
 
@@ -191,24 +193,24 @@ export function ExtrasOverviewModal({ open, onOpenChange }: ExtrasOverviewModalP
           <div className="grid grid-cols-4 gap-3 mb-4">
             <div className="bg-muted/50 rounded-lg p-3 text-center">
               <p className="text-2xl font-bold font-mono">{totals.extras.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground">Total Extras</p>
+              <p className="text-xs text-muted-foreground">{t('modals.totalExtras')}</p>
             </div>
             <div className="bg-warning/10 rounded-lg p-3 text-center">
               <p className="text-2xl font-bold font-mono text-warning">{totals.available.toLocaleString()}</p>
               <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
-                <Package className="h-3 w-3" /> Available
+                <Package className="h-3 w-3" /> {t('modals.available')}
               </p>
             </div>
             <div className="bg-primary/10 rounded-lg p-3 text-center">
               <p className="text-2xl font-bold font-mono text-primary">{totals.stocked.toLocaleString()}</p>
               <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
-                <Archive className="h-3 w-3" /> Stocked
+                <Archive className="h-3 w-3" /> {t('modals.stocked')}
               </p>
             </div>
             <div className="bg-muted rounded-lg p-3 text-center">
               <p className="text-2xl font-bold font-mono text-muted-foreground">{totals.consumed.toLocaleString()}</p>
               <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
-                <PackageCheck className="h-3 w-3" /> Consumed
+                <PackageCheck className="h-3 w-3" /> {t('modals.consumed')}
               </p>
             </div>
           </div>
@@ -217,28 +219,28 @@ export function ExtrasOverviewModal({ open, onOpenChange }: ExtrasOverviewModalP
           <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterType)}>
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="all" className="gap-1">
-                All
+                {t('common.all')}
                 <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
                   {data.length}
                 </Badge>
               </TabsTrigger>
               <TabsTrigger value="available" className="gap-1">
                 <Package className="h-3 w-3" />
-                Available
+                {t('modals.available')}
                 <Badge variant="warning" className="ml-1 h-5 px-1.5 text-xs">
                   {data.filter(d => d.available > 0).length}
                 </Badge>
               </TabsTrigger>
               <TabsTrigger value="stocked" className="gap-1">
                 <Archive className="h-3 w-3" />
-                Stocked
+                {t('modals.stocked')}
                 <Badge variant="default" className="ml-1 h-5 px-1.5 text-xs">
                   {data.filter(d => d.stocked > 0).length}
                 </Badge>
               </TabsTrigger>
               <TabsTrigger value="consumed" className="gap-1">
                 <PackageCheck className="h-3 w-3" />
-                Consumed
+                {t('modals.consumed')}
                 <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
                   {data.filter(d => d.consumed > 0).length}
                 </Badge>
@@ -252,20 +254,20 @@ export function ExtrasOverviewModal({ open, onOpenChange }: ExtrasOverviewModalP
             </div>
           ) : filteredData.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              {filter === 'all' ? 'No POs with extras found' : `No POs with ${filter} extras`}
+              {filter === 'all' ? t('modals.noPOsWithExtras') : t('modals.noPOsWithFilterExtras', { filter })}
             </div>
           ) : (
             <div className="border rounded-lg overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>PO Number</TableHead>
-                    <TableHead>Buyer / Style</TableHead>
-                    <TableHead className="text-right">Extras</TableHead>
-                    <TableHead className="text-right">Available</TableHead>
-                    <TableHead className="text-right">Stocked</TableHead>
-                    <TableHead className="text-right">Consumed</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{t('modals.poNumber')}</TableHead>
+                    <TableHead>{t('modals.buyerStyle')}</TableHead>
+                    <TableHead className="text-right">{t('modals.extras')}</TableHead>
+                    <TableHead className="text-right">{t('modals.available')}</TableHead>
+                    <TableHead className="text-right">{t('modals.stocked')}</TableHead>
+                    <TableHead className="text-right">{t('modals.consumed')}</TableHead>
+                    <TableHead className="text-right">{t('modals.actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -315,7 +317,7 @@ export function ExtrasOverviewModal({ open, onOpenChange }: ExtrasOverviewModalP
                             className="gap-1 text-destructive hover:text-destructive"
                           >
                             <ExternalLink className="h-3 w-3" />
-                            Delete
+                            {t('modals.delete')}
                           </Button>
                         ) : (
                           <Button
@@ -325,7 +327,7 @@ export function ExtrasOverviewModal({ open, onOpenChange }: ExtrasOverviewModalP
                             className="gap-1"
                           >
                             <Plus className="h-3 w-3" />
-                            Manage
+                            {t('modals.manage')}
                           </Button>
                         )}
                       </TableCell>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,7 @@ interface EditSewingTargetModalProps {
 }
 
 export function EditSewingTargetModal({ target, open, onOpenChange, onSaved }: EditSewingTargetModalProps) {
+  const { t } = useTranslation();
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<Record<string, any>>({});
 
@@ -62,12 +64,12 @@ export function EditSewingTargetModal({ target, open, onOpenChange, onSaved }: E
 
       if (error) throw error;
 
-      toast.success("Target updated successfully");
+      toast.success(t('modals.targetUpdatedSuccess'));
       onOpenChange(false);
       onSaved();
     } catch (error: any) {
       console.error('Error updating target:', error);
-      toast.error(error?.message || "Failed to update target");
+      toast.error(error?.message || t('modals.failedToUpdateTarget'));
     } finally {
       setSaving(false);
     }
@@ -79,13 +81,13 @@ export function EditSewingTargetModal({ target, open, onOpenChange, onSaved }: E
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Crosshair className="h-5 w-5 text-primary" />
-            Edit Sewing Target
+            {t('modals.editSewingTarget')}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="per_hour_target">Per Hour Target</Label>
+            <Label htmlFor="per_hour_target">{t('modals.perHourTarget')}</Label>
             <Input
               id="per_hour_target"
               type="number"
@@ -96,7 +98,7 @@ export function EditSewingTargetModal({ target, open, onOpenChange, onSaved }: E
           
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="manpower_planned">Manpower Planned</Label>
+              <Label htmlFor="manpower_planned">{t('modals.manpowerPlanned')}</Label>
               <Input
                 id="manpower_planned"
                 type="number"
@@ -105,7 +107,7 @@ export function EditSewingTargetModal({ target, open, onOpenChange, onSaved }: E
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="hours_planned">Hours Planned</Label>
+              <Label htmlFor="hours_planned">{t('modals.hoursPlanned')}</Label>
               <Input
                 id="hours_planned"
                 type="number"
@@ -119,7 +121,7 @@ export function EditSewingTargetModal({ target, open, onOpenChange, onSaved }: E
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="ot_hours_planned">OT Hours Planned</Label>
+            <Label htmlFor="ot_hours_planned">{t('modals.otHoursPlanned')}</Label>
             <Input
               id="ot_hours_planned"
               type="number"
@@ -130,7 +132,7 @@ export function EditSewingTargetModal({ target, open, onOpenChange, onSaved }: E
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="remarks">Remarks</Label>
+            <Label htmlFor="remarks">{t('modals.remarks')}</Label>
             <Textarea
               id="remarks"
               value={formData.remarks ?? ''}
@@ -142,13 +144,13 @@ export function EditSewingTargetModal({ target, open, onOpenChange, onSaved }: E
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Cancel
+            {t('modals.cancel')}
           </Button>
           <Button onClick={handleSave} disabled={saving}>
             {saving ? (
-              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {t('modals.saving')}</>
             ) : (
-              'Save Changes'
+              t('modals.saveChanges')
             )}
           </Button>
         </DialogFooter>

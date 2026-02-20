@@ -61,13 +61,13 @@ interface ExistingTarget {
 export default function CuttingMorningTargets() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user, profile, factory, isAdminOrHigher } = useAuth();
   const { submit: offlineSubmit } = useOfflineSubmission();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  const dateLocale = i18n.language === 'bn' ? 'bn-BD' : 'en-US';
+  const dateLocale = i18n.language === 'bn' ? 'bn-BD' : i18n.language === 'zh' ? 'zh-CN' : 'en-US';
 
   // Master data
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
@@ -170,7 +170,7 @@ export default function CuttingMorningTargets() {
       }
     } catch (error) {
       console.error("Error fetching form data:", error);
-      toast.error("Failed to load form data");
+      toast.error(t('cutting.failedToLoadSubmission'));
     } finally {
       setLoading(false);
     }
@@ -239,15 +239,15 @@ export default function CuttingMorningTargets() {
   function validateForm(): boolean {
     const newErrors: Record<string, string> = {};
 
-    if (!selectedLine) newErrors.line = "Line is required";
-    if (!selectedWorkOrder) newErrors.workOrder = "PO is required";
-    if (!manPower || parseInt(manPower) < 0) newErrors.manPower = "Man Power is required";
-    if (!markerCapacity || parseInt(markerCapacity) < 0) newErrors.markerCapacity = "Marker Capacity is required";
-    if (!layCapacity || parseInt(layCapacity) < 0) newErrors.layCapacity = "Lay Capacity is required";
-    if (!cuttingCapacity || parseInt(cuttingCapacity) < 0) newErrors.cuttingCapacity = "Cutting Capacity is required";
-    if (!hoursPlanned || parseFloat(hoursPlanned) < 0.5) newErrors.hoursPlanned = "Hours planned is required";
-    if (!dayCutting || parseInt(dayCutting) < 0) newErrors.dayCutting = "Day Cutting is required";
-    if (!dayInput || parseInt(dayInput) < 0) newErrors.dayInput = "Day Input is required";
+    if (!selectedLine) newErrors.line = t('cutting.lineRequired');
+    if (!selectedWorkOrder) newErrors.workOrder = t('cutting.poRequired');
+    if (!manPower || parseInt(manPower) < 0) newErrors.manPower = t('cutting.manPowerRequired');
+    if (!markerCapacity || parseInt(markerCapacity) < 0) newErrors.markerCapacity = t('cutting.markerCapacityRequired');
+    if (!layCapacity || parseInt(layCapacity) < 0) newErrors.layCapacity = t('cutting.layCapacityRequired');
+    if (!cuttingCapacity || parseInt(cuttingCapacity) < 0) newErrors.cuttingCapacity = t('cutting.cuttingCapacityRequired');
+    if (!hoursPlanned || parseFloat(hoursPlanned) < 0.5) newErrors.hoursPlanned = t('cutting.hoursRequired');
+    if (!dayCutting || parseInt(dayCutting) < 0) newErrors.dayCutting = t('cutting.dayCuttingRequired');
+    if (!dayInput || parseInt(dayInput) < 0) newErrors.dayInput = t('cutting.dayInputRequired');
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -257,12 +257,12 @@ export default function CuttingMorningTargets() {
     e.preventDefault();
 
     if (!validateForm()) {
-      toast.error("Please fill all required fields");
+      toast.error(t('cutting.fillAllRequired'));
       return;
     }
 
     if (!profile?.factory_id || !user?.id || !selectedWorkOrder || !selectedLine) {
-      toast.error("Submission failed");
+      toast.error(t('cutting.submissionFailed'));
       return;
     }
 
@@ -309,7 +309,7 @@ export default function CuttingMorningTargets() {
           .eq("id", existingTarget.id);
 
         if (error) throw error;
-        toast.success("Cutting targets updated successfully!");
+        toast.success(t('cutting.cuttingTargetsUpdated'));
       } else {
         const result = await offlineSubmit("cutting_targets", "cutting_targets", targetData as Record<string, unknown>, {
           showSuccessToast: false,
@@ -327,12 +327,12 @@ export default function CuttingMorningTargets() {
 
         if (!result.success) {
           if (result.error?.includes("duplicate") || result.error?.includes("23505")) {
-            toast.error("Targets already submitted for this line/PO today");
+            toast.error(t('cutting.targetsAlreadySubmitted'));
             return;
           }
           throw new Error(result.error);
         }
-        toast.success("Cutting targets submitted successfully!");
+        toast.success(t('cutting.cuttingTargetsSubmitted'));
       }
       
       if (isAdminOrHigher()) {
@@ -342,7 +342,7 @@ export default function CuttingMorningTargets() {
       }
     } catch (error: any) {
       console.error("Error submitting:", error);
-      toast.error(error?.message || "Submission failed");
+      toast.error(error?.message || t('cutting.submissionFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -359,7 +359,7 @@ export default function CuttingMorningTargets() {
   if (!profile?.factory_id) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center p-4">
-        <p className="text-muted-foreground">No factory assigned</p>
+        <p className="text-muted-foreground">{t('cutting.noFactoryAssigned')}</p>
       </div>
     );
   }
@@ -373,9 +373,9 @@ export default function CuttingMorningTargets() {
         </div>
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold">Cutting Daily Targets</h1>
+            <h1 className="text-xl font-bold">{t('cutting.cuttingDailyTargets')}</h1>
             {isEditing && (
-              <Badge variant="secondary">Editing</Badge>
+              <Badge variant="secondary">{t('cutting.editing')}</Badge>
             )}
           </div>
           <p className="text-sm text-muted-foreground">
@@ -388,7 +388,7 @@ export default function CuttingMorningTargets() {
         {/* Line Selector */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Line No.</CardTitle>
+            <CardTitle className="text-base">{t('cutting.lineNo')}</CardTitle>
           </CardHeader>
           <CardContent>
             <Popover open={lineSearchOpen} onOpenChange={setLineSearchOpen}>
@@ -400,14 +400,14 @@ export default function CuttingMorningTargets() {
                   <Search className="mr-2 h-4 w-4" />
                   {selectedLine 
                     ? (selectedLine.name || selectedLine.line_id)
-                    : "Select a line..."}
+                    : t('cutting.selectALine')}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[350px] p-0" align="start">
                 <Command shouldFilter={true}>
-                  <CommandInput placeholder="Search lines..." />
+                  <CommandInput placeholder={t('cutting.searchLines')} />
                   <CommandList>
-                    <CommandEmpty>No lines found.</CommandEmpty>
+                    <CommandEmpty>{t('cutting.noLinesFound')}</CommandEmpty>
                     <CommandGroup>
                       {lines.map(line => (
                         <CommandItem 
@@ -434,7 +434,7 @@ export default function CuttingMorningTargets() {
         {/* PO Selector */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Select PO / Work Order</CardTitle>
+            <CardTitle className="text-base">{t('cutting.selectPO')}</CardTitle>
           </CardHeader>
           <CardContent>
             <Popover open={searchOpen} onOpenChange={setSearchOpen}>
@@ -448,15 +448,15 @@ export default function CuttingMorningTargets() {
                   <span className="truncate">
                     {selectedWorkOrder
                       ? `${selectedWorkOrder.po_number} - ${selectedWorkOrder.buyer} / ${selectedWorkOrder.style}`
-                      : selectedLine ? "Search by PO, Buyer, Style..." : "Select a line first"}
+                      : selectedLine ? t('cutting.searchPO') : "Select a line first"}
                   </span>
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[350px] p-0" align="start">
                 <Command shouldFilter={true}>
-                  <CommandInput placeholder="Search PO, buyer, style, item..." />
+                  <CommandInput placeholder={t('cutting.searchPOLong')} />
                   <CommandList>
-                    <CommandEmpty>No work orders found.</CommandEmpty>
+                    <CommandEmpty>{t('cutting.noWorkOrdersFound')}</CommandEmpty>
                     <CommandGroup>
                       {filteredWorkOrders.map(wo => (
                         <CommandItem
@@ -489,28 +489,28 @@ export default function CuttingMorningTargets() {
         {selectedWorkOrder && (
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Order Details</CardTitle>
+              <CardTitle className="text-base">{t('cutting.orderDetails')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="text-muted-foreground">BUYER:</span>
+                  <span className="text-muted-foreground">{t('cutting.buyer')}:</span>
                   <p className="font-medium">{selectedWorkOrder.buyer}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">STYLE:</span>
+                  <span className="text-muted-foreground">{t('cutting.style')}:</span>
                   <p className="font-medium">{selectedWorkOrder.style}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">PO - NO:</span>
+                  <span className="text-muted-foreground">{t('cutting.poNo')}:</span>
                   <p className="font-medium">{selectedWorkOrder.po_number}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">COLOUR:</span>
+                  <span className="text-muted-foreground">{t('cutting.colour')}:</span>
                   <p className="font-medium">{selectedWorkOrder.color || "-"}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">ORDER QTY:</span>
+                  <span className="text-muted-foreground">{t('cutting.orderQty')}:</span>
                   <p className="font-medium">{selectedWorkOrder.order_qty.toLocaleString()}</p>
                 </div>
               </div>
@@ -523,12 +523,12 @@ export default function CuttingMorningTargets() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Scissors className="h-4 w-4" />
-              Target Capacities
+              {t('cutting.targetCapacities')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>MAN POWER *</Label>
+              <Label>{t('cutting.manPower')} *</Label>
               <Input
                 type="number"
                 value={manPower}
@@ -540,7 +540,7 @@ export default function CuttingMorningTargets() {
             </div>
 
             <div className="space-y-2">
-              <Label>MARKER CAPACITY *</Label>
+              <Label>{t('cutting.markerCapacity')} *</Label>
               <Input
                 type="number"
                 value={markerCapacity}
@@ -552,7 +552,7 @@ export default function CuttingMorningTargets() {
             </div>
 
             <div className="space-y-2">
-              <Label>LAY CAPACITY *</Label>
+              <Label>{t('cutting.layCapacity')} *</Label>
               <Input
                 type="number"
                 value={layCapacity}
@@ -564,7 +564,7 @@ export default function CuttingMorningTargets() {
             </div>
 
             <div className="space-y-2">
-              <Label>CUTTING CAPACITY *</Label>
+              <Label>{t('cutting.cuttingCapacity')} *</Label>
               <Input
                 type="number"
                 value={cuttingCapacity}
@@ -576,7 +576,7 @@ export default function CuttingMorningTargets() {
             </div>
 
             <div className="space-y-2">
-              <Label>UNDER QTY</Label>
+              <Label>{t('cutting.underQty')}</Label>
               <Input
                 type="number"
                 value={underQty}
@@ -586,7 +586,7 @@ export default function CuttingMorningTargets() {
             </div>
 
             <div className="space-y-2">
-              <Label>Hours Planned *</Label>
+              <Label>{t('cutting.hoursPlanned')} *</Label>
               <Input
                 type="number"
                 step="0.5"
@@ -602,7 +602,7 @@ export default function CuttingMorningTargets() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>OT Hours Planned</Label>
+                <Label>{t('cutting.otHoursPlanned')}</Label>
                 <Input
                   type="number"
                   step="0.5"
@@ -612,7 +612,7 @@ export default function CuttingMorningTargets() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>OT Manpower Planned</Label>
+                <Label>{t('cutting.otManpowerPlanned')}</Label>
                 <Input
                   type="number"
                   value={otManpowerPlanned}
@@ -629,12 +629,12 @@ export default function CuttingMorningTargets() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Scissors className="h-4 w-4" />
-              Target Daily Output
+              {t('cutting.targetDailyOutput')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>DAY CUTTING *</Label>
+              <Label>{t('cutting.dayCutting')} *</Label>
               <Input
                 type="number"
                 value={dayCutting}
@@ -646,7 +646,7 @@ export default function CuttingMorningTargets() {
             </div>
 
             <div className="space-y-2">
-              <Label>DAY INPUT *</Label>
+              <Label>{t('cutting.dayInput')} *</Label>
               <Input
                 type="number"
                 value={dayInput}
@@ -669,12 +669,12 @@ export default function CuttingMorningTargets() {
           {submitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Submitting...
+              {t('cutting.submitting')}
             </>
           ) : isEditing ? (
-            "Update Cutting Targets"
+            t('cutting.updateCuttingTargets')
           ) : (
-            "Submit Cutting Targets"
+            t('cutting.submitCuttingTargets')
           )}
         </Button>
       </form>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -38,6 +39,7 @@ export function ExportSubmissionsDialog({
   data,
   dateRange,
 }: ExportSubmissionsDialogProps) {
+  const { t } = useTranslation();
   const { factory } = useAuth();
   const [exporting, setExporting] = useState(false);
 
@@ -287,11 +289,11 @@ export function ExportSubmissionsDialog({
       link.click();
       document.body.removeChild(link);
 
-      toast.success(`Exported ${getExportCounts()} records`);
+      toast.success(t('modals.exportedRecords', { count: getExportCounts() }));
       onOpenChange(false);
     } catch (error) {
       console.error('Export error:', error);
-      toast.error("Failed to export data");
+      toast.error(t('modals.failedToExport'));
     } finally {
       setExporting(false);
     }
@@ -322,10 +324,10 @@ export function ExportSubmissionsDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5 text-primary" />
-            Export Submissions
+            {t('modals.exportSubmissions')}
           </DialogTitle>
           <DialogDescription>
-            Select which departments to include in your export
+            {t('modals.exportSelectDepartments')}
           </DialogDescription>
         </DialogHeader>
 
@@ -333,16 +335,16 @@ export function ExportSubmissionsDialog({
           {/* Quick Actions */}
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={selectAll}>
-              Select All
+              {t('modals.selectAll')}
             </Button>
             <Button variant="outline" size="sm" onClick={clearAll}>
-              Clear All
+              {t('modals.clearAll')}
             </Button>
           </div>
 
           {/* Department Selection */}
           <div className="space-y-3">
-            <Label className="text-sm font-medium">Departments</Label>
+            <Label className="text-sm font-medium">{t('modals.departments')}</Label>
             <div className="grid grid-cols-2 gap-4">
               <div className="flex items-center space-x-3 rounded-lg border p-3 hover:bg-accent/50 transition-colors">
                 <Checkbox
@@ -353,10 +355,10 @@ export function ExportSubmissionsDialog({
                 <div className="flex-1">
                   <Label htmlFor="sewing" className="cursor-pointer font-medium flex items-center gap-2">
                     <Factory className="h-4 w-4" />
-                    Sewing
+                    {t('modals.sewing')}
                   </Label>
                   <p className="text-xs text-muted-foreground">
-                    {getSewingCount()} records
+                    {getSewingCount()} {t('modals.records')}
                   </p>
                 </div>
               </div>
@@ -369,10 +371,10 @@ export function ExportSubmissionsDialog({
                 <div className="flex-1">
                   <Label htmlFor="finishing" className="cursor-pointer font-medium flex items-center gap-2">
                     <Package className="h-4 w-4" />
-                    Finishing
+                    {t('modals.finishing')}
                   </Label>
                   <p className="text-xs text-muted-foreground">
-                    {getFinishingCount()} records
+                    {getFinishingCount()} {t('modals.records')}
                   </p>
                 </div>
               </div>
@@ -385,10 +387,10 @@ export function ExportSubmissionsDialog({
                 <div className="flex-1">
                   <Label htmlFor="cutting" className="cursor-pointer font-medium flex items-center gap-2">
                     <Scissors className="h-4 w-4" />
-                    Cutting
+                    {t('modals.cutting')}
                   </Label>
                   <p className="text-xs text-muted-foreground">
-                    {getCuttingCount()} records
+                    {getCuttingCount()} {t('modals.records')}
                   </p>
                 </div>
               </div>
@@ -401,10 +403,10 @@ export function ExportSubmissionsDialog({
                 <div className="flex-1">
                   <Label htmlFor="storage" className="cursor-pointer font-medium flex items-center gap-2">
                     <Package className="h-4 w-4" />
-                    Storage
+                    {t('modals.storage')}
                   </Label>
                   <p className="text-xs text-muted-foreground">
-                    {getStorageCount()} records
+                    {getStorageCount()} {t('modals.records')}
                   </p>
                 </div>
               </div>
@@ -414,17 +416,17 @@ export function ExportSubmissionsDialog({
           {/* Export Summary */}
           <div className="rounded-lg bg-muted/50 p-3">
             <p className="text-sm">
-              <span className="font-medium">{getExportCounts()}</span> records will be exported
+              <span className="font-medium">{getExportCounts()}</span> {t('modals.recordsWillBeExported')}
             </p>
             <p className="text-xs text-muted-foreground">
-              Date range: Last {dateRange} days
+              {t('modals.dateRangeLastDays', { days: dateRange })}
             </p>
           </div>
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t('modals.cancel')}
           </Button>
           <Button onClick={handleExport} disabled={!canExport || exporting}>
             {exporting ? (
@@ -432,7 +434,7 @@ export function ExportSubmissionsDialog({
             ) : (
               <Download className="h-4 w-4 mr-2" />
             )}
-            Export CSV
+            {t('modals.exportCSV')}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays } from "date-fns";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2, Download, RefreshCw, Scissors } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -68,6 +69,7 @@ interface Line {
 export default function CuttingSummary() {
   const navigate = useNavigate();
   const { profile, isAdminOrHigher } = useAuth();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [submissions, setSubmissions] = useState<CuttingSubmission[]>([]);
   const [lines, setLines] = useState<Line[]>([]);
@@ -153,7 +155,7 @@ export default function CuttingSummary() {
       setLines(linesRes.data || []);
     } catch (error) {
       console.error("Error fetching data:", error);
-      toast.error("Failed to load data");
+      toast.error(t('cutting.failedToLoadSubmission'));
     } finally {
       setLoading(false);
     }
@@ -233,7 +235,7 @@ export default function CuttingSummary() {
   if (!isAdminOrHigher()) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center p-4">
-        <p className="text-muted-foreground">Access denied. Admin or higher role required.</p>
+        <p className="text-muted-foreground">{t('cutting.accessDenied')}</p>
       </div>
     );
   }
@@ -255,18 +257,18 @@ export default function CuttingSummary() {
             <Scissors className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-xl font-bold">Cutting Summary</h1>
-            <p className="text-sm text-muted-foreground">View all cutting reports</p>
+            <h1 className="text-xl font-bold">{t('cutting.cuttingSummary')}</h1>
+            <p className="text-sm text-muted-foreground">{t('cutting.viewAllCuttingReports')}</p>
           </div>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => fetchData()}>
             <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
+            {t('cutting.refresh')}
           </Button>
           <Button variant="outline" size="sm" onClick={exportToCSV}>
             <Download className="h-4 w-4 mr-2" />
-            Export
+            {t('cutting.export')}
           </Button>
         </div>
       </div>
@@ -276,7 +278,7 @@ export default function CuttingSummary() {
         <CardContent className="pt-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="space-y-2">
-              <Label>From Date</Label>
+              <Label>{t('cutting.from')}</Label>
               <Input
                 type="date"
                 value={dateFrom}
@@ -284,7 +286,7 @@ export default function CuttingSummary() {
               />
             </div>
             <div className="space-y-2">
-              <Label>To Date</Label>
+              <Label>{t('cutting.to')}</Label>
               <Input
                 type="date"
                 value={dateTo}
@@ -292,13 +294,13 @@ export default function CuttingSummary() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Line</Label>
+              <Label>{t('cutting.line')}</Label>
               <Select value={selectedLine} onValueChange={setSelectedLine}>
                 <SelectTrigger>
-                  <SelectValue placeholder="All Lines" />
+                  <SelectValue placeholder={t('cutting.allLines')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Lines</SelectItem>
+                  <SelectItem value="all">{t('cutting.allLines')}</SelectItem>
                   {lines.map(l => (
                     <SelectItem key={l.id} value={l.id}>{l.name || l.line_id}</SelectItem>
                   ))}
@@ -306,13 +308,13 @@ export default function CuttingSummary() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>PO Number</Label>
+              <Label>{t('cutting.po')}</Label>
               <Select value={selectedPO} onValueChange={setSelectedPO}>
                 <SelectTrigger>
-                  <SelectValue placeholder="All POs" />
+                  <SelectValue placeholder={t('cutting.allPOs')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All POs</SelectItem>
+                  <SelectItem value="all">{t('cutting.allPOs')}</SelectItem>
                   {uniquePOs.map(po => (
                     <SelectItem key={po} value={po}>{po}</SelectItem>
                   ))}

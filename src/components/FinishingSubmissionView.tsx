@@ -4,6 +4,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatDate, formatDateTimeInTimezone } from "@/lib/date-utils";
@@ -73,14 +74,14 @@ interface FinishingSubmissionViewProps {
 }
 
 const PROCESS_ITEMS = [
-  { key: "thread_cutting", label: "Thread Cutting", icon: Scissors },
-  { key: "inside_check", label: "Inside Check", icon: CheckCircle },
-  { key: "top_side_check", label: "Top Side Check", icon: Shirt },
-  { key: "buttoning", label: "Buttoning", icon: CircleDot },
-  { key: "iron", label: "Iron", icon: Flame },
-  { key: "get_up", label: "Get-up", icon: Package },
-  { key: "poly", label: "Poly", icon: Box },
-  { key: "carton", label: "Carton", icon: Archive },
+  { key: "thread_cutting", label: "threadCutting", icon: Scissors },
+  { key: "inside_check", label: "insideCheck", icon: CheckCircle },
+  { key: "top_side_check", label: "topSideCheck", icon: Shirt },
+  { key: "buttoning", label: "buttoning", icon: CircleDot },
+  { key: "iron", label: "iron", icon: Flame },
+  { key: "get_up", label: "getUp", icon: Package },
+  { key: "poly", label: "poly", icon: Box },
+  { key: "carton", label: "carton", icon: Archive },
 ] as const;
 
 function VarianceIndicator({ actual, target, decimals }: { actual: number; target: number; decimals?: number }) {
@@ -109,6 +110,7 @@ function FieldDisplay({ label, value, className, suffix }: {
 
 export function FinishingSubmissionView({ target, actual, open, onOpenChange }: FinishingSubmissionViewProps) {
   const { factory } = useAuth();
+  const { t } = useTranslation();
 
   if (!target && !actual) return null;
 
@@ -124,10 +126,10 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
   const primary = actual || target!;
 
   const title = isComparison
-    ? "Finishing Submission"
+    ? t('modals.finishingSubmission')
     : hasActual
-      ? "Finishing End of Day"
-      : "Finishing Target";
+      ? t('modals.finishingEndOfDay')
+      : t('modals.finishingTarget');
 
   const Icon = hasActual ? Factory : Crosshair;
 
@@ -141,12 +143,12 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
             <div className="flex gap-1.5 ml-auto">
               {hasTarget && (
                 <Badge variant="outline" className="bg-primary/10 text-xs">
-                  Target
+                  {t('modals.target')}
                 </Badge>
               )}
               {hasActual && (
                 <Badge variant="outline" className="bg-green-500/10 text-green-700 dark:text-green-400 text-xs">
-                  Actual
+                  {t('modals.actual')}
                 </Badge>
               )}
             </div>
@@ -156,10 +158,10 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
         <div className="space-y-5">
           {/* Order Info */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <FieldDisplay label="Date" value={formatDate(primary.production_date)} />
-            <FieldDisplay label="Buyer" value={primary.buyer} />
-            <FieldDisplay label="Style" value={primary.style} />
-            <FieldDisplay label="PO Number" value={primary.po_number} />
+            <FieldDisplay label={t('modals.date')} value={formatDate(primary.production_date)} />
+            <FieldDisplay label={t('modals.buyer')} value={primary.buyer} />
+            <FieldDisplay label={t('modals.style')} value={primary.style} />
+            <FieldDisplay label={t('modals.poNumber')} value={primary.po_number} />
           </div>
 
           {/* Two-column Target & Actual display */}
@@ -169,43 +171,43 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
               <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-4">
                 <h4 className="font-semibold text-sm flex items-center gap-2 text-primary">
                   <Crosshair className="h-4 w-4" />
-                  Morning Target
+                  {t('modals.morningTarget')}
                 </h4>
 
                 {/* Process Values */}
                 <div>
-                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Process Targets</p>
+                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">{t('modals.processTargets')}</p>
                   <div className="grid grid-cols-2 gap-3">
                     {PROCESS_ITEMS.filter(item => item.key !== "poly" && item.key !== "carton").map((item) => {
                       const value = target[item.key as keyof FinishingTargetData] as number;
                       return (
                         <FieldDisplay
                           key={item.key}
-                          label={item.label}
+                          label={t('modals.' + item.label)}
                           value={value}
                           suffix=" /hr"
                         />
                       );
                     })}
-                    <FieldDisplay label="Poly" value={target.poly} suffix=" /hr" className="text-success" />
+                    <FieldDisplay label={t('modals.poly')} value={target.poly} suffix=" /hr" className="text-success" />
                     {target.planned_hours != null && target.planned_hours > 0 && (
-                      <FieldDisplay label="Target Total Poly" value={Math.round(target.poly * target.planned_hours)} className="text-success" />
+                      <FieldDisplay label={t('modals.targetTotalPoly')} value={Math.round(target.poly * target.planned_hours)} className="text-success" />
                     )}
-                    <FieldDisplay label="Carton" value={target.carton} suffix=" /hr" className="text-lg text-warning" />
+                    <FieldDisplay label={t('modals.carton')} value={target.carton} suffix=" /hr" className="text-lg text-warning" />
                     {target.planned_hours != null && target.planned_hours > 0 && (
-                      <FieldDisplay label="Target Total Carton" value={Math.round(target.carton * target.planned_hours)} className="text-lg text-warning" />
+                      <FieldDisplay label={t('modals.targetTotalCarton')} value={Math.round(target.carton * target.planned_hours)} className="text-lg text-warning" />
                     )}
                   </div>
                 </div>
 
                 {/* Hours & Resources */}
                 <div>
-                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Hours & Resources</p>
+                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">{t('modals.hoursAndResources')}</p>
                   <div className="grid grid-cols-2 gap-3">
-                    <FieldDisplay label="Planned Hours" value={target.planned_hours} />
-                    <FieldDisplay label="OT Hours Planned" value={target.ot_hours_planned} />
+                    <FieldDisplay label={t('modals.plannedHours')} value={target.planned_hours} />
+                    <FieldDisplay label={t('modals.otHoursPlanned')} value={target.ot_hours_planned} />
                     {target.ot_manpower_planned != null && target.ot_manpower_planned > 0 && (
-                      <FieldDisplay label="OT Manpower Planned" value={target.ot_manpower_planned} />
+                      <FieldDisplay label={t('modals.otManpowerPlanned')} value={target.ot_manpower_planned} />
                     )}
                   </div>
                 </div>
@@ -213,7 +215,7 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
                 {/* Remarks */}
                 {target.remarks && (
                   <div>
-                    <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-1">Remarks</p>
+                    <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-1">{t('modals.remarks')}</p>
                     <p className="text-sm text-muted-foreground">{target.remarks}</p>
                   </div>
                 )}
@@ -221,14 +223,14 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
                 {/* Timestamp */}
                 {target.submitted_at && (
                   <p className="text-xs text-muted-foreground pt-2 border-t border-primary/10">
-                    Submitted: {formatDateTime(target.submitted_at)}
+                    {t('modals.submitted')}: {formatDateTime(target.submitted_at)}
                   </p>
                 )}
               </div>
             ) : (
               <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 p-4 flex flex-col items-center justify-center text-center min-h-[200px]">
                 <Crosshair className="h-8 w-8 mb-2 opacity-40 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">Morning target not submitted</p>
+                <p className="text-sm text-muted-foreground">{t('modals.morningTargetNotSubmitted')}</p>
               </div>
             )}
 
@@ -237,42 +239,42 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
               <div className="rounded-lg border border-success/20 bg-success/5 p-4 space-y-4">
                 <h4 className="font-semibold text-sm flex items-center gap-2 text-success">
                   <Factory className="h-4 w-4" />
-                  End of Day Output
+                  {t('modals.endOfDayActual')}
                 </h4>
 
                 {/* Process Values */}
                 <div>
-                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Process Output</p>
+                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">{t('modals.processOutput')}</p>
                   <div className="grid grid-cols-2 gap-3">
                     {PROCESS_ITEMS.filter(item => item.key !== "poly" && item.key !== "carton").map((item) => {
                       const value = actual[item.key as keyof FinishingActualData] as number;
                       return (
                         <FieldDisplay
                           key={item.key}
-                          label={item.label}
+                          label={t('modals.' + item.label)}
                           value={value}
                         />
                       );
                     })}
                     {actual.actual_hours != null && actual.actual_hours > 0 && (
-                      <FieldDisplay label="Poly per Hour" value={Math.round((actual.poly / actual.actual_hours) * 100) / 100} suffix=" /hr" className="text-success" />
+                      <FieldDisplay label={t('modals.polyPerHour')} value={Math.round((actual.poly / actual.actual_hours) * 100) / 100} suffix=" /hr" className="text-success" />
                     )}
-                    <FieldDisplay label="Poly" value={actual.poly} className="text-success" />
+                    <FieldDisplay label={t('modals.poly')} value={actual.poly} className="text-success" />
                     {actual.actual_hours != null && actual.actual_hours > 0 && (
-                      <FieldDisplay label="Carton per Hour" value={Math.round((actual.carton / actual.actual_hours) * 100) / 100} suffix=" /hr" className="text-lg text-warning" />
+                      <FieldDisplay label={t('modals.cartonPerHour')} value={Math.round((actual.carton / actual.actual_hours) * 100) / 100} suffix=" /hr" className="text-lg text-warning" />
                     )}
-                    <FieldDisplay label="Carton" value={actual.carton} className="text-lg text-warning" />
+                    <FieldDisplay label={t('modals.carton')} value={actual.carton} className="text-lg text-warning" />
                   </div>
                 </div>
 
                 {/* Hours & Resources */}
                 <div>
-                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Hours & Resources</p>
+                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">{t('modals.hoursAndResources')}</p>
                   <div className="grid grid-cols-2 gap-3">
-                    <FieldDisplay label="Actual Hours" value={actual.actual_hours} />
-                    <FieldDisplay label="OT Hours Actual" value={actual.ot_hours_actual} />
+                    <FieldDisplay label={t('modals.actualHours')} value={actual.actual_hours} />
+                    <FieldDisplay label={t('modals.otHoursActual')} value={actual.ot_hours_actual} />
                     {actual.ot_manpower_actual != null && actual.ot_manpower_actual > 0 && (
-                      <FieldDisplay label="OT Manpower Actual" value={actual.ot_manpower_actual} />
+                      <FieldDisplay label={t('modals.otManpowerActual')} value={actual.ot_manpower_actual} />
                     )}
                   </div>
                 </div>
@@ -280,7 +282,7 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
                 {/* Remarks */}
                 {actual.remarks && (
                   <div>
-                    <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-1">Remarks</p>
+                    <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-1">{t('modals.remarks')}</p>
                     <p className="text-sm text-muted-foreground">{actual.remarks}</p>
                   </div>
                 )}
@@ -288,14 +290,14 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
                 {/* Timestamp */}
                 {actual.submitted_at && (
                   <p className="text-xs text-muted-foreground pt-2 border-t border-success/10">
-                    Submitted: {formatDateTime(actual.submitted_at)}
+                    {t('modals.submitted')}: {formatDateTime(actual.submitted_at)}
                   </p>
                 )}
               </div>
             ) : (
               <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 p-4 flex flex-col items-center justify-center text-center min-h-[200px]">
                 <Factory className="h-8 w-8 mb-2 opacity-40 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">End of day not submitted yet</p>
+                <p className="text-sm text-muted-foreground">{t('modals.endOfDayNotSubmitted')}</p>
               </div>
             )}
           </div>
@@ -304,17 +306,17 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
           {isComparison && target && actual && (
             <div className="border rounded-lg p-4 bg-muted/30">
               <h4 className="font-semibold text-sm mb-3 flex items-center justify-between">
-                <span>Target vs Actual Comparison</span>
-                <Badge variant="outline" className="text-xs">Variance</Badge>
+                <span>{t('modals.targetVsActual')}</span>
+                <Badge variant="outline" className="text-xs">{t('modals.variance')}</Badge>
               </h4>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-xs text-muted-foreground border-b">
-                      <th className="text-left py-2 pr-4 font-medium">Metric</th>
-                      <th className="text-right py-2 px-3 font-medium">Target</th>
-                      <th className="text-right py-2 px-3 font-medium">Actual</th>
-                      <th className="text-right py-2 pl-3 font-medium">Variance</th>
+                      <th className="text-left py-2 pr-4 font-medium">{t('modals.metric')}</th>
+                      <th className="text-right py-2 px-3 font-medium">{t('modals.target')}</th>
+                      <th className="text-right py-2 px-3 font-medium">{t('modals.actual')}</th>
+                      <th className="text-right py-2 pl-3 font-medium">{t('modals.variance')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -329,7 +331,7 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
 
                       const rows: { label: string; tgt: number | null | undefined; act: number | null | undefined; decimals?: number }[] = [
                         // Per-hour rate comparison (carton = primary output metric)
-                        { label: "Carton per Hour", tgt: target.carton, act: cartonPerHourActual, decimals: 2 },
+                        { label: t('modals.cartonPerHour'), tgt: target.carton, act: cartonPerHourActual, decimals: 2 },
                         // Total comparisons: target per-hour × planned_hours vs actual day total
                         ...PROCESS_ITEMS.map(item => {
                           const tgtPerHour = target[item.key as keyof FinishingTargetData] as number;
@@ -337,20 +339,20 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
                             ? Math.round(tgtPerHour * tgtHours)
                             : null;
                           return {
-                            label: `${item.label} (total)`,
+                            label: `${t('modals.' + item.label)} (${t('modals.total')})`,
                             tgt: tgtTotal,
                             act: actual[item.key as keyof FinishingActualData] as number,
                           };
                         }),
-                        { label: "Hours", tgt: tgtHours, act: actHours },
+                        { label: t('modals.hours'), tgt: tgtHours, act: actHours },
                       ];
 
                       // Add OT rows conditionally
                       if (target.ot_hours_planned != null || actual.ot_hours_actual != null) {
-                        rows.push({ label: "OT Hours", tgt: target.ot_hours_planned, act: actual.ot_hours_actual });
+                        rows.push({ label: t('modals.otHours'), tgt: target.ot_hours_planned, act: actual.ot_hours_actual });
                       }
                       if (target.ot_manpower_planned != null || actual.ot_manpower_actual != null) {
-                        rows.push({ label: "OT Manpower", tgt: target.ot_manpower_planned, act: actual.ot_manpower_actual });
+                        rows.push({ label: t('modals.otManpower'), tgt: target.ot_manpower_planned, act: actual.ot_manpower_actual });
                       }
 
                       return rows.map(({ label, tgt, act, decimals }) => (

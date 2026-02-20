@@ -14,7 +14,7 @@ import { fetchLiveData, type LiveDataContext } from "../_shared/live-data.ts";
 interface ChatRequest {
   message: string;
   conversation_id?: string;
-  language?: "en" | "bn";
+  language?: "en" | "bn" | "zh";
 }
 
 const logStep = (step: string, details?: Record<string, unknown>) => {

@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 
 interface QuickActionsProps {
   onSelect: (prompt: string) => void;
-  language: "en" | "bn";
+  language: "en" | "bn" | "zh";
 }
 
 const QUICK_ACTIONS = {
@@ -45,6 +45,26 @@ const QUICK_ACTIONS = {
       label: "সাপোর্ট",
       hint: "টেকনিক্যাল সাহায্য",
       prompt: "টেকনিক্যাল সমস্যার জন্য সাপোর্টের সাথে কিভাবে যোগাযোগ করব?",
+    },
+  ],
+  zh: [
+    {
+      icon: HelpCircle,
+      label: "如何操作...",
+      hint: "日终报告",
+      prompt: "我如何提交日终生产报告？",
+    },
+    {
+      icon: AlertTriangle,
+      label: "故障排除",
+      hint: "表单与数据问题",
+      prompt: "早间目标表单出了问题，数据无法保存。",
+    },
+    {
+      icon: Headphones,
+      label: "联系支持",
+      hint: "技术帮助",
+      prompt: "如何联系技术支持解决技术问题？",
     },
   ],
 };

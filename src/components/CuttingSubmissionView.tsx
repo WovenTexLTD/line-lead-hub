@@ -16,6 +16,7 @@ import {
   TrendingDown,
   Minus,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export interface CuttingTargetData {
   id: string;
@@ -105,6 +106,7 @@ function FieldDisplay({ label, value, className }: {
 
 export function CuttingSubmissionView({ target, actual, open, onOpenChange }: CuttingSubmissionViewProps) {
   const { factory } = useAuth();
+  const { t } = useTranslation();
 
   if (!target && !actual) return null;
 
@@ -122,10 +124,10 @@ export function CuttingSubmissionView({ target, actual, open, onOpenChange }: Cu
 
   // Title and icon based on mode
   const title = isComparison
-    ? "Cutting Submission"
+    ? t('cutting.cuttingSubmission')
     : hasActual
-      ? "Cutting End of Day"
-      : "Cutting Target";
+      ? t('cutting.cuttingEndOfDay')
+      : t('cutting.cuttingTarget');
 
   const Icon = hasActual ? Scissors : Target;
 
@@ -139,12 +141,12 @@ export function CuttingSubmissionView({ target, actual, open, onOpenChange }: Cu
             <div className="flex gap-1.5 ml-auto">
               {hasTarget && (
                 <Badge variant="outline" className="bg-primary/10 text-xs">
-                  Target
+                  {t('cutting.target')}
                 </Badge>
               )}
               {hasActual && (
                 <Badge variant="outline" className="bg-green-500/10 text-green-700 dark:text-green-400 text-xs">
-                  Actual
+                  {t('cutting.actual')}
                 </Badge>
               )}
             </div>
@@ -154,13 +156,13 @@ export function CuttingSubmissionView({ target, actual, open, onOpenChange }: Cu
         <div className="space-y-5">
           {/* Section B: Order Info */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <FieldDisplay label="Date" value={formatDate(primary.production_date)} />
-            <FieldDisplay label="Line" value={primary.line_name} />
-            <FieldDisplay label="Buyer" value={primary.buyer} />
-            <FieldDisplay label="Style" value={primary.style} />
-            <FieldDisplay label="PO Number" value={primary.po_number} />
-            <FieldDisplay label="Colour" value={primary.colour} />
-            <FieldDisplay label="Order Qty" value={primary.order_qty} />
+            <FieldDisplay label={t('cutting.date')} value={formatDate(primary.production_date)} />
+            <FieldDisplay label={t('cutting.line')} value={primary.line_name} />
+            <FieldDisplay label={t('cutting.buyer')} value={primary.buyer} />
+            <FieldDisplay label={t('cutting.style')} value={primary.style} />
+            <FieldDisplay label={t('cutting.po')} value={primary.po_number} />
+            <FieldDisplay label={t('cutting.colour')} value={primary.colour} />
+            <FieldDisplay label={t('cutting.orderQtyLabel')} value={primary.order_qty} />
           </div>
 
           {/* Part A: Two-column Target & Actual display */}
@@ -170,50 +172,50 @@ export function CuttingSubmissionView({ target, actual, open, onOpenChange }: Cu
               <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-4">
                 <h4 className="font-semibold text-sm flex items-center gap-2 text-primary">
                   <Target className="h-4 w-4" />
-                  Morning Target
+                  {t('cutting.morningTarget')}
                 </h4>
 
                 {/* Target Capacities */}
                 <div>
-                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Capacities</p>
+                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">{t('cutting.capacities')}</p>
                   <div className="grid grid-cols-2 gap-3">
-                    <FieldDisplay label="Man Power" value={target.man_power} />
-                    <FieldDisplay label="Marker Capacity" value={target.marker_capacity} />
-                    <FieldDisplay label="Lay Capacity" value={target.lay_capacity} />
-                    <FieldDisplay label="Cutting Capacity" value={target.cutting_capacity} className="text-primary" />
-                    <FieldDisplay label="Under Qty" value={target.under_qty} />
+                    <FieldDisplay label={t('cutting.manPower')} value={target.man_power} />
+                    <FieldDisplay label={t('cutting.markerCapacity')} value={target.marker_capacity} />
+                    <FieldDisplay label={t('cutting.layCapacity')} value={target.lay_capacity} />
+                    <FieldDisplay label={t('cutting.cuttingCapacity')} value={target.cutting_capacity} className="text-primary" />
+                    <FieldDisplay label={t('cutting.underQty')} value={target.under_qty} />
                     {target.hours_planned != null && (
-                      <FieldDisplay label="Hours Planned" value={target.hours_planned} />
+                      <FieldDisplay label={t('cutting.hoursPlanned')} value={target.hours_planned} />
                     )}
                     {target.ot_hours_planned != null && (
-                      <FieldDisplay label="OT Hours Planned" value={target.ot_hours_planned} />
+                      <FieldDisplay label={t('cutting.otHoursPlanned')} value={target.ot_hours_planned} />
                     )}
                     {target.ot_manpower_planned != null && (
-                      <FieldDisplay label="OT Manpower Planned" value={target.ot_manpower_planned} />
+                      <FieldDisplay label={t('cutting.otManpowerPlanned')} value={target.ot_manpower_planned} />
                     )}
                   </div>
                 </div>
 
                 {/* Target Daily Output */}
                 <div>
-                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Daily Output</p>
+                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">{t('cutting.dailyOutput')}</p>
                   <div className="grid grid-cols-2 gap-3">
-                    <FieldDisplay label="Day Cutting" value={target.day_cutting ?? 0} className="text-lg" />
-                    <FieldDisplay label="Day Input" value={target.day_input ?? 0} className="text-lg text-primary" />
+                    <FieldDisplay label={t('cutting.dayCutting')} value={target.day_cutting ?? 0} className="text-lg" />
+                    <FieldDisplay label={t('cutting.dayInput')} value={target.day_input ?? 0} className="text-lg text-primary" />
                   </div>
                 </div>
 
                 {/* Target Timestamp */}
                 {target.submitted_at && (
                   <p className="text-xs text-muted-foreground pt-2 border-t border-primary/10">
-                    Submitted: {formatDateTime(target.submitted_at)}
+                    {t('cutting.submitted')}: {formatDateTime(target.submitted_at)}
                   </p>
                 )}
               </div>
             ) : (
               <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 p-4 flex flex-col items-center justify-center text-center min-h-[200px]">
                 <Target className="h-8 w-8 mb-2 opacity-40 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">Morning target not submitted</p>
+                <p className="text-sm text-muted-foreground">{t('cutting.morningTargetNotSubmitted')}</p>
               </div>
             )}
 
@@ -222,36 +224,36 @@ export function CuttingSubmissionView({ target, actual, open, onOpenChange }: Cu
               <div className="rounded-lg border border-success/20 bg-success/5 p-4 space-y-4">
                 <h4 className="font-semibold text-sm flex items-center gap-2 text-success">
                   <Scissors className="h-4 w-4" />
-                  End of Day Actual
+                  {t('cutting.endOfDayActual')}
                 </h4>
 
                 {/* Actual Capacities */}
                 <div>
-                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Capacities</p>
+                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">{t('cutting.capacities')}</p>
                   <div className="grid grid-cols-2 gap-3">
-                    <FieldDisplay label="Man Power" value={actual.man_power} />
-                    <FieldDisplay label="Marker Capacity" value={actual.marker_capacity} />
-                    <FieldDisplay label="Lay Capacity" value={actual.lay_capacity} />
-                    <FieldDisplay label="Cutting Capacity" value={actual.cutting_capacity} className="text-success" />
-                    <FieldDisplay label="Under Qty" value={actual.under_qty} />
+                    <FieldDisplay label={t('cutting.manPower')} value={actual.man_power} />
+                    <FieldDisplay label={t('cutting.markerCapacity')} value={actual.marker_capacity} />
+                    <FieldDisplay label={t('cutting.layCapacity')} value={actual.lay_capacity} />
+                    <FieldDisplay label={t('cutting.cuttingCapacity')} value={actual.cutting_capacity} className="text-success" />
+                    <FieldDisplay label={t('cutting.underQty')} value={actual.under_qty} />
                     {actual.hours_actual != null && (
-                      <FieldDisplay label="Hours Actual" value={actual.hours_actual} />
+                      <FieldDisplay label={t('cutting.hoursActual')} value={actual.hours_actual} />
                     )}
                     {actual.ot_hours_actual != null && (
-                      <FieldDisplay label="OT Hours Actual" value={actual.ot_hours_actual} />
+                      <FieldDisplay label={t('cutting.otHoursActual')} value={actual.ot_hours_actual} />
                     )}
                     {actual.ot_manpower_actual != null && (
-                      <FieldDisplay label="OT Manpower Actual" value={actual.ot_manpower_actual} />
+                      <FieldDisplay label={t('cutting.otManpowerActual')} value={actual.ot_manpower_actual} />
                     )}
                   </div>
                 </div>
 
                 {/* Actual Daily Output */}
                 <div>
-                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">Daily Output</p>
+                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">{t('cutting.dailyOutput')}</p>
                   <div className="grid grid-cols-2 gap-3">
-                    <FieldDisplay label="Day Cutting" value={actual.day_cutting} className="text-lg" />
-                    <FieldDisplay label="Day Input" value={actual.day_input} className="text-lg text-success" />
+                    <FieldDisplay label={t('cutting.dayCutting')} value={actual.day_cutting} className="text-lg" />
+                    <FieldDisplay label={t('cutting.dayInput')} value={actual.day_input} className="text-lg text-success" />
                   </div>
                 </div>
 
@@ -260,10 +262,10 @@ export function CuttingSubmissionView({ target, actual, open, onOpenChange }: Cu
                   <div className="border-t border-success/10 pt-3">
                     <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
                       <Package className="h-3 w-3" />
-                      Left Over / Fabric Saved
+                      {t('cutting.addLeftOverFabric')}
                     </p>
                     <div className="grid grid-cols-2 gap-3">
-                      <FieldDisplay label="Type" value={actual.leftover_type} />
+                      <FieldDisplay label={t('cutting.type')} value={actual.leftover_type} />
                       <div>
                         <p className="text-xs text-muted-foreground uppercase tracking-wide">Quantity</p>
                         <p className="font-semibold">
@@ -277,7 +279,7 @@ export function CuttingSubmissionView({ target, actual, open, onOpenChange }: Cu
                       )}
                       {actual.leftover_notes && (
                         <div className="col-span-2">
-                          <FieldDisplay label="Notes" value={actual.leftover_notes} className="text-sm" />
+                          <FieldDisplay label={t('cutting.remarks')} value={actual.leftover_notes} className="text-sm" />
                         </div>
                       )}
                     </div>
@@ -308,14 +310,14 @@ export function CuttingSubmissionView({ target, actual, open, onOpenChange }: Cu
                 {/* Actual Timestamp */}
                 {actual.submitted_at && (
                   <p className="text-xs text-muted-foreground pt-2 border-t border-success/10">
-                    Submitted: {formatDateTime(actual.submitted_at)}
+                    {t('cutting.submitted')}: {formatDateTime(actual.submitted_at)}
                   </p>
                 )}
               </div>
             ) : (
               <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 p-4 flex flex-col items-center justify-center text-center min-h-[200px]">
                 <Scissors className="h-8 w-8 mb-2 opacity-40 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">End of day not submitted yet</p>
+                <p className="text-sm text-muted-foreground">{t('cutting.endOfDayNotSubmitted')}</p>
               </div>
             )}
           </div>
@@ -323,12 +325,12 @@ export function CuttingSubmissionView({ target, actual, open, onOpenChange }: Cu
           {/* Cumulative Totals (full width, below columns) */}
           {hasActual && actual && (
             <div className="rounded-lg border border-[#a855f7]/20 bg-[#a855f7]/5 p-4 text-center">
-              <h4 className="font-semibold text-sm mb-3 text-[#7e22ce] dark:text-[#c084fc]">Cumulative Totals</h4>
+              <h4 className="font-semibold text-sm mb-3 text-[#7e22ce] dark:text-[#c084fc]">{t('cutting.cumulativeTotals')}</h4>
               <div className="flex justify-center gap-8 md:gap-12">
-                <FieldDisplay label="Total Cutting" value={actual.total_cutting} />
-                <FieldDisplay label="Total Input" value={actual.total_input} className="text-success" />
+                <FieldDisplay label={t('cutting.totalCutting')} value={actual.total_cutting} />
+                <FieldDisplay label={t('cutting.totalInput')} value={actual.total_input} className="text-success" />
                 <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Balance</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">{t('cutting.balance')}</p>
                   <p className={`text-xl font-bold ${actual.balance != null && actual.balance < 0 ? "text-destructive" : ""}`}>
                     {actual.balance?.toLocaleString() || "—"}
                   </p>
@@ -341,36 +343,36 @@ export function CuttingSubmissionView({ target, actual, open, onOpenChange }: Cu
           {isComparison && target && actual && (
             <div className="border rounded-lg p-4 bg-muted/30">
               <h4 className="font-semibold text-sm mb-3 flex items-center justify-between">
-                <span>Target vs Actual Comparison</span>
-                <Badge variant="outline" className="text-xs">Variance</Badge>
+                <span>{t('cutting.targetVsActual')}</span>
+                <Badge variant="outline" className="text-xs">{t('cutting.variance')}</Badge>
               </h4>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-xs text-muted-foreground border-b">
-                      <th className="text-left py-2 pr-4 font-medium">Metric</th>
-                      <th className="text-right py-2 px-3 font-medium">Target</th>
-                      <th className="text-right py-2 px-3 font-medium">Actual</th>
-                      <th className="text-right py-2 pl-3 font-medium">Variance</th>
+                      <th className="text-left py-2 pr-4 font-medium">{t('cutting.metric')}</th>
+                      <th className="text-right py-2 px-3 font-medium">{t('cutting.target')}</th>
+                      <th className="text-right py-2 px-3 font-medium">{t('cutting.actual')}</th>
+                      <th className="text-right py-2 pl-3 font-medium">{t('cutting.variance')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {(() => {
                       const rows: { label: string; tgt: number | null | undefined; act: number | null | undefined; decimals?: number }[] = [
-                        { label: "Output per Hour", tgt: target.target_per_hour, act: actual.actual_per_hour, decimals: 2 },
-                        { label: "Day Cutting", tgt: target.day_cutting, act: actual.day_cutting },
-                        { label: "Day Input", tgt: target.day_input, act: actual.day_input },
-                        { label: "Hours", tgt: target.hours_planned, act: actual.hours_actual },
-                        { label: "Man Power", tgt: target.man_power, act: actual.man_power },
-                        { label: "Cutting Capacity", tgt: target.cutting_capacity, act: actual.cutting_capacity },
-                        { label: "Marker Capacity", tgt: target.marker_capacity, act: actual.marker_capacity },
-                        { label: "Lay Capacity", tgt: target.lay_capacity, act: actual.lay_capacity },
-                        { label: "Under Qty", tgt: target.under_qty, act: actual.under_qty },
+                        { label: t('cutting.outputPerHour'), tgt: target.target_per_hour, act: actual.actual_per_hour, decimals: 2 },
+                        { label: t('cutting.dayCutting'), tgt: target.day_cutting, act: actual.day_cutting },
+                        { label: t('cutting.dayInput'), tgt: target.day_input, act: actual.day_input },
+                        { label: t('cutting.hours'), tgt: target.hours_planned, act: actual.hours_actual },
+                        { label: t('cutting.manPower'), tgt: target.man_power, act: actual.man_power },
+                        { label: t('cutting.cuttingCapacity'), tgt: target.cutting_capacity, act: actual.cutting_capacity },
+                        { label: t('cutting.markerCapacity'), tgt: target.marker_capacity, act: actual.marker_capacity },
+                        { label: t('cutting.layCapacity'), tgt: target.lay_capacity, act: actual.lay_capacity },
+                        { label: t('cutting.underQty'), tgt: target.under_qty, act: actual.under_qty },
                         ...(target.ot_hours_planned != null || actual.ot_hours_actual != null
-                          ? [{ label: "OT Hours", tgt: target.ot_hours_planned, act: actual.ot_hours_actual }]
+                          ? [{ label: t('cutting.otHours'), tgt: target.ot_hours_planned, act: actual.ot_hours_actual }]
                           : []),
                         ...(target.ot_manpower_planned != null || actual.ot_manpower_actual != null
-                          ? [{ label: "OT Manpower", tgt: target.ot_manpower_planned, act: actual.ot_manpower_actual }]
+                          ? [{ label: t('cutting.otManpower'), tgt: target.ot_manpower_planned, act: actual.ot_manpower_actual }]
                           : []),
                       ];
                       return rows.map(({ label, tgt, act, decimals }) => (

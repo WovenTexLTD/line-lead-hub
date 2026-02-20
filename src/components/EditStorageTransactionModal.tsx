@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,7 @@ interface EditStorageTransactionModalProps {
 }
 
 export function EditStorageTransactionModal({ transaction, open, onOpenChange, onSaved }: EditStorageTransactionModalProps) {
+  const { t } = useTranslation();
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<Record<string, any>>({});
 
@@ -60,12 +62,12 @@ export function EditStorageTransactionModal({ transaction, open, onOpenChange, o
 
       if (error) throw error;
 
-      toast.success("Transaction updated successfully");
+      toast.success(t('modals.transactionUpdatedSuccess'));
       onOpenChange(false);
       onSaved();
     } catch (error: any) {
       console.error('Error updating transaction:', error);
-      toast.error(error?.message || "Failed to update transaction");
+      toast.error(error?.message || t('modals.failedToUpdateTransaction'));
     } finally {
       setSaving(false);
     }
@@ -77,14 +79,14 @@ export function EditStorageTransactionModal({ transaction, open, onOpenChange, o
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Package className="h-5 w-5 text-primary" />
-            Edit Storage Transaction
+            {t('modals.editStorageTransaction')}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="receive_qty">Receive Qty</Label>
+              <Label htmlFor="receive_qty">{t('modals.receiveQty')}</Label>
               <Input
                 id="receive_qty"
                 type="number"
@@ -93,7 +95,7 @@ export function EditStorageTransactionModal({ transaction, open, onOpenChange, o
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="issue_qty">Issue Qty</Label>
+              <Label htmlFor="issue_qty">{t('modals.issueQty')}</Label>
               <Input
                 id="issue_qty"
                 type="number"
@@ -104,7 +106,7 @@ export function EditStorageTransactionModal({ transaction, open, onOpenChange, o
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="remarks">Remarks</Label>
+            <Label htmlFor="remarks">{t('modals.remarks')}</Label>
             <Textarea
               id="remarks"
               value={formData.remarks ?? ''}
@@ -116,13 +118,13 @@ export function EditStorageTransactionModal({ transaction, open, onOpenChange, o
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Cancel
+            {t('modals.cancel')}
           </Button>
           <Button onClick={handleSave} disabled={saving}>
             {saving ? (
-              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {t('modals.saving')}</>
             ) : (
-              'Save Changes'
+              t('modals.saveChanges')
             )}
           </Button>
         </DialogFooter>
