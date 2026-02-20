@@ -17,7 +17,7 @@ interface SewingActual {
   manpower_actual: number;
   hours_actual: number | null;
   ot_hours_actual: number;
-  ot_manpower_actual: number;
+  ot_manpower_actual: number | null;
   cumulative_good_total: number;
   remarks?: string | null;
 }

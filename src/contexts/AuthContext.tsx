@@ -41,7 +41,7 @@ const factorySchema = z.object({
 
 type Profile = z.infer<typeof profileSchema>;
 type UserRole = z.infer<typeof userRoleSchema>;
-type Factory = z.infer<typeof factorySchema>;
+export type Factory = z.infer<typeof factorySchema>;
 
 interface AuthContextType {
   user: User | null;

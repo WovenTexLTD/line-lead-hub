@@ -134,11 +134,11 @@ export function useLinePerformance() {
         .select("line_id, work_orders(id, po_number, buyer, style, item, is_active)")
         .eq("factory_id", factoryId);
 
-      const queries: Promise<any>[] = [
-        linesQuery,
-        targetsQuery,
-        actualsQuery,
-        assignmentsQuery,
+      const queries = [
+        linesQuery.then(r => r),
+        targetsQuery.then(r => r),
+        actualsQuery.then(r => r),
+        assignmentsQuery.then(r => r),
       ];
 
       // Only fetch user line assignments if not admin
@@ -148,6 +148,7 @@ export function useLinePerformance() {
             .from("user_line_assignments")
             .select("line_id")
             .eq("user_id", userId)
+            .then(r => r)
         );
       }
 
