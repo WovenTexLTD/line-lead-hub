@@ -288,7 +288,7 @@ export function usePOControlRoom() {
           totalRework: sewing.rework,
           hasEodToday,
           progressPct,
-          health: { status: "healthy" as const, reasons: ["On track"] },
+          health: { status: "healthy", reasons: ["On track"] } as HealthReason,
         };
 
         poData.health = computeHealth(poData, today);
