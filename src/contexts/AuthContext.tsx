@@ -18,7 +18,7 @@ const profileSchema = z.object({
 });
 
 const userRoleSchema = z.object({
-  role: z.enum(['worker', 'admin', 'owner', 'storage', 'cutting', 'sewing', 'finishing', 'superadmin']),
+  role: z.enum(['worker', 'admin', 'owner', 'storage', 'cutting', 'sewing', 'finishing', 'buyer', 'superadmin']),
   factory_id: z.string().nullable(),
 });
 
@@ -60,6 +60,7 @@ interface AuthContextType {
   isCuttingUser: () => boolean;
   isSewingUser: () => boolean;
   isFinishingUser: () => boolean;
+  isBuyerUser: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -333,6 +334,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return roles.some(r => r.role === 'finishing') || (hasRole('worker') && profile?.department === 'finishing');
   }
 
+  function isBuyerUser(): boolean {
+    return roles.some(r => r.role === 'buyer');
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -352,6 +357,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isCuttingUser,
         isSewingUser,
         isFinishingUser,
+        isBuyerUser,
       }}
     >
       {children}

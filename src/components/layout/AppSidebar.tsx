@@ -262,10 +262,11 @@ export function AppSidebar() {
   const isCuttingRole = roles.some(ur => ur.role === 'cutting');
   const isSewingRole = roles.some(ur => ur.role === 'sewing');
   const isFinishingRole = roles.some(ur => ur.role === 'finishing');
+  const isBuyerRole = roles.some(ur => ur.role === 'buyer');
   const roleHierarchy = ['owner', 'admin', 'worker'];
   const highestRole = roleHierarchy.find(r =>
     roles.some(ur => ur.role === r)
-  ) || (isStorageRole ? 'storage' : isCuttingRole ? 'cutting' : isSewingRole ? 'sewing' : isFinishingRole ? 'finishing' : 'worker');
+  ) || (isStorageRole ? 'storage' : isCuttingRole ? 'cutting' : isSewingRole ? 'sewing' : isFinishingRole ? 'finishing' : isBuyerRole ? 'buyer' : 'worker');
 
   // Get nav items based on role and department
   let navItems = NAV_ITEMS[highestRole as keyof typeof NAV_ITEMS] || NAV_ITEMS.worker;
@@ -288,6 +289,11 @@ export function AppSidebar() {
   // For standalone finishing role
   if (isFinishingRole && highestRole === 'finishing') {
     navItems = NAV_ITEMS.finishing;
+  }
+
+  // For buyer role
+  if (isBuyerRole && highestRole === 'buyer') {
+    navItems = NAV_ITEMS.buyer;
   }
 
   // Legacy: for workers, filter navigation based on department (only when in a factory)

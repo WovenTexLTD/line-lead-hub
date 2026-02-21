@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, UserCog, Shield, Trash2, GitBranch, Info } from "lucide-react";
+import { Loader2, UserCog, Shield, Trash2, GitBranch, Info, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { ROLE_LABELS, DEPARTMENT_WIDE_ROLES, type AppRole } from "@/lib/constants";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -62,10 +62,17 @@ interface Line {
   name: string | null;
 }
 
-const ASSIGNABLE_ROLES: AppRole[] = ['sewing', 'finishing', 'admin', 'storage', 'cutting'];
+interface WorkOrder {
+  id: string;
+  po_number: string;
+  style: string;
+  buyer: string;
+}
+
+const ASSIGNABLE_ROLES: AppRole[] = ['sewing', 'finishing', 'admin', 'storage', 'cutting', 'buyer'];
 
 const editUserSchema = z.object({
-  role: z.enum(["sewing", "finishing", "admin", "storage", "cutting", "owner", "worker"]),
+  role: z.enum(["sewing", "finishing", "admin", "storage", "cutting", "owner", "worker", "buyer"]),
   isActive: z.boolean(),
 });
 
@@ -81,6 +88,8 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
     isActive: true,
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+  const [selectedWorkOrderIds, setSelectedWorkOrderIds] = useState<string[]>([]);
 
   // Admins can assign all roles including other admins
   const availableRoles = hasRole('admin') || hasRole('owner')
@@ -92,11 +101,13 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
   const isAdminOrHigher = user?.role === 'admin' || user?.role === 'owner';
 
   const isDeptWide = DEPARTMENT_WIDE_ROLES.includes(formData.role);
+  const isBuyerRole = formData.role === 'buyer';
   const showLinePicker = formData.role === 'sewing';
 
   useEffect(() => {
     if (open && profile?.factory_id) {
       fetchLines();
+      fetchWorkOrders();
     }
   }, [open, profile?.factory_id]);
 
@@ -109,6 +120,13 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
       setSelectedLineIds(user.assigned_line_ids || []);
     }
   }, [user]);
+
+  // Fetch buyer PO access when editing a buyer user
+  useEffect(() => {
+    if (open && user && user.role === 'buyer' && profile?.factory_id) {
+      fetchBuyerPOAccess(user.id);
+    }
+  }, [open, user, profile?.factory_id]);
 
   async function fetchLines() {
     if (!profile?.factory_id) return;
@@ -128,6 +146,41 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
       });
       setLines(sorted);
     }
+  }
+
+  async function fetchWorkOrders() {
+    if (!profile?.factory_id) return;
+
+    const { data } = await supabase
+      .from('work_orders')
+      .select('id, po_number, style, buyer')
+      .eq('factory_id', profile.factory_id)
+      .eq('is_active', true)
+      .order('po_number');
+
+    if (data) setWorkOrders(data);
+  }
+
+  async function fetchBuyerPOAccess(userId: string) {
+    if (!profile?.factory_id) return;
+
+    const { data } = await supabase
+      .from('buyer_po_access')
+      .select('work_order_id')
+      .eq('user_id', userId)
+      .eq('factory_id', profile.factory_id);
+
+    if (data) {
+      setSelectedWorkOrderIds(data.map(d => d.work_order_id));
+    }
+  }
+
+  function toggleWorkOrder(woId: string) {
+    setSelectedWorkOrderIds(prev =>
+      prev.includes(woId)
+        ? prev.filter(id => id !== woId)
+        : [...prev, woId]
+    );
   }
 
   function toggleLine(lineId: string) {
@@ -193,39 +246,64 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
         return;
       }
 
-      // Update line assignments - delete all existing, then insert new
-      const { error: deleteLineError } = await mutateWithRetry(() =>
-        supabase.from('user_line_assignments').delete().eq('user_id', user.id).eq('factory_id', profile.factory_id!)
-      );
-
-      if (deleteLineError) {
-        console.error("Delete line assignments error:", deleteLineError);
-      }
-
-      // Determine which line IDs to assign
-      let lineIdsToAssign: string[] = [];
-      if (showLinePicker) {
-        // Sewing: use manually selected lines
-        lineIdsToAssign = selectedLineIds;
-      } else if (isDeptWide) {
-        // Finishing, storage, cutting: all lines
-        lineIdsToAssign = lines.map(l => l.id);
-      }
-      // Admin: no lines
-
-      if (lineIdsToAssign.length > 0) {
-        const lineAssignments = lineIdsToAssign.map(lineId => ({
-          user_id: user.id,
-          line_id: lineId,
-          factory_id: profile.factory_id!,
-        }));
-
-        const { error: insertLineError } = await mutateWithRetry(() =>
-          supabase.from('user_line_assignments').insert(lineAssignments)
+      // Update line assignments (skip for buyer role)
+      if (!isBuyerRole) {
+        const { error: deleteLineError } = await mutateWithRetry(() =>
+          supabase.from('user_line_assignments').delete().eq('user_id', user.id).eq('factory_id', profile.factory_id!)
         );
 
-        if (insertLineError) {
-          console.error("Insert line assignments error:", insertLineError);
+        if (deleteLineError) {
+          console.error("Delete line assignments error:", deleteLineError);
+        }
+
+        // Determine which line IDs to assign
+        let lineIdsToAssign: string[] = [];
+        if (showLinePicker) {
+          lineIdsToAssign = selectedLineIds;
+        } else if (isDeptWide) {
+          lineIdsToAssign = lines.map(l => l.id);
+        }
+
+        if (lineIdsToAssign.length > 0) {
+          const lineAssignments = lineIdsToAssign.map(lineId => ({
+            user_id: user.id,
+            line_id: lineId,
+            factory_id: profile.factory_id!,
+          }));
+
+          const { error: insertLineError } = await mutateWithRetry(() =>
+            supabase.from('user_line_assignments').insert(lineAssignments)
+          );
+
+          if (insertLineError) {
+            console.error("Insert line assignments error:", insertLineError);
+          }
+        }
+      }
+
+      // Update buyer PO access
+      if (isBuyerRole) {
+        // Delete existing
+        await mutateWithRetry(() =>
+          supabase.from('buyer_po_access').delete().eq('user_id', user.id).eq('factory_id', profile.factory_id!)
+        );
+
+        // Insert new
+        if (selectedWorkOrderIds.length > 0) {
+          const poAccess = selectedWorkOrderIds.map(woId => ({
+            user_id: user.id,
+            work_order_id: woId,
+            factory_id: profile.factory_id!,
+            granted_by: currentUser!.id,
+          }));
+
+          const { error: poError } = await mutateWithRetry(() =>
+            supabase.from('buyer_po_access').insert(poAccess)
+          );
+
+          if (poError) {
+            console.error("Buyer PO access error:", poError);
+          }
         }
       }
 
@@ -246,6 +324,41 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
     setLoading(true);
 
     try {
+      // For buyer users, deactivate the membership and clean up PO access for this factory
+      if (user.role === 'buyer') {
+        // Deactivate membership (don't delete — preserves history)
+        await mutateWithRetry(() =>
+          supabase.from('buyer_factory_memberships')
+            .update({ is_active: false })
+            .eq('user_id', user.id)
+            .eq('factory_id', profile.factory_id!)
+        );
+
+        // Remove PO access for this factory
+        await mutateWithRetry(() =>
+          supabase.from('buyer_po_access')
+            .delete()
+            .eq('user_id', user.id)
+            .eq('factory_id', profile.factory_id!)
+        );
+
+        // Remove buyer role for this factory
+        await mutateWithRetry(() =>
+          supabase.from('user_roles')
+            .delete()
+            .eq('user_id', user.id)
+            .eq('role', 'buyer')
+            .eq('factory_id', profile.factory_id!)
+        );
+
+        toast.success(t('modals.userAccessRemoved'));
+        onSuccess();
+        onOpenChange(false);
+        setShowDeleteConfirm(false);
+        return;
+      }
+
+      // For non-buyer users, use the existing edge function
       const { data, error } = await invokeEdgeFn("remove-user-access", { userId: user.id });
 
       if (error) {
@@ -384,8 +497,52 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
               </div>
             )}
 
-            {/* Info note for department-wide roles */}
-            {isDeptWide && (
+            {/* Buyer PO Access */}
+            {isBuyerRole && (
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                  Assigned POs
+                  {selectedWorkOrderIds.length > 0 && (
+                    <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                      {selectedWorkOrderIds.length} selected
+                    </span>
+                  )}
+                </Label>
+                <ScrollArea className="h-40 border rounded-md p-2">
+                  {workOrders.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No active work orders found
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {workOrders.map((wo) => (
+                        <div key={wo.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`edit-wo-${wo.id}`}
+                            checked={selectedWorkOrderIds.includes(wo.id)}
+                            onCheckedChange={() => toggleWorkOrder(wo.id)}
+                          />
+                          <label
+                            htmlFor={`edit-wo-${wo.id}`}
+                            className="text-sm cursor-pointer flex-1"
+                          >
+                            <span className="font-medium">{wo.po_number}</span>
+                            <span className="text-muted-foreground"> — {wo.style}</span>
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+                <p className="text-xs text-muted-foreground">
+                  Select which POs this buyer can view.
+                </p>
+              </div>
+            )}
+
+            {/* Info note for department-wide roles (not shown for buyer) */}
+            {isDeptWide && !isBuyerRole && (
               <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 border text-sm text-muted-foreground">
                 <Info className="h-4 w-4 mt-0.5 shrink-0" />
                 <span>{t('modals.roleAllAccess')}</span>

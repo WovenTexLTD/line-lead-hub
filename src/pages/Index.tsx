@@ -21,6 +21,15 @@ export default function Index() {
   if (user) {
     if (!profile) return <Navigate to="/auth" replace />;
 
+    // Buyer users: route to workspace selector or dashboard
+    if (hasRole('buyer')) {
+      if (!profile.factory_id) {
+        // No active workspace set — go to selector
+        return <Navigate to="/buyer/select-workspace" replace />;
+      }
+      return <Navigate to="/buyer/dashboard" replace />;
+    }
+
     if (!profile.factory_id) {
       return <Navigate to="/setup/factory" replace />;
     }

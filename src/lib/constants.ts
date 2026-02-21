@@ -16,13 +16,14 @@ export const ROLES = {
   CUTTING: 'cutting',
   SEWING: 'sewing',
   FINISHING: 'finishing',
+  BUYER: 'buyer',
   SUPERADMIN: 'superadmin',
 } as const;
 
 export type AppRole = typeof ROLES[keyof typeof ROLES];
 
 // Roles that are department-wide (all lines / all POs) — no line assignment needed
-export const DEPARTMENT_WIDE_ROLES: AppRole[] = ['storage', 'cutting', 'finishing'];
+export const DEPARTMENT_WIDE_ROLES: AppRole[] = ['storage', 'cutting', 'finishing', 'buyer'];
 
 // Role display names
 export const ROLE_LABELS: Record<AppRole, string> = {
@@ -33,6 +34,7 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   cutting: 'Cutting',
   sewing: 'Sewing',
   finishing: 'Finishing',
+  buyer: 'Buyer / Client',
   superadmin: 'Super Admin',
 };
 
@@ -275,6 +277,12 @@ export const NAV_ITEMS = {
     { path: '/finishing/daily-output', label: 'End of Day Output', icon: 'ClipboardCheck' },
     { path: '/finishing/my-submissions', label: 'My Submissions', icon: 'FileText' },
     { path: '/report-blocker', label: 'Report Blocker', icon: 'AlertTriangle' },
+    { path: '/preferences', label: 'My Preferences', icon: 'UserCog' },
+  ],
+  buyer: [
+    { path: '/buyer/dashboard', label: 'PO Overview', icon: 'LayoutDashboard' },
+    { path: '/buyer/today', label: 'Today Updates', icon: 'CalendarDays' },
+    { path: '/buyer/submissions', label: 'All Submissions', icon: 'FileText' },
     { path: '/preferences', label: 'My Preferences', icon: 'UserCog' },
   ],
 };

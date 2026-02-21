@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import { ThemeProvider } from "next-themes";
 import { AuthProvider, AuthContext } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { BuyerLayout } from "@/components/layout/BuyerLayout";
 import { SubscriptionGate } from "@/components/SubscriptionGate";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { LoadingScreen } from "@/components/LoadingScreen";
@@ -62,6 +63,10 @@ const CuttingSummary = lazy(() => import("./pages/CuttingSummary"));
 const CuttingAllSubmissions = lazy(() => import("./pages/CuttingAllSubmissions"));
 const CuttingHandoffs = lazy(() => import("./pages/CuttingHandoffs"));
 const ErrorLogs = lazy(() => import("./pages/ErrorLogs"));
+const BuyerDashboard = lazy(() => import("./pages/buyer/BuyerDashboard"));
+const BuyerTodayUpdates = lazy(() => import("./pages/buyer/BuyerTodayUpdates"));
+const BuyerSubmissions = lazy(() => import("./pages/buyer/BuyerSubmissions"));
+const BuyerWorkspaceSelector = lazy(() => import("./pages/buyer/BuyerWorkspaceSelector"));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -193,6 +198,15 @@ function AppRoutes() {
         {/* Sewing module routes */}
         <Route path="/sewing/cutting-handoffs" element={<SubscriptionGate><ProtectedRoute allowedRoles={['worker', 'sewing']}><CuttingHandoffs /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/sewing/my-submissions" element={<SubscriptionGate><ProtectedRoute allowedRoles={['worker', 'sewing']}><SewingMySubmissions /></ProtectedRoute></SubscriptionGate>} />
+      </Route>
+
+      {/* Buyer portal routes */}
+      <Route path="/buyer/select-workspace" element={<ProtectedRoute allowedRoles={['buyer']}><BuyerWorkspaceSelector /></ProtectedRoute>} />
+      <Route element={<BuyerLayout />}>
+        <Route path="/buyer/dashboard" element={<SubscriptionGate><ProtectedRoute allowedRoles={['buyer']}><BuyerDashboard /></ProtectedRoute></SubscriptionGate>} />
+        <Route path="/buyer/today" element={<SubscriptionGate><ProtectedRoute allowedRoles={['buyer']}><BuyerTodayUpdates /></ProtectedRoute></SubscriptionGate>} />
+        <Route path="/buyer/submissions" element={<SubscriptionGate><ProtectedRoute allowedRoles={['buyer']}><BuyerSubmissions /></ProtectedRoute></SubscriptionGate>} />
+        <Route path="/buyer/preferences" element={<SubscriptionGate><Preferences /></SubscriptionGate>} />
       </Route>
 
       <Route path="*" element={<NotFound />} />

@@ -20,7 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Loader2, Users as UsersIcon, Search, UserPlus, Shield, Mail, Phone, MoreHorizontal, Pencil, Trash2, Layers, PackageCheck, Scissors, Warehouse } from "lucide-react";
+import { Loader2, Users as UsersIcon, Search, UserPlus, Shield, Mail, Phone, MoreHorizontal, Pencil, Trash2, Layers, PackageCheck, Scissors, Warehouse, Building2 } from "lucide-react";
 import { ROLE_LABELS } from "@/lib/constants";
 import { InviteUserDialog } from "@/components/users/InviteUserDialog";
 import { EditUserDialog } from "@/components/users/EditUserDialog";
@@ -62,26 +62,55 @@ export default function UsersPage() {
     setLoading(true);
 
     try {
-      // Fetch profiles, roles, lines, and line assignments in parallel
-        const [profilesRes, rolesRes, linesRes, lineAssignmentsRes] = await Promise.all([
-          supabase
-            .from('profiles')
-            .select('*')
-            .eq('factory_id', profile.factory_id)
-            .order('full_name'),
-          supabase
-            .from('user_roles')
-            .select('user_id, role, factory_id')
-            .or(`factory_id.eq.${profile.factory_id},factory_id.is.null`),
-          supabase
-            .from('lines')
-            .select('id, line_id, name')
-            .eq('factory_id', profile.factory_id),
-          supabase
-            .from('user_line_assignments')
-            .select('user_id, line_id')
-            .eq('factory_id', profile.factory_id),
-        ]);
+      // Fetch profiles, roles, lines, line assignments, AND buyer memberships in parallel
+      const [profilesRes, rolesRes, linesRes, lineAssignmentsRes, buyerMembershipsRes] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('factory_id', profile.factory_id)
+          .order('full_name'),
+        supabase
+          .from('user_roles')
+          .select('user_id, role, factory_id')
+          .or(`factory_id.eq.${profile.factory_id},factory_id.is.null`),
+        supabase
+          .from('lines')
+          .select('id, line_id, name')
+          .eq('factory_id', profile.factory_id),
+        supabase
+          .from('user_line_assignments')
+          .select('user_id, line_id')
+          .eq('factory_id', profile.factory_id),
+        // Fetch buyer memberships for this factory (buyers may have a different active factory_id)
+        supabase
+          .from('buyer_factory_memberships')
+          .select('user_id, company_name')
+          .eq('factory_id', profile.factory_id)
+          .eq('is_active', true),
+      ]);
+
+      // Collect buyer user IDs that have a membership here but aren't in profilesRes
+      const profileUserIds = new Set((profilesRes.data || []).map(p => p.id));
+      const buyerUserIdsToFetch = (buyerMembershipsRes.data || [])
+        .map(m => m.user_id)
+        .filter(uid => !profileUserIds.has(uid));
+
+      // Fetch those extra buyer profiles
+      let extraBuyerProfiles: typeof profilesRes.data = [];
+      if (buyerUserIdsToFetch.length > 0) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('*')
+          .in('id', buyerUserIdsToFetch);
+        extraBuyerProfiles = data || [];
+      }
+
+      const allProfiles = [...(profilesRes.data || []), ...(extraBuyerProfiles || [])];
+
+      // Build a set of buyer user IDs for this factory
+      const buyerMembershipUserIds = new Set(
+        (buyerMembershipsRes.data || []).map(m => m.user_id)
+      );
 
       const roleMap = new Map<string, string>();
       rolesRes.data?.forEach((r: any) => {
@@ -91,7 +120,7 @@ export default function UsersPage() {
         if (!isFactoryScoped) return;
 
         const existingRole = roleMap.get(r.user_id);
-        const roleOrder = ['owner', 'admin', 'supervisor', 'sewing', 'finishing', 'storage', 'cutting', 'worker'];
+        const roleOrder = ['owner', 'admin', 'supervisor', 'sewing', 'finishing', 'storage', 'cutting', 'buyer', 'worker'];
         if (!existingRole || roleOrder.indexOf(r.role) < roleOrder.indexOf(existingRole)) {
           roleMap.set(r.user_id, r.role);
         }
@@ -108,12 +137,15 @@ export default function UsersPage() {
         userLineAssignments.set(la.user_id, existing);
       });
 
-      const formattedUsers: User[] = (profilesRes.data || []).map(p => {
+      const formattedUsers: User[] = allProfiles.map(p => {
         const lineIds = userLineAssignments.get(p.id) || [];
         const lineNames = lineIds.map(id => {
           const line = lineMap.get(id);
           return line?.name || line?.line_id || id;
         });
+
+        // For buyer users whose active factory_id is elsewhere, still show with buyer role
+        const role = roleMap.get(p.id) || (buyerMembershipUserIds.has(p.id) ? 'buyer' : 'worker');
 
         return {
           id: p.id,
@@ -123,7 +155,7 @@ export default function UsersPage() {
           avatar_url: p.avatar_url,
           is_active: p.is_active,
           invitation_status: (p.invitation_status as 'pending' | 'active') || 'active',
-          role: roleMap.get(p.id) || 'worker',
+          role,
           department: p.department,
           assigned_line_ids: lineIds,
           assigned_line_names: lineNames,
@@ -170,6 +202,8 @@ export default function UsersPage() {
         return 'success';
       case 'storage':
         return 'primary';
+      case 'buyer':
+        return 'warning';
       default:
         return 'neutral';
     }
@@ -330,6 +364,8 @@ export default function UsersPage() {
                           <Layers className="h-3 w-3 mr-1" />
                         ) : user.role === 'finishing' ? (
                           <PackageCheck className="h-3 w-3 mr-1" />
+                        ) : user.role === 'buyer' ? (
+                          <Building2 className="h-3 w-3 mr-1" />
                         ) : (
                           <Shield className="h-3 w-3 mr-1" />
                         )}
@@ -351,7 +387,9 @@ export default function UsersPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {['admin', 'owner', 'storage', 'finishing', 'cutting'].includes(user.role || '') ? (
+                      {user.role === 'buyer' ? (
+                        <span className="text-xs bg-muted px-2 py-0.5 rounded">Buyer — PO access</span>
+                      ) : ['admin', 'owner', 'storage', 'finishing', 'cutting'].includes(user.role || '') ? (
                         <span className="text-xs bg-muted px-2 py-0.5 rounded">All lines</span>
                       ) : user.assigned_line_names.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
