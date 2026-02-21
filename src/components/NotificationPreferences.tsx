@@ -15,7 +15,7 @@ interface NotificationPreference {
   email_enabled: boolean | null;
 }
 
-type UserRole = "worker" | "supervisor" | "admin" | "owner" | "superadmin" | "storage" | "cutting";
+type UserRole = "worker" | "supervisor" | "admin" | "owner" | "superadmin" | "storage" | "cutting" | "buyer";
 
 interface NotificationType {
   type: string;
@@ -102,7 +102,29 @@ const ALL_NOTIFICATION_TYPES: NotificationType[] = [
     label: "General Notifications",
     description: "System updates and general announcements",
     icon: Info,
-    roles: ["worker", "supervisor", "admin", "owner", "superadmin", "storage", "cutting"], // Everyone
+    roles: ["worker", "supervisor", "admin", "owner", "superadmin", "storage", "cutting", "buyer"], // Everyone
+  },
+  // Buyer-specific notifications
+  {
+    type: "po_production_update",
+    label: "Production Updates",
+    description: "Get notified when new production data is submitted for your POs",
+    icon: FileText,
+    roles: ["buyer"],
+  },
+  {
+    type: "po_milestone",
+    label: "PO Milestones",
+    description: "Get notified when a PO reaches key progress milestones (25%, 50%, 75%, 100%)",
+    icon: Target,
+    roles: ["buyer"],
+  },
+  {
+    type: "po_status_change",
+    label: "PO Status Changes",
+    description: "Get notified when a PO status changes (e.g. started, completed)",
+    icon: CheckCircle,
+    roles: ["buyer"],
   },
 ];
 
@@ -114,7 +136,7 @@ export function NotificationPreferences() {
 
   // Get the user's primary role (highest role they have)
   const userRole = useMemo((): UserRole => {
-    const roleHierarchy: UserRole[] = ["superadmin", "owner", "admin", "supervisor", "storage", "cutting", "worker"];
+    const roleHierarchy: UserRole[] = ["superadmin", "owner", "admin", "supervisor", "buyer", "storage", "cutting", "worker"];
     for (const role of roleHierarchy) {
       if (roles.some(r => r.role === role)) {
         return role;

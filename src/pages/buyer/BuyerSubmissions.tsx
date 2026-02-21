@@ -16,10 +16,11 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Loader2, FileText, Download, Calendar as CalendarIcon, RefreshCw } from "lucide-react";
+import { FileText, Download, Calendar as CalendarIcon, RefreshCw, TrendingUp, PackageCheck, AlertTriangle } from "lucide-react";
 import { format, subDays } from "date-fns";
 import { formatShortDate, formatTimeInTimezone } from "@/lib/date-utils";
 import { TableSkeleton } from "@/components/ui/table-skeleton";
+import { motion } from "framer-motion";
 
 type Department = "all" | "sewing" | "cutting" | "finishing";
 
@@ -159,6 +160,16 @@ export default function BuyerSubmissions() {
     finishing: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
   };
 
+  // Summary stats
+  const summary = useMemo(() => {
+    const totalOutput = rows.reduce((s, r) => s + r.output, 0);
+    const totalReject = rows.reduce((s, r) => s + r.reject, 0);
+    const bySewing = rows.filter(r => r.department === "sewing").length;
+    const byCutting = rows.filter(r => r.department === "cutting").length;
+    const byFinishing = rows.filter(r => r.department === "finishing").length;
+    return { totalOutput, totalReject, bySewing, byCutting, byFinishing };
+  }, [rows]);
+
   const handleExportCSV = () => {
     if (rows.length === 0) return;
 
@@ -185,7 +196,12 @@ export default function BuyerSubmissions() {
   };
 
   return (
-    <div className="p-4 lg:p-6 space-y-6">
+    <motion.div
+      className="p-4 lg:p-6 space-y-6"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+    >
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -272,21 +288,40 @@ export default function BuyerSubmissions() {
         <TableSkeleton columns={7} rows={8} headers={["Date", "PO", "Style", "Dept", "Output", "Reject", "Cumulative"]} />
       ) : rows.length === 0 ? (
         <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <FileText className="h-10 w-10 text-muted-foreground/50 mb-3" />
-            <p className="text-sm text-muted-foreground">
-              No submissions found for the selected filters
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <FileText className="h-12 w-12 text-muted-foreground/50 mb-4" />
+            <h3 className="text-lg font-medium mb-1">No Submissions Found</h3>
+            <p className="text-sm text-muted-foreground text-center max-w-md">
+              No submissions match the selected filters. Try adjusting the date range or PO filter.
             </p>
           </CardContent>
         </Card>
       ) : (
         <>
-          <div className="text-sm text-muted-foreground">
-            Showing {rows.length} submission{rows.length !== 1 ? "s" : ""}
+          {/* Summary stats */}
+          <div className="flex items-center gap-4 flex-wrap text-sm">
+            <span className="text-muted-foreground">
+              {rows.length} submission{rows.length !== 1 ? "s" : ""}
+            </span>
+            <span className="flex items-center gap-1 text-muted-foreground">
+              <TrendingUp className="h-3.5 w-3.5" />
+              Output: <span className="font-medium text-foreground">{summary.totalOutput.toLocaleString()}</span>
+            </span>
+            {summary.totalReject > 0 && (
+              <span className="flex items-center gap-1 text-muted-foreground">
+                <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                Rejects: <span className="font-medium text-amber-600">{summary.totalReject.toLocaleString()}</span>
+              </span>
+            )}
+            <span className="text-muted-foreground text-xs">
+              Sewing: {summary.bySewing} | Cutting: {summary.byCutting} | Finishing: {summary.byFinishing}
+            </span>
           </div>
-          <div className="rounded-md border">
+
+          {/* Scrollable table with sticky header */}
+          <div className="rounded-md border overflow-auto max-h-[70vh]">
             <Table>
-              <TableHeader>
+              <TableHeader className="sticky top-0 z-10 bg-background">
                 <TableRow>
                   <TableHead>Date</TableHead>
                   <TableHead>PO</TableHead>
@@ -300,7 +335,7 @@ export default function BuyerSubmissions() {
               </TableHeader>
               <TableBody>
                 {rows.map((row) => (
-                  <TableRow key={`${row.department}-${row.id}`}>
+                  <TableRow key={`${row.department}-${row.id}`} className="hover:bg-muted/50 transition-colors">
                     <TableCell>{formatShortDate(row.production_date)}</TableCell>
                     <TableCell className="font-medium">{row.po_number}</TableCell>
                     <TableCell>{row.style}</TableCell>
@@ -334,6 +369,6 @@ export default function BuyerSubmissions() {
           </div>
         </>
       )}
-    </div>
+    </motion.div>
   );
 }

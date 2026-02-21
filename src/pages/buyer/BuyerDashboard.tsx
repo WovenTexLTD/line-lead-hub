@@ -1,63 +1,49 @@
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { useBuyerPOAccess, BuyerWorkOrder } from "@/hooks/useBuyerPOAccess";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Loader2, Package, Scissors, TrendingUp, Archive, AlertTriangle, Clock, CheckCircle2 } from "lucide-react";
+import { useBuyerPOAccess } from "@/hooks/useBuyerPOAccess";
+import { KPICard } from "@/components/ui/kpi-card";
+import { AnimatedNumber } from "@/components/ui/animated-number";
+import { CompactPOCard } from "@/components/buyer/CompactPOCard";
+import { Card, CardContent } from "@/components/ui/card";
+import { Package, TrendingUp, Archive, PackageCheck } from "lucide-react";
 import { StatsCardsSkeleton } from "@/components/ui/table-skeleton";
-import { formatShortDate } from "@/lib/date-utils";
+import { POAggregates, computeHealth, EMPTY_AGGREGATES } from "@/lib/buyer-health";
+import { motion } from "framer-motion";
 
-interface POAggregates {
-  sewingOutput: number;
-  cumulativeGood: number;
-  rejectTotal: number;
-  reworkTotal: number;
-  finishingCarton: number;
-  finishingPoly: number;
-  finishingQcPass: number;
-  cuttingTotal: number;
-  cuttingInput: number;
-  hasEodToday: boolean;
+const stagger = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.06 } },
+};
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 12 },
+  show: { opacity: 1, y: 0 },
+};
+
+interface DashboardMeta {
+  lastSubmittedMap: Map<string, string>;
+  dailySewingMap: Map<string, number[]>;
+  dailyFinishingMap: Map<string, number[]>;
+  todayAgg: Map<string, { sewing: number; finishing: number }>;
+  yesterdayAgg: Map<string, { sewing: number; finishing: number }>;
 }
 
-type HealthStatus = "healthy" | "watch" | "at_risk" | "no_deadline" | "completed";
-
-function computeHealth(
-  wo: BuyerWorkOrder,
-  agg: POAggregates
-): { status: HealthStatus; label: string } {
-  const progressPct = wo.order_qty > 0 ? (agg.cumulativeGood / wo.order_qty) * 100 : 0;
-
-  if (progressPct >= 100) return { status: "completed", label: "Completed" };
-
-  if (!wo.planned_ex_factory) return { status: "no_deadline", label: "No deadline" };
-
-  const deadline = new Date(wo.planned_ex_factory);
-  const now = new Date();
-  const daysLeft = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-
-  if (daysLeft < 0) return { status: "at_risk", label: "Deadline passed" };
-  if (daysLeft <= 7 && progressPct < 80) return { status: "at_risk", label: "At risk" };
-  if (daysLeft <= 14 && progressPct < 60) return { status: "watch", label: "Watch" };
-  if (!agg.hasEodToday) return { status: "watch", label: "No update today" };
-
-  return { status: "healthy", label: "On track" };
-}
-
-const healthColors: Record<HealthStatus, string> = {
-  healthy: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
-  watch: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
-  at_risk: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
-  no_deadline: "bg-gray-100 text-gray-600 dark:bg-gray-800/30 dark:text-gray-400",
-  completed: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+const EMPTY_META: DashboardMeta = {
+  lastSubmittedMap: new Map(),
+  dailySewingMap: new Map(),
+  dailyFinishingMap: new Map(),
+  todayAgg: new Map(),
+  yesterdayAgg: new Map(),
 };
 
 export default function BuyerDashboard() {
+  const navigate = useNavigate();
   const { factory } = useAuth();
   const { workOrderIds, workOrders, loading: accessLoading } = useBuyerPOAccess();
   const [aggregates, setAggregates] = useState<Map<string, POAggregates>>(new Map());
+  const [meta, setMeta] = useState<DashboardMeta>(EMPTY_META);
   const [dataLoading, setDataLoading] = useState(true);
 
   const timezone = factory?.timezone || "Asia/Dhaka";
@@ -74,40 +60,37 @@ export default function BuyerDashboard() {
       setDataLoading(true);
 
       const today = new Date().toISOString().split("T")[0];
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
       const [sewingRes, finishingRes, cuttingRes] = await Promise.all([
         supabase
           .from("sewing_actuals")
-          .select("work_order_id, good_today, reject_today, rework_today, cumulative_good_total, production_date")
+          .select("work_order_id, good_today, reject_today, rework_today, cumulative_good_total, production_date, submitted_at")
           .in("work_order_id", workOrderIds),
         supabase
           .from("finishing_actuals")
-          .select("work_order_id, day_carton, day_poly, day_qc_pass, total_carton, total_poly, total_qc_pass, production_date")
+          .select("work_order_id, day_carton, day_poly, day_qc_pass, total_carton, total_poly, total_qc_pass, production_date, submitted_at")
           .in("work_order_id", workOrderIds),
         supabase
           .from("cutting_actuals")
-          .select("work_order_id, day_cutting, day_input, production_date")
+          .select("work_order_id, day_cutting, day_input, production_date, submitted_at")
           .in("work_order_id", workOrderIds),
       ]);
 
       if (cancelled) return;
 
       const aggMap = new Map<string, POAggregates>();
+      const submitMap = new Map<string, string>();
+      const sewDailyRaw = new Map<string, Map<string, number>>();
+      const finDailyRaw = new Map<string, Map<string, number>>();
+      const todayAgg = new Map<string, { sewing: number; finishing: number }>();
+      const yesterdayAgg = new Map<string, { sewing: number; finishing: number }>();
 
-      // Initialize with zeros for all POs
+      // Initialize
       for (const woId of workOrderIds) {
-        aggMap.set(woId, {
-          sewingOutput: 0,
-          cumulativeGood: 0,
-          rejectTotal: 0,
-          reworkTotal: 0,
-          finishingCarton: 0,
-          finishingPoly: 0,
-          finishingQcPass: 0,
-          cuttingTotal: 0,
-          cuttingInput: 0,
-          hasEodToday: false,
-        });
+        aggMap.set(woId, { ...EMPTY_AGGREGATES });
+        todayAgg.set(woId, { sewing: 0, finishing: 0 });
+        yesterdayAgg.set(woId, { sewing: 0, finishing: 0 });
       }
 
       // Aggregate sewing
@@ -117,22 +100,65 @@ export default function BuyerDashboard() {
         agg.sewingOutput += row.good_today || 0;
         agg.rejectTotal += row.reject_today || 0;
         agg.reworkTotal += row.rework_today || 0;
-        // Use the max cumulative value
         if ((row.cumulative_good_total || 0) > agg.cumulativeGood) {
           agg.cumulativeGood = row.cumulative_good_total || 0;
         }
         if (row.production_date === today) {
           agg.hasEodToday = true;
+          const t = todayAgg.get(row.work_order_id);
+          if (t) t.sewing += row.good_today || 0;
         }
+        if (row.production_date === yesterday) {
+          const y = yesterdayAgg.get(row.work_order_id);
+          if (y) y.sewing += row.good_today || 0;
+        }
+        // Track last submitted
+        if (row.submitted_at) {
+          const prev = submitMap.get(row.work_order_id);
+          if (!prev || row.submitted_at > prev) {
+            submitMap.set(row.work_order_id, row.submitted_at);
+          }
+        }
+        // Daily sewing for sparkline
+        if (!sewDailyRaw.has(row.work_order_id)) {
+          sewDailyRaw.set(row.work_order_id, new Map());
+        }
+        const dayMap = sewDailyRaw.get(row.work_order_id)!;
+        dayMap.set(
+          row.production_date,
+          (dayMap.get(row.production_date) || 0) + (row.good_today || 0)
+        );
       }
 
-      // Aggregate finishing — use totals from latest record
+      // Aggregate finishing
       for (const row of finishingRes.data || []) {
         const agg = aggMap.get(row.work_order_id);
         if (!agg) continue;
         agg.finishingCarton += row.day_carton || 0;
         agg.finishingPoly += row.day_poly || 0;
         agg.finishingQcPass += row.day_qc_pass || 0;
+        if (row.production_date === today) {
+          const t = todayAgg.get(row.work_order_id);
+          if (t) t.finishing += row.day_carton || 0;
+        }
+        if (row.production_date === yesterday) {
+          const y = yesterdayAgg.get(row.work_order_id);
+          if (y) y.finishing += row.day_carton || 0;
+        }
+        if (row.submitted_at) {
+          const prev = submitMap.get(row.work_order_id);
+          if (!prev || row.submitted_at > prev) {
+            submitMap.set(row.work_order_id, row.submitted_at);
+          }
+        }
+        if (!finDailyRaw.has(row.work_order_id)) {
+          finDailyRaw.set(row.work_order_id, new Map());
+        }
+        const dayMap = finDailyRaw.get(row.work_order_id)!;
+        dayMap.set(
+          row.production_date,
+          (dayMap.get(row.production_date) || 0) + (row.day_carton || 0)
+        );
       }
 
       // Aggregate cutting
@@ -141,9 +167,44 @@ export default function BuyerDashboard() {
         if (!agg) continue;
         agg.cuttingTotal += row.day_cutting || 0;
         agg.cuttingInput += row.day_input || 0;
+        if (row.submitted_at) {
+          const prev = submitMap.get(row.work_order_id);
+          if (!prev || row.submitted_at > prev) {
+            submitMap.set(row.work_order_id, row.submitted_at);
+          }
+        }
+      }
+
+      // Convert daily maps to sorted arrays (last 7 days)
+      const dailySewing = new Map<string, number[]>();
+      for (const [woId, dayMap] of sewDailyRaw) {
+        dailySewing.set(
+          woId,
+          [...dayMap.entries()]
+            .sort((a, b) => a[0].localeCompare(b[0]))
+            .slice(-7)
+            .map(([, v]) => v)
+        );
+      }
+      const dailyFinishing = new Map<string, number[]>();
+      for (const [woId, dayMap] of finDailyRaw) {
+        dailyFinishing.set(
+          woId,
+          [...dayMap.entries()]
+            .sort((a, b) => a[0].localeCompare(b[0]))
+            .slice(-7)
+            .map(([, v]) => v)
+        );
       }
 
       setAggregates(aggMap);
+      setMeta({
+        lastSubmittedMap: submitMap,
+        dailySewingMap: dailySewing,
+        dailyFinishingMap: dailyFinishing,
+        todayAgg,
+        yesterdayAgg,
+      });
       setDataLoading(false);
     }
 
@@ -156,26 +217,23 @@ export default function BuyerDashboard() {
   // Compute KPIs
   const kpis = useMemo(() => {
     let totalQty = 0;
-    let totalSewingOutput = 0;
-    let totalFinishingOutput = 0;
-    let totalCutting = 0;
+    let totalSewed = 0;
+    let totalPacked = 0;
 
     for (const wo of workOrders) {
       totalQty += wo.order_qty || 0;
       const agg = aggregates.get(wo.id);
       if (agg) {
-        totalSewingOutput += agg.cumulativeGood;
-        totalFinishingOutput += agg.finishingCarton + agg.finishingPoly;
-        totalCutting += agg.cuttingTotal;
+        totalSewed += agg.cumulativeGood;
+        totalPacked += agg.finishingCarton;
       }
     }
 
     return {
       totalPOs: workOrders.length,
       totalQty,
-      totalSewingOutput,
-      totalFinishingOutput,
-      totalCutting,
+      totalSewed,
+      totalPacked,
     };
   }, [workOrders, aggregates]);
 
@@ -191,8 +249,10 @@ export default function BuyerDashboard() {
           </p>
         </div>
         <StatsCardsSkeleton count={4} />
-        <div className="flex min-h-[200px] items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {[1, 2].map((i) => (
+            <div key={i} className="h-64 rounded-lg bg-muted animate-pulse" />
+          ))}
         </div>
       </div>
     );
@@ -232,204 +292,70 @@ export default function BuyerDashboard() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Active POs
-            </CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{kpis.totalPOs}</div>
-          </CardContent>
-        </Card>
+      <motion.div
+        className="grid gap-4 grid-cols-2 lg:grid-cols-4"
+        variants={stagger}
+        initial="hidden"
+        animate="show"
+      >
+        <motion.div variants={fadeUp}>
+          <KPICard
+            title="Active POs"
+            value={<AnimatedNumber value={kpis.totalPOs} />}
+            icon={Package}
+          />
+        </motion.div>
+        <motion.div variants={fadeUp}>
+          <KPICard
+            title="Total Order Qty"
+            value={<AnimatedNumber value={kpis.totalQty} />}
+            icon={Archive}
+          />
+        </motion.div>
+        <motion.div variants={fadeUp}>
+          <KPICard
+            title="Total Sewn"
+            value={<AnimatedNumber value={kpis.totalSewed} />}
+            icon={TrendingUp}
+          />
+        </motion.div>
+        <motion.div variants={fadeUp}>
+          <KPICard
+            title="Total Packed"
+            value={<AnimatedNumber value={kpis.totalPacked} />}
+            icon={PackageCheck}
+          />
+        </motion.div>
+      </motion.div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Order Qty
-            </CardTitle>
-            <Archive className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {kpis.totalQty.toLocaleString()}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Sewing Output
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {kpis.totalSewingOutput.toLocaleString()}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Cutting Output
-            </CardTitle>
-            <Scissors className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {kpis.totalCutting.toLocaleString()}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* PO Cards */}
-      <div className="space-y-4">
+      {/* PO Cards — Uniform Grid */}
+      <motion.div
+        className="grid grid-cols-1 lg:grid-cols-2 gap-4"
+        variants={stagger}
+        initial="hidden"
+        animate="show"
+      >
         {workOrders.map((wo) => {
-          const agg = aggregates.get(wo.id) || {
-            sewingOutput: 0,
-            cumulativeGood: 0,
-            rejectTotal: 0,
-            reworkTotal: 0,
-            finishingCarton: 0,
-            finishingPoly: 0,
-            finishingQcPass: 0,
-            cuttingTotal: 0,
-            cuttingInput: 0,
-            hasEodToday: false,
-          };
-          const progressPct =
-            wo.order_qty > 0
-              ? Math.min(100, Math.round((agg.cumulativeGood / wo.order_qty) * 100))
-              : 0;
+          const agg = aggregates.get(wo.id) || EMPTY_AGGREGATES;
           const health = computeHealth(wo, agg);
-          const balance = Math.max(0, wo.order_qty - agg.cumulativeGood);
-
+          const tAgg = meta.todayAgg.get(wo.id);
+          const yAgg = meta.yesterdayAgg.get(wo.id);
           return (
-            <Card key={wo.id}>
-              <CardContent className="p-4 md:p-6">
-                <div className="flex flex-col gap-4">
-                  {/* Header row */}
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="text-lg font-semibold">{wo.po_number}</h3>
-                        <Badge
-                          variant="outline"
-                          className={healthColors[health.status]}
-                        >
-                          {health.label}
-                        </Badge>
-                        {wo.status && (
-                          <Badge variant="secondary" className="text-xs">
-                            {wo.status.replace("_", " ")}
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="text-sm text-muted-foreground mt-1">
-                        {wo.style}
-                        {wo.color && ` — ${wo.color}`}
-                        {wo.item && ` — ${wo.item}`}
-                      </div>
-                    </div>
-                    <div className="text-right text-sm">
-                      <div className="font-medium">
-                        Order: {wo.order_qty.toLocaleString()} pcs
-                      </div>
-                      {wo.planned_ex_factory && (
-                        <div className="text-muted-foreground flex items-center gap-1 justify-end">
-                          <Clock className="h-3 w-3" />
-                          Ex-factory: {formatShortDate(wo.planned_ex_factory)}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Progress bar */}
-                  <div>
-                    <div className="flex items-center justify-between text-sm mb-1">
-                      <span className="text-muted-foreground">
-                        Sewing Progress
-                      </span>
-                      <span className="font-medium">
-                        {agg.cumulativeGood.toLocaleString()} /{" "}
-                        {wo.order_qty.toLocaleString()} ({progressPct}%)
-                      </span>
-                    </div>
-                    <Progress value={progressPct} className="h-2" />
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Balance: {balance.toLocaleString()} pcs remaining
-                    </div>
-                  </div>
-
-                  {/* Stats grid */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <div className="rounded-lg border p-3">
-                      <div className="text-xs text-muted-foreground mb-1">
-                        Cutting
-                      </div>
-                      <div className="text-lg font-semibold">
-                        {agg.cuttingTotal.toLocaleString()}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        Input: {agg.cuttingInput.toLocaleString()}
-                      </div>
-                    </div>
-                    <div className="rounded-lg border p-3">
-                      <div className="text-xs text-muted-foreground mb-1">
-                        Sewing Today
-                      </div>
-                      <div className="text-lg font-semibold">
-                        {agg.sewingOutput.toLocaleString()}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        Cumulative: {agg.cumulativeGood.toLocaleString()}
-                      </div>
-                    </div>
-                    <div className="rounded-lg border p-3">
-                      <div className="text-xs text-muted-foreground mb-1">
-                        Finishing
-                      </div>
-                      <div className="text-lg font-semibold">
-                        {(agg.finishingCarton + agg.finishingPoly).toLocaleString()}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        QC Pass: {agg.finishingQcPass.toLocaleString()}
-                      </div>
-                    </div>
-                    <div className="rounded-lg border p-3">
-                      <div className="text-xs text-muted-foreground mb-1">
-                        Quality
-                      </div>
-                      <div className="text-lg font-semibold flex items-center gap-1">
-                        {agg.rejectTotal > 0 ? (
-                          <>
-                            <AlertTriangle className="h-4 w-4 text-amber-500" />
-                            {agg.rejectTotal.toLocaleString()}
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                            OK
-                          </>
-                        )}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        Reject: {agg.rejectTotal} | Rework: {agg.reworkTotal}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <motion.div key={wo.id} variants={fadeUp}>
+              <CompactPOCard
+                wo={wo}
+                agg={agg}
+                health={health}
+                todaySewing={tAgg?.sewing ?? 0}
+                todayFinishing={tAgg?.finishing ?? 0}
+                yesterdaySewing={yAgg?.sewing}
+                yesterdayFinishing={yAgg?.finishing}
+                onClick={() => navigate(`/buyer/po/${wo.id}`)}
+              />
+            </motion.div>
           );
         })}
-      </div>
+      </motion.div>
     </div>
   );
 }

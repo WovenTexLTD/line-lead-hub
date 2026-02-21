@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { NetworkStatusIndicator } from "@/components/NetworkStatusIndicator";
+import { NotificationBell } from "@/components/NotificationBell";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 function PageErrorFallback() {
@@ -89,6 +90,7 @@ export function BuyerLayout() {
               <div className="flex-1" />
 
               <NetworkStatusIndicator />
+              <NotificationBell />
               <Button
                 variant="ghost"
                 size="icon"

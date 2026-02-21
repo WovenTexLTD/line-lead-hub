@@ -82,7 +82,7 @@ export function BuyerSidebar() {
                 ProductionPortal
               </span>
               <span className="text-xs text-sidebar-foreground/60">
-                Buyer Portal
+                Powered by WovenTex
               </span>
             </div>
           )}

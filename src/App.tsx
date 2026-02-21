@@ -66,6 +66,7 @@ const ErrorLogs = lazy(() => import("./pages/ErrorLogs"));
 const BuyerDashboard = lazy(() => import("./pages/buyer/BuyerDashboard"));
 const BuyerTodayUpdates = lazy(() => import("./pages/buyer/BuyerTodayUpdates"));
 const BuyerSubmissions = lazy(() => import("./pages/buyer/BuyerSubmissions"));
+const BuyerPODetails = lazy(() => import("./pages/buyer/BuyerPODetails"));
 const BuyerWorkspaceSelector = lazy(() => import("./pages/buyer/BuyerWorkspaceSelector"));
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -205,6 +206,7 @@ function AppRoutes() {
       <Route element={<BuyerLayout />}>
         <Route path="/buyer/dashboard" element={<SubscriptionGate><ProtectedRoute allowedRoles={['buyer']}><BuyerDashboard /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/buyer/today" element={<SubscriptionGate><ProtectedRoute allowedRoles={['buyer']}><BuyerTodayUpdates /></ProtectedRoute></SubscriptionGate>} />
+        <Route path="/buyer/po/:poId" element={<SubscriptionGate><ProtectedRoute allowedRoles={['buyer']}><BuyerPODetails /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/buyer/submissions" element={<SubscriptionGate><ProtectedRoute allowedRoles={['buyer']}><BuyerSubmissions /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/buyer/preferences" element={<SubscriptionGate><Preferences /></SubscriptionGate>} />
       </Route>
