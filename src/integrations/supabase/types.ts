@@ -209,6 +209,134 @@ export type Database = {
           },
         ]
       }
+      buyer_factory_memberships: {
+        Row: {
+          company_name: string | null
+          created_at: string | null
+          factory_id: string
+          id: string
+          invited_by: string | null
+          is_active: boolean
+          user_id: string
+        }
+        Insert: {
+          company_name?: string | null
+          created_at?: string | null
+          factory_id: string
+          id?: string
+          invited_by?: string | null
+          is_active?: boolean
+          user_id: string
+        }
+        Update: {
+          company_name?: string | null
+          created_at?: string | null
+          factory_id?: string
+          id?: string
+          invited_by?: string | null
+          is_active?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "buyer_factory_memberships_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      buyer_po_access: {
+        Row: {
+          factory_id: string
+          granted_at: string | null
+          granted_by: string | null
+          id: string
+          user_id: string
+          work_order_id: string
+        }
+        Insert: {
+          factory_id: string
+          granted_at?: string | null
+          granted_by?: string | null
+          id?: string
+          user_id: string
+          work_order_id: string
+        }
+        Update: {
+          factory_id?: string
+          granted_at?: string | null
+          granted_by?: string | null
+          id?: string
+          user_id?: string
+          work_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "buyer_po_access_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "buyer_po_access_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      buyer_workspace_prefs: {
+        Row: {
+          alert_thresholds: Json | null
+          created_at: string | null
+          daily_digest_enabled: boolean | null
+          default_po_id: string | null
+          factory_id: string
+          id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          alert_thresholds?: Json | null
+          created_at?: string | null
+          daily_digest_enabled?: boolean | null
+          default_po_id?: string | null
+          factory_id: string
+          id?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          alert_thresholds?: Json | null
+          created_at?: string | null
+          daily_digest_enabled?: boolean | null
+          default_po_id?: string | null
+          factory_id?: string
+          id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "buyer_workspace_prefs_default_po_id_fkey"
+            columns: ["default_po_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "buyer_workspace_prefs_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_analytics: {
         Row: {
           answer_length: number | null
@@ -2203,6 +2331,7 @@ export type Database = {
           assigned_floor_id: string | null
           assigned_unit_id: string | null
           avatar_url: string | null
+          buyer_company_name: string | null
           created_at: string | null
           department: string | null
           email: string
@@ -2218,6 +2347,7 @@ export type Database = {
           assigned_floor_id?: string | null
           assigned_unit_id?: string | null
           avatar_url?: string | null
+          buyer_company_name?: string | null
           created_at?: string | null
           department?: string | null
           email: string
@@ -2233,6 +2363,7 @@ export type Database = {
           assigned_floor_id?: string | null
           assigned_unit_id?: string | null
           avatar_url?: string | null
+          buyer_company_name?: string | null
           created_at?: string | null
           department?: string | null
           email?: string
@@ -3073,6 +3204,10 @@ export type Database = {
         Args: { _factory_id: string }
         Returns: boolean
       }
+      get_buyer_membership_count: {
+        Args: { _user_id: string }
+        Returns: number
+      }
       get_plan_max_lines: { Args: { _factory_id: string }; Returns: number }
       get_user_accessible_features: {
         Args: { p_user_id: string }
@@ -3091,6 +3226,7 @@ export type Database = {
       }
       has_storage_role: { Args: { _user_id: string }; Returns: boolean }
       is_admin_or_higher: { Args: { _user_id: string }; Returns: boolean }
+      is_buyer_role: { Args: { _user_id: string }; Returns: boolean }
       is_superadmin: { Args: { _user_id: string }; Returns: boolean }
       is_supervisor_or_higher: { Args: { _user_id: string }; Returns: boolean }
       log_security_event: {
@@ -3140,6 +3276,7 @@ export type Database = {
         | "cutting"
         | "sewing"
         | "finishing"
+        | "buyer"
       blocker_impact: "low" | "medium" | "high" | "critical"
       blocker_status: "open" | "in_progress" | "resolved"
       extras_transaction_type:
@@ -3312,6 +3449,7 @@ export const Constants = {
         "cutting",
         "sewing",
         "finishing",
+        "buyer",
       ],
       blocker_impact: ["low", "medium", "high", "critical"],
       blocker_status: ["open", "in_progress", "resolved"],

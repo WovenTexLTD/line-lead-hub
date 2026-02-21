@@ -7,7 +7,7 @@ export interface BuyerMembership {
   factory_id: string;
   is_active: boolean;
   company_name: string | null;
-  created_at: string;
+  created_at: string | null;
   factory_name: string;
   factory_timezone: string;
   po_count: number;
