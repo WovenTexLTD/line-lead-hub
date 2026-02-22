@@ -262,10 +262,11 @@ export default function Insights() {
         dailyMap.set(u.production_date, existing);
       });
 
-      // Finishing daily logs (TARGET) → carton target (already a daily total, NOT per-hour)
+      // Finishing daily logs (TARGET) → carton is per-hour, multiply by planned_hours for daily total
       finishingTargetLogs?.forEach(t => {
         const existing = getOrCreateDaily(t.production_date);
-        existing.finishingCartonTarget += (t.carton || 0);
+        const plannedHrs = t.planned_hours || 1;
+        existing.finishingCartonTarget += (t.carton || 0) * plannedHrs;
         dailyMap.set(t.production_date, existing);
       });
 

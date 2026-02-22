@@ -123,9 +123,12 @@ export default function ThisWeek() {
 
         const daySewingOutput = sewingData.reduce((sum, u) => sum + (u.good_today || 0), 0);
         
-        // Finishing target = poly + carton from TARGET logs
+        // Finishing target = poly + carton from TARGET logs (carton is per-hour, multiply by planned_hours)
         const finishingTargetLogs = finishingData.filter(f => f.log_type === 'TARGET');
-        const dayFinishingTarget = finishingTargetLogs.reduce((sum, f) => sum + (f.poly || 0) + (f.carton || 0), 0);
+        const dayFinishingTarget = finishingTargetLogs.reduce((sum, f) => {
+          const hrs = (f as any).planned_hours || 1;
+          return sum + (f.poly || 0) + ((f.carton || 0) * hrs);
+        }, 0);
 
         // Finishing output = poly + carton from OUTPUT logs
         const finishingOutputLogs = finishingData.filter(f => f.log_type === 'OUTPUT');
