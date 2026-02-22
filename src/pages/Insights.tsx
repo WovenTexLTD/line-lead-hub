@@ -21,7 +21,7 @@ import { ExportInsights } from "@/components/insights/ExportInsights";
 
 import { LineEfficiencyTargets } from "@/components/insights/LineEfficiencyTargets";
 import { NotificationPreferences } from "@/components/NotificationPreferences";
-import { ChartAxisControls } from "@/components/ui/chart-axis-controls";
+import { DraggableChart } from "@/components/ui/draggable-chart";
 
 interface DailyData {
   date: string;
@@ -769,16 +769,13 @@ export default function Insights() {
             <CardDescription>Daily sewing output compared to target over time</CardDescription>
           </CardHeader>
           <CardContent className="p-2 sm:p-6">
-            <ChartAxisControls
-              yMin={sewingYMin}
-              yMax={effectiveSewingYMax}
-              onYMinChange={setSewingYMin}
-              onYMaxChange={(v) => setSewingYMax(v)}
-              onReset={() => { setSewingYMin(0); setSewingYMax('auto'); }}
-              className="mb-2 justify-end"
-            />
             {dailyData.length > 0 ? (
-              <div className="w-full overflow-hidden">
+              <DraggableChart
+                yDomain={[sewingYMin, effectiveSewingYMax]}
+                onYDomainChange={([min, max]) => { setSewingYMin(min); setSewingYMax(max); }}
+                onReset={() => { setSewingYMin(0); setSewingYMax('auto'); }}
+                isCustom={sewingYMax !== 'auto' || sewingYMin !== 0}
+              >
                 <ResponsiveContainer width="100%" height={300}>
                   <AreaChart data={dailyData}>
                     <defs>
@@ -806,7 +803,7 @@ export default function Insights() {
                     <Area type="monotone" dataKey="sewingOutput" name="Output" stroke="#22c55e" fillOpacity={1} fill="url(#colorSewingOutput)" strokeWidth={2} />
                   </AreaChart>
                 </ResponsiveContainer>
-              </div>
+              </DraggableChart>
             ) : (
               <div className="h-[300px] flex items-center justify-center text-muted-foreground">
                 No data available for this period
@@ -825,16 +822,13 @@ export default function Insights() {
             <CardDescription>Daily finishing carton output compared to target over time</CardDescription>
           </CardHeader>
           <CardContent className="p-2 sm:p-6">
-            <ChartAxisControls
-              yMin={finishingYMin}
-              yMax={effectiveFinishingYMax}
-              onYMinChange={setFinishingYMin}
-              onYMaxChange={(v) => setFinishingYMax(v)}
-              onReset={() => { setFinishingYMin(0); setFinishingYMax('auto'); }}
-              className="mb-2 justify-end"
-            />
             {dailyData.some(d => d.finishingCartonOutput > 0 || d.finishingCartonTarget > 0) ? (
-              <div className="w-full overflow-hidden">
+              <DraggableChart
+                yDomain={[finishingYMin, effectiveFinishingYMax]}
+                onYDomainChange={([min, max]) => { setFinishingYMin(min); setFinishingYMax(max); }}
+                onReset={() => { setFinishingYMin(0); setFinishingYMax('auto'); }}
+                isCustom={finishingYMax !== 'auto' || finishingYMin !== 0}
+              >
                 <ResponsiveContainer width="100%" height={300}>
                   <AreaChart data={dailyData}>
                     <defs>
@@ -862,7 +856,7 @@ export default function Insights() {
                     <Area type="monotone" dataKey="finishingCartonOutput" name="Carton Output" stroke="#22c55e" fillOpacity={1} fill="url(#colorFinCartonOutput)" strokeWidth={2} />
                   </AreaChart>
                 </ResponsiveContainer>
-              </div>
+              </DraggableChart>
             ) : (
               <div className="h-[300px] flex items-center justify-center text-muted-foreground">
                 No finishing carton data available for this period
