@@ -1456,12 +1456,12 @@ export default function Dashboard() {
         const log = finishingDailyLogs.find((l: any) => l.id === finishingViewId);
         if (!log) return null;
 
-        // Find counterpart (TARGET <-> OUTPUT) for the same line + work order + date
+        // Find counterpart (TARGET <-> OUTPUT) for the same work order + date
+        // Finishing doesn't use lines (line_id is null), so match on work_order_id only
         const counterpart = finishingDailyLogs.find((l: any) =>
           l.log_type !== log.log_type &&
           l.production_date === log.production_date &&
-          l.work_order_id === log.work_order_id &&
-          l.line_id === log.line_id
+          l.work_order_id === log.work_order_id
         );
 
         const targetLog = log.log_type === 'TARGET' ? log : counterpart;

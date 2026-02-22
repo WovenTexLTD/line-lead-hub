@@ -1423,6 +1423,12 @@ export default function TodayUpdates() {
 
         <TabsContent value="finishing" className="mt-4">
           <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Package className="h-4 w-4 text-violet-600" />
+                Finishing Targets & Outputs
+              </CardTitle>
+            </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <Table>
@@ -1483,6 +1489,12 @@ export default function TodayUpdates() {
 
         <TabsContent value="cutting" className="mt-4">
           <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Scissors className="h-4 w-4 text-amber-600" />
+                Cutting Targets & Actuals
+              </CardTitle>
+            </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <Table>
@@ -1545,6 +1557,12 @@ export default function TodayUpdates() {
 
         <TabsContent value="storage" className="mt-4">
           <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Archive className="h-4 w-4 text-teal-600" />
+                Storage Transactions
+              </CardTitle>
+            </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <Table>
