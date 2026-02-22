@@ -611,7 +611,7 @@ export default function Insights() {
   }
 
   return (
-    <div className="p-3 md:p-4 lg:p-6 space-y-4 md:space-y-6 overflow-x-hidden">
+    <div className="py-3 md:py-4 lg:py-6 space-y-4 md:space-y-6 overflow-x-hidden">
       {/* Line Drill-Down Modal */}
       {selectedLineId && profile?.factory_id && (
         <LineDrillDown

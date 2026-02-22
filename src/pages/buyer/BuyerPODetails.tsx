@@ -114,7 +114,7 @@ export default function BuyerPODetails() {
 
   if (loading) {
     return (
-      <div className="p-4 lg:p-6 flex min-h-[400px] items-center justify-center">
+      <div className="py-4 lg:py-6 flex min-h-[400px] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -122,7 +122,7 @@ export default function BuyerPODetails() {
 
   if (error || !isAuthorized || !workOrder) {
     return (
-      <div className="p-4 lg:p-6 space-y-4">
+      <div className="py-4 lg:py-6 space-y-4">
         <Button variant="ghost" size="sm" onClick={() => navigate("/buyer/dashboard")} className="gap-2">
           <ArrowLeft className="h-4 w-4" /> Back to Overview
         </Button>
@@ -145,7 +145,7 @@ export default function BuyerPODetails() {
 
   return (
     <motion.div
-      className="p-4 lg:p-6 space-y-6"
+      className="py-4 lg:py-6 space-y-6"
       variants={stagger}
       initial="hidden"
       animate="show"

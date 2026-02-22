@@ -1,13 +1,27 @@
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { formatDate, formatDateTimeInTimezone } from "@/lib/date-utils";
+import { toast } from "sonner";
 import {
   Factory,
   Crosshair,
@@ -22,6 +36,9 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
+  Pencil,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 
 export interface FinishingTargetData {
@@ -71,6 +88,10 @@ interface FinishingSubmissionViewProps {
   actual?: FinishingActualData | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onEditTarget?: () => void;
+  onEditActual?: () => void;
+  onDeleteTarget?: () => void;
+  onDeleteActual?: () => void;
 }
 
 const PROCESS_ITEMS = [
@@ -108,11 +129,35 @@ function FieldDisplay({ label, value, className, suffix }: {
   );
 }
 
-export function FinishingSubmissionView({ target, actual, open, onOpenChange }: FinishingSubmissionViewProps) {
+export function FinishingSubmissionView({ target, actual, open, onOpenChange, onEditTarget, onEditActual, onDeleteTarget, onDeleteActual }: FinishingSubmissionViewProps) {
   const { factory } = useAuth();
   const { t } = useTranslation();
+  const [deleteType, setDeleteType] = useState<"target" | "actual" | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   if (!target && !actual) return null;
+
+  const handleDelete = async () => {
+    if (!deleteType) return;
+    setDeleting(true);
+    try {
+      const id = deleteType === "target" ? target?.id : actual?.id;
+      if (!id) return;
+
+      const { error } = await supabase.from("finishing_daily_logs").delete().eq("id", id);
+      if (error) throw error;
+
+      toast.success(`${deleteType === "target" ? t('modals.target') : t('modals.output')} deleted successfully`);
+      setDeleteType(null);
+      onOpenChange(false);
+      if (deleteType === "target") onDeleteTarget?.();
+      else onDeleteActual?.();
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to delete");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const formatDateTime = (dateString: string) => {
     const timezone = factory?.timezone || "Asia/Dhaka";
@@ -226,6 +271,24 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
                     {t('modals.submitted')}: {formatDateTime(target.submitted_at)}
                   </p>
                 )}
+
+                {/* Admin Actions */}
+                {(onEditTarget || onDeleteTarget) && (
+                  <div className="flex gap-2 pt-2 border-t border-primary/10">
+                    {onEditTarget && (
+                      <Button variant="outline" size="sm" onClick={onEditTarget}>
+                        <Pencil className="h-4 w-4 mr-1" />
+                        {t('modals.edit')}
+                      </Button>
+                    )}
+                    {onDeleteTarget && (
+                      <Button variant="destructive" size="sm" onClick={() => setDeleteType("target")}>
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        {t('modals.delete')}
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 p-4 flex flex-col items-center justify-center text-center min-h-[200px]">
@@ -292,6 +355,24 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
                   <p className="text-xs text-muted-foreground pt-2 border-t border-success/10">
                     {t('modals.submitted')}: {formatDateTime(actual.submitted_at)}
                   </p>
+                )}
+
+                {/* Admin Actions */}
+                {(onEditActual || onDeleteActual) && (
+                  <div className="flex gap-2 pt-2 border-t border-success/10">
+                    {onEditActual && (
+                      <Button variant="outline" size="sm" onClick={onEditActual}>
+                        <Pencil className="h-4 w-4 mr-1" />
+                        {t('modals.edit')}
+                      </Button>
+                    )}
+                    {onDeleteActual && (
+                      <Button variant="destructive" size="sm" onClick={() => setDeleteType("actual")}>
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        {t('modals.delete')}
+                      </Button>
+                    )}
+                  </div>
                 )}
               </div>
             ) : (
@@ -380,6 +461,24 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange }: 
           )}
         </div>
       </DialogContent>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteType} onOpenChange={(open) => !open && setDeleteType(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('modals.delete')} {deleteType === "target" ? t('modals.target') : t('modals.output')}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the {deleteType === "target" ? "target" : "output"} submission.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>{t('modals.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {deleting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Deleting...</> : t('modals.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

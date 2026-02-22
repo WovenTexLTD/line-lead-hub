@@ -1,9 +1,21 @@
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -14,7 +26,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Package, Calendar, ArrowDownToLine, ArrowUpFromLine, Scale, Layers } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Package, Calendar, ArrowDownToLine, ArrowUpFromLine, Scale, Layers, Trash2, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { useTranslation } from "react-i18next";
 
@@ -57,6 +71,7 @@ interface StorageBinCardDetailModalProps {
       transactions: Transaction[];
     }[];
   } | null;
+  onDelete?: () => void;
 }
 
 function TransactionTable({ transactions }: { transactions: Transaction[] }) {
@@ -158,8 +173,38 @@ export function StorageBinCardDetailModal({
   binCard,
   transactions,
   groupedCards,
+  onDelete,
 }: StorageBinCardDetailModalProps) {
   const { t } = useTranslation();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteBinCard = async (cardId: string) => {
+    setDeleting(true);
+    try {
+      // Delete transactions first, then the bin card
+      const { error: txnError } = await supabase
+        .from("storage_bin_card_transactions")
+        .delete()
+        .eq("bin_card_id", cardId);
+      if (txnError) throw txnError;
+
+      const { error } = await supabase
+        .from("storage_bin_cards")
+        .delete()
+        .eq("id", cardId);
+      if (error) throw error;
+
+      toast.success("Bin card deleted successfully");
+      setConfirmDelete(false);
+      onOpenChange(false);
+      onDelete?.();
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to delete bin card");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   // Grouped view
   if (groupedCards) {
@@ -309,7 +354,39 @@ export function StorageBinCardDetailModal({
           </h4>
           <TransactionTable transactions={transactions} />
         </div>
+
+        {/* Admin Delete */}
+        {onDelete && (
+          <div className="flex justify-end pt-2 border-t">
+            <Button variant="destructive" size="sm" onClick={() => setConfirmDelete(true)}>
+              <Trash2 className="h-4 w-4 mr-1" />
+              {t('modals.delete')}
+            </Button>
+          </div>
+        )}
       </DialogContent>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete bin card?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the bin card and all its transactions.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>{t('modals.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => binCard && handleDeleteBinCard(binCard.id)}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Deleting...</> : t('modals.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

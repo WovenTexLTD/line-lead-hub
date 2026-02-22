@@ -78,7 +78,7 @@ export default function BuyerSubmissions() {
       shouldFetch("cutting")
         ? supabase
             .from("cutting_actuals")
-            .select("id, production_date, day_cutting, day_input, submitted_at, work_orders(po_number, style)")
+            .select("id, production_date, day_cutting, day_input, total_input, submitted_at, work_orders(po_number, style)")
             .in("work_order_id", filterIds)
             .gte("production_date", dateFromStr)
             .lte("production_date", dateToStr)
@@ -118,9 +118,9 @@ export default function BuyerSubmissions() {
         po_number: r.work_orders?.po_number || "—",
         style: r.work_orders?.style || "—",
         production_date: r.production_date,
-        output: r.day_cutting || 0,
+        output: r.day_input || 0,
         reject: 0,
-        cumulative: r.day_input || 0,
+        cumulative: r.total_input || 0,
         submitted_at: r.submitted_at,
       });
     }
@@ -197,7 +197,7 @@ export default function BuyerSubmissions() {
 
   return (
     <motion.div
-      className="p-4 lg:p-6 space-y-6"
+      className="py-4 lg:py-6 space-y-6"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}

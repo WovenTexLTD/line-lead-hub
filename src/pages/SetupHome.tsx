@@ -214,7 +214,7 @@ export default function SetupHome() {
   ];
 
   return (
-    <div className="p-4 lg:p-6">
+    <div className="py-4 lg:py-6">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">

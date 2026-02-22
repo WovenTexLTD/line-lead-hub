@@ -241,7 +241,7 @@ export default function BuyerDashboard() {
 
   if (loading) {
     return (
-      <div className="p-4 lg:p-6 space-y-6">
+      <div className="py-4 lg:py-6 space-y-6">
         <div>
           <h1 className="text-2xl font-bold">PO Overview</h1>
           <p className="text-sm text-muted-foreground">
@@ -260,7 +260,7 @@ export default function BuyerDashboard() {
 
   if (workOrders.length === 0) {
     return (
-      <div className="p-4 lg:p-6 space-y-6">
+      <div className="py-4 lg:py-6 space-y-6">
         <div>
           <h1 className="text-2xl font-bold">PO Overview</h1>
           <p className="text-sm text-muted-foreground">
@@ -282,7 +282,7 @@ export default function BuyerDashboard() {
   }
 
   return (
-    <div className="p-4 lg:p-6 space-y-6">
+    <div className="py-4 lg:py-6 space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold">PO Overview</h1>

@@ -22,6 +22,7 @@ import { Package, Search, ClipboardList, Eye, Target, TrendingUp, Download, X } 
 import { TableSkeleton, StatsCardsSkeleton } from "@/components/ui/table-skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FinishingSubmissionView, FinishingTargetData, FinishingActualData } from "@/components/FinishingSubmissionView";
+import { EditFinishingLogModal } from "@/components/EditFinishingLogModal";
 import { TablePagination } from "@/components/ui/table-pagination";
 import { usePagination } from "@/hooks/usePagination";
 import { useSortableTable } from "@/hooks/useSortableTable";
@@ -72,8 +73,10 @@ export function FinishingDailySheetsTable({
   activeTab,
   onCountsChange,
 }: FinishingDailySheetsTableProps) {
-  const { factory } = useAuth();
+  const { factory, isAdminOrHigher } = useAuth();
+  const isAdmin = isAdminOrHigher();
   const [logs, setLogs] = useState<DailyLogRow[]>([]);
+  const [editingLog, setEditingLog] = useState<DailyLogRow | null>(null);
 
   // Helper to format time in factory timezone
   const formatTime = (dateString: string) => {
@@ -588,9 +591,27 @@ export function FinishingDailySheetsTable({
             actual={actual}
             open={detailModalOpen}
             onOpenChange={setDetailModalOpen}
+            onEditTarget={isAdmin && targetLog ? () => {
+              setEditingLog(targetLog);
+              setDetailModalOpen(false);
+            } : undefined}
+            onEditActual={isAdmin && actualLog ? () => {
+              setEditingLog(actualLog);
+              setDetailModalOpen(false);
+            } : undefined}
+            onDeleteTarget={isAdmin && targetLog ? () => fetchLogs() : undefined}
+            onDeleteActual={isAdmin && actualLog ? () => fetchLogs() : undefined}
           />
         );
       })()}
+
+      {/* Finishing Edit Modal */}
+      <EditFinishingLogModal
+        log={editingLog}
+        open={!!editingLog}
+        onOpenChange={(open) => !open && setEditingLog(null)}
+        onSaved={fetchLogs}
+      />
     </div>
   );
 }

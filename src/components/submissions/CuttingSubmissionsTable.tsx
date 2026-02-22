@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { format, subDays } from "date-fns";
 import { toast } from "sonner";
 import { Search, Scissors, Package, Download, X } from "lucide-react";
@@ -22,6 +23,8 @@ import { usePagination } from "@/hooks/usePagination";
 import { useSortableTable } from "@/hooks/useSortableTable";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import { CuttingSubmissionView } from "@/components/CuttingSubmissionView";
+import { EditCuttingTargetModal } from "@/components/EditCuttingTargetModal";
+import { EditCuttingActualModal } from "@/components/EditCuttingActualModal";
 
 interface CuttingSubmission {
   id: string;
@@ -64,11 +67,15 @@ export function CuttingSubmissionsTable({
   searchTerm,
   onSearchChange,
 }: CuttingSubmissionsTableProps) {
+  const { isAdminOrHigher } = useAuth();
+  const isAdmin = isAdminOrHigher();
   const [loading, setLoading] = useState(true);
   const [submissions, setSubmissions] = useState<CuttingSubmission[]>([]);
   const [targetsMap, setTargetsMap] = useState<Map<string, any>>(new Map());
   const [actualsMap, setActualsMap] = useState<Map<string, any>>(new Map());
   const [selectedSubmission, setSelectedSubmission] = useState<CuttingSubmission | null>(null);
+  const [editingTarget, setEditingTarget] = useState<any>(null);
+  const [editingActual, setEditingActual] = useState<any>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [pageSize, setPageSize] = useState(25);
   useEffect(() => {
@@ -538,9 +545,33 @@ export function CuttingSubmissionsTable({
             } : null}
             open={!!selectedSubmission}
             onOpenChange={(open) => !open && setSelectedSubmission(null)}
+            onEditTarget={isAdmin && rawTarget ? () => {
+              setEditingTarget(rawTarget);
+              setSelectedSubmission(null);
+            } : undefined}
+            onEditActual={isAdmin && rawActual ? () => {
+              setEditingActual(rawActual);
+              setSelectedSubmission(null);
+            } : undefined}
+            onDeleteTarget={isAdmin && rawTarget ? () => fetchData() : undefined}
+            onDeleteActual={isAdmin && rawActual ? () => fetchData() : undefined}
           />
         );
       })()}
+
+      {/* Cutting Edit Modals */}
+      <EditCuttingTargetModal
+        target={editingTarget}
+        open={!!editingTarget}
+        onOpenChange={(open) => !open && setEditingTarget(null)}
+        onSaved={fetchData}
+      />
+      <EditCuttingActualModal
+        submission={editingActual}
+        open={!!editingActual}
+        onOpenChange={(open) => !open && setEditingActual(null)}
+        onSaved={fetchData}
+      />
     </div>
   );
 }

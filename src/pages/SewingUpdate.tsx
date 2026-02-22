@@ -403,7 +403,7 @@ export default function SewingUpdate() {
   }
 
   return (
-    <div className="p-4 lg:p-6 max-w-2xl mx-auto pb-6">
+    <div className="py-4 lg:py-6 max-w-2xl mx-auto pb-6">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>

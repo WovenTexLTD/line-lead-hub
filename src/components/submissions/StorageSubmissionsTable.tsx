@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, Fragment } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { format, subDays } from "date-fns";
 import { toast } from "sonner";
 import { Search, Package, Download, X, ChevronRight, ChevronDown, Layers } from "lucide-react";
@@ -70,6 +71,8 @@ export function StorageSubmissionsTable({
   onSearchChange,
   lowStockThreshold = 10,
 }: StorageSubmissionsTableProps) {
+  const { isAdminOrHigher } = useAuth();
+  const isAdmin = isAdminOrHigher();
   const [loading, setLoading] = useState(true);
   const [binCards, setBinCards] = useState<BinCard[]>([]);
   const [selectedBinCard, setSelectedBinCard] = useState<any>(null);
@@ -715,6 +718,7 @@ export function StorageSubmissionsTable({
         groupedCards={groupedModalData}
         open={modalOpen}
         onOpenChange={setModalOpen}
+        onDelete={isAdmin ? () => fetchData() : undefined}
       />
     </div>
   );

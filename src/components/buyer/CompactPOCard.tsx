@@ -24,7 +24,7 @@ interface CompactPOCardProps {
 }
 
 function DeltaChip({ current, yesterday }: { current: number; yesterday?: number }) {
-  if (yesterday === undefined || yesterday === 0) return null;
+  if (yesterday === undefined || yesterday === 0 || current === 0) return null;
   const delta = current - yesterday;
   if (delta === 0) return null;
 
@@ -55,6 +55,10 @@ export function CompactPOCard({
   const sewPct =
     wo.order_qty > 0
       ? Math.min(100, Math.round((agg.cumulativeGood / wo.order_qty) * 100))
+      : 0;
+  const packedPct =
+    wo.order_qty > 0
+      ? Math.min(100, Math.round((agg.finishingCarton / wo.order_qty) * 100))
       : 0;
   const balance = Math.max(0, wo.order_qty - agg.cumulativeGood);
 
@@ -105,17 +109,28 @@ export function CompactPOCard({
           </div>
         </div>
 
-        {/* Progress bar */}
-        <div className="mb-4">
-          <div className="flex items-center justify-between text-sm mb-1.5">
-            <span className="text-muted-foreground">Sewing Progress</span>
-            <span className="font-medium">
-              {agg.cumulativeGood.toLocaleString()} / {wo.order_qty.toLocaleString()} ({sewPct}%)
-            </span>
+        {/* Progress bars */}
+        <div className="mb-4 space-y-3">
+          <div>
+            <div className="flex items-center justify-between text-sm mb-1.5">
+              <span className="text-muted-foreground">Sewing Progress</span>
+              <span className="font-medium">
+                {agg.cumulativeGood.toLocaleString()} / {wo.order_qty.toLocaleString()} ({sewPct}%)
+              </span>
+            </div>
+            <Progress value={sewPct} className="h-2.5" />
+            <div className="text-xs text-muted-foreground mt-1">
+              Balance: {balance.toLocaleString()} pcs remaining
+            </div>
           </div>
-          <Progress value={sewPct} className="h-2.5" />
-          <div className="text-xs text-muted-foreground mt-1">
-            Balance: {balance.toLocaleString()} pcs remaining
+          <div>
+            <div className="flex items-center justify-between text-sm mb-1.5">
+              <span className="text-muted-foreground">Finishing Progress</span>
+              <span className="font-medium">
+                {agg.finishingCarton.toLocaleString()} / {wo.order_qty.toLocaleString()} ({packedPct}%)
+              </span>
+            </div>
+            <Progress value={packedPct} className="h-2.5 [&>div]:bg-emerald-500" />
           </div>
         </div>
 

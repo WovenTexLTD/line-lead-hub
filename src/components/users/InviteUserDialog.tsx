@@ -374,13 +374,6 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
           {/* Buyer-specific fields */}
           {isBuyerRole && (
             <>
-              <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-sm text-blue-700 dark:text-blue-300">
-                <Info className="h-4 w-4 mt-0.5 shrink-0" />
-                <span>
-                  If this buyer already has an account with another factory, they'll be added to your workspace without affecting their other access.
-                </span>
-              </div>
-
               <div className="space-y-2">
                 <Label htmlFor="buyerCompany" className="flex items-center gap-2">
                   <Building2 className="h-4 w-4 text-muted-foreground" />

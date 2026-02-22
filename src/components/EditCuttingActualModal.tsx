@@ -11,14 +11,16 @@ import { toast } from "sonner";
 
 interface CuttingActual {
   id: string;
-  production_date: string;
+  man_power: number | null;
   day_cutting: number;
   day_input: number;
   total_cutting: number | null;
   total_input: number | null;
   balance: number | null;
   hours_actual: number | null;
-  order_qty: number | null;
+  ot_hours_actual: number | null;
+  ot_manpower_actual: number | null;
+  remarks?: string | null;
 }
 
 interface EditCuttingActualModalProps {
@@ -46,18 +48,26 @@ export function EditCuttingActualModal({ submission, open, onOpenChange, onSaved
     setFormData(prev => ({ ...prev, [field]: num }));
   };
 
+  const handleChange = (field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
       const { error } = await supabase
         .from('cutting_actuals')
         .update({
+          man_power: formData.man_power ?? 0,
           day_cutting: formData.day_cutting ?? 0,
           day_input: formData.day_input ?? 0,
-          total_cutting: formData.total_cutting,
-          total_input: formData.total_input,
-          balance: formData.balance,
+          total_cutting: formData.total_cutting || null,
+          total_input: formData.total_input || null,
+          balance: formData.balance || null,
           hours_actual: formData.hours_actual || null,
+          ot_hours_actual: formData.ot_hours_actual || null,
+          ot_manpower_actual: formData.ot_manpower_actual || null,
+          remarks: formData.remarks || null,
         })
         .eq('id', submission.id);
 
@@ -67,7 +77,7 @@ export function EditCuttingActualModal({ submission, open, onOpenChange, onSaved
       onOpenChange(false);
       onSaved();
     } catch (error: any) {
-      console.error('Error updating submission:', error);
+      console.error('Error updating cutting actual:', error);
       toast.error(error?.message || t('modals.failedToUpdateSubmission'));
     } finally {
       setSaving(false);
@@ -80,14 +90,24 @@ export function EditCuttingActualModal({ submission, open, onOpenChange, onSaved
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Scissors className="h-5 w-5 text-primary" />
-            {t('modals.editCuttingSubmission')}
+            {t('cutting.editCuttingActual')}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="man_power">{t('cutting.manPower')}</Label>
+            <Input
+              id="man_power"
+              type="number"
+              value={formData.man_power ?? ''}
+              onChange={(e) => handleNumberChange('man_power', e.target.value)}
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="day_cutting">{t('modals.dayCutting')}</Label>
+              <Label htmlFor="day_cutting">{t('cutting.dayCutting')}</Label>
               <Input
                 id="day_cutting"
                 type="number"
@@ -96,7 +116,7 @@ export function EditCuttingActualModal({ submission, open, onOpenChange, onSaved
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="day_input">{t('modals.dayInput')}</Label>
+              <Label htmlFor="day_input">{t('cutting.dayInput')}</Label>
               <Input
                 id="day_input"
                 type="number"
@@ -105,10 +125,10 @@ export function EditCuttingActualModal({ submission, open, onOpenChange, onSaved
               />
             </div>
           </div>
-          
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="total_cutting">{t('modals.totalCutting')}</Label>
+              <Label htmlFor="total_cutting">{t('cutting.totalCutting')}</Label>
               <Input
                 id="total_cutting"
                 type="number"
@@ -117,7 +137,7 @@ export function EditCuttingActualModal({ submission, open, onOpenChange, onSaved
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="total_input">{t('modals.totalInput')}</Label>
+              <Label htmlFor="total_input">{t('cutting.totalInput')}</Label>
               <Input
                 id="total_input"
                 type="number"
@@ -127,18 +147,19 @@ export function EditCuttingActualModal({ submission, open, onOpenChange, onSaved
             </div>
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="balance">{t('cutting.balance')}</Label>
+            <Input
+              id="balance"
+              type="number"
+              value={formData.balance ?? ''}
+              onChange={(e) => handleNumberChange('balance', e.target.value)}
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="balance">{t('modals.balance')}</Label>
-              <Input
-                id="balance"
-                type="number"
-                value={formData.balance ?? ''}
-                onChange={(e) => handleNumberChange('balance', e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="hours_actual">{t('modals.hoursActual')}</Label>
+              <Label htmlFor="hours_actual">{t('cutting.hoursActual')}</Label>
               <Input
                 id="hours_actual"
                 type="number"
@@ -149,6 +170,36 @@ export function EditCuttingActualModal({ submission, open, onOpenChange, onSaved
                 onChange={(e) => handleNumberChange('hours_actual', e.target.value)}
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="ot_hours_actual">{t('cutting.otHoursActual')}</Label>
+              <Input
+                id="ot_hours_actual"
+                type="number"
+                step="0.5"
+                value={formData.ot_hours_actual ?? ''}
+                onChange={(e) => handleNumberChange('ot_hours_actual', e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="ot_manpower_actual">{t('cutting.otManpowerActual')}</Label>
+            <Input
+              id="ot_manpower_actual"
+              type="number"
+              value={formData.ot_manpower_actual ?? ''}
+              onChange={(e) => handleNumberChange('ot_manpower_actual', e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="remarks">{t('cutting.remarks')}</Label>
+            <Textarea
+              id="remarks"
+              value={formData.remarks ?? ''}
+              onChange={(e) => handleChange('remarks', e.target.value)}
+              rows={3}
+            />
           </div>
         </div>
 

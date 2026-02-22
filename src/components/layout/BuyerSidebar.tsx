@@ -61,6 +61,18 @@ export function BuyerSidebar() {
     await signOut();
   };
 
+  // Buyer sidebar theme (darker #2898ff) — overrides CSS vars scoped to this element
+  const buyerSidebarTheme = {
+    "--sidebar-background": "209 100% 40%",
+    "--sidebar-foreground": "0 0% 100%",
+    "--sidebar-primary": "0 0% 100%",
+    "--sidebar-primary-foreground": "209 100% 35%",
+    "--sidebar-accent": "209 100% 48%",
+    "--sidebar-accent-foreground": "0 0% 100%",
+    "--sidebar-border": "209 100% 35%",
+    "--sidebar-ring": "0 0% 100%",
+  } as React.CSSProperties;
+
   return (
     <Sidebar
       className={cn(
@@ -68,6 +80,7 @@ export function BuyerSidebar() {
         collapsed ? "w-16" : "w-64"
       )}
       collapsible="icon"
+      style={buyerSidebarTheme}
     >
       <SidebarHeader className="border-b border-sidebar-border p-4">
         <div className="flex items-center gap-3">
@@ -144,7 +157,7 @@ export function BuyerSidebar() {
             <AvatarImage src={profile?.avatar_url || undefined} />
             <AvatarFallback
               className={cn(
-                "bg-primary text-primary-foreground",
+                "bg-sidebar-primary text-sidebar-primary-foreground",
                 collapsed ? "text-xs" : "text-sm"
               )}
             >
