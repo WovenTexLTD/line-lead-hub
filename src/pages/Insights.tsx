@@ -28,6 +28,8 @@ interface DailyData {
   sewingOutput: number;
   sewingTarget: number;
   finishingQcPass: number;
+  finishingCartonOutput: number;
+  finishingCartonTarget: number;
   efficiency: number;
   blockers: number;
   manpower: number;
@@ -80,19 +82,6 @@ interface InsightSummary {
   previousPeriodOutput: number;
 }
 
-interface FinishingEfficiency {
-  polyEfficiency: number;
-  cartonEfficiency: number;
-  threadCuttingEfficiency: number;
-  insideCheckEfficiency: number;
-  topSideCheckEfficiency: number;
-  buttoningEfficiency: number;
-  ironEfficiency: number;
-  getUpEfficiency: number;
-  daysWithHours: number;
-  daysWithoutHours: number;
-}
-
 interface PreviousPeriodData {
   totalOutput: number;
   totalQcPass: number;
@@ -137,8 +126,6 @@ export default function Insights() {
     previousPeriodEfficiency: 0,
     previousPeriodOutput: 0,
   });
-
-  const [finishingEfficiency, setFinishingEfficiency] = useState<FinishingEfficiency | null>(null);
 
   // Line drill-down state
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
@@ -249,6 +236,8 @@ export default function Insights() {
           sewingOutput: 0,
           sewingTarget: 0,
           finishingQcPass: 0,
+          finishingCartonOutput: 0,
+          finishingCartonTarget: 0,
           efficiency: 0,
           blockers: 0,
           manpower: 0,
@@ -271,11 +260,20 @@ export default function Insights() {
         dailyMap.set(t.production_date, existing);
       });
 
-      // Finishing daily logs → poly + carton
+      // Finishing daily logs (OUTPUT) → poly + carton output
       finishingDailyLogs?.forEach(u => {
         const existing = getOrCreateDaily(u.production_date);
         existing.finishingQcPass += (u.poly || 0) + (u.carton || 0);
+        existing.finishingCartonOutput += (u.carton || 0);
         dailyMap.set(u.production_date, existing);
+      });
+
+      // Finishing daily logs (TARGET) → carton target (per-hour × planned_hours)
+      finishingTargetLogs?.forEach(t => {
+        const existing = getOrCreateDaily(t.production_date);
+        const plannedHrs = t.planned_hours || 0;
+        existing.finishingCartonTarget += (t.carton || 0) * (plannedHrs > 0 ? plannedHrs : 1);
+        dailyMap.set(t.production_date, existing);
       });
 
       // Calculate daily efficiency
@@ -420,67 +418,6 @@ export default function Insights() {
       let outputTrend: 'up' | 'down' | 'stable' = 'stable';
       if (totalSewingOutput > prevTotalOutput * 1.1) outputTrend = 'up';
       else if (totalSewingOutput < prevTotalOutput * 0.9) outputTrend = 'down';
-
-      // --- Finishing efficiency per process ---
-      const finishingProcessKeys = ['thread_cutting', 'inside_check', 'top_side_check', 'buttoning', 'iron', 'get_up', 'poly', 'carton'] as const;
-
-      // Pair TARGET and OUTPUT logs by date + work_order_id
-      const finishingPairs: { target: any; output: any }[] = [];
-      finishingTargetLogs?.forEach(tLog => {
-        const matchingOutput = finishingDailyLogs?.find(
-          o => o.production_date === tLog.production_date && o.work_order_id === tLog.work_order_id
-        );
-        if (matchingOutput) {
-          finishingPairs.push({ target: tLog, output: matchingOutput });
-        }
-      });
-
-      // Aggregate: sum output and sum (target × planned_hours) per process
-      const processAgg: Record<string, { totalOutput: number; totalTarget: number }> = {};
-      finishingProcessKeys.forEach(key => {
-        processAgg[key] = { totalOutput: 0, totalTarget: 0 };
-      });
-      const datesWithHours = new Set<string>();
-      const datesWithoutHours = new Set<string>();
-
-      finishingPairs.forEach(({ target, output }) => {
-        const plannedHrs = target.planned_hours;
-        const actualHrs = output.actual_hours;
-        if (plannedHrs && actualHrs) {
-          datesWithHours.add(output.production_date);
-          finishingProcessKeys.forEach(key => {
-            const targetRate = target[key] || 0;
-            const actualOutput = output[key] || 0;
-            processAgg[key].totalOutput += actualOutput;
-            processAgg[key].totalTarget += targetRate * plannedHrs;
-          });
-        } else {
-          datesWithoutHours.add(output.production_date);
-        }
-      });
-
-      const finEfficiencies: Record<string, number> = {};
-      finishingProcessKeys.forEach(key => {
-        const { totalOutput, totalTarget } = processAgg[key];
-        finEfficiencies[key] = totalTarget > 0 ? Math.round((totalOutput / totalTarget) * 100) : 0;
-      });
-
-      if (datesWithHours.size > 0 || datesWithoutHours.size > 0) {
-        setFinishingEfficiency({
-          polyEfficiency: finEfficiencies.poly,
-          cartonEfficiency: finEfficiencies.carton,
-          threadCuttingEfficiency: finEfficiencies.thread_cutting,
-          insideCheckEfficiency: finEfficiencies.inside_check,
-          topSideCheckEfficiency: finEfficiencies.top_side_check,
-          buttoningEfficiency: finEfficiencies.buttoning,
-          ironEfficiency: finEfficiencies.iron,
-          getUpEfficiency: finEfficiencies.get_up,
-          daysWithHours: datesWithHours.size,
-          daysWithoutHours: datesWithoutHours.size,
-        });
-      } else {
-        setFinishingEfficiency(null);
-      }
 
       setSummary({
         totalSewingOutput,
@@ -792,109 +729,6 @@ export default function Insights() {
         periodDays={parseInt(period)}
       />
 
-      {/* Finishing Efficiency */}
-      {finishingEfficiency && (finishingEfficiency.daysWithHours > 0 || finishingEfficiency.daysWithoutHours > 0) && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            <Package className="h-5 w-5 text-info" />
-            Finishing Efficiency
-          </h2>
-
-          {finishingEfficiency.daysWithoutHours > 0 && (
-            <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
-              <p className="text-sm text-amber-800 dark:text-amber-200">
-                {finishingEfficiency.daysWithoutHours} day(s) missing hours data — excluded from efficiency calculations
-              </p>
-            </div>
-          )}
-
-          {finishingEfficiency.daysWithHours > 0 ? (
-            <>
-              {/* Primary KPIs: Poly & Carton */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
-                <Card className="relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-20 h-20 bg-info/5 rounded-bl-full" />
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                      <Box className="h-4 w-4" />
-                      Poly Efficiency
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className={`text-2xl md:text-3xl font-bold ${finishingEfficiency.polyEfficiency >= 90 ? 'text-success' : finishingEfficiency.polyEfficiency >= 70 ? 'text-warning' : 'text-destructive'}`}>
-                      {finishingEfficiency.polyEfficiency}%
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Output vs target x planned hours
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card className="relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-20 h-20 bg-primary/5 rounded-bl-full" />
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                      <Archive className="h-4 w-4" />
-                      Carton Efficiency
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className={`text-2xl md:text-3xl font-bold ${finishingEfficiency.cartonEfficiency >= 90 ? 'text-success' : finishingEfficiency.cartonEfficiency >= 70 ? 'text-warning' : 'text-destructive'}`}>
-                      {finishingEfficiency.cartonEfficiency}%
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Output vs target x planned hours
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* All 8 process breakdown */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">All Process Efficiency</CardTitle>
-                  <CardDescription>Achievement vs (hourly target x planned hours)</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {[
-                      { label: 'Thread Cutting', value: finishingEfficiency.threadCuttingEfficiency },
-                      { label: 'Inside Check', value: finishingEfficiency.insideCheckEfficiency },
-                      { label: 'Top Side Check', value: finishingEfficiency.topSideCheckEfficiency },
-                      { label: 'Buttoning', value: finishingEfficiency.buttoningEfficiency },
-                      { label: 'Iron', value: finishingEfficiency.ironEfficiency },
-                      { label: 'Get-up', value: finishingEfficiency.getUpEfficiency },
-                      { label: 'Poly', value: finishingEfficiency.polyEfficiency },
-                      { label: 'Carton', value: finishingEfficiency.cartonEfficiency },
-                    ].map(proc => (
-                      <div key={proc.label} className="flex items-center justify-between">
-                        <span className="text-sm font-medium w-1/3">{proc.label}</span>
-                        <div className="flex items-center gap-3 w-2/3">
-                          <Progress value={Math.min(proc.value, 100)} className="h-2 flex-1" />
-                          <Badge variant={proc.value >= 90 ? 'default' : proc.value >= 70 ? 'secondary' : 'destructive'} className="w-14 justify-center">
-                            {proc.value}%
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </>
-          ) : (
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-center py-4 text-muted-foreground">
-                  <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="font-medium">Missing hours data</p>
-                  <p className="text-sm">Add planned hours to targets and actual hours to outputs to see efficiency metrics</p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      )}
-
       {/* Trends Section */}
       <div className="space-y-4">
         <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -902,13 +736,14 @@ export default function Insights() {
           Trends
         </h2>
 
-        {/* Output Trend Chart */}
+        {/* Sewing Output Trend Chart */}
         <Card className="w-full overflow-hidden">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              Daily Output & Efficiency Trend
+              <Factory className="h-5 w-5 text-primary" />
+              Sewing Output vs Target
             </CardTitle>
-            <CardDescription>Sewing output vs target over time</CardDescription>
+            <CardDescription>Daily sewing output compared to target over time</CardDescription>
           </CardHeader>
           <CardContent className="p-2 sm:p-6">
             {dailyData.length > 0 ? (
@@ -916,34 +751,82 @@ export default function Insights() {
                 <ResponsiveContainer width="100%" height={300}>
                   <AreaChart data={dailyData}>
                     <defs>
-                      <linearGradient id="colorOutput" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                      <linearGradient id="colorSewingOutput" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
                       </linearGradient>
-                      <linearGradient id="colorTarget" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0}/>
+                      <linearGradient id="colorSewingTarget" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.15}/>
+                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="displayDate" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
-                    <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} width={35} />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--card))', 
+                    <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} width={45} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
                         border: '1px solid hsl(var(--border))',
                         borderRadius: '8px'
-                      }} 
+                      }}
                     />
                     <Legend wrapperStyle={{ paddingTop: '8px' }} />
-                    <Area type="monotone" dataKey="sewingOutput" name="Output" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#colorOutput)" strokeWidth={2} />
-                    <Area type="monotone" dataKey="sewingTarget" name="Target" stroke="hsl(var(--muted-foreground))" fillOpacity={1} fill="url(#colorTarget)" strokeWidth={2} strokeDasharray="5 5" />
+                    <Area type="monotone" dataKey="sewingTarget" name="Target" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#colorSewingTarget)" strokeWidth={2} strokeDasharray="5 5" />
+                    <Area type="monotone" dataKey="sewingOutput" name="Output" stroke="#22c55e" fillOpacity={1} fill="url(#colorSewingOutput)" strokeWidth={2} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
             ) : (
               <div className="h-[300px] flex items-center justify-center text-muted-foreground">
                 No data available for this period
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Finishing Carton Trend Chart */}
+        <Card className="w-full overflow-hidden">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Package className="h-5 w-5 text-violet-600" />
+              Finishing Carton Output vs Target
+            </CardTitle>
+            <CardDescription>Daily finishing carton output compared to target over time</CardDescription>
+          </CardHeader>
+          <CardContent className="p-2 sm:p-6">
+            {dailyData.some(d => d.finishingCartonOutput > 0 || d.finishingCartonTarget > 0) ? (
+              <div className="w-full overflow-hidden">
+                <ResponsiveContainer width="100%" height={300}>
+                  <AreaChart data={dailyData}>
+                    <defs>
+                      <linearGradient id="colorFinCartonOutput" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="colorFinCartonTarget" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#7c3aed" stopOpacity={0.15}/>
+                        <stop offset="95%" stopColor="#7c3aed" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="displayDate" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
+                    <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} width={45} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px'
+                      }}
+                    />
+                    <Legend wrapperStyle={{ paddingTop: '8px' }} />
+                    <Area type="monotone" dataKey="finishingCartonTarget" name="Carton Target" stroke="#7c3aed" fillOpacity={1} fill="url(#colorFinCartonTarget)" strokeWidth={2} strokeDasharray="5 5" />
+                    <Area type="monotone" dataKey="finishingCartonOutput" name="Carton Output" stroke="#22c55e" fillOpacity={1} fill="url(#colorFinCartonOutput)" strokeWidth={2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                No finishing carton data available for this period
               </div>
             )}
           </CardContent>
