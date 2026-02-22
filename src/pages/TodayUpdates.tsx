@@ -842,70 +842,72 @@ export default function TodayUpdates() {
       </div>
 
       {/* Summary Cards - Grouped Layout */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Updates Count Card */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{isToday ? "Today's Updates" : `Updates for ${format(selectedDate, "MMM d")}`}</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="grid grid-cols-4 gap-4">
-              <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Factory className="h-4 w-4 text-primary" />
-                </div>
-                <div>
-                  <p className="text-xl font-bold">{sewingUpdates.length + sewingTargets.length + sewingActuals.length}</p>
-                  <p className="text-xs text-muted-foreground">Sewing</p>
-                </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {/* Sewing */}
+        <Card className="relative overflow-hidden border-primary/20">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-primary/0" />
+          <CardContent className="p-4 relative">
+            <div className="flex items-center justify-between mb-3">
+              <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Factory className="h-4.5 w-4.5 text-primary" />
               </div>
-              <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-lg bg-info/10 flex items-center justify-center">
-                  <Package className="h-4 w-4 text-info" />
-                </div>
-                <div>
-                  <p className="text-xl font-bold">{finishingDailyLogs.length}</p>
-                  <p className="text-xs text-muted-foreground">Finishing</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-lg bg-warning/10 flex items-center justify-center">
-                  <Scissors className="h-4 w-4 text-warning" />
-                </div>
-                <div>
-                  <p className="text-xl font-bold">{cuttingTargets.length + cuttingActuals.length}</p>
-                  <p className="text-xs text-muted-foreground">Cutting</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-lg bg-success/10 flex items-center justify-center">
-                  <Archive className="h-4 w-4 text-success" />
-                </div>
-                <div>
-                  <p className="text-xl font-bold">{(storageTransactions || []).length}</p>
-                  <p className="text-xs text-muted-foreground">Storage</p>
-                </div>
-              </div>
+              <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                {sewingUpdates.length + sewingTargets.length + sewingActuals.length} updates
+              </span>
             </div>
+            <p className="text-2xl font-bold font-mono tracking-tight">{totalOutput.toLocaleString()}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Sewing Output</p>
           </CardContent>
         </Card>
 
-        {/* Output Totals Card */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Output Totals</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <p className="text-2xl font-bold font-mono text-primary">{totalOutput.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">Sewing Output</p>
+        {/* Finishing */}
+        <Card className="relative overflow-hidden border-violet-500/20">
+          <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 to-violet-500/0" />
+          <CardContent className="p-4 relative">
+            <div className="flex items-center justify-between mb-3">
+              <div className="h-9 w-9 rounded-xl bg-violet-500/10 flex items-center justify-center">
+                <Package className="h-4.5 w-4.5 text-violet-600" />
               </div>
-              <div>
-                <p className="text-2xl font-bold font-mono text-success">{totalFinishingOutput.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">Finishing Output</p>
-              </div>
+              <span className="text-xs font-medium text-violet-600 bg-violet-500/10 px-2 py-0.5 rounded-full">
+                {finishingDailyLogs.length} updates
+              </span>
             </div>
+            <p className="text-2xl font-bold font-mono tracking-tight">{totalFinishingOutput.toLocaleString()}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Finishing Output</p>
+          </CardContent>
+        </Card>
+
+        {/* Cutting */}
+        <Card className="relative overflow-hidden border-amber-500/20">
+          <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-amber-500/0" />
+          <CardContent className="p-4 relative">
+            <div className="flex items-center justify-between mb-3">
+              <div className="h-9 w-9 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                <Scissors className="h-4.5 w-4.5 text-amber-600" />
+              </div>
+              <span className="text-xs font-medium text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full">
+                {cuttingTargets.length + cuttingActuals.length} updates
+              </span>
+            </div>
+            <p className="text-2xl font-bold font-mono tracking-tight">{totalCutting.toLocaleString()}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Cutting Output</p>
+          </CardContent>
+        </Card>
+
+        {/* Storage */}
+        <Card className="relative overflow-hidden border-teal-500/20">
+          <div className="absolute inset-0 bg-gradient-to-br from-teal-500/5 to-teal-500/0" />
+          <CardContent className="p-4 relative">
+            <div className="flex items-center justify-between mb-3">
+              <div className="h-9 w-9 rounded-xl bg-teal-500/10 flex items-center justify-center">
+                <Archive className="h-4.5 w-4.5 text-teal-600" />
+              </div>
+              <span className="text-xs font-medium text-teal-600 bg-teal-500/10 px-2 py-0.5 rounded-full">
+                {(storageTransactions || []).length} txns
+              </span>
+            </div>
+            <p className="text-2xl font-bold font-mono tracking-tight">{totalStorageReceived.toLocaleString()}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Total Received</p>
           </CardContent>
         </Card>
       </div>
