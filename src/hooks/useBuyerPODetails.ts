@@ -86,6 +86,7 @@ export function useBuyerPODetails(poId: string | undefined) {
 
     let cancelled = false;
     const startDate = format(subDays(new Date(), 30), "yyyy-MM-dd");
+    const safePoId = poId!;
 
     async function fetchData() {
       setDataLoading(true);
@@ -95,30 +96,30 @@ export function useBuyerPODetails(poId: string | undefined) {
         supabase
           .from("sewing_actuals")
           .select("id, production_date, good_today, reject_today, rework_today, cumulative_good_total, submitted_at, has_blocker")
-          .eq("work_order_id", poId)
+          .eq("work_order_id", safePoId)
           .gte("production_date", startDate)
           .order("production_date", { ascending: true }),
         supabase
           .from("sewing_targets")
           .select("production_date, per_hour_target, hours_planned")
-          .eq("work_order_id", poId)
+          .eq("work_order_id", safePoId)
           .gte("production_date", startDate),
         supabase
           .from("cutting_actuals")
           .select("id, production_date, day_cutting, day_input, total_cutting, total_input, balance, submitted_at")
-          .eq("work_order_id", poId)
+          .eq("work_order_id", safePoId)
           .gte("production_date", startDate)
           .order("production_date", { ascending: true }),
         supabase
           .from("finishing_actuals")
           .select("id, production_date, day_carton, day_poly, day_qc_pass, total_carton, total_poly, total_qc_pass, submitted_at, has_blocker")
-          .eq("work_order_id", poId)
+          .eq("work_order_id", safePoId)
           .gte("production_date", startDate)
           .order("production_date", { ascending: true }),
         supabase
           .from("storage_bin_card_transactions")
           .select("id, transaction_date, receive_qty, issue_qty, balance_qty, created_at, storage_bin_cards!inner(work_order_id)")
-          .eq("storage_bin_cards.work_order_id", poId)
+          .eq("storage_bin_cards.work_order_id", safePoId)
           .gte("transaction_date", startDate)
           .order("created_at", { ascending: true }),
       ]);
