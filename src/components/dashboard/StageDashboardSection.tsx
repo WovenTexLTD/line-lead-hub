@@ -1,0 +1,334 @@
+import { Link } from "react-router-dom";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { TargetVsActualComparison } from "@/components/insights/TargetVsActualComparison";
+import {
+  Crosshair,
+  ClipboardCheck,
+  Plus,
+  ChevronRight,
+} from "lucide-react";
+
+/** Minimal shape required from target data */
+export interface TargetItem {
+  id: string;
+  line_uuid: string;
+  line_name: string;
+  po_number: string | null;
+  per_hour_target: number;
+  manpower_planned?: number | null;
+  m_power_planned?: number | null;
+  submitted_at: string | null;
+}
+
+/** Minimal shape required from end-of-day data */
+export interface EodItem {
+  id: string;
+  line_uuid: string;
+  line_name: string;
+  po_number: string | null;
+  output: number;
+  submitted_at: string;
+  has_blocker: boolean;
+  total_poly?: number;
+  total_carton?: number;
+  manpower?: number | null;
+}
+
+export interface LineItem {
+  id: string;
+  line_id: string;
+  name: string | null;
+}
+
+interface StageConfig {
+  addTargetLink: string;
+  addEodLink: string;
+  viewAllTargetsLink: string;
+  viewAllEodLink: string;
+  eodMetricLabel: string;
+}
+
+const STAGE_CONFIGS: Record<"sewing" | "finishing", StageConfig> = {
+  sewing: {
+    addTargetLink: "/sewing/morning-targets",
+    addEodLink: "/sewing/end-of-day",
+    viewAllTargetsLink: "/submissions?department=sewing&category=targets",
+    viewAllEodLink: "/submissions?department=sewing&category=actuals",
+    eodMetricLabel: "output",
+  },
+  finishing: {
+    addTargetLink: "/finishing/daily-target",
+    addEodLink: "/finishing/daily-output",
+    viewAllTargetsLink: "/submissions?department=finishing&category=targets",
+    viewAllEodLink: "/submissions?department=finishing&category=actuals",
+    eodMetricLabel: "cartons",
+  },
+};
+
+/**
+ * Shared dashboard layout for Sewing and Finishing tabs.
+ *
+ * Renders:
+ * 1. Two side-by-side cards – "Morning Targets" and "End of Day"
+ * 2. A Target vs Actual comparison table
+ *
+ * Generic type params preserve the caller's full data types through
+ * the click callbacks so Dashboard can pass TargetSubmission /
+ * EndOfDaySubmission and get them back without casting.
+ */
+export function StageDashboardSection<
+  T extends TargetItem,
+  E extends EodItem,
+>({
+  stage,
+  targets,
+  endOfDay,
+  allLines,
+  loading,
+  onTargetClick,
+  onEodClick,
+  formatTime,
+}: {
+  stage: "sewing" | "finishing";
+  targets: T[];
+  endOfDay: E[];
+  allLines: LineItem[];
+  loading: boolean;
+  onTargetClick: (target: T) => void;
+  onEodClick: (eod: E) => void;
+  formatTime: (dateString: string) => string;
+}) {
+  const config = STAGE_CONFIGS[stage];
+  const isFinishing = stage === "finishing";
+
+  const skeletonRows = (
+    <div className="space-y-3">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="h-16 bg-muted rounded-lg animate-pulse" />
+      ))}
+    </div>
+  );
+
+  return (
+    <>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+        {/* Morning Targets Card */}
+        <Card>
+          <CardHeader className="flex flex-col xs:flex-row xs:items-center justify-between gap-2 pb-2">
+            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <Crosshair className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+              Morning Targets
+            </CardTitle>
+            <div className="flex gap-1 sm:gap-2">
+              <Link to={config.viewAllTargetsLink}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2 sm:px-3 text-xs sm:text-sm"
+                >
+                  View All
+                  <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 ml-0.5 sm:ml-1" />
+                </Button>
+              </Link>
+              <Link to={config.addTargetLink}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2 sm:px-3 text-xs sm:text-sm"
+                >
+                  <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-0.5 sm:mr-1" />
+                  Add
+                </Button>
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              skeletonRows
+            ) : targets.length > 0 ? (
+              <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                {targets.map((target) => (
+                  <div
+                    key={target.id}
+                    onClick={() => onTargetClick(target)}
+                    className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-primary/10">
+                        <Crosshair className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">
+                            {target.line_name}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {target.po_number || "No PO"} •{" "}
+                          {target.submitted_at
+                            ? formatTime(target.submitted_at)
+                            : "-"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-mono font-bold text-lg">
+                        {target.per_hour_target}
+                      </p>
+                      <p className="text-xs text-muted-foreground">per hour</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Crosshair className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p>No targets submitted today</p>
+                <Link to={config.addTargetLink}>
+                  <Button variant="link" size="sm" className="mt-2">
+                    Add morning targets
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* End of Day Card */}
+        <Card>
+          <CardHeader className="flex flex-col xs:flex-row xs:items-center justify-between gap-2 pb-2">
+            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <ClipboardCheck className="h-4 w-4 sm:h-5 sm:w-5 text-info" />
+              End of Day
+            </CardTitle>
+            <div className="flex gap-1 sm:gap-2">
+              <Link to={config.viewAllEodLink}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2 sm:px-3 text-xs sm:text-sm"
+                >
+                  View All
+                  <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 ml-0.5 sm:ml-1" />
+                </Button>
+              </Link>
+              <Link to={config.addEodLink}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2 sm:px-3 text-xs sm:text-sm"
+                >
+                  <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-0.5 sm:mr-1" />
+                  Add
+                </Button>
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              skeletonRows
+            ) : endOfDay.length > 0 ? (
+              <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                {endOfDay.map((update) => (
+                  <div
+                    key={update.id}
+                    onClick={() => onEodClick(update)}
+                    className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-info/10">
+                        <ClipboardCheck className="h-5 w-5 text-info" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">
+                            {update.line_name}
+                          </span>
+                          {update.has_blocker && (
+                            <StatusBadge variant="danger" size="sm" dot>
+                              Blocker
+                            </StatusBadge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {update.po_number || "No PO"} •{" "}
+                          {formatTime(update.submitted_at)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      {isFinishing &&
+                      update.total_poly != null &&
+                      update.total_poly > 0 ? (
+                        <div className="flex gap-3">
+                          <div>
+                            <p className="font-mono font-bold text-lg">
+                              {update.output.toLocaleString()}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {config.eodMetricLabel}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="font-mono font-semibold text-base text-muted-foreground">
+                              {update.total_poly.toLocaleString()}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              poly
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="font-mono font-bold text-lg">
+                            {update.output.toLocaleString()}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {config.eodMetricLabel}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <ClipboardCheck className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p>No end of day submissions</p>
+                <Link to={config.addEodLink}>
+                  <Button variant="link" size="sm" className="mt-2">
+                    Add end of day report
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Target vs Actual Comparison */}
+      <TargetVsActualComparison
+        allLines={allLines}
+        targets={targets.map((t) => ({
+          line_uuid: t.line_uuid,
+          line_name: t.line_name,
+          per_hour_target: t.per_hour_target,
+          manpower_planned: t.manpower_planned,
+          m_power_planned: t.m_power_planned,
+        }))}
+        actuals={endOfDay.map((a) => ({
+          line_uuid: a.line_uuid,
+          line_name: a.line_name,
+          output: a.output,
+          manpower: a.manpower,
+          has_blocker: a.has_blocker,
+        }))}
+        type={stage}
+        loading={loading}
+      />
+    </>
+  );
+}

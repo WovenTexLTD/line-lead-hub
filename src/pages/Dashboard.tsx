@@ -21,8 +21,8 @@ import { TargetDetailModal } from "@/components/TargetDetailModal";
 import { CuttingSubmissionView } from "@/components/CuttingSubmissionView";
 import { SewingSubmissionView, SewingTargetData, SewingActualData } from "@/components/SewingSubmissionView";
 import { StorageBinCardDetailModal } from "@/components/StorageBinCardDetailModal";
-import { TargetVsActualComparison } from "@/components/insights/TargetVsActualComparison";
-import { FinishingDashboard } from "@/components/dashboard/FinishingDashboard";
+import { StageDashboardSection } from "@/components/dashboard/StageDashboardSection";
+import { FinishingSubmissionView, FinishingTargetData, FinishingActualData } from "@/components/FinishingSubmissionView";
 import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
 import { useOnboardingChecklist } from "@/hooks/useOnboardingChecklist";
 import {
@@ -30,11 +30,8 @@ import {
   Package,
   AlertTriangle,
   TrendingUp,
-  Rows3,
-  ClipboardList,
   ChevronRight,
   Plus,
-  Crosshair,
   ClipboardCheck,
   Scissors,
   Archive,
@@ -260,6 +257,9 @@ export default function Dashboard() {
   const [cuttingModalOpen, setCuttingModalOpen] = useState(false);
   const [cuttingTargetModalOpen, setCuttingTargetModalOpen] = useState(false);
   const [storageModalOpen, setStorageModalOpen] = useState(false);
+  const [finishingDailyLogs, setFinishingDailyLogs] = useState<any[]>([]);
+  const [finishingViewOpen, setFinishingViewOpen] = useState(false);
+  const [finishingViewId, setFinishingViewId] = useState<string | null>(null);
   const [selectedGroupedCards, setSelectedGroupedCards] = useState<{
     groupName: string;
     cards: {
@@ -713,6 +713,7 @@ export default function Dashboard() {
       setCuttingSubmissions(formattedCutting);
       setStorageBinCards(formattedBinCards);
       setAllLines(linesData || []);
+      setFinishingDailyLogs(finishingDailyLogsData || []);
       setActiveBlockers(blockers.slice(0, 5));
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -730,9 +731,6 @@ export default function Dashboard() {
   if (!canViewDashboard) {
     return null;
   }
-
-  const currentTargets = departmentTab === 'sewing' ? sewingTargets : finishingTargets;
-  const currentEndOfDay = departmentTab === 'sewing' ? sewingEndOfDay : finishingEndOfDay;
 
   // Group storage bin cards by po_set_signature or bin_group_id for display
   const storageDisplayItems = useMemo(() => {
@@ -872,185 +870,42 @@ export default function Dashboard() {
 
         {/* Sewing Tab Content */}
         <TabsContent value="sewing" className="space-y-4 md:space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-            {/* Morning Targets Card */}
-            <Card>
-              <CardHeader className="flex flex-col xs:flex-row xs:items-center justify-between gap-2 pb-2">
-                <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-                  <Crosshair className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                  Morning Targets
-                </CardTitle>
-                <div className="flex gap-1 sm:gap-2">
-                  <Link to="/submissions?department=sewing&category=targets">
-                    <Button variant="ghost" size="sm" className="h-8 px-2 sm:px-3 text-xs sm:text-sm">
-                      View All
-                      <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 ml-0.5 sm:ml-1" />
-                    </Button>
-                  </Link>
-                  <Link to="/sewing/morning-targets">
-                    <Button variant="ghost" size="sm" className="h-8 px-2 sm:px-3 text-xs sm:text-sm">
-                      <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-0.5 sm:mr-1" />
-                      Add
-                    </Button>
-                  </Link>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <div className="space-y-3">
-                    {[1, 2, 3].map(i => (
-                      <div key={i} className="h-16 bg-muted rounded-lg animate-pulse" />
-                    ))}
-                  </div>
-                ) : sewingTargets.length > 0 ? (
-                  <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                    {sewingTargets.map((target) => (
-                      <div
-                        key={target.id}
-                        onClick={() => {
-                          setSewingViewSource({ type: 'target', id: target.id });
-                          setSewingViewOpen(true);
-                        }}
-                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-primary/10">
-                            <Crosshair className="h-5 w-5 text-primary" />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{target.line_name}</span>
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                              {target.po_number || 'No PO'} • {target.submitted_at ? formatTime(target.submitted_at) : '-'}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-mono font-bold text-lg">{target.per_hour_target}</p>
-                          <p className="text-xs text-muted-foreground">per hour</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Crosshair className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                    <p>No targets submitted today</p>
-                    <Link to="/sewing/morning-targets">
-                      <Button variant="link" size="sm" className="mt-2">
-                        Add morning targets
-                      </Button>
-                    </Link>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* End of Day Card */}
-            <Card>
-              <CardHeader className="flex flex-col xs:flex-row xs:items-center justify-between gap-2 pb-2">
-                <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-                  <ClipboardCheck className="h-4 w-4 sm:h-5 sm:w-5 text-info" />
-                  End of Day
-                </CardTitle>
-                <div className="flex gap-1 sm:gap-2">
-                  <Link to="/submissions?department=sewing&category=actuals">
-                    <Button variant="ghost" size="sm" className="h-8 px-2 sm:px-3 text-xs sm:text-sm">
-                      View All
-                      <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 ml-0.5 sm:ml-1" />
-                    </Button>
-                  </Link>
-                  <Link to="/sewing/end-of-day">
-                    <Button variant="ghost" size="sm" className="h-8 px-2 sm:px-3 text-xs sm:text-sm">
-                      <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-0.5 sm:mr-1" />
-                      Add
-                    </Button>
-                  </Link>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <div className="space-y-3">
-                    {[1, 2, 3].map(i => (
-                      <div key={i} className="h-16 bg-muted rounded-lg animate-pulse" />
-                    ))}
-                  </div>
-                ) : sewingEndOfDay.length > 0 ? (
-                  <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                    {sewingEndOfDay.map((update) => (
-                      <div
-                        key={update.id}
-                        onClick={() => {
-                          setSewingViewSource({ type: 'actual', id: update.id });
-                          setSewingViewOpen(true);
-                        }}
-                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-info/10">
-                            <ClipboardCheck className="h-5 w-5 text-info" />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{update.line_name}</span>
-                              {update.has_blocker && (
-                                <StatusBadge variant="danger" size="sm" dot>
-                                  Blocker
-                                </StatusBadge>
-                              )}
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                              {update.po_number || 'No PO'} • {formatTime(update.submitted_at)}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-mono font-bold text-lg">{update.output.toLocaleString()}</p>
-                          <p className="text-xs text-muted-foreground">output</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <ClipboardCheck className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                    <p>No end of day submissions</p>
-                    <Link to="/sewing/end-of-day">
-                      <Button variant="link" size="sm" className="mt-2">
-                        Add end of day report
-                      </Button>
-                    </Link>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Target vs Actual Comparison - Sewing Only */}
-          <TargetVsActualComparison
+          <StageDashboardSection
+            stage="sewing"
+            targets={sewingTargets}
+            endOfDay={sewingEndOfDay}
             allLines={allLines}
-            targets={sewingTargets.map(t => ({
-              line_uuid: t.line_uuid,
-              line_name: t.line_name,
-              per_hour_target: t.per_hour_target,
-              manpower_planned: t.manpower_planned,
-            }))}
-            actuals={sewingEndOfDay.map(a => ({
-              line_uuid: a.line_uuid,
-              line_name: a.line_name,
-              output: a.output,
-              manpower: a.manpower,
-              has_blocker: a.has_blocker,
-            }))}
-            type="sewing"
             loading={loading}
+            onTargetClick={(target) => {
+              setSewingViewSource({ type: 'target', id: target.id });
+              setSewingViewOpen(true);
+            }}
+            onEodClick={(eod) => {
+              setSewingViewSource({ type: 'actual', id: eod.id });
+              setSewingViewOpen(true);
+            }}
+            formatTime={formatTime}
           />
         </TabsContent>
 
-        {/* Finishing Tab Content - Completely Different View */}
+        {/* Finishing Tab Content — same layout as Sewing */}
         <TabsContent value="finishing" className="space-y-4 md:space-y-6">
-          <FinishingDashboard />
+          <StageDashboardSection
+            stage="finishing"
+            targets={finishingTargets}
+            endOfDay={finishingEndOfDay}
+            allLines={allLines}
+            loading={loading}
+            onTargetClick={(target) => {
+              setSelectedTarget(target);
+              setTargetModalOpen(true);
+            }}
+            onEodClick={(eod) => {
+              setFinishingViewId(eod.id);
+              setFinishingViewOpen(true);
+            }}
+            formatTime={formatTime}
+          />
         </TabsContent>
 
         {/* Cutting Tab Content */}
@@ -1548,6 +1403,76 @@ export default function Dashboard() {
             actual={sewingActual}
             open={sewingViewOpen}
             onOpenChange={setSewingViewOpen}
+          />
+        );
+      })()}
+
+      {/* Finishing Daily Log Detail Modal */}
+      {(() => {
+        if (!finishingViewId) return null;
+
+        const log = finishingDailyLogs.find((l: any) => l.id === finishingViewId);
+        if (!log) return null;
+
+        // Find counterpart (TARGET <-> OUTPUT) for the same line + work order + date
+        const counterpart = finishingDailyLogs.find((l: any) =>
+          l.log_type !== log.log_type &&
+          l.production_date === log.production_date &&
+          l.work_order_id === log.work_order_id &&
+          l.line_id === log.line_id
+        );
+
+        const targetLog = log.log_type === 'TARGET' ? log : counterpart;
+        const actualLog = log.log_type === 'OUTPUT' ? log : counterpart;
+
+        const finTarget: FinishingTargetData | null = targetLog ? {
+          id: targetLog.id,
+          production_date: targetLog.production_date,
+          submitted_at: targetLog.submitted_at,
+          po_number: targetLog.work_orders?.po_number ?? null,
+          buyer: targetLog.work_orders?.buyer ?? null,
+          style: targetLog.work_orders?.style ?? null,
+          thread_cutting: targetLog.thread_cutting || 0,
+          inside_check: targetLog.inside_check || 0,
+          top_side_check: targetLog.top_side_check || 0,
+          buttoning: targetLog.buttoning || 0,
+          iron: targetLog.iron || 0,
+          get_up: targetLog.get_up || 0,
+          poly: targetLog.poly || 0,
+          carton: targetLog.carton || 0,
+          planned_hours: targetLog.planned_hours ?? null,
+          ot_hours_planned: targetLog.ot_hours_planned ?? null,
+          ot_manpower_planned: targetLog.ot_manpower_planned ?? null,
+          remarks: targetLog.remarks ?? null,
+        } : null;
+
+        const finActual: FinishingActualData | null = actualLog ? {
+          id: actualLog.id,
+          production_date: actualLog.production_date,
+          submitted_at: actualLog.submitted_at,
+          po_number: actualLog.work_orders?.po_number ?? null,
+          buyer: actualLog.work_orders?.buyer ?? null,
+          style: actualLog.work_orders?.style ?? null,
+          thread_cutting: actualLog.thread_cutting || 0,
+          inside_check: actualLog.inside_check || 0,
+          top_side_check: actualLog.top_side_check || 0,
+          buttoning: actualLog.buttoning || 0,
+          iron: actualLog.iron || 0,
+          get_up: actualLog.get_up || 0,
+          poly: actualLog.poly || 0,
+          carton: actualLog.carton || 0,
+          actual_hours: actualLog.actual_hours ?? null,
+          ot_hours_actual: actualLog.ot_hours_actual ?? null,
+          ot_manpower_actual: actualLog.ot_manpower_actual ?? null,
+          remarks: actualLog.remarks ?? null,
+        } : null;
+
+        return (
+          <FinishingSubmissionView
+            target={finTarget}
+            actual={finActual}
+            open={finishingViewOpen}
+            onOpenChange={setFinishingViewOpen}
           />
         );
       })()}
