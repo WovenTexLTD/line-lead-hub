@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { getTodayInTimezone } from "@/lib/date-utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,6 +21,7 @@ import { ExportInsights } from "@/components/insights/ExportInsights";
 
 import { LineEfficiencyTargets } from "@/components/insights/LineEfficiencyTargets";
 import { NotificationPreferences } from "@/components/NotificationPreferences";
+import { ChartAxisControls } from "@/components/ui/chart-axis-controls";
 
 interface DailyData {
   date: string;
@@ -131,6 +132,28 @@ export default function Insights() {
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
   const [selectedLineName, setSelectedLineName] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
+
+  // Y-axis domain controls for charts
+  const [sewingYMin, setSewingYMin] = useState(0);
+  const [sewingYMax, setSewingYMax] = useState<number | 'auto'>('auto');
+  const [finishingYMin, setFinishingYMin] = useState(0);
+  const [finishingYMax, setFinishingYMax] = useState<number | 'auto'>('auto');
+
+  // Compute auto Y-max from data
+  const sewingAutoMax = useMemo(() => {
+    if (dailyData.length === 0) return 1000;
+    const max = Math.max(...dailyData.map(d => Math.max(d.sewingOutput, d.sewingTarget)));
+    return Math.ceil(max / 500) * 500 || 1000;
+  }, [dailyData]);
+
+  const finishingAutoMax = useMemo(() => {
+    if (dailyData.length === 0) return 1000;
+    const max = Math.max(...dailyData.map(d => Math.max(d.finishingCartonOutput, d.finishingCartonTarget)));
+    return Math.ceil(max / 500) * 500 || 1000;
+  }, [dailyData]);
+
+  const effectiveSewingYMax = sewingYMax === 'auto' ? sewingAutoMax : sewingYMax;
+  const effectiveFinishingYMax = finishingYMax === 'auto' ? finishingAutoMax : finishingYMax;
 
   useEffect(() => {
     if (profile?.factory_id) {
@@ -746,6 +769,14 @@ export default function Insights() {
             <CardDescription>Daily sewing output compared to target over time</CardDescription>
           </CardHeader>
           <CardContent className="p-2 sm:p-6">
+            <ChartAxisControls
+              yMin={sewingYMin}
+              yMax={effectiveSewingYMax}
+              onYMinChange={setSewingYMin}
+              onYMaxChange={(v) => setSewingYMax(v)}
+              onReset={() => { setSewingYMin(0); setSewingYMax('auto'); }}
+              className="mb-2 justify-end"
+            />
             {dailyData.length > 0 ? (
               <div className="w-full overflow-hidden">
                 <ResponsiveContainer width="100%" height={300}>
@@ -762,7 +793,7 @@ export default function Insights() {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="displayDate" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
-                    <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} width={45} />
+                    <YAxis domain={[sewingYMin, effectiveSewingYMax]} className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} width={45} />
                     <Tooltip
                       contentStyle={{
                         backgroundColor: 'hsl(var(--card))',
@@ -794,6 +825,14 @@ export default function Insights() {
             <CardDescription>Daily finishing carton output compared to target over time</CardDescription>
           </CardHeader>
           <CardContent className="p-2 sm:p-6">
+            <ChartAxisControls
+              yMin={finishingYMin}
+              yMax={effectiveFinishingYMax}
+              onYMinChange={setFinishingYMin}
+              onYMaxChange={(v) => setFinishingYMax(v)}
+              onReset={() => { setFinishingYMin(0); setFinishingYMax('auto'); }}
+              className="mb-2 justify-end"
+            />
             {dailyData.some(d => d.finishingCartonOutput > 0 || d.finishingCartonTarget > 0) ? (
               <div className="w-full overflow-hidden">
                 <ResponsiveContainer width="100%" height={300}>
@@ -810,7 +849,7 @@ export default function Insights() {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="displayDate" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
-                    <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} width={45} />
+                    <YAxis domain={[finishingYMin, effectiveFinishingYMax]} className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} width={45} />
                     <Tooltip
                       contentStyle={{
                         backgroundColor: 'hsl(var(--card))',
