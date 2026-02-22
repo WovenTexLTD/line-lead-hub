@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, Sector,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, ReferenceArea
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from "recharts";
 import { PeriodComparison } from "@/components/insights/PeriodComparison";
 import { LineDrillDown } from "@/components/insights/LineDrillDown";
@@ -465,15 +465,12 @@ export default function Insights() {
     '#dc2626', // Red
   ];
 
-  // Derived: chart data for performance % line + variance bars
+  // Simple chart data: target vs actual
   const sewingChartData = useMemo(() =>
     dailyData.map(d => ({
       displayDate: d.displayDate,
-      performancePct: d.sewingTarget > 0 ? Math.round((d.sewingOutput / d.sewingTarget) * 100) : null,
-      variance: d.sewingTarget > 0 ? d.sewingOutput - d.sewingTarget : null,
-      output: d.sewingOutput,
-      target: d.sewingTarget,
-      hasTarget: d.sewingTarget > 0,
+      target: d.sewingTarget || null,
+      actual: d.sewingOutput || null,
     })),
     [dailyData]
   );
@@ -481,48 +478,11 @@ export default function Insights() {
   const finishingChartData = useMemo(() =>
     dailyData.map(d => ({
       displayDate: d.displayDate,
-      performancePct: d.finishingCartonTarget > 0 ? Math.round((d.finishingCartonOutput / d.finishingCartonTarget) * 100) : null,
-      variance: d.finishingCartonTarget > 0 ? d.finishingCartonOutput - d.finishingCartonTarget : null,
-      output: d.finishingCartonOutput,
-      target: d.finishingCartonTarget,
-      hasTarget: d.finishingCartonTarget > 0,
+      target: d.finishingCartonTarget || null,
+      actual: d.finishingCartonOutput || null,
     })),
     [dailyData]
   );
-
-  // Hit rate & avg performance summaries
-  function computeHitStats(data: { performancePct: number | null }[]) {
-    const valid = data.filter(d => d.performancePct !== null).map(d => d.performancePct!);
-    if (valid.length === 0) return { hitDays: 0, totalDays: 0, avgPct: 0, onTrackDays: 0 };
-    return {
-      hitDays: valid.filter(v => v >= 100).length,
-      onTrackDays: valid.filter(v => v >= 95 && v <= 105).length,
-      totalDays: valid.length,
-      avgPct: Math.round(valid.reduce((a, b) => a + b, 0) / valid.length),
-    };
-  }
-
-  const sewingHitStats = useMemo(() => computeHitStats(sewingChartData), [sewingChartData]);
-  const finishingHitStats = useMemo(() => computeHitStats(finishingChartData), [finishingChartData]);
-
-  // Chart mode toggle: 'performance' (default) | 'variance'
-  const [sewingChartMode, setSewingChartMode] = useState<'performance' | 'variance'>('performance');
-  const [finishingChartMode, setFinishingChartMode] = useState<'performance' | 'variance'>('performance');
-
-  // Symmetric Y-axis domain for variance mode
-  function computeVarianceDomain(data: { variance: number | null }[]): [number, number] {
-    const values = data.map(d => d.variance).filter((v): v is number => v !== null);
-    if (values.length === 0) return [-100, 100];
-    const absValues = values.map(Math.abs).sort((a, b) => a - b);
-    const maxAbs = absValues.length >= 3
-      ? absValues[Math.floor(absValues.length * 0.95)] || absValues[absValues.length - 1]
-      : absValues[absValues.length - 1];
-    const limit = Math.ceil(maxAbs * 1.15);
-    return [-limit || -100, limit || 100];
-  }
-
-  const sewingVarDomain = useMemo(() => computeVarianceDomain(sewingChartData), [sewingChartData]);
-  const finishingVarDomain = useMemo(() => computeVarianceDomain(finishingChartData), [finishingChartData]);
 
   // Derived: cumulative burn-up data
   const cumulativeData = useMemo(() => {
@@ -820,319 +780,103 @@ export default function Insights() {
           Trends
         </h2>
 
-        {/* Sewing Performance Chart */}
-        {(() => {
-          const data = sewingChartData;
-          const stats = sewingHitStats;
-          const mode = sewingChartMode;
-          const setMode = setSewingChartMode;
-          const varDomain = sewingVarDomain;
-          const unit = 'pcs';
-          const hasData = data.some(d => d.hasTarget);
-          const pctValues = data.map(d => d.performancePct).filter((v): v is number => v !== null);
-          const maxPct = pctValues.length > 0 ? Math.max(...pctValues) : 120;
-          const minPct = pctValues.length > 0 ? Math.min(...pctValues) : 80;
-          const yMax = Math.min(Math.ceil(Math.max(maxPct, 110) / 10) * 10, 200);
-          const yMin = Math.max(Math.floor(Math.min(minPct, 90) / 10) * 10, 0);
+        {/* Sewing: Target vs Actual */}
+        <Card className="w-full overflow-hidden">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Factory className="h-5 w-5 text-primary" />
+              Sewing — Target vs Actual
+            </CardTitle>
+            <CardDescription>Daily target and output comparison (pcs)</CardDescription>
+          </CardHeader>
+          <CardContent className="p-2 sm:p-6">
+            {sewingChartData.some(d => d.target || d.actual) ? (
+              <ResponsiveContainer width="100%" height={280}>
+                <LineChart data={sewingChartData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
+                  <XAxis dataKey="displayDate" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
+                  <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} width={50} tickFormatter={(v) => v.toLocaleString()} />
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (!active || !payload?.length) return null;
+                      const d = payload[0].payload;
+                      return (
+                        <div className="bg-card border border-border rounded-lg p-3 shadow-lg text-sm space-y-1">
+                          <p className="font-semibold">{d.displayDate}</p>
+                          <div className="flex justify-between gap-6">
+                            <span className="text-muted-foreground">Target</span>
+                            <span className="font-mono">{d.target ? d.target.toLocaleString() : '—'} pcs</span>
+                          </div>
+                          <div className="flex justify-between gap-6">
+                            <span className="text-muted-foreground">Actual</span>
+                            <span className="font-mono font-bold">{d.actual ? d.actual.toLocaleString() : '—'} pcs</span>
+                          </div>
+                        </div>
+                      );
+                    }}
+                  />
+                  <Legend />
+                  <Line type="monotone" dataKey="target" name="Target" stroke="#94a3b8" strokeWidth={2} dot={{ r: 3 }} connectNulls={false} />
+                  <Line type="monotone" dataKey="actual" name="Actual" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 3, fill: 'hsl(var(--primary))' }} connectNulls={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[280px] flex items-center justify-center text-muted-foreground flex-col gap-2">
+                <Target className="h-10 w-10 opacity-40" />
+                <p>No sewing data available for this period</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-          return (
-            <Card className="w-full overflow-hidden">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Factory className="h-5 w-5 text-primary" />
-                      Sewing Performance
-                    </CardTitle>
-                    <CardDescription>{mode === 'performance' ? 'Daily target achievement %' : `Surplus / deficit (${unit})`}</CardDescription>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => setMode(mode === 'performance' ? 'variance' : 'performance')}
-                      className="text-xs px-2.5 py-1 rounded-md border border-border bg-muted/50 hover:bg-muted transition-colors text-muted-foreground"
-                    >
-                      {mode === 'performance' ? 'Show variance' : 'Show %'}
-                    </button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-2 sm:p-6">
-                {hasData ? (
-                  <div className="flex flex-col lg:flex-row gap-4">
-                    <div className="flex-1 min-w-0 overflow-hidden">
-                      {mode === 'performance' ? (
-                        <ResponsiveContainer width="100%" height={280}>
-                          <LineChart data={data}>
-                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
-                            <XAxis dataKey="displayDate" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
-                            <YAxis domain={[yMin, yMax]} className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} width={35} tickFormatter={(v) => `${v}%`} />
-                            <ReferenceArea y1={95} y2={105} fill="#22c55e" fillOpacity={0.08} />
-                            <ReferenceLine y={100} stroke="#22c55e" strokeWidth={1.5} strokeDasharray="4 4" label={{ value: '100%', position: 'right', fontSize: 10, fill: '#22c55e' }} />
-                            <Tooltip
-                              content={({ active, payload }) => {
-                                if (!active || !payload?.[0]) return null;
-                                const d = payload[0].payload;
-                                return (
-                                  <div className="bg-card border border-border rounded-lg p-3 shadow-lg text-sm space-y-1">
-                                    <p className="font-semibold">{d.displayDate}</p>
-                                    {!d.hasTarget ? (
-                                      <p className="text-muted-foreground italic">No target set</p>
-                                    ) : (
-                                      <>
-                                        <div className="flex justify-between gap-6">
-                                          <span className="text-muted-foreground">Target</span>
-                                          <span className="font-mono">{d.target.toLocaleString()} {unit}</span>
-                                        </div>
-                                        <div className="flex justify-between gap-6">
-                                          <span className="text-muted-foreground">Actual</span>
-                                          <span className="font-mono font-bold">{d.output.toLocaleString()} {unit}</span>
-                                        </div>
-                                        <div className="border-t pt-1 flex justify-between gap-6">
-                                          <span className="text-muted-foreground">Performance</span>
-                                          <span className={`font-mono font-bold ${d.performancePct >= 100 ? 'text-green-600 dark:text-green-400' : d.performancePct >= 95 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
-                                            {d.performancePct}%
-                                          </span>
-                                        </div>
-                                        <div className="flex justify-between gap-6 text-xs">
-                                          <span className="text-muted-foreground">Variance</span>
-                                          <span className={`font-mono ${d.variance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                            {d.variance >= 0 ? '+' : ''}{d.variance.toLocaleString()}
-                                          </span>
-                                        </div>
-                                      </>
-                                    )}
-                                  </div>
-                                );
-                              }}
-                            />
-                            <Line
-                              type="monotone"
-                              dataKey="performancePct"
-                              name="Performance %"
-                              stroke="hsl(var(--primary))"
-                              strokeWidth={2.5}
-                              dot={{ r: 4, fill: 'hsl(var(--primary))', strokeWidth: 2, stroke: 'hsl(var(--card))' }}
-                              activeDot={{ r: 6, strokeWidth: 2 }}
-                              connectNulls={false}
-                            />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <ResponsiveContainer width="100%" height={280}>
-                          <BarChart data={data}>
-                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
-                            <XAxis dataKey="displayDate" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
-                            <YAxis domain={varDomain} className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} width={50} />
-                            <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeWidth={1.5} />
-                            <Tooltip
-                              content={({ active, payload }) => {
-                                if (!active || !payload?.[0]) return null;
-                                const d = payload[0].payload;
-                                if (!d.hasTarget) return <div className="bg-card border border-border rounded-lg p-3 shadow-lg text-sm"><p className="text-muted-foreground italic">No target set</p></div>;
-                                return (
-                                  <div className="bg-card border border-border rounded-lg p-3 shadow-lg text-sm space-y-1">
-                                    <p className="font-semibold">{d.displayDate}</p>
-                                    <div className="flex justify-between gap-6"><span className="text-muted-foreground">Output</span><span className="font-mono font-bold">{d.output.toLocaleString()} {unit}</span></div>
-                                    <div className="flex justify-between gap-6"><span className="text-muted-foreground">Target</span><span className="font-mono">{d.target.toLocaleString()} {unit}</span></div>
-                                    <div className="border-t pt-1 flex justify-between gap-6"><span className="text-muted-foreground">Variance</span><span className={`font-mono font-bold ${d.variance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{d.variance >= 0 ? '+' : ''}{d.variance.toLocaleString()}</span></div>
-                                  </div>
-                                );
-                              }}
-                            />
-                            <Bar dataKey="variance" name="Variance" radius={[4, 4, 4, 4]}>
-                              {data.map((entry, i) => (
-                                <Cell key={i} fill={entry.variance === null ? 'transparent' : entry.variance >= 0 ? '#22c55e' : 'hsl(var(--destructive))'} fillOpacity={entry.variance === null ? 0 : 0.85} />
-                              ))}
-                            </Bar>
-                          </BarChart>
-                        </ResponsiveContainer>
-                      )}
-                    </div>
-                    {/* Hit Rate Summary */}
-                    <div className="lg:w-36 flex lg:flex-col flex-row gap-3 lg:gap-2 lg:pt-2 flex-wrap">
-                      <div className="text-center lg:text-left p-2 rounded-lg bg-muted/40">
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Hit Rate</p>
-                        <p className="text-lg font-bold font-mono">{stats.hitDays}/{stats.totalDays}</p>
-                        <p className="text-[10px] text-muted-foreground">days {'\u2265'} 100%</p>
-                      </div>
-                      <div className="text-center lg:text-left p-2 rounded-lg bg-muted/40">
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Avg Perf.</p>
-                        <p className={`text-lg font-bold font-mono ${stats.avgPct >= 100 ? 'text-green-600 dark:text-green-400' : stats.avgPct >= 95 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>{stats.avgPct}%</p>
-                      </div>
-                      <div className="text-center lg:text-left p-2 rounded-lg bg-muted/40">
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">On Track</p>
-                        <p className="text-lg font-bold font-mono">{stats.onTrackDays}/{stats.totalDays}</p>
-                        <p className="text-[10px] text-muted-foreground">95–105%</p>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="h-[280px] flex items-center justify-center text-muted-foreground flex-col gap-2">
-                    <Target className="h-10 w-10 opacity-40" />
-                    <p>Set morning targets to see performance tracking</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })()}
-
-        {/* Finishing Carton Performance Chart */}
-        {(() => {
-          const data = finishingChartData;
-          const stats = finishingHitStats;
-          const mode = finishingChartMode;
-          const setMode = setFinishingChartMode;
-          const varDomain = finishingVarDomain;
-          const unit = 'ctn';
-          const hasData = data.some(d => d.hasTarget);
-          const pctValues = data.map(d => d.performancePct).filter((v): v is number => v !== null);
-          const maxPct = pctValues.length > 0 ? Math.max(...pctValues) : 120;
-          const minPct = pctValues.length > 0 ? Math.min(...pctValues) : 80;
-          const yMax = Math.min(Math.ceil(Math.max(maxPct, 110) / 10) * 10, 200);
-          const yMin = Math.max(Math.floor(Math.min(minPct, 90) / 10) * 10, 0);
-
-          return (
-            <Card className="w-full overflow-hidden">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Package className="h-5 w-5 text-violet-600" />
-                      Finishing Carton Performance
-                    </CardTitle>
-                    <CardDescription>{mode === 'performance' ? 'Daily target achievement %' : `Surplus / deficit (${unit})`}</CardDescription>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => setMode(mode === 'performance' ? 'variance' : 'performance')}
-                      className="text-xs px-2.5 py-1 rounded-md border border-border bg-muted/50 hover:bg-muted transition-colors text-muted-foreground"
-                    >
-                      {mode === 'performance' ? 'Show variance' : 'Show %'}
-                    </button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-2 sm:p-6">
-                {hasData ? (
-                  <div className="flex flex-col lg:flex-row gap-4">
-                    <div className="flex-1 min-w-0 overflow-hidden">
-                      {mode === 'performance' ? (
-                        <ResponsiveContainer width="100%" height={280}>
-                          <LineChart data={data}>
-                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
-                            <XAxis dataKey="displayDate" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
-                            <YAxis domain={[yMin, yMax]} className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} width={35} tickFormatter={(v) => `${v}%`} />
-                            <ReferenceArea y1={95} y2={105} fill="#22c55e" fillOpacity={0.08} />
-                            <ReferenceLine y={100} stroke="#22c55e" strokeWidth={1.5} strokeDasharray="4 4" label={{ value: '100%', position: 'right', fontSize: 10, fill: '#22c55e' }} />
-                            <Tooltip
-                              content={({ active, payload }) => {
-                                if (!active || !payload?.[0]) return null;
-                                const d = payload[0].payload;
-                                return (
-                                  <div className="bg-card border border-border rounded-lg p-3 shadow-lg text-sm space-y-1">
-                                    <p className="font-semibold">{d.displayDate}</p>
-                                    {!d.hasTarget ? (
-                                      <p className="text-muted-foreground italic">No target set</p>
-                                    ) : (
-                                      <>
-                                        <div className="flex justify-between gap-6">
-                                          <span className="text-muted-foreground">Target</span>
-                                          <span className="font-mono">{d.target.toLocaleString()} {unit}</span>
-                                        </div>
-                                        <div className="flex justify-between gap-6">
-                                          <span className="text-muted-foreground">Actual</span>
-                                          <span className="font-mono font-bold">{d.output.toLocaleString()} {unit}</span>
-                                        </div>
-                                        <div className="border-t pt-1 flex justify-between gap-6">
-                                          <span className="text-muted-foreground">Performance</span>
-                                          <span className={`font-mono font-bold ${d.performancePct >= 100 ? 'text-green-600 dark:text-green-400' : d.performancePct >= 95 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
-                                            {d.performancePct}%
-                                          </span>
-                                        </div>
-                                        <div className="flex justify-between gap-6 text-xs">
-                                          <span className="text-muted-foreground">Variance</span>
-                                          <span className={`font-mono ${d.variance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                            {d.variance >= 0 ? '+' : ''}{d.variance.toLocaleString()}
-                                          </span>
-                                        </div>
-                                      </>
-                                    )}
-                                  </div>
-                                );
-                              }}
-                            />
-                            <Line
-                              type="monotone"
-                              dataKey="performancePct"
-                              name="Performance %"
-                              stroke="#7c3aed"
-                              strokeWidth={2.5}
-                              dot={{ r: 4, fill: '#7c3aed', strokeWidth: 2, stroke: 'hsl(var(--card))' }}
-                              activeDot={{ r: 6, strokeWidth: 2 }}
-                              connectNulls={false}
-                            />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <ResponsiveContainer width="100%" height={280}>
-                          <BarChart data={data}>
-                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
-                            <XAxis dataKey="displayDate" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
-                            <YAxis domain={varDomain} className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} width={50} />
-                            <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeWidth={1.5} />
-                            <Tooltip
-                              content={({ active, payload }) => {
-                                if (!active || !payload?.[0]) return null;
-                                const d = payload[0].payload;
-                                if (!d.hasTarget) return <div className="bg-card border border-border rounded-lg p-3 shadow-lg text-sm"><p className="text-muted-foreground italic">No target set</p></div>;
-                                return (
-                                  <div className="bg-card border border-border rounded-lg p-3 shadow-lg text-sm space-y-1">
-                                    <p className="font-semibold">{d.displayDate}</p>
-                                    <div className="flex justify-between gap-6"><span className="text-muted-foreground">Output</span><span className="font-mono font-bold">{d.output.toLocaleString()} {unit}</span></div>
-                                    <div className="flex justify-between gap-6"><span className="text-muted-foreground">Target</span><span className="font-mono">{d.target.toLocaleString()} {unit}</span></div>
-                                    <div className="border-t pt-1 flex justify-between gap-6"><span className="text-muted-foreground">Variance</span><span className={`font-mono font-bold ${d.variance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{d.variance >= 0 ? '+' : ''}{d.variance.toLocaleString()}</span></div>
-                                  </div>
-                                );
-                              }}
-                            />
-                            <Bar dataKey="variance" name="Variance" radius={[4, 4, 4, 4]}>
-                              {data.map((entry, i) => (
-                                <Cell key={i} fill={entry.variance === null ? 'transparent' : entry.variance >= 0 ? '#22c55e' : 'hsl(var(--destructive))'} fillOpacity={entry.variance === null ? 0 : 0.85} />
-                              ))}
-                            </Bar>
-                          </BarChart>
-                        </ResponsiveContainer>
-                      )}
-                    </div>
-                    {/* Hit Rate Summary */}
-                    <div className="lg:w-36 flex lg:flex-col flex-row gap-3 lg:gap-2 lg:pt-2 flex-wrap">
-                      <div className="text-center lg:text-left p-2 rounded-lg bg-muted/40">
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Hit Rate</p>
-                        <p className="text-lg font-bold font-mono">{stats.hitDays}/{stats.totalDays}</p>
-                        <p className="text-[10px] text-muted-foreground">days {'\u2265'} 100%</p>
-                      </div>
-                      <div className="text-center lg:text-left p-2 rounded-lg bg-muted/40">
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Avg Perf.</p>
-                        <p className={`text-lg font-bold font-mono ${stats.avgPct >= 100 ? 'text-green-600 dark:text-green-400' : stats.avgPct >= 95 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>{stats.avgPct}%</p>
-                      </div>
-                      <div className="text-center lg:text-left p-2 rounded-lg bg-muted/40">
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">On Track</p>
-                        <p className="text-lg font-bold font-mono">{stats.onTrackDays}/{stats.totalDays}</p>
-                        <p className="text-[10px] text-muted-foreground">95–105%</p>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="h-[280px] flex items-center justify-center text-muted-foreground flex-col gap-2">
-                    <Package className="h-10 w-10 opacity-40" />
-                    <p>No finishing carton data available for this period</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })()}
+        {/* Finishing: Target vs Actual */}
+        <Card className="w-full overflow-hidden">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Package className="h-5 w-5 text-violet-600" />
+              Finishing Carton — Target vs Actual
+            </CardTitle>
+            <CardDescription>Daily target and output comparison (ctn)</CardDescription>
+          </CardHeader>
+          <CardContent className="p-2 sm:p-6">
+            {finishingChartData.some(d => d.target || d.actual) ? (
+              <ResponsiveContainer width="100%" height={280}>
+                <LineChart data={finishingChartData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
+                  <XAxis dataKey="displayDate" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
+                  <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} width={50} tickFormatter={(v) => v.toLocaleString()} />
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (!active || !payload?.length) return null;
+                      const d = payload[0].payload;
+                      return (
+                        <div className="bg-card border border-border rounded-lg p-3 shadow-lg text-sm space-y-1">
+                          <p className="font-semibold">{d.displayDate}</p>
+                          <div className="flex justify-between gap-6">
+                            <span className="text-muted-foreground">Target</span>
+                            <span className="font-mono">{d.target ? d.target.toLocaleString() : '—'} ctn</span>
+                          </div>
+                          <div className="flex justify-between gap-6">
+                            <span className="text-muted-foreground">Actual</span>
+                            <span className="font-mono font-bold">{d.actual ? d.actual.toLocaleString() : '—'} ctn</span>
+                          </div>
+                        </div>
+                      );
+                    }}
+                  />
+                  <Legend />
+                  <Line type="monotone" dataKey="target" name="Target" stroke="#94a3b8" strokeWidth={2} dot={{ r: 3 }} connectNulls={false} />
+                  <Line type="monotone" dataKey="actual" name="Actual" stroke="#7c3aed" strokeWidth={2.5} dot={{ r: 3, fill: '#7c3aed' }} connectNulls={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[280px] flex items-center justify-center text-muted-foreground flex-col gap-2">
+                <Package className="h-10 w-10 opacity-40" />
+                <p>No finishing carton data available for this period</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Cumulative Burn-Up Chart */}
         <Card className="w-full overflow-hidden">
