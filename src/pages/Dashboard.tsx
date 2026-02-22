@@ -732,6 +732,30 @@ export default function Dashboard() {
     return null;
   }
 
+  // Derive finishing daily targets from finishing_daily_logs TARGET entries
+  // These map to the same shape as TargetSubmission so StageDashboardSection can display them
+  const finishingDailyTargets = useMemo(() => {
+    return finishingDailyLogs
+      .filter((log: any) => log.log_type === 'TARGET')
+      .map((log: any) => ({
+        id: log.id,
+        type: 'finishing' as const,
+        line_uuid: log.line_id,
+        line_id: log.lines?.line_id || 'Unknown',
+        line_name: log.lines?.name || log.lines?.line_id || 'Unknown',
+        work_order_id: log.work_order_id,
+        po_number: log.work_orders?.po_number || null,
+        buyer: log.work_orders?.buyer || null,
+        style: log.work_orders?.style || null,
+        per_hour_target: log.carton || 0, // carton is the primary metric
+        submitted_at: log.submitted_at,
+        production_date: log.production_date,
+        // Extra fields for rendering
+        _poly: log.poly || 0,
+        _carton: log.carton || 0,
+      }));
+  }, [finishingDailyLogs]);
+
   // Group storage bin cards by po_set_signature or bin_group_id for display
   const storageDisplayItems = useMemo(() => {
     const groupMap = new Map<string, StorageBinCard[]>();
@@ -892,19 +916,37 @@ export default function Dashboard() {
         <TabsContent value="finishing" className="space-y-4 md:space-y-6">
           <StageDashboardSection
             stage="finishing"
-            targets={finishingTargets}
+            targets={finishingDailyTargets}
             endOfDay={finishingEndOfDay}
             allLines={allLines}
             loading={loading}
             onTargetClick={(target) => {
-              setSelectedTarget(target);
-              setTargetModalOpen(true);
+              // Find the daily log entry and open FinishingSubmissionView
+              setFinishingViewId(target.id);
+              setFinishingViewOpen(true);
             }}
             onEodClick={(eod) => {
               setFinishingViewId(eod.id);
               setFinishingViewOpen(true);
             }}
             formatTime={formatTime}
+            renderTargetMetric={(target) => {
+              const t = target as any;
+              return (
+                <div className="flex gap-3">
+                  <div>
+                    <p className="font-mono font-bold text-lg">{(t._carton || 0).toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">cartons</p>
+                  </div>
+                  {t._poly > 0 && (
+                    <div>
+                      <p className="font-mono font-semibold text-base text-muted-foreground">{t._poly.toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground">poly</p>
+                    </div>
+                  )}
+                </div>
+              );
+            }}
           />
         </TabsContent>
 

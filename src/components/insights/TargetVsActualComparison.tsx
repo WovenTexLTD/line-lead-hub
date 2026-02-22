@@ -31,6 +31,8 @@ interface TargetVsActualComparisonProps {
   actuals: ActualData[];
   type: 'sewing' | 'finishing';
   loading?: boolean;
+  /** When true, target values are day totals (not per-hour rates) */
+  targetIsDaily?: boolean;
 }
 
 interface ComparisonRow {
@@ -66,7 +68,7 @@ function PerformanceBadge({ percent, trend }: { percent: number; trend: 'up' | '
   );
 }
 
-export function TargetVsActualComparison({ allLines, targets, actuals, type, loading }: TargetVsActualComparisonProps) {
+export function TargetVsActualComparison({ allLines, targets, actuals, type, loading, targetIsDaily = false }: TargetVsActualComparisonProps) {
   // Group targets by line UUID and sum values
   const targetsByLine = new Map<string, { totalTarget: number; totalManpower: number; count: number }>();
   targets.forEach(target => {
@@ -174,7 +176,7 @@ export function TargetVsActualComparison({ allLines, targets, actuals, type, loa
   // Calculate totals
   const totals = comparisonData.reduce(
     (acc, row) => ({
-      targetOutput: acc.targetOutput + (row.targetPerHour * 8), // Assuming 8-hour day
+      targetOutput: acc.targetOutput + (targetIsDaily ? row.targetPerHour : row.targetPerHour * 8),
       actualOutput: acc.actualOutput + row.actualOutput,
       plannedManpower: acc.plannedManpower + row.plannedManpower,
       actualManpower: acc.actualManpower + row.actualManpower,
@@ -212,7 +214,7 @@ export function TargetVsActualComparison({ allLines, targets, actuals, type, loa
             {/* Header Row - hidden on mobile */}
             <div className="hidden sm:grid grid-cols-12 gap-2 text-xs text-muted-foreground font-medium px-3 py-2 bg-card border-b rounded-lg sticky top-0 z-10">
               <div className="col-span-3">Line</div>
-              <div className="col-span-2 text-right">Target/hr</div>
+              <div className="col-span-2 text-right">{targetIsDaily ? 'Target' : 'Target/hr'}</div>
               <div className="col-span-2 text-right">Actual</div>
               <div className="col-span-2 text-right">Manpower</div>
               <div className="col-span-3 text-right">Performance</div>
@@ -220,7 +222,7 @@ export function TargetVsActualComparison({ allLines, targets, actuals, type, loa
 
             {/* Data Rows - Mobile card layout, Desktop grid layout */}
             {comparisonData.map((row) => {
-              const expectedDayOutput = row.targetPerHour * 8;
+              const expectedDayOutput = targetIsDaily ? row.targetPerHour : row.targetPerHour * 8;
               const performance = calculatePerformance(row.actualOutput, expectedDayOutput);
 
               return (
@@ -255,7 +257,7 @@ export function TargetVsActualComparison({ allLines, targets, actuals, type, loa
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <div className="text-muted-foreground">
-                        Target: {row.hasTarget ? `${row.targetPerHour}/hr` : '-'}
+                        Target: {row.hasTarget ? (targetIsDaily ? row.targetPerHour.toLocaleString() : `${row.targetPerHour}/hr`) : '-'}
                       </div>
                       <div className="font-mono font-bold">
                         {row.hasActual ? row.actualOutput.toLocaleString() : 'Pending'}
@@ -278,8 +280,10 @@ export function TargetVsActualComparison({ allLines, targets, actuals, type, loa
                     <div className="col-span-2 text-right">
                       {row.hasTarget ? (
                         <div>
-                          <p className="font-mono font-medium">{row.targetPerHour}</p>
-                          <p className="text-[10px] text-muted-foreground">~{expectedDayOutput}/day</p>
+                          <p className="font-mono font-medium">{row.targetPerHour.toLocaleString()}</p>
+                          {!targetIsDaily && (
+                            <p className="text-[10px] text-muted-foreground">~{expectedDayOutput}/day</p>
+                          )}
                         </div>
                       ) : (
                         <span className="text-xs text-muted-foreground">No target</span>

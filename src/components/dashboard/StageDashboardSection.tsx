@@ -8,6 +8,7 @@ import {
   ClipboardCheck,
   Plus,
   ChevronRight,
+  Package,
 } from "lucide-react";
 
 /** Minimal shape required from target data */
@@ -20,6 +21,8 @@ export interface TargetItem {
   manpower_planned?: number | null;
   m_power_planned?: number | null;
   submitted_at: string | null;
+  buyer?: string | null;
+  style?: string | null;
 }
 
 /** Minimal shape required from end-of-day data */
@@ -34,6 +37,8 @@ export interface EodItem {
   total_poly?: number;
   total_carton?: number;
   manpower?: number | null;
+  buyer?: string | null;
+  style?: string | null;
 }
 
 export interface LineItem {
@@ -48,6 +53,13 @@ interface StageConfig {
   viewAllTargetsLink: string;
   viewAllEodLink: string;
   eodMetricLabel: string;
+  targetMetricLabel: string;
+  targetIconColor: string;
+  targetIconBg: string;
+  eodIconColor: string;
+  eodIconBg: string;
+  /** When true, target values are day totals (not per-hour rates) */
+  targetIsDaily: boolean;
 }
 
 const STAGE_CONFIGS: Record<"sewing" | "finishing", StageConfig> = {
@@ -57,6 +69,12 @@ const STAGE_CONFIGS: Record<"sewing" | "finishing", StageConfig> = {
     viewAllTargetsLink: "/submissions?department=sewing&category=targets",
     viewAllEodLink: "/submissions?department=sewing&category=actuals",
     eodMetricLabel: "output",
+    targetMetricLabel: "per hour",
+    targetIconColor: "text-primary",
+    targetIconBg: "bg-primary/10",
+    eodIconColor: "text-info",
+    eodIconBg: "bg-info/10",
+    targetIsDaily: false,
   },
   finishing: {
     addTargetLink: "/finishing/daily-target",
@@ -64,6 +82,12 @@ const STAGE_CONFIGS: Record<"sewing" | "finishing", StageConfig> = {
     viewAllTargetsLink: "/submissions?department=finishing&category=targets",
     viewAllEodLink: "/submissions?department=finishing&category=actuals",
     eodMetricLabel: "cartons",
+    targetMetricLabel: "cartons",
+    targetIconColor: "text-violet-600",
+    targetIconBg: "bg-violet-600/10",
+    eodIconColor: "text-emerald-600",
+    eodIconBg: "bg-emerald-600/10",
+    targetIsDaily: true,
   },
 };
 
@@ -73,10 +97,6 @@ const STAGE_CONFIGS: Record<"sewing" | "finishing", StageConfig> = {
  * Renders:
  * 1. Two side-by-side cards – "Morning Targets" and "End of Day"
  * 2. A Target vs Actual comparison table
- *
- * Generic type params preserve the caller's full data types through
- * the click callbacks so Dashboard can pass TargetSubmission /
- * EndOfDaySubmission and get them back without casting.
  */
 export function StageDashboardSection<
   T extends TargetItem,
@@ -90,6 +110,7 @@ export function StageDashboardSection<
   onTargetClick,
   onEodClick,
   formatTime,
+  renderTargetMetric,
 }: {
   stage: "sewing" | "finishing";
   targets: T[];
@@ -99,9 +120,12 @@ export function StageDashboardSection<
   onTargetClick: (target: T) => void;
   onEodClick: (eod: E) => void;
   formatTime: (dateString: string) => string;
+  /** Optional custom renderer for the target metric area (right side of each target row) */
+  renderTargetMetric?: (target: T) => React.ReactNode;
 }) {
   const config = STAGE_CONFIGS[stage];
   const isFinishing = stage === "finishing";
+  const TargetIcon = isFinishing ? Package : Crosshair;
 
   const skeletonRows = (
     <div className="space-y-3">
@@ -118,7 +142,7 @@ export function StageDashboardSection<
         <Card>
           <CardHeader className="flex flex-col xs:flex-row xs:items-center justify-between gap-2 pb-2">
             <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-              <Crosshair className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+              <TargetIcon className={`h-4 w-4 sm:h-5 sm:w-5 ${config.targetIconColor}`} />
               Morning Targets
             </CardTitle>
             <div className="flex gap-1 sm:gap-2">
@@ -156,17 +180,21 @@ export function StageDashboardSection<
                     className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-primary/10">
-                        <Crosshair className="h-5 w-5 text-primary" />
+                      <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${config.targetIconBg}`}>
+                        <TargetIcon className={`h-5 w-5 ${config.targetIconColor}`} />
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-medium">
-                            {target.line_name}
+                            {isFinishing
+                              ? (target.po_number || "No PO")
+                              : target.line_name}
                           </span>
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          {target.po_number || "No PO"} •{" "}
+                          {isFinishing
+                            ? `${[target.buyer, target.style].filter(Boolean).join(" • ") || "No details"} • `
+                            : `${target.po_number || "No PO"} • `}
                           {target.submitted_at
                             ? formatTime(target.submitted_at)
                             : "-"}
@@ -174,17 +202,25 @@ export function StageDashboardSection<
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-mono font-bold text-lg">
-                        {target.per_hour_target}
-                      </p>
-                      <p className="text-xs text-muted-foreground">per hour</p>
+                      {renderTargetMetric ? (
+                        renderTargetMetric(target)
+                      ) : (
+                        <>
+                          <p className="font-mono font-bold text-lg">
+                            {target.per_hour_target}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {config.targetMetricLabel}
+                          </p>
+                        </>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
-                <Crosshair className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <TargetIcon className="h-12 w-12 mx-auto mb-3 opacity-50" />
                 <p>No targets submitted today</p>
                 <Link to={config.addTargetLink}>
                   <Button variant="link" size="sm" className="mt-2">
@@ -200,7 +236,7 @@ export function StageDashboardSection<
         <Card>
           <CardHeader className="flex flex-col xs:flex-row xs:items-center justify-between gap-2 pb-2">
             <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-              <ClipboardCheck className="h-4 w-4 sm:h-5 sm:w-5 text-info" />
+              <ClipboardCheck className={`h-4 w-4 sm:h-5 sm:w-5 ${config.eodIconColor}`} />
               End of Day
             </CardTitle>
             <div className="flex gap-1 sm:gap-2">
@@ -238,13 +274,15 @@ export function StageDashboardSection<
                     className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-info/10">
-                        <ClipboardCheck className="h-5 w-5 text-info" />
+                      <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${config.eodIconBg}`}>
+                        <ClipboardCheck className={`h-5 w-5 ${config.eodIconColor}`} />
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-medium">
-                            {update.line_name}
+                            {isFinishing
+                              ? (update.po_number || "No PO")
+                              : update.line_name}
                           </span>
                           {update.has_blocker && (
                             <StatusBadge variant="danger" size="sm" dot>
@@ -253,7 +291,9 @@ export function StageDashboardSection<
                           )}
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          {update.po_number || "No PO"} •{" "}
+                          {isFinishing
+                            ? `${[update.buyer, update.style].filter(Boolean).join(" • ") || "No details"} • `
+                            : `${update.po_number || "No PO"} • `}
                           {formatTime(update.submitted_at)}
                         </p>
                       </div>
@@ -309,26 +349,29 @@ export function StageDashboardSection<
         </Card>
       </div>
 
-      {/* Target vs Actual Comparison */}
-      <TargetVsActualComparison
-        allLines={allLines}
-        targets={targets.map((t) => ({
-          line_uuid: t.line_uuid,
-          line_name: t.line_name,
-          per_hour_target: t.per_hour_target,
-          manpower_planned: t.manpower_planned,
-          m_power_planned: t.m_power_planned,
-        }))}
-        actuals={endOfDay.map((a) => ({
-          line_uuid: a.line_uuid,
-          line_name: a.line_name,
-          output: a.output,
-          manpower: a.manpower,
-          has_blocker: a.has_blocker,
-        }))}
-        type={stage}
-        loading={loading}
-      />
+      {/* Target vs Actual Comparison — only for line-based stages */}
+      {!isFinishing && (
+        <TargetVsActualComparison
+          allLines={allLines}
+          targets={targets.map((t) => ({
+            line_uuid: t.line_uuid,
+            line_name: t.line_name,
+            per_hour_target: t.per_hour_target,
+            manpower_planned: t.manpower_planned,
+            m_power_planned: t.m_power_planned,
+          }))}
+          actuals={endOfDay.map((a) => ({
+            line_uuid: a.line_uuid,
+            line_name: a.line_name,
+            output: a.output,
+            manpower: a.manpower,
+            has_blocker: a.has_blocker,
+          }))}
+          type={stage}
+          loading={loading}
+          targetIsDaily={config.targetIsDaily}
+        />
+      )}
     </>
   );
 }
