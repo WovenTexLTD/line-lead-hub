@@ -96,12 +96,12 @@ interface SewingSubmissionViewProps {
   onDeleteActual?: () => void;
 }
 
-function VarianceIndicator({ actual, target, decimals }: { actual: number; target: number; decimals?: number }) {
-  const diff = actual - target;
-  const formatted = decimals != null ? diff.toFixed(decimals) : diff.toLocaleString();
-  if (diff > 0) return <span className="text-green-600 dark:text-green-400 flex items-center gap-1 text-xs"><TrendingUp className="h-3 w-3" />+{formatted}</span>;
-  if (diff < 0) return <span className="text-destructive flex items-center gap-1 text-xs"><TrendingDown className="h-3 w-3" />{formatted}</span>;
-  return <span className="text-muted-foreground flex items-center gap-1 text-xs"><Minus className="h-3 w-3" />0</span>;
+function VarianceIndicator({ actual, target }: { actual: number; target: number }) {
+  if (target === 0) return <span className="text-muted-foreground flex items-center gap-1 text-xs"><Minus className="h-3 w-3" />—</span>;
+  const pct = Math.round(((actual - target) / target) * 100);
+  if (pct > 0) return <span className="text-green-600 dark:text-green-400 flex items-center gap-1 text-xs"><TrendingUp className="h-3 w-3" />+{pct}%</span>;
+  if (pct < 0) return <span className="text-destructive flex items-center gap-1 text-xs"><TrendingDown className="h-3 w-3" />{pct}%</span>;
+  return <span className="text-muted-foreground flex items-center gap-1 text-xs"><Minus className="h-3 w-3" />0%</span>;
 }
 
 function FieldDisplay({ label, value, className, suffix }: {
@@ -475,7 +475,7 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange, onEdi
                           </td>
                           <td className="py-2 pl-3 text-right">
                             {tgt != null && act != null
-                              ? <VarianceIndicator actual={act} target={tgt} decimals={decimals} />
+                              ? <VarianceIndicator actual={act} target={tgt} />
                               : <span className="text-muted-foreground text-xs">—</span>
                             }
                           </td>
