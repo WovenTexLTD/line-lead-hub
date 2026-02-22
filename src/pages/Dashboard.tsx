@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
@@ -289,21 +289,7 @@ export default function Dashboard() {
     navigate("/sewing/morning-targets", { replace: true });
   }, [authLoading, profile?.factory_id, canViewDashboard, navigate, hasRole]);
 
-  useEffect(() => {
-    if (profile?.factory_id && canViewDashboard) {
-      fetchDashboardData();
-    }
-  }, [profile?.factory_id, canViewDashboard]);
-
-  if (authLoading || (!canViewDashboard && profile?.factory_id)) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  async function fetchDashboardData() {
+  const fetchDashboardData = useCallback(async function fetchDashboardData() {
     if (!profile?.factory_id) return;
     
     setLoading(true);
@@ -720,6 +706,29 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
+  }, [profile?.factory_id, factory?.timezone]);
+
+  useEffect(() => {
+    if (profile?.factory_id && canViewDashboard) {
+      fetchDashboardData();
+    }
+  }, [fetchDashboardData, profile?.factory_id, canViewDashboard]);
+
+  // Refetch when window regains focus (e.g. after editing on another page)
+  useEffect(() => {
+    const onFocus = () => {
+      if (profile?.factory_id && canViewDashboard) fetchDashboardData();
+    };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [fetchDashboardData, profile?.factory_id, canViewDashboard]);
+
+  if (authLoading || (!canViewDashboard && profile?.factory_id)) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   const formatTime = (dateString: string) => {

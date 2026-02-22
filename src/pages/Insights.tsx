@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { getTodayInTimezone } from "@/lib/date-utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -132,13 +132,7 @@ export default function Insights() {
   const [selectedLineName, setSelectedLineName] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
 
-  useEffect(() => {
-    if (profile?.factory_id) {
-      fetchInsights();
-    }
-  }, [profile?.factory_id, period]);
-
-  async function fetchInsights() {
+  const fetchInsights = useCallback(async function fetchInsights() {
     if (!profile?.factory_id) return;
     setLoading(true);
 
@@ -444,7 +438,22 @@ export default function Insights() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [profile?.factory_id, period, factory?.timezone]);
+
+  useEffect(() => {
+    if (profile?.factory_id) {
+      fetchInsights();
+    }
+  }, [fetchInsights, profile?.factory_id]);
+
+  // Refetch when window regains focus (e.g. after editing on another page)
+  useEffect(() => {
+    const onFocus = () => {
+      if (profile?.factory_id) fetchInsights();
+    };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [fetchInsights, profile?.factory_id]);
 
   // Premium chart colors with better visual hierarchy
   const CHART_COLORS = [

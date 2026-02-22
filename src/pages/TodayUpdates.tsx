@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -275,13 +275,7 @@ export default function TodayUpdates() {
   const selectedDateStr = toISODate(selectedDate, timezone);
   const isToday = selectedDateStr === todayStr;
 
-  useEffect(() => {
-    if (profile?.factory_id) {
-      fetchTodayUpdates();
-    }
-  }, [profile?.factory_id, selectedDateStr]);
-
-  async function fetchTodayUpdates() {
+  const fetchTodayUpdates = useCallback(async function fetchTodayUpdates() {
     if (!profile?.factory_id) return;
     setLoading(true);
     const today = selectedDateStr;
@@ -344,7 +338,22 @@ export default function TodayUpdates() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [profile?.factory_id, selectedDateStr]);
+
+  useEffect(() => {
+    if (profile?.factory_id) {
+      fetchTodayUpdates();
+    }
+  }, [fetchTodayUpdates, profile?.factory_id]);
+
+  // Refetch when window regains focus (e.g. after editing on another page)
+  useEffect(() => {
+    const onFocus = () => {
+      if (profile?.factory_id) fetchTodayUpdates();
+    };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [fetchTodayUpdates, profile?.factory_id]);
 
   const filteredSewing = sewingUpdates.filter(u => 
     (u.lines?.name || u.lines?.line_id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||

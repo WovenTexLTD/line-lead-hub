@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { getTodayInTimezone } from "@/lib/date-utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,13 +40,7 @@ export default function ThisWeek() {
     leftoverYards: 0,
   });
 
-  useEffect(() => {
-    if (profile?.factory_id) {
-      fetchWeekData();
-    }
-  }, [profile?.factory_id, weekOffset]);
-
-  async function fetchWeekData() {
+  const fetchWeekData = useCallback(async function fetchWeekData() {
     if (!profile?.factory_id) return;
     setLoading(true);
 
@@ -201,7 +195,22 @@ export default function ThisWeek() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [profile?.factory_id, weekOffset, factory?.timezone]);
+
+  useEffect(() => {
+    if (profile?.factory_id) {
+      fetchWeekData();
+    }
+  }, [fetchWeekData, profile?.factory_id]);
+
+  // Refetch when window regains focus (e.g. after editing on another page)
+  useEffect(() => {
+    const onFocus = () => {
+      if (profile?.factory_id) fetchWeekData();
+    };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [fetchWeekData, profile?.factory_id]);
 
   const maxSewing = Math.max(...weekStats.map(d => Math.max(d.sewingOutput, d.sewingTarget)), 1);
   const maxFinishing = Math.max(...weekStats.map(d => Math.max(d.finishingTarget, d.finishingOutput)), 1);
