@@ -21,7 +21,7 @@ import { ExportInsights } from "@/components/insights/ExportInsights";
 
 import { LineEfficiencyTargets } from "@/components/insights/LineEfficiencyTargets";
 import { NotificationPreferences } from "@/components/NotificationPreferences";
-import { DraggableChart } from "@/components/ui/draggable-chart";
+import { InteractiveChart } from "@/components/ui/interactive-chart";
 
 interface DailyData {
   date: string;
@@ -769,46 +769,41 @@ export default function Insights() {
             <CardDescription>Daily sewing output compared to target over time</CardDescription>
           </CardHeader>
           <CardContent className="p-2 sm:p-6">
-            {dailyData.length > 0 ? (
-              <DraggableChart
-                yDomain={[sewingYMin, effectiveSewingYMax]}
-                onYDomainChange={([min, max]) => { setSewingYMin(min); setSewingYMax(max); }}
-                onReset={() => { setSewingYMin(0); setSewingYMax('auto'); }}
-                isCustom={sewingYMax !== 'auto' || sewingYMin !== 0}
-              >
-                <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={dailyData}>
-                    <defs>
-                      <linearGradient id="colorSewingOutput" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
-                      </linearGradient>
-                      <linearGradient id="colorSewingTarget" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.15}/>
-                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="displayDate" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
-                    <YAxis domain={[sewingYMin, effectiveSewingYMax]} className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} width={45} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'hsl(var(--card))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px'
-                      }}
-                    />
-                    <Legend wrapperStyle={{ paddingTop: '8px' }} />
-                    <Area type="monotone" dataKey="sewingTarget" name="Target" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#colorSewingTarget)" strokeWidth={2} strokeDasharray="5 5" />
-                    <Area type="monotone" dataKey="sewingOutput" name="Output" stroke="#22c55e" fillOpacity={1} fill="url(#colorSewingOutput)" strokeWidth={2} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </DraggableChart>
-            ) : (
-              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                No data available for this period
-              </div>
-            )}
+            <InteractiveChart
+              data={dailyData}
+              height={300}
+              activePeriod={parseInt(period)}
+              onPeriodChange={(days) => setPeriod(String(days) as '7' | '14' | '30')}
+              yDomain={[sewingYMin, effectiveSewingYMax]}
+              onYDomainChange={([min, max]) => { setSewingYMin(min); setSewingYMax(max); }}
+              onYReset={() => { setSewingYMin(0); setSewingYMax('auto'); }}
+              isYCustom={sewingYMax !== 'auto' || sewingYMin !== 0}
+              emptyMessage="No sewing data available for this period"
+            >
+              <defs>
+                <linearGradient id="colorSewingOutput" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
+                </linearGradient>
+                <linearGradient id="colorSewingTarget" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.15}/>
+                  <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+              <XAxis dataKey="displayDate" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
+              <YAxis domain={[sewingYMin, effectiveSewingYMax]} className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} width={45} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '8px'
+                }}
+              />
+              <Legend wrapperStyle={{ paddingTop: '8px' }} />
+              <Area type="monotone" dataKey="sewingTarget" name="Target" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#colorSewingTarget)" strokeWidth={2} strokeDasharray="5 5" />
+              <Area type="monotone" dataKey="sewingOutput" name="Output" stroke="#22c55e" fillOpacity={1} fill="url(#colorSewingOutput)" strokeWidth={2} />
+            </InteractiveChart>
           </CardContent>
         </Card>
 
@@ -823,40 +818,41 @@ export default function Insights() {
           </CardHeader>
           <CardContent className="p-2 sm:p-6">
             {dailyData.some(d => d.finishingCartonOutput > 0 || d.finishingCartonTarget > 0) ? (
-              <DraggableChart
+              <InteractiveChart
+                data={dailyData}
+                height={300}
+                activePeriod={parseInt(period)}
+                onPeriodChange={(days) => setPeriod(String(days) as '7' | '14' | '30')}
                 yDomain={[finishingYMin, effectiveFinishingYMax]}
                 onYDomainChange={([min, max]) => { setFinishingYMin(min); setFinishingYMax(max); }}
-                onReset={() => { setFinishingYMin(0); setFinishingYMax('auto'); }}
-                isCustom={finishingYMax !== 'auto' || finishingYMin !== 0}
+                onYReset={() => { setFinishingYMin(0); setFinishingYMax('auto'); }}
+                isYCustom={finishingYMax !== 'auto' || finishingYMin !== 0}
+                emptyMessage="No finishing carton data in selected range"
               >
-                <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={dailyData}>
-                    <defs>
-                      <linearGradient id="colorFinCartonOutput" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
-                      </linearGradient>
-                      <linearGradient id="colorFinCartonTarget" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#7c3aed" stopOpacity={0.15}/>
-                        <stop offset="95%" stopColor="#7c3aed" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="displayDate" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
-                    <YAxis domain={[finishingYMin, effectiveFinishingYMax]} className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} width={45} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'hsl(var(--card))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px'
-                      }}
-                    />
-                    <Legend wrapperStyle={{ paddingTop: '8px' }} />
-                    <Area type="monotone" dataKey="finishingCartonTarget" name="Carton Target" stroke="#7c3aed" fillOpacity={1} fill="url(#colorFinCartonTarget)" strokeWidth={2} strokeDasharray="5 5" />
-                    <Area type="monotone" dataKey="finishingCartonOutput" name="Carton Output" stroke="#22c55e" fillOpacity={1} fill="url(#colorFinCartonOutput)" strokeWidth={2} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </DraggableChart>
+                <defs>
+                  <linearGradient id="colorFinCartonOutput" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="colorFinCartonTarget" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#7c3aed" stopOpacity={0.15}/>
+                    <stop offset="95%" stopColor="#7c3aed" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis dataKey="displayDate" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
+                <YAxis domain={[finishingYMin, effectiveFinishingYMax]} className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} width={45} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '8px'
+                  }}
+                />
+                <Legend wrapperStyle={{ paddingTop: '8px' }} />
+                <Area type="monotone" dataKey="finishingCartonTarget" name="Carton Target" stroke="#7c3aed" fillOpacity={1} fill="url(#colorFinCartonTarget)" strokeWidth={2} strokeDasharray="5 5" />
+                <Area type="monotone" dataKey="finishingCartonOutput" name="Carton Output" stroke="#22c55e" fillOpacity={1} fill="url(#colorFinCartonOutput)" strokeWidth={2} />
+              </InteractiveChart>
             ) : (
               <div className="h-[300px] flex items-center justify-center text-muted-foreground">
                 No finishing carton data available for this period
