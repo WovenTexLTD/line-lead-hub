@@ -262,11 +262,10 @@ export default function Insights() {
         dailyMap.set(u.production_date, existing);
       });
 
-      // Finishing daily logs (TARGET) → carton target (per-hour × planned_hours)
+      // Finishing daily logs (TARGET) → carton target (already a daily total, NOT per-hour)
       finishingTargetLogs?.forEach(t => {
         const existing = getOrCreateDaily(t.production_date);
-        const plannedHrs = t.planned_hours || 0;
-        existing.finishingCartonTarget += (t.carton || 0) * (plannedHrs > 0 ? plannedHrs : 1);
+        existing.finishingCartonTarget += (t.carton || 0);
         dailyMap.set(t.production_date, existing);
       });
 
@@ -469,8 +468,8 @@ export default function Insights() {
   const sewingVarianceData = useMemo(() =>
     dailyData.map(d => ({
       displayDate: d.displayDate,
-      variance: d.sewingTarget > 0 ? d.sewingOutput - d.sewingTarget : 0,
-      performance: d.sewingTarget > 0 ? Math.round((d.sewingOutput / d.sewingTarget) * 100) : 0,
+      variance: d.sewingTarget > 0 ? d.sewingOutput - d.sewingTarget : null,
+      performance: d.sewingTarget > 0 ? Math.round((d.sewingOutput / d.sewingTarget) * 100) : null,
       output: d.sewingOutput,
       target: d.sewingTarget,
       hasTarget: d.sewingTarget > 0,
@@ -482,8 +481,8 @@ export default function Insights() {
   const finishingVarianceData = useMemo(() =>
     dailyData.map(d => ({
       displayDate: d.displayDate,
-      variance: d.finishingCartonTarget > 0 ? d.finishingCartonOutput - d.finishingCartonTarget : 0,
-      performance: d.finishingCartonTarget > 0 ? Math.round((d.finishingCartonOutput / d.finishingCartonTarget) * 100) : 0,
+      variance: d.finishingCartonTarget > 0 ? d.finishingCartonOutput - d.finishingCartonTarget : null,
+      performance: d.finishingCartonTarget > 0 ? Math.round((d.finishingCartonOutput / d.finishingCartonTarget) * 100) : null,
       output: d.finishingCartonOutput,
       target: d.finishingCartonTarget,
       hasTarget: d.finishingCartonTarget > 0,
@@ -491,6 +490,38 @@ export default function Insights() {
     })),
     [dailyData]
   );
+
+  // Symmetric Y-axis domain calculator with outlier zoom (95th percentile)
+  function computeVarianceDomain(data: { variance: number | null }[], zoomed: boolean): [number, number] {
+    const values = data.map(d => d.variance).filter((v): v is number => v !== null);
+    if (values.length === 0) return [-100, 100];
+    const absValues = values.map(Math.abs).sort((a, b) => a - b);
+    const maxAbs = zoomed && absValues.length >= 3
+      ? absValues[Math.floor(absValues.length * 0.95)] || absValues[absValues.length - 1]
+      : absValues[absValues.length - 1];
+    const limit = Math.ceil(maxAbs * 1.15);
+    return [-limit || -100, limit || 100];
+  }
+
+  // Zoom toggle state
+  const [sewingZoomed, setSewingZoomed] = useState(true);
+  const [finishingZoomed, setFinishingZoomed] = useState(true);
+
+  const sewingDomain = useMemo(() => computeVarianceDomain(sewingVarianceData, sewingZoomed), [sewingVarianceData, sewingZoomed]);
+  const finishingDomain = useMemo(() => computeVarianceDomain(finishingVarianceData, finishingZoomed), [finishingVarianceData, finishingZoomed]);
+
+  // Check if there are outliers (any bar capped by zoomed domain)
+  const sewingHasOutlier = useMemo(() => {
+    const fullDomain = computeVarianceDomain(sewingVarianceData, false);
+    const zoomedDomain = computeVarianceDomain(sewingVarianceData, true);
+    return fullDomain[1] !== zoomedDomain[1];
+  }, [sewingVarianceData]);
+
+  const finishingHasOutlier = useMemo(() => {
+    const fullDomain = computeVarianceDomain(finishingVarianceData, false);
+    const zoomedDomain = computeVarianceDomain(finishingVarianceData, true);
+    return fullDomain[1] !== zoomedDomain[1];
+  }, [finishingVarianceData]);
 
   // Derived: cumulative burn-up data
   const cumulativeData = useMemo(() => {
@@ -791,50 +822,65 @@ export default function Insights() {
         {/* Sewing Performance Variance Chart */}
         <Card className="w-full overflow-hidden">
           <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Factory className="h-5 w-5 text-primary" />
-              Sewing Performance Variance
-            </CardTitle>
-            <CardDescription>Surplus / deficit against daily target — green = hit, red = miss</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Factory className="h-5 w-5 text-primary" />
+                  Sewing Performance Variance
+                </CardTitle>
+                <CardDescription>Surplus / deficit against daily target (pcs)</CardDescription>
+              </div>
+              {sewingHasOutlier && (
+                <button
+                  onClick={() => setSewingZoomed(z => !z)}
+                  className="text-xs px-2.5 py-1 rounded-md border border-border bg-muted/50 hover:bg-muted transition-colors text-muted-foreground"
+                >
+                  {sewingZoomed ? 'Show full range' : 'Zoom to typical'}
+                </button>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="p-2 sm:p-6">
-            {sewingVarianceData.some(d => d.hasTarget || d.hasOutput) ? (
+            {sewingVarianceData.some(d => d.hasTarget) ? (
               <div className="w-full overflow-hidden">
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={sewingVarianceData}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
                     <XAxis dataKey="displayDate" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
-                    <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} width={50} />
-                    <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" strokeWidth={1.5} />
+                    <YAxis domain={sewingDomain} className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} width={50} />
+                    <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeWidth={1.5} label={{ value: 'Target', position: 'right', fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
                     <Tooltip
                       content={({ active, payload }) => {
                         if (!active || !payload?.[0]) return null;
                         const d = payload[0].payload;
-                        if (!d.hasTarget && !d.hasOutput) return null;
                         return (
                           <div className="bg-card border border-border rounded-lg p-3 shadow-lg text-sm space-y-1">
                             <p className="font-semibold">{d.displayDate}</p>
-                            <div className="flex justify-between gap-6">
-                              <span className="text-muted-foreground">Output</span>
-                              <span className="font-mono font-bold">{d.output.toLocaleString()}</span>
-                            </div>
-                            <div className="flex justify-between gap-6">
-                              <span className="text-muted-foreground">Target</span>
-                              <span className="font-mono">{d.target.toLocaleString()}</span>
-                            </div>
-                            <div className="border-t pt-1 flex justify-between gap-6">
-                              <span className="text-muted-foreground">Variance</span>
-                              <span className={`font-mono font-bold ${d.variance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                {d.variance >= 0 ? '+' : ''}{d.variance.toLocaleString()}
-                              </span>
-                            </div>
-                            {d.hasTarget && (
-                              <div className="flex justify-between gap-6">
-                                <span className="text-muted-foreground">Achievement</span>
-                                <span className={`font-mono font-bold ${d.performance >= 100 ? 'text-green-600 dark:text-green-400' : d.performance >= 95 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
-                                  {d.performance}%
-                                </span>
-                              </div>
+                            {!d.hasTarget ? (
+                              <p className="text-muted-foreground italic">No target set</p>
+                            ) : (
+                              <>
+                                <div className="flex justify-between gap-6">
+                                  <span className="text-muted-foreground">Output</span>
+                                  <span className="font-mono font-bold">{d.output.toLocaleString()} pcs</span>
+                                </div>
+                                <div className="flex justify-between gap-6">
+                                  <span className="text-muted-foreground">Target</span>
+                                  <span className="font-mono">{d.target.toLocaleString()} pcs</span>
+                                </div>
+                                <div className="border-t pt-1 flex justify-between gap-6">
+                                  <span className="text-muted-foreground">Variance</span>
+                                  <span className={`font-mono font-bold ${d.variance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                    {d.variance >= 0 ? '+' : ''}{d.variance.toLocaleString()}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between gap-6">
+                                  <span className="text-muted-foreground">Achievement</span>
+                                  <span className={`font-mono font-bold ${d.performance >= 100 ? 'text-green-600 dark:text-green-400' : d.performance >= 95 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
+                                    {d.performance}%
+                                  </span>
+                                </div>
+                              </>
                             )}
                           </div>
                         );
@@ -844,25 +890,25 @@ export default function Insights() {
                       {sewingVarianceData.map((entry, i) => (
                         <Cell
                           key={i}
-                          fill={!entry.hasTarget ? 'hsl(var(--muted-foreground))' : entry.variance >= 0 ? '#22c55e' : 'hsl(var(--destructive))'}
-                          fillOpacity={!entry.hasTarget ? 0.3 : 0.85}
+                          fill={entry.variance === null ? 'transparent' : entry.variance >= 0 ? '#22c55e' : 'hsl(var(--destructive))'}
+                          fillOpacity={entry.variance === null ? 0 : 0.85}
                         />
                       ))}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
-                <div className="flex items-center justify-center gap-6 mt-2">
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center gap-4 mt-2 flex-wrap">
+                  <div className="flex items-center gap-1.5">
                     <div className="w-3 h-3 rounded-sm bg-green-500" />
                     <span className="text-xs text-muted-foreground">Above target</span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <div className="w-3 h-3 rounded-sm bg-destructive" />
                     <span className="text-xs text-muted-foreground">Below target</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-sm border border-dashed border-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">Target met (0 line)</span>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-[1px] h-3 bg-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">0 = Target met</span>
                   </div>
                 </div>
               </div>
@@ -878,50 +924,65 @@ export default function Insights() {
         {/* Finishing Carton Performance Variance Chart */}
         <Card className="w-full overflow-hidden">
           <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Package className="h-5 w-5 text-violet-600" />
-              Finishing Carton Variance
-            </CardTitle>
-            <CardDescription>Surplus / deficit against carton target — green = hit, red = miss</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Package className="h-5 w-5 text-violet-600" />
+                  Finishing Carton Variance
+                </CardTitle>
+                <CardDescription>Surplus / deficit against carton target (cartons)</CardDescription>
+              </div>
+              {finishingHasOutlier && (
+                <button
+                  onClick={() => setFinishingZoomed(z => !z)}
+                  className="text-xs px-2.5 py-1 rounded-md border border-border bg-muted/50 hover:bg-muted transition-colors text-muted-foreground"
+                >
+                  {finishingZoomed ? 'Show full range' : 'Zoom to typical'}
+                </button>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="p-2 sm:p-6">
-            {finishingVarianceData.some(d => d.hasTarget || d.hasOutput) ? (
+            {finishingVarianceData.some(d => d.hasTarget) ? (
               <div className="w-full overflow-hidden">
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={finishingVarianceData}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
                     <XAxis dataKey="displayDate" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
-                    <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} width={50} />
-                    <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" strokeWidth={1.5} />
+                    <YAxis domain={finishingDomain} className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} width={50} />
+                    <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeWidth={1.5} label={{ value: 'Target', position: 'right', fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
                     <Tooltip
                       content={({ active, payload }) => {
                         if (!active || !payload?.[0]) return null;
                         const d = payload[0].payload;
-                        if (!d.hasTarget && !d.hasOutput) return null;
                         return (
                           <div className="bg-card border border-border rounded-lg p-3 shadow-lg text-sm space-y-1">
                             <p className="font-semibold">{d.displayDate}</p>
-                            <div className="flex justify-between gap-6">
-                              <span className="text-muted-foreground">Carton Output</span>
-                              <span className="font-mono font-bold">{d.output.toLocaleString()}</span>
-                            </div>
-                            <div className="flex justify-between gap-6">
-                              <span className="text-muted-foreground">Carton Target</span>
-                              <span className="font-mono">{d.target.toLocaleString()}</span>
-                            </div>
-                            <div className="border-t pt-1 flex justify-between gap-6">
-                              <span className="text-muted-foreground">Variance</span>
-                              <span className={`font-mono font-bold ${d.variance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                {d.variance >= 0 ? '+' : ''}{d.variance.toLocaleString()}
-                              </span>
-                            </div>
-                            {d.hasTarget && (
-                              <div className="flex justify-between gap-6">
-                                <span className="text-muted-foreground">Achievement</span>
-                                <span className={`font-mono font-bold ${d.performance >= 100 ? 'text-green-600 dark:text-green-400' : d.performance >= 95 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
-                                  {d.performance}%
-                                </span>
-                              </div>
+                            {!d.hasTarget ? (
+                              <p className="text-muted-foreground italic">No target set</p>
+                            ) : (
+                              <>
+                                <div className="flex justify-between gap-6">
+                                  <span className="text-muted-foreground">Carton Output</span>
+                                  <span className="font-mono font-bold">{d.output.toLocaleString()} ctn</span>
+                                </div>
+                                <div className="flex justify-between gap-6">
+                                  <span className="text-muted-foreground">Carton Target</span>
+                                  <span className="font-mono">{d.target.toLocaleString()} ctn</span>
+                                </div>
+                                <div className="border-t pt-1 flex justify-between gap-6">
+                                  <span className="text-muted-foreground">Variance</span>
+                                  <span className={`font-mono font-bold ${d.variance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                    {d.variance >= 0 ? '+' : ''}{d.variance.toLocaleString()}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between gap-6">
+                                  <span className="text-muted-foreground">Achievement</span>
+                                  <span className={`font-mono font-bold ${d.performance >= 100 ? 'text-green-600 dark:text-green-400' : d.performance >= 95 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
+                                    {d.performance}%
+                                  </span>
+                                </div>
+                              </>
                             )}
                           </div>
                         );
@@ -931,21 +992,25 @@ export default function Insights() {
                       {finishingVarianceData.map((entry, i) => (
                         <Cell
                           key={i}
-                          fill={!entry.hasTarget ? 'hsl(var(--muted-foreground))' : entry.variance >= 0 ? '#22c55e' : 'hsl(var(--destructive))'}
-                          fillOpacity={!entry.hasTarget ? 0.3 : 0.85}
+                          fill={entry.variance === null ? 'transparent' : entry.variance >= 0 ? '#22c55e' : 'hsl(var(--destructive))'}
+                          fillOpacity={entry.variance === null ? 0 : 0.85}
                         />
                       ))}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
-                <div className="flex items-center justify-center gap-6 mt-2">
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center gap-4 mt-2 flex-wrap">
+                  <div className="flex items-center gap-1.5">
                     <div className="w-3 h-3 rounded-sm bg-green-500" />
                     <span className="text-xs text-muted-foreground">Above target</span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <div className="w-3 h-3 rounded-sm bg-destructive" />
                     <span className="text-xs text-muted-foreground">Below target</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-[1px] h-3 bg-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">0 = Target met</span>
                   </div>
                 </div>
               </div>
