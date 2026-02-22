@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { getTodayInTimezone } from "@/lib/date-utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,7 +40,13 @@ export default function ThisWeek() {
     leftoverYards: 0,
   });
 
-  const fetchWeekData = useCallback(async function fetchWeekData() {
+  useEffect(() => {
+    if (profile?.factory_id) {
+      fetchWeekData();
+    }
+  }, [profile?.factory_id, weekOffset]);
+
+  async function fetchWeekData() {
     if (!profile?.factory_id) return;
     setLoading(true);
 
@@ -123,12 +129,9 @@ export default function ThisWeek() {
 
         const daySewingOutput = sewingData.reduce((sum, u) => sum + (u.good_today || 0), 0);
         
-        // Finishing target = poly + carton from TARGET logs (carton is per-hour, multiply by planned_hours)
+        // Finishing target = poly + carton from TARGET logs
         const finishingTargetLogs = finishingData.filter(f => f.log_type === 'TARGET');
-        const dayFinishingTarget = finishingTargetLogs.reduce((sum, f) => {
-          const hrs = (f as any).planned_hours || 1;
-          return sum + (f.poly || 0) + ((f.carton || 0) * hrs);
-        }, 0);
+        const dayFinishingTarget = finishingTargetLogs.reduce((sum, f) => sum + (f.poly || 0) + (f.carton || 0), 0);
 
         // Finishing output = poly + carton from OUTPUT logs
         const finishingOutputLogs = finishingData.filter(f => f.log_type === 'OUTPUT');
@@ -198,22 +201,7 @@ export default function ThisWeek() {
     } finally {
       setLoading(false);
     }
-  }, [profile?.factory_id, weekOffset, factory?.timezone]);
-
-  useEffect(() => {
-    if (profile?.factory_id) {
-      fetchWeekData();
-    }
-  }, [fetchWeekData, profile?.factory_id]);
-
-  // Refetch when window regains focus (e.g. after editing on another page)
-  useEffect(() => {
-    const onFocus = () => {
-      if (profile?.factory_id) fetchWeekData();
-    };
-    window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
-  }, [fetchWeekData, profile?.factory_id]);
+  }
 
   const maxSewing = Math.max(...weekStats.map(d => Math.max(d.sewingOutput, d.sewingTarget)), 1);
   const maxFinishing = Math.max(...weekStats.map(d => Math.max(d.finishingTarget, d.finishingOutput)), 1);

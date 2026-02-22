@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { getTodayInTimezone } from "@/lib/date-utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -132,7 +132,13 @@ export default function Insights() {
   const [selectedLineName, setSelectedLineName] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
 
-  const fetchInsights = useCallback(async function fetchInsights() {
+  useEffect(() => {
+    if (profile?.factory_id) {
+      fetchInsights();
+    }
+  }, [profile?.factory_id, period]);
+
+  async function fetchInsights() {
     if (!profile?.factory_id) return;
     setLoading(true);
 
@@ -262,11 +268,11 @@ export default function Insights() {
         dailyMap.set(u.production_date, existing);
       });
 
-      // Finishing daily logs (TARGET) → carton is per-hour, multiply by planned_hours for daily total
+      // Finishing daily logs (TARGET) → carton target (per-hour × planned_hours)
       finishingTargetLogs?.forEach(t => {
         const existing = getOrCreateDaily(t.production_date);
-        const plannedHrs = t.planned_hours || 1;
-        existing.finishingCartonTarget += (t.carton || 0) * plannedHrs;
+        const plannedHrs = t.planned_hours || 0;
+        existing.finishingCartonTarget += (t.carton || 0) * (plannedHrs > 0 ? plannedHrs : 1);
         dailyMap.set(t.production_date, existing);
       });
 
@@ -438,22 +444,7 @@ export default function Insights() {
     } finally {
       setLoading(false);
     }
-  }, [profile?.factory_id, period, factory?.timezone]);
-
-  useEffect(() => {
-    if (profile?.factory_id) {
-      fetchInsights();
-    }
-  }, [fetchInsights, profile?.factory_id]);
-
-  // Refetch when window regains focus (e.g. after editing on another page)
-  useEffect(() => {
-    const onFocus = () => {
-      if (profile?.factory_id) fetchInsights();
-    };
-    window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
-  }, [fetchInsights, profile?.factory_id]);
+  }
 
   // Premium chart colors with better visual hierarchy
   const CHART_COLORS = [
@@ -464,41 +455,6 @@ export default function Insights() {
     '#d97706', // Amber
     '#dc2626', // Red
   ];
-
-  // Simple chart data: target vs actual
-  const sewingChartData = useMemo(() =>
-    dailyData.map(d => ({
-      displayDate: d.displayDate,
-      target: d.sewingTarget || null,
-      actual: d.sewingOutput || null,
-    })),
-    [dailyData]
-  );
-
-  const finishingChartData = useMemo(() =>
-    dailyData.map(d => ({
-      displayDate: d.displayDate,
-      target: d.finishingCartonTarget || null,
-      actual: d.finishingCartonOutput || null,
-    })),
-    [dailyData]
-  );
-
-  // Derived: cumulative burn-up data
-  const cumulativeData = useMemo(() => {
-    let cumTarget = 0;
-    let cumOutput = 0;
-    return dailyData.map(d => {
-      cumTarget += d.sewingTarget;
-      cumOutput += d.sewingOutput;
-      return {
-        displayDate: d.displayDate,
-        cumulativeTarget: cumTarget,
-        cumulativeOutput: cumOutput,
-        gap: cumOutput - cumTarget,
-      };
-    });
-  }, [dailyData]);
 
   // State for active pie segment hover
   const [activePieIndex, setActivePieIndex] = useState<number | undefined>(undefined);
@@ -780,166 +736,97 @@ export default function Insights() {
           Trends
         </h2>
 
-        {/* Sewing: Target vs Actual */}
-        <Card className="w-full overflow-hidden">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Factory className="h-5 w-5 text-primary" />
-              Sewing — Target vs Actual
-            </CardTitle>
-            <CardDescription>Daily target and output comparison (pcs)</CardDescription>
-          </CardHeader>
-          <CardContent className="p-2 sm:p-6">
-            {sewingChartData.some(d => d.target || d.actual) ? (
-              <ResponsiveContainer width="100%" height={280}>
-                <LineChart data={sewingChartData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
-                  <XAxis dataKey="displayDate" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
-                  <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} width={50} tickFormatter={(v) => v.toLocaleString()} />
-                  <Tooltip
-                    content={({ active, payload }) => {
-                      if (!active || !payload?.length) return null;
-                      const d = payload[0].payload;
-                      return (
-                        <div className="bg-card border border-border rounded-lg p-3 shadow-lg text-sm space-y-1">
-                          <p className="font-semibold">{d.displayDate}</p>
-                          <div className="flex justify-between gap-6">
-                            <span className="text-muted-foreground">Target</span>
-                            <span className="font-mono">{d.target ? d.target.toLocaleString() : '—'} pcs</span>
-                          </div>
-                          <div className="flex justify-between gap-6">
-                            <span className="text-muted-foreground">Actual</span>
-                            <span className="font-mono font-bold">{d.actual ? d.actual.toLocaleString() : '—'} pcs</span>
-                          </div>
-                        </div>
-                      );
-                    }}
-                  />
-                  <Legend />
-                  <Line type="monotone" dataKey="target" name="Target" stroke="#94a3b8" strokeWidth={2} dot={{ r: 3 }} connectNulls={false} />
-                  <Line type="monotone" dataKey="actual" name="Actual" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 3, fill: 'hsl(var(--primary))' }} connectNulls={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-[280px] flex items-center justify-center text-muted-foreground flex-col gap-2">
-                <Target className="h-10 w-10 opacity-40" />
-                <p>No sewing data available for this period</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Finishing: Target vs Actual */}
-        <Card className="w-full overflow-hidden">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Package className="h-5 w-5 text-violet-600" />
-              Finishing Carton — Target vs Actual
-            </CardTitle>
-            <CardDescription>Daily target and output comparison (ctn)</CardDescription>
-          </CardHeader>
-          <CardContent className="p-2 sm:p-6">
-            {finishingChartData.some(d => d.target || d.actual) ? (
-              <ResponsiveContainer width="100%" height={280}>
-                <LineChart data={finishingChartData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
-                  <XAxis dataKey="displayDate" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
-                  <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} width={50} tickFormatter={(v) => v.toLocaleString()} />
-                  <Tooltip
-                    content={({ active, payload }) => {
-                      if (!active || !payload?.length) return null;
-                      const d = payload[0].payload;
-                      return (
-                        <div className="bg-card border border-border rounded-lg p-3 shadow-lg text-sm space-y-1">
-                          <p className="font-semibold">{d.displayDate}</p>
-                          <div className="flex justify-between gap-6">
-                            <span className="text-muted-foreground">Target</span>
-                            <span className="font-mono">{d.target ? d.target.toLocaleString() : '—'} ctn</span>
-                          </div>
-                          <div className="flex justify-between gap-6">
-                            <span className="text-muted-foreground">Actual</span>
-                            <span className="font-mono font-bold">{d.actual ? d.actual.toLocaleString() : '—'} ctn</span>
-                          </div>
-                        </div>
-                      );
-                    }}
-                  />
-                  <Legend />
-                  <Line type="monotone" dataKey="target" name="Target" stroke="#94a3b8" strokeWidth={2} dot={{ r: 3 }} connectNulls={false} />
-                  <Line type="monotone" dataKey="actual" name="Actual" stroke="#7c3aed" strokeWidth={2.5} dot={{ r: 3, fill: '#7c3aed' }} connectNulls={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-[280px] flex items-center justify-center text-muted-foreground flex-col gap-2">
-                <Package className="h-10 w-10 opacity-40" />
-                <p>No finishing carton data available for this period</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Cumulative Burn-Up Chart */}
+        {/* Sewing Output Trend Chart */}
         <Card className="w-full overflow-hidden">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-primary" />
-              Sewing Cumulative Burn-Up
+              <Factory className="h-5 w-5 text-primary" />
+              Sewing Output vs Target
             </CardTitle>
-            <CardDescription>Are we on track? Gap between lines = how far ahead or behind</CardDescription>
+            <CardDescription>Daily sewing output compared to target over time</CardDescription>
           </CardHeader>
           <CardContent className="p-2 sm:p-6">
-            {cumulativeData.some(d => d.cumulativeTarget > 0 || d.cumulativeOutput > 0) ? (
+            {dailyData.length > 0 ? (
               <div className="w-full overflow-hidden">
                 <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={cumulativeData}>
+                  <AreaChart data={dailyData}>
                     <defs>
-                      <linearGradient id="colorCumTarget" x1="0" y1="0" x2="0" y2="1">
+                      <linearGradient id="colorSewingOutput" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="colorSewingTarget" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.15}/>
                         <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                      </linearGradient>
-                      <linearGradient id="colorCumOutput" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#22c55e" stopOpacity={0.25}/>
-                        <stop offset="95%" stopColor="#22c55e" stopOpacity={0.02}/>
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="displayDate" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
-                    <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} width={55} />
+                    <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} width={45} />
                     <Tooltip
-                      content={({ active, payload }) => {
-                        if (!active || !payload?.[0]) return null;
-                        const d = payload[0].payload;
-                        return (
-                          <div className="bg-card border border-border rounded-lg p-3 shadow-lg text-sm space-y-1">
-                            <p className="font-semibold">{d.displayDate}</p>
-                            <div className="flex justify-between gap-6">
-                              <span className="text-muted-foreground">Cum. Output</span>
-                              <span className="font-mono font-bold text-green-600 dark:text-green-400">{d.cumulativeOutput.toLocaleString()}</span>
-                            </div>
-                            <div className="flex justify-between gap-6">
-                              <span className="text-muted-foreground">Cum. Target</span>
-                              <span className="font-mono">{d.cumulativeTarget.toLocaleString()}</span>
-                            </div>
-                            <div className="border-t pt-1 flex justify-between gap-6">
-                              <span className="text-muted-foreground">Gap</span>
-                              <span className={`font-mono font-bold ${d.gap >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                {d.gap >= 0 ? '+' : ''}{d.gap.toLocaleString()}
-                              </span>
-                            </div>
-                          </div>
-                        );
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px'
                       }}
                     />
                     <Legend wrapperStyle={{ paddingTop: '8px' }} />
-                    <Area type="monotone" dataKey="cumulativeTarget" name="Cumulative Target" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#colorCumTarget)" strokeWidth={2} strokeDasharray="5 5" />
-                    <Area type="monotone" dataKey="cumulativeOutput" name="Cumulative Output" stroke="#22c55e" fillOpacity={1} fill="url(#colorCumOutput)" strokeWidth={2.5} />
+                    <Area type="monotone" dataKey="sewingTarget" name="Target" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#colorSewingTarget)" strokeWidth={2} strokeDasharray="5 5" />
+                    <Area type="monotone" dataKey="sewingOutput" name="Output" stroke="#22c55e" fillOpacity={1} fill="url(#colorSewingOutput)" strokeWidth={2} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
             ) : (
-              <div className="h-[300px] flex items-center justify-center text-muted-foreground flex-col gap-2">
-                <TrendingUp className="h-10 w-10 opacity-40" />
-                <p>No cumulative data available for this period</p>
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                No data available for this period
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Finishing Carton Trend Chart */}
+        <Card className="w-full overflow-hidden">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Package className="h-5 w-5 text-violet-600" />
+              Finishing Carton Output vs Target
+            </CardTitle>
+            <CardDescription>Daily finishing carton output compared to target over time</CardDescription>
+          </CardHeader>
+          <CardContent className="p-2 sm:p-6">
+            {dailyData.some(d => d.finishingCartonOutput > 0 || d.finishingCartonTarget > 0) ? (
+              <div className="w-full overflow-hidden">
+                <ResponsiveContainer width="100%" height={300}>
+                  <AreaChart data={dailyData}>
+                    <defs>
+                      <linearGradient id="colorFinCartonOutput" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="colorFinCartonTarget" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#7c3aed" stopOpacity={0.15}/>
+                        <stop offset="95%" stopColor="#7c3aed" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="displayDate" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
+                    <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} width={45} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px'
+                      }}
+                    />
+                    <Legend wrapperStyle={{ paddingTop: '8px' }} />
+                    <Area type="monotone" dataKey="finishingCartonTarget" name="Carton Target" stroke="#7c3aed" fillOpacity={1} fill="url(#colorFinCartonTarget)" strokeWidth={2} strokeDasharray="5 5" />
+                    <Area type="monotone" dataKey="finishingCartonOutput" name="Carton Output" stroke="#22c55e" fillOpacity={1} fill="url(#colorFinCartonOutput)" strokeWidth={2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                No finishing carton data available for this period
               </div>
             )}
           </CardContent>
