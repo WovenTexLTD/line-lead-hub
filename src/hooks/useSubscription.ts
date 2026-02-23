@@ -129,7 +129,28 @@ export function useSubscription() {
       return;
     }
 
-    // Derive status from factory data already in AuthContext
+    // If the edge function already verified status, don't overwrite with
+    // potentially stale DB data. The edge function is authoritative — it checks
+    // Stripe directly and syncs the DB. A subsequent DB read may still return
+    // old data (e.g. 'trial' instead of 'active') due to replication lag or
+    // AuthContext re-fetching before the DB sync propagates.
+    if (edgeCheckedOnce && cachedStatus) {
+      const derived = checkFromFactory();
+      // Only allow DB to UPGRADE access (e.g. admin manually fixed the DB),
+      // never to downgrade what the edge function already confirmed.
+      if (derived.hasAccess && !cachedStatus.hasAccess) {
+        cachedStatus = derived;
+        setStatus(derived);
+      } else {
+        setStatus(cachedStatus);
+      }
+      setLoading(false);
+      // Trigger a background refresh to re-verify with Stripe
+      lastEdgeFetchTime = 0;
+      return;
+    }
+
+    // First load: derive status from factory data as a fast initial check
     const derived = checkFromFactory();
     cachedStatus = derived;
     setStatus(derived);

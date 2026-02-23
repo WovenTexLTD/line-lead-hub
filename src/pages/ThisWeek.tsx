@@ -101,7 +101,7 @@ export default function ThisWeek() {
             .eq('production_date', dateStr),
           supabase
             .from('finishing_daily_logs')
-            .select('log_type, thread_cutting, inside_check, top_side_check, buttoning, iron, get_up, poly, carton')
+            .select('log_type, carton, planned_hours')
             .eq('factory_id', profile.factory_id)
             .eq('production_date', dateStr),
           supabase
@@ -129,17 +129,16 @@ export default function ThisWeek() {
 
         const daySewingOutput = sewingData.reduce((sum, u) => sum + (u.good_today || 0), 0);
         
-        // Finishing target = sum of all process steps from TARGET logs
+        // Finishing target: carton per hour × planned_hours = daily carton target
         const finishingTargetLogs = finishingData.filter(f => f.log_type === 'TARGET');
-        const dayFinishingTarget = finishingTargetLogs.reduce((sum, f) =>
-          sum + (f.thread_cutting || 0) + (f.inside_check || 0) + (f.top_side_check || 0)
-          + (f.buttoning || 0) + (f.iron || 0) + (f.get_up || 0) + (f.poly || 0) + (f.carton || 0), 0);
+        const dayFinishingTarget = finishingTargetLogs.reduce((sum, f) => {
+          const hours = (f as any).planned_hours || 1;
+          return sum + ((f.carton || 0) * hours);
+        }, 0);
 
-        // Finishing output = sum of all process steps from OUTPUT logs
+        // Finishing output: carton is the daily total
         const finishingOutputLogs = finishingData.filter(f => f.log_type === 'OUTPUT');
-        const dayFinishingOutput = finishingOutputLogs.reduce((sum, f) =>
-          sum + (f.thread_cutting || 0) + (f.inside_check || 0) + (f.top_side_check || 0)
-          + (f.buttoning || 0) + (f.iron || 0) + (f.get_up || 0) + (f.poly || 0) + (f.carton || 0), 0);
+        const dayFinishingOutput = finishingOutputLogs.reduce((sum, f) => sum + (f.carton || 0), 0);
         
         // Cutting data
         const dayCuttingTarget = cuttingTargetsData.reduce((sum, t) => sum + (t.cutting_capacity || 0), 0);
