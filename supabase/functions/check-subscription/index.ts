@@ -67,12 +67,11 @@ serve(async (req) => {
     if (!authHeader || authHeader.trim() === "Bearer") {
       logStep("No valid authorization header");
       return new Response(JSON.stringify({
-        subscribed: false,
-        hasAccess: false,
-        needsFactory: true
+        error: "No authorization header",
+        authError: true,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
+        status: 401,
       });
     }
 
@@ -81,12 +80,11 @@ serve(async (req) => {
     if (userError || !userData.user?.email) {
       logStep("Auth failed, returning unauthenticated response", { error: userError?.message });
       return new Response(JSON.stringify({
-        subscribed: false,
-        hasAccess: false,
-        needsFactory: true
+        error: "Auth session missing or expired",
+        authError: true,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
+        status: 401,
       });
     }
     const user = userData.user;
