@@ -64,17 +64,9 @@ export default function ResetPassword() {
     if (i18n.language !== 'en') {
       i18n.changeLanguage('en');
     }
-    // Ensure HTML lang attribute is set to English
     document.documentElement.lang = 'en';
 
-    // Match status bar / URL bar color to the dark hero gradient on mobile browsers
-    const themeMetaTag = document.querySelector('meta[name="theme-color"]');
-    const originalColor = themeMetaTag?.getAttribute('content') || '#f1f3f5';
-    themeMetaTag?.setAttribute('content', '#0f172a');
-
-    // Cleanup: restore language settings and theme color when leaving page
     return () => {
-      themeMetaTag?.setAttribute('content', originalColor);
       const savedLanguage = localStorage.getItem('app-language');
       if (savedLanguage && savedLanguage !== 'en') {
         i18n.changeLanguage(savedLanguage);

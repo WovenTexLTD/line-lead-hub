@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Outlet, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
@@ -11,6 +12,9 @@ import { NetworkStatusIndicator } from "@/components/NetworkStatusIndicator";
 import { DMGWarningModal } from "@/components/DMGWarningModal";
 import { ChatWidget } from "@/components/chat";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+
+const APP_THEME_COLOR = '#f1f3f5';
+const DEFAULT_THEME_COLOR = '#0f172a';
 
 function PageErrorFallback() {
   const navigate = useNavigate();
@@ -40,6 +44,13 @@ function PageErrorFallback() {
 export function AppLayout() {
   const { user, loading, factory, profile } = useAuth();
   const location = useLocation();
+
+  // Switch status bar to light color for the authenticated app
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    meta?.setAttribute('content', APP_THEME_COLOR);
+    return () => { meta?.setAttribute('content', DEFAULT_THEME_COLOR); };
+  }, []);
 
   if (loading) {
     return (

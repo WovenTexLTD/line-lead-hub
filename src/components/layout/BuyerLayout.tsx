@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Outlet, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { BuyerSidebar } from "./BuyerSidebar";
@@ -48,6 +49,13 @@ export function BuyerLayout() {
   const navigate = useNavigate();
   const { memberships, loading: membershipsLoading, membershipCount } = useBuyerMemberships();
   const { switchWorkspace, switching } = useSwitchWorkspace();
+
+  // Switch status bar to light color for the authenticated app
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    meta?.setAttribute('content', '#f1f3f5');
+    return () => { meta?.setAttribute('content', '#0f172a'); };
+  }, []);
 
   if (loading) {
     return (
