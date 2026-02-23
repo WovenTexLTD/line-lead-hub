@@ -186,15 +186,21 @@ export function useSubscription() {
         headers: { Authorization: `Bearer ${sessionData.session.access_token}` },
       });
 
-      // Auth errors (401) — token expired/missing. Don't overwrite valid DB status.
+      // Auth errors (401) or any edge function failure — don't overwrite valid DB status.
       if (fnError) {
-        // supabase-js wraps non-2xx as FunctionsHttpError; treat auth errors as non-fatal
-        const isAuthError = data?.authError || fnError.message?.includes('401');
-        if (isAuthError) {
-          console.warn('Subscription check: auth session expired, keeping DB-derived status');
-        } else {
-          throw fnError;
+        // supabase-js wraps non-2xx as FunctionsHttpError. For ANY failure,
+        // fall back to the DB-derived status rather than blocking users.
+        const derived = checkFromFactory();
+        if (derived.hasAccess) {
+          console.warn('Subscription check: edge function failed but DB says active — keeping DB status');
+          cachedStatus = derived;
+          setStatus(derived);
+          lastEdgeFetchTime = Date.now();
+          setError(null);
+          return;
         }
+        // Only throw if DB also says no access (genuine subscription issue)
+        throw fnError;
       } else {
         lastEdgeFetchTime = Date.now();
         // Don't let the edge function DOWNGRADE access that the DB already confirms.
