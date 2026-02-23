@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { Factory, Target, TrendingUp, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Target, TrendingUp, CheckCircle2, AlertTriangle } from "lucide-react";
+import { SewingMachine } from "@/components/icons/SewingMachine";
 import type { FactorySummary } from "./types";
 
 interface LinePerformanceSummaryProps {
@@ -23,7 +24,7 @@ export function LinePerformanceSummary({
       <Card>
         <CardContent className="pt-4 pb-3 px-4">
           <div className="flex items-center gap-2 mb-1">
-            <Factory className="h-4 w-4 text-muted-foreground" />
+            <SewingMachine className="h-4 w-4 text-muted-foreground" />
             <p className="text-xs text-muted-foreground">Active Lines</p>
           </div>
           <div className="text-2xl font-bold text-primary">{activeLineCount}</div>

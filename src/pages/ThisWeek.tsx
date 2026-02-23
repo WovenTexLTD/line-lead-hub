@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Loader2, Calendar, TrendingUp, TrendingDown, Minus, Factory, Package, ChevronLeft, ChevronRight, Scissors } from "lucide-react";
+import { Loader2, Calendar, TrendingUp, TrendingDown, Minus, Package, ChevronLeft, ChevronRight, Scissors } from "lucide-react";
+import { SewingMachine } from "@/components/icons/SewingMachine";
 
 interface DailyStats {
   date: string;
@@ -289,7 +290,7 @@ export default function ThisWeek() {
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Factory className="h-5 w-5 text-primary" />
+                <SewingMachine className="h-5 w-5 text-primary" />
               </div>
               <div>
                 <p className="text-2xl font-bold font-mono">{totals.sewingOutput.toLocaleString()}</p>

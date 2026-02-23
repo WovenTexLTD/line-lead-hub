@@ -394,9 +394,9 @@ export function FinishingDailySheetsTable({
                 {activeTab === "targets" ? (
                   <Target className="h-4 w-4 text-primary" />
                 ) : (
-                  <TrendingUp className="h-4 w-4 text-primary" />
+                  <Package className="h-4 w-4 text-violet-600" />
                 )}
-                {activeTab === "targets" ? "Daily Targets" : "Daily Outputs"}
+                {activeTab === "targets" ? "Finishing Targets" : "Finishing End of Day"}
                 <Badge variant="secondary" className="ml-2">
                   {filteredLogs.length}
                 </Badge>

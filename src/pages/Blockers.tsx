@@ -11,7 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Loader2, AlertTriangle, Search, Filter, Clock, CheckCircle, Factory, Package, Trash2, X } from "lucide-react";
+import { Loader2, AlertTriangle, Search, Filter, Clock, CheckCircle, Package, Trash2, X } from "lucide-react";
+import { SewingMachine } from "@/components/icons/SewingMachine";
 import { BLOCKER_IMPACT_LABELS } from "@/lib/constants";
 import { toast } from "sonner";
 
@@ -464,7 +465,7 @@ export default function Blockers() {
                             blocker.type === 'sewing' ? 'bg-primary/10' : 'bg-info/10'
                           }`}>
                             {blocker.type === 'sewing' ? (
-                              <Factory className="h-4 w-4 text-primary" />
+                              <SewingMachine className="h-4 w-4 text-primary" />
                             ) : (
                               <Package className="h-4 w-4 text-info" />
                             )}
@@ -561,7 +562,7 @@ export default function Blockers() {
                   selectedBlocker.type === 'sewing' ? 'bg-primary/10' : 'bg-info/10'
                 }`}>
                   {selectedBlocker.type === 'sewing' ? (
-                    <Factory className="h-4 w-4 text-primary" />
+                    <SewingMachine className="h-4 w-4 text-primary" />
                   ) : (
                     <Package className="h-4 w-4 text-info" />
                   )}

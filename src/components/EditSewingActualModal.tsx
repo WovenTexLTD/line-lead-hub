@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Factory } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { SewingMachine } from "@/components/icons/SewingMachine";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -87,7 +88,7 @@ export function EditSewingActualModal({ submission, open, onOpenChange, onSaved 
       <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Factory className="h-5 w-5 text-primary" />
+            <SewingMachine className="h-5 w-5 text-primary" />
             {t('modals.editSewingSubmission')}
           </DialogTitle>
         </DialogHeader>

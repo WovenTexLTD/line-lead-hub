@@ -8,9 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
   Loader2, TrendingUp, TrendingDown, Target, Users, AlertTriangle,
-  Factory, Package, BarChart3, Calendar, ArrowUp, ArrowDown,
+  Package, BarChart3, Calendar, ArrowUp, ArrowDown,
   Minus, Zap, Clock, CheckCircle2, XCircle, ChevronRight, Box, Archive
 } from "lucide-react";
+import { SewingMachine } from "@/components/icons/SewingMachine";
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, Sector,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
@@ -664,7 +665,7 @@ export default function Insights() {
           <div className="absolute top-0 right-0 w-20 h-20 bg-primary/5 rounded-bl-full" />
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Factory className="h-4 w-4" />
+              <SewingMachine className="h-4 w-4" />
               Total Sewing Output
             </CardTitle>
           </CardHeader>
@@ -763,7 +764,7 @@ export default function Insights() {
         <Card className="w-full overflow-hidden">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <Factory className="h-5 w-5 text-primary" />
+              <SewingMachine className="h-5 w-5 text-primary" />
               Sewing Output vs Target
             </CardTitle>
             <CardDescription>Daily sewing output compared to target over time</CardDescription>
@@ -946,7 +947,7 @@ export default function Insights() {
       {/* Lines Section */}
       <div className="space-y-4">
         <h2 className="text-lg font-semibold flex items-center gap-2">
-          <Factory className="h-5 w-5 text-primary" />
+          <SewingMachine className="h-5 w-5 text-primary" />
           Line Performance
         </h2>
 

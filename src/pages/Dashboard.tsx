@@ -26,7 +26,6 @@ import { FinishingSubmissionView, FinishingTargetData, FinishingActualData } fro
 import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
 import { useOnboardingChecklist } from "@/hooks/useOnboardingChecklist";
 import {
-  Factory,
   Package,
   Warehouse,
   AlertTriangle,
@@ -38,6 +37,7 @@ import {
   Target,
   Layers,
 } from "lucide-react";
+import { SewingMachine } from "@/components/icons/SewingMachine";
 
 interface DashboardStats {
   updatesToday: number;
@@ -858,7 +858,7 @@ export default function Dashboard() {
         <KPICard
           title={t('dashboard.daySewingOutput')}
           value={stats.daySewingOutput.toLocaleString()}
-          icon={Factory}
+          icon={SewingMachine}
           variant="neutral"
           subtitle={t('dashboard.pcsProduced')}
         />
@@ -883,7 +883,7 @@ export default function Dashboard() {
             <span className="hidden xs:inline">Cutting</span>
           </TabsTrigger>
           <TabsTrigger value="sewing" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-2 py-2">
-            <Factory className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+            <SewingMachine className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
             <span className="hidden xs:inline">Sewing</span>
           </TabsTrigger>
           <TabsTrigger value="finishing" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-2 py-2">

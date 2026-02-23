@@ -16,7 +16,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Factory, Package, Warehouse, Search, Download, RefreshCw, FileText, Calendar, Target, ClipboardCheck, Scissors, TrendingUp, AlertTriangle, X } from "lucide-react";
+import { Package, Warehouse, Search, Download, RefreshCw, FileText, Calendar, Target, ClipboardCheck, Scissors, TrendingUp, AlertTriangle, X } from "lucide-react";
+import { SewingMachine } from "@/components/icons/SewingMachine";
 import { TableSkeleton, StatsCardsSkeleton } from "@/components/ui/table-skeleton";
 import { SubmissionDetailModal } from "@/components/SubmissionDetailModal";
 import { TargetDetailModal } from "@/components/TargetDetailModal";
@@ -321,18 +322,19 @@ export default function AllSubmissions() {
     const data = category === 'targets' ? sewingTargets : sewingActuals;
     if (category === 'targets') {
       const targets = data as SewingTarget[];
-      const totalManpower = targets.reduce((s, t) => s + (t.manpower_planned || 0), 0);
       const avgTarget = targets.length > 0
         ? Math.round(targets.reduce((s, t) => s + t.per_hour_target, 0) / targets.length)
         : 0;
       const uniqueLines = new Set(targets.map(t => t.lines?.name || t.lines?.line_id)).size;
-      return { count: targets.length, metric1: avgTarget, metric1Label: 'Avg Target/hr', metric2: totalManpower, metric2Label: 'Total Manpower', metric3: uniqueLines, metric3Label: 'Lines' };
+      return { count: targets.length, metric1: avgTarget, metric1Label: 'Avg Target/hr', metric2: avgTarget, metric2Label: 'Avg Target/hr', metric3: uniqueLines, metric3Label: 'Lines' };
     } else {
       const actuals = data as SewingActual[];
       const totalOutput = actuals.reduce((s, a) => s + (a.good_today || 0), 0);
       const totalRejects = actuals.reduce((s, a) => s + (a.reject_today || 0), 0);
-      const avgOutput = actuals.length > 0 ? Math.round(totalOutput / actuals.length) : 0;
-      return { count: actuals.length, metric1: avgOutput, metric1Label: 'Avg Output', metric2: totalOutput, metric2Label: 'Total Output', metric3: totalRejects, metric3Label: 'Total Rejects' };
+      const avgActualPerHour = actuals.length > 0
+        ? Math.round(actuals.reduce((s, a) => s + (a.actual_per_hour || 0), 0) / actuals.length)
+        : 0;
+      return { count: actuals.length, metric1: totalOutput, metric1Label: 'Total Output', metric2: avgActualPerHour, metric2Label: 'Avg Actual/hr', metric3: totalRejects, metric3Label: 'Total Rejects' };
     }
   }, [category, sewingTargets, sewingActuals]);
 
@@ -582,7 +584,7 @@ export default function AllSubmissions() {
           className="h-14 flex flex-col gap-0.5"
           onClick={() => setDepartment('sewing')}
         >
-          <Factory className="h-4 w-4" />
+          <SewingMachine className="h-4 w-4" />
           <span className="font-semibold text-sm">Sewing</span>
         </Button>
         <Button
@@ -708,7 +710,7 @@ export default function AllSubmissions() {
             <Card>
               <CardContent className="pt-4 pb-3 px-4">
                 <div className="flex items-center gap-2 mb-1">
-                  <Package className="h-4 w-4 text-muted-foreground" />
+                  <SewingMachine className="h-4 w-4 text-muted-foreground" />
                   <p className="text-xs text-muted-foreground">{sewingKpiStats.metric2Label}</p>
                 </div>
                 <div className="text-2xl font-bold text-green-600">{sewingKpiStats.metric2.toLocaleString()}</div>
@@ -720,7 +722,7 @@ export default function AllSubmissions() {
                   {category === 'actuals' ? (
                     <AlertTriangle className="h-4 w-4 text-muted-foreground" />
                   ) : (
-                    <Factory className="h-4 w-4 text-muted-foreground" />
+                    <SewingMachine className="h-4 w-4 text-muted-foreground" />
                   )}
                   <p className="text-xs text-muted-foreground">{sewingKpiStats.metric3Label}</p>
                 </div>

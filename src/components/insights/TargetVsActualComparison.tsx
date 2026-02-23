@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowUp, ArrowDown, Minus, TrendingUp, Factory, Package } from "lucide-react";
+import { ArrowUp, ArrowDown, Minus, TrendingUp, Package } from "lucide-react";
+import { SewingMachine } from "@/components/icons/SewingMachine";
 
 interface LineData {
   id: string; // UUID
@@ -194,7 +195,7 @@ export function TargetVsActualComparison({ allLines, targets, actuals, type, loa
             <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
             <span className="whitespace-nowrap">Target vs Actual</span>
             <Badge variant="outline" className="gap-1 capitalize text-xs">
-              {type === 'sewing' ? <Factory className="h-3 w-3" /> : <Package className="h-3 w-3" />}
+              {type === 'sewing' ? <SewingMachine className="h-3 w-3" /> : <Package className="h-3 w-3" />}
               {type}
             </Badge>
           </CardTitle>

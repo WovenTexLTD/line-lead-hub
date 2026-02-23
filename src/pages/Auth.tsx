@@ -8,7 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Loader2, Factory, ArrowRight, KeyRound } from "lucide-react";
+import { Loader2, ArrowRight, KeyRound } from "lucide-react";
+import { SewingMachine } from "@/components/icons/SewingMachine";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -621,7 +622,7 @@ export default function Auth() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="flex flex-col items-center text-center p-6">
               <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
-                <Factory className="h-6 w-6 text-primary" />
+                <SewingMachine className="h-6 w-6 text-primary" />
               </div>
               <h3 className="font-semibold mb-2">Real-time Tracking</h3>
               <p className="text-sm text-muted-foreground">

@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Factory, Package } from "lucide-react";
+import { Loader2, Package } from "lucide-react";
+import { SewingMachine } from "@/components/icons/SewingMachine";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -133,7 +134,7 @@ export function EditSubmissionModal({ submission, open, onOpenChange, onSaved }:
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {isSewing ? (
-              <Factory className="h-5 w-5 text-primary" />
+              <SewingMachine className="h-5 w-5 text-primary" />
             ) : (
               <Package className="h-5 w-5 text-info" />
             )}

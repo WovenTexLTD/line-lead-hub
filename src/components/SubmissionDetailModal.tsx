@@ -4,7 +4,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { Clock, Factory, Package, Scissors, Warehouse, AlertTriangle, User, CalendarDays, Pencil, Trash2, Loader2 } from "lucide-react";
+import { Clock, Package, Scissors, Warehouse, AlertTriangle, User, CalendarDays, Pencil, Trash2, Loader2 } from "lucide-react";
+import { SewingMachine } from "@/components/icons/SewingMachine";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -135,7 +136,7 @@ export function SubmissionDetailModal({ submission, open, onOpenChange, onDelete
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {submission.type === 'sewing' ? (
-                <Factory className="h-5 w-5 text-primary" />
+                <SewingMachine className="h-5 w-5 text-primary" />
               ) : submission.type === 'finishing' ? (
                 <Package className="h-5 w-5 text-violet-600" />
               ) : submission.type === 'cutting' ? (

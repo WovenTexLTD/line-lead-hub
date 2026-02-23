@@ -10,7 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, AlertTriangle, ArrowLeft, CalendarIcon, Factory, Search } from "lucide-react";
+import { Loader2, AlertTriangle, ArrowLeft, CalendarIcon, Search } from "lucide-react";
+import { SewingMachine } from "@/components/icons/SewingMachine";
 import {
   Command,
   CommandEmpty,

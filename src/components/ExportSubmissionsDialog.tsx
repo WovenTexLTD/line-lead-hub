@@ -11,7 +11,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Loader2, Download, FileSpreadsheet, Factory, Package, Scissors } from "lucide-react";
+import { Loader2, Download, FileSpreadsheet, Package, Scissors } from "lucide-react";
+import { SewingMachine } from "@/components/icons/SewingMachine";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatDate, formatTimeInTimezone } from "@/lib/date-utils";
@@ -354,7 +355,7 @@ export function ExportSubmissionsDialog({
                 />
                 <div className="flex-1">
                   <Label htmlFor="sewing" className="cursor-pointer font-medium flex items-center gap-2">
-                    <Factory className="h-4 w-4" />
+                    <SewingMachine className="h-4 w-4" />
                     {t('modals.sewing')}
                   </Label>
                   <p className="text-xs text-muted-foreground">

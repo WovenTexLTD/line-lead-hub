@@ -11,7 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Factory, ArrowLeft, CheckCircle, Upload, X, Image as ImageIcon, Calendar as CalendarIcon, ClipboardList, TrendingUp, Package, AlertTriangle, Search } from "lucide-react";
+import { Loader2, ArrowLeft, CheckCircle, Upload, X, Image as ImageIcon, Calendar as CalendarIcon, ClipboardList, TrendingUp, Package, AlertTriangle, Search } from "lucide-react";
+import { SewingMachine } from "@/components/icons/SewingMachine";
 import {
   Command,
   CommandEmpty,
@@ -411,7 +412,7 @@ export default function SewingUpdate() {
         </Button>
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Factory className="h-5 w-5 text-primary" />
+            <SewingMachine className="h-5 w-5 text-primary" />
           </div>
           <div>
             <h1 className="text-xl font-bold">{t('sewing.title')}</h1>

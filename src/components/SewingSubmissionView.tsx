@@ -24,7 +24,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatDate, formatDateTimeInTimezone } from "@/lib/date-utils";
 import { toast } from "sonner";
 import {
-  Factory,
   Crosshair,
   AlertTriangle,
   User,
@@ -35,6 +34,7 @@ import {
   Trash2,
   Loader2,
 } from "lucide-react";
+import { SewingMachine } from "@/components/icons/SewingMachine";
 
 export interface SewingTargetData {
   id: string;
@@ -170,7 +170,7 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange, onEdi
       ? t('modals.sewingEndOfDay')
       : t('modals.sewingTarget');
 
-  const Icon = hasActual ? Factory : Crosshair;
+  const Icon = hasActual ? SewingMachine : Crosshair;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -309,7 +309,7 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange, onEdi
             {hasActual && actual ? (
               <div className="rounded-lg border border-success/20 bg-success/5 p-4 space-y-4">
                 <h4 className="font-semibold text-sm flex items-center gap-2 text-success">
-                  <Factory className="h-4 w-4" />
+                  <SewingMachine className="h-4 w-4" />
                   {t('modals.endOfDayActual')}
                 </h4>
 
@@ -431,7 +431,7 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange, onEdi
               </div>
             ) : (
               <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 p-4 flex flex-col items-center justify-center text-center min-h-[200px]">
-                <Factory className="h-8 w-8 mb-2 opacity-40 text-muted-foreground" />
+                <SewingMachine className="h-8 w-8 mb-2 opacity-40 text-muted-foreground" />
                 <p className="text-sm text-muted-foreground">{t('modals.endOfDayNotSubmitted')}</p>
               </div>
             )}

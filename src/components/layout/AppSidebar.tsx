@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
-  Factory,
   Package,
   Warehouse,
   FileText,
@@ -68,7 +67,6 @@ import {
 } from "@/components/ui/collapsible";
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-  Factory,
   Package,
   Warehouse,
   FileText,
