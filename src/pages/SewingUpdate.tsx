@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, ArrowLeft, CheckCircle, Upload, X, Image as ImageIcon, Calendar as CalendarIcon, ClipboardList, TrendingUp, Package, AlertTriangle, Search } from "lucide-react";
+import { Loader2, ArrowLeft, CheckCircle, Upload, X, Image as ImageIcon, Calendar as CalendarIcon, ClipboardList, TrendingUp, Package, AlertTriangle, Search, Factory } from "lucide-react";
 import { SewingMachine } from "@/components/icons/SewingMachine";
 import {
   Command,
