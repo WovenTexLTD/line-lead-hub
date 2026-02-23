@@ -28,13 +28,13 @@ import { useOnboardingChecklist } from "@/hooks/useOnboardingChecklist";
 import {
   Factory,
   Package,
+  Warehouse,
   AlertTriangle,
   TrendingUp,
   ChevronRight,
   Plus,
   ClipboardCheck,
   Scissors,
-  Archive,
   Target,
   Layers,
 } from "lucide-react";
@@ -875,7 +875,7 @@ export default function Dashboard() {
       <Tabs value={departmentTab} onValueChange={(v) => setDepartmentTab(v as 'sewing' | 'finishing' | 'cutting' | 'storage')} className="space-y-4">
         <TabsList className="w-full grid grid-cols-4 h-auto p-1">
           <TabsTrigger value="storage" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-2 py-2">
-            <Archive className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+            <Warehouse className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
             <span className="hidden xs:inline">Storage</span>
           </TabsTrigger>
           <TabsTrigger value="cutting" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-2 py-2">
@@ -1114,7 +1114,7 @@ export default function Dashboard() {
           <Card>
             <CardHeader className="flex flex-col xs:flex-row xs:items-center justify-between gap-2 pb-2">
               <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-                <Archive className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+                <Warehouse className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                 Bin Cards
               </CardTitle>
               <Link to="/submissions?department=storage">
@@ -1175,7 +1175,7 @@ export default function Dashboard() {
                             {item.type === 'group' && item.cards.length > 1 ? (
                               <Layers className="h-5 w-5 text-primary" />
                             ) : (
-                              <Archive className="h-5 w-5 text-primary" />
+                              <Warehouse className="h-5 w-5 text-primary" />
                             )}
                           </div>
                           <div className="min-w-0">
@@ -1226,7 +1226,7 @@ export default function Dashboard() {
                 </TooltipProvider>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
-                  <Archive className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <Warehouse className="h-12 w-12 mx-auto mb-3 opacity-50" />
                   <p>No bin cards found</p>
                   <Link to="/storage">
                     <Button variant="link" size="sm" className="mt-2">

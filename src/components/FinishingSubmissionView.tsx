@@ -176,7 +176,7 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange, on
       ? t('modals.finishingEndOfDay')
       : t('modals.finishingTarget');
 
-  const Icon = hasActual ? Factory : Crosshair;
+  const Icon = hasActual ? Package : Crosshair;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

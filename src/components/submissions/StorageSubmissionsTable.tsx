@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { format, subDays } from "date-fns";
 import { toast } from "sonner";
-import { Search, Package, Download, X, ChevronRight, ChevronDown, Layers } from "lucide-react";
+import { Search, Warehouse, Download, X, ChevronRight, ChevronDown, Layers } from "lucide-react";
 import { TableSkeleton, StatsCardsSkeleton } from "@/components/ui/table-skeleton";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -503,7 +503,7 @@ export function StorageSubmissionsTable({
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
-            <Package className="h-4 w-4 text-primary" />
+            <Warehouse className="h-4 w-4 text-teal-600" />
             Bin Cards
             <Badge variant="secondary" className="ml-2">{filteredCards.length}</Badge>
           </CardTitle>

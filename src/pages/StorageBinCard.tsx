@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Package, Search, Plus, Save, AlertTriangle, Unlock, ChevronDown, ChevronUp, X, Check, Layers } from "lucide-react";
+import { Loader2, Warehouse, Search, Plus, Save, AlertTriangle, Unlock, ChevronDown, ChevronUp, X, Check, Layers } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { format } from "date-fns";
 import { useOfflineSubmission } from "@/hooks/useOfflineSubmission";
@@ -797,7 +797,7 @@ export default function StorageBinCard() {
     <div className="w-full max-w-5xl mx-auto space-y-4 md:space-y-6 px-2 sm:px-4 pt-4 pb-24 md:p-6 overflow-x-hidden">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Package className="h-7 w-7 md:h-8 md:w-8 text-primary shrink-0" />
+        <Warehouse className="h-7 w-7 md:h-8 md:w-8 text-teal-600 shrink-0" />
         <div className="min-w-0">
           <h1 className="text-xl md:text-2xl font-bold">{t('storagePage.binCardRecord')}</h1>
           <p className="text-xs md:text-sm text-muted-foreground">{t('storagePage.dailyStorageEntry')}</p>

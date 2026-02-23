@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, Factory, Package, Search, Download, RefreshCw, Scissors, Archive, CalendarDays, Layers, ChevronDown, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
+import { Loader2, Factory, Package, Search, Download, RefreshCw, Scissors, Warehouse, CalendarDays, Layers, ChevronDown, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CuttingSubmissionView } from "@/components/CuttingSubmissionView";
@@ -849,7 +849,7 @@ export default function TodayUpdates() {
           <CardContent className="p-4 relative">
             <div className="flex items-center justify-between mb-3">
               <div className="h-9 w-9 rounded-xl bg-teal-500/10 flex items-center justify-center">
-                <Archive className="h-4.5 w-4.5 text-teal-600" />
+                <Warehouse className="h-4.5 w-4.5 text-teal-600" />
               </div>
               <span className="text-xs font-medium text-teal-600 bg-teal-500/10 px-2 py-0.5 rounded-full">
                 {(storageTransactions || []).length} txns
@@ -1207,7 +1207,7 @@ export default function TodayUpdates() {
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Archive className="h-4 w-4 text-success" />
+                  <Warehouse className="h-4 w-4 text-success" />
                   Storage Transactions
                 </CardTitle>
               </CardHeader>
@@ -1561,7 +1561,7 @@ export default function TodayUpdates() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <Archive className="h-4 w-4 text-teal-600" />
+                <Warehouse className="h-4 w-4 text-teal-600" />
                 Storage Transactions
               </CardTitle>
             </CardHeader>

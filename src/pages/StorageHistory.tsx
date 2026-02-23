@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Package, Search, FileText, AlertTriangle, CalendarIcon, X, Layers, ChevronRight, ArrowDownToLine, ArrowUpFromLine, Scale } from "lucide-react";
+import { Loader2, Warehouse, Search, FileText, AlertTriangle, CalendarIcon, X, Layers, ChevronRight, ArrowDownToLine, ArrowUpFromLine, Scale } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { format } from "date-fns";
 import {
@@ -384,7 +384,7 @@ export default function StorageHistory() {
     <div className="container mx-auto max-w-5xl space-y-6 p-4 md:p-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <FileText className="h-8 w-8 text-primary" />
+        <Warehouse className="h-8 w-8 text-teal-600" />
         <div>
           <h1 className="text-2xl font-bold">All Bin Cards</h1>
           <p className="text-sm text-muted-foreground">View all bin card records</p>
@@ -484,7 +484,7 @@ export default function StorageHistory() {
           <CardContent>
             {displayRows.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                <Package className="mx-auto h-12 w-12 mb-2" />
+                <Warehouse className="mx-auto h-12 w-12 mb-2" />
                 <p>No bin cards found</p>
               </div>
             ) : (
@@ -828,7 +828,7 @@ export default function StorageHistory() {
                         >
                           <div className="flex items-center gap-3">
                             <ChevronRight className={cn("h-4 w-4 transition-transform", isExpanded && "rotate-90")} />
-                            <Package className="h-4 w-4 text-muted-foreground" />
+                            <Warehouse className="h-4 w-4 text-teal-600" />
                             <span className="font-medium text-sm">{card.work_orders.po_number}</span>
                             <span className="text-xs text-muted-foreground">
                               {card.work_orders.buyer} / {card.work_orders.style}

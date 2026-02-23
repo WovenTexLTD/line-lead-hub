@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Package, Search, FileText, AlertTriangle, Download, Calendar, CalendarIcon, X, XCircle, Layers, ChevronRight, ArrowDownToLine, ArrowUpFromLine, Scale } from "lucide-react";
+import { Loader2, Warehouse, Search, FileText, AlertTriangle, Download, Calendar, CalendarIcon, X, XCircle, Layers, ChevronRight, ArrowDownToLine, ArrowUpFromLine, Scale } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { format, subDays } from "date-fns";
 import { useNavigate } from "react-router-dom";
@@ -544,14 +544,14 @@ export default function StorageDashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Package className="h-8 w-8 text-primary" />
+          <Warehouse className="h-8 w-8 text-teal-600" />
           <div>
             <h1 className="text-2xl font-bold">{t('storagePage.storageDashboard')}</h1>
             <p className="text-sm text-muted-foreground">{t('storagePage.overviewOfBinCards')}</p>
           </div>
         </div>
         <Button onClick={() => navigate("/storage")}>
-          <Package className="mr-2 h-4 w-4" />
+          <Warehouse className="mr-2 h-4 w-4" />
           {t('storagePage.newEntry')}
         </Button>
       </div>
@@ -686,7 +686,7 @@ export default function StorageDashboard() {
             <CardContent>
               {displayRows.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  <Package className="mx-auto h-12 w-12 mb-2" />
+                  <Warehouse className="mx-auto h-12 w-12 mb-2" />
                   <p>{t('storagePage.noRecordsFound')}</p>
                 </div>
               ) : (
@@ -1096,7 +1096,7 @@ export default function StorageDashboard() {
                         >
                           <div className="flex items-center gap-3">
                             <ChevronRight className={cn("h-4 w-4 transition-transform", isExpanded && "rotate-90")} />
-                            <Package className="h-4 w-4 text-muted-foreground" />
+                            <Warehouse className="h-4 w-4 text-muted-foreground" />
                             <span className="font-medium text-sm">{card.work_orders.po_number}</span>
                             <span className="text-xs text-muted-foreground">
                               {card.work_orders.buyer} / {card.work_orders.style}

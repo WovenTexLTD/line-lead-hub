@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Package, Calendar, ArrowDownToLine, ArrowUpFromLine, Scale, Layers, Trash2, Loader2 } from "lucide-react";
+import { Warehouse, Calendar, ArrowDownToLine, ArrowUpFromLine, Scale, Layers, Trash2, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { useTranslation } from "react-i18next";
 
@@ -218,7 +218,7 @@ export function StorageBinCardDetailModal({
         <DialogContent className="w-[calc(100%-2rem)] max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Layers className="h-5 w-5 text-primary" />
+              <Warehouse className="h-5 w-5 text-teal-600" />
               {groupedCards.groupName}
             </DialogTitle>
           </DialogHeader>
@@ -258,7 +258,7 @@ export function StorageBinCardDetailModal({
             {groupedCards.cards.map(({ binCard: card, transactions: txns }) => (
               <div key={card.id}>
                 <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
-                  <Package className="h-4 w-4 text-primary" />
+                  <Warehouse className="h-4 w-4 text-teal-600" />
                   {card.po_number}
                   {card.buyer && <span className="text-muted-foreground font-normal">— {card.buyer}</span>}
                   {card.style && <Badge variant="outline" className="text-xs">{card.style}</Badge>}
@@ -287,7 +287,7 @@ export function StorageBinCardDetailModal({
       <DialogContent className="w-[calc(100%-2rem)] max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5 text-primary" />
+            <Warehouse className="h-5 w-5 text-teal-600" />
             {t('modals.binCardDetails')}
           </DialogTitle>
         </DialogHeader>

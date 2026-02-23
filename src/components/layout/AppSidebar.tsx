@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import {
   Factory,
   Package,
+  Warehouse,
   FileText,
   LayoutDashboard,
   CalendarDays,
@@ -69,6 +70,7 @@ import {
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Factory,
   Package,
+  Warehouse,
   FileText,
   LayoutDashboard,
   CalendarDays,

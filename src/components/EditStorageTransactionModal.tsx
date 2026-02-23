@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Package } from "lucide-react";
+import { Loader2, Warehouse } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -78,7 +78,7 @@ export function EditStorageTransactionModal({ transaction, open, onOpenChange, o
       <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5 text-primary" />
+            <Warehouse className="h-5 w-5 text-teal-600" />
             {t('modals.editStorageTransaction')}
           </DialogTitle>
         </DialogHeader>

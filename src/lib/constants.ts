@@ -252,8 +252,8 @@ export const NAV_ITEMS = {
     { path: '/setup', label: 'Factory Setup', icon: 'Settings', bottom: true },
   ],
   storage: [
-    { path: '/storage', label: 'Bin Card Entry', icon: 'Package' },
-    { path: '/storage/history', label: 'All Bin Cards', icon: 'FileText' },
+    { path: '/storage', label: 'Bin Card Entry', icon: 'Warehouse' },
+    { path: '/storage/history', label: 'All Bin Cards', icon: 'Warehouse' },
     { path: '/report-blocker', label: 'Report Blocker', icon: 'AlertTriangle' },
     { path: '/preferences', label: 'My Preferences', icon: 'UserCog' },
   ],
