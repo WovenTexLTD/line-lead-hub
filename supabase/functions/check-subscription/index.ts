@@ -409,17 +409,27 @@ serve(async (req) => {
         }
 
         if (subByEmail.status === 'past_due') {
-          // Sync status to DB
+          // If the DB already says 'active', the webhook likely processed a successful
+          // payment but Stripe hasn't transitioned the subscription status yet.
+          // Trust the webhook — don't downgrade to past_due.
+          if (factory.subscription_status === 'active') {
+            logStep("Stripe says past_due but DB says active — trusting webhook, not downgrading");
+            return await respondWithActiveSubscription(subByEmail);
+          }
+
+          // Only set payment_failed_at if it's not already set.
+          // Never re-create it — the webhook clears it on successful payment.
+          const paymentFailedAt = factory.payment_failed_at || new Date().toISOString();
           await supabaseClient
             .from('factory_accounts')
             .update({
               stripe_customer_id: currentCustomerId,
               stripe_subscription_id: subByEmail.id,
               subscription_status: 'past_due',
-              payment_failed_at: factory.payment_failed_at || new Date().toISOString(),
+              payment_failed_at: paymentFailedAt,
             })
             .eq('id', profile.factory_id);
-          return respondWithPastDueSubscription(factory.payment_failed_at);
+          return respondWithPastDueSubscription(paymentFailedAt);
         }
 
         return await respondWithActiveSubscription(subByEmail);
@@ -444,15 +454,23 @@ serve(async (req) => {
         }
 
         if (subscription.status === 'past_due') {
-          // Sync status and return grace period response
+          // If the DB already says 'active', the webhook likely processed a successful
+          // payment but Stripe hasn't transitioned the subscription status yet.
+          // Trust the webhook — don't downgrade to past_due.
+          if (factory.subscription_status === 'active') {
+            logStep("Stripe says past_due but DB says active — trusting webhook, not downgrading");
+            return await respondWithActiveSubscription(subscription);
+          }
+
+          const paymentFailedAt = factory.payment_failed_at || new Date().toISOString();
           await supabaseClient
             .from('factory_accounts')
             .update({
               subscription_status: 'past_due',
-              payment_failed_at: factory.payment_failed_at || new Date().toISOString(),
+              payment_failed_at: paymentFailedAt,
             })
             .eq('id', profile.factory_id);
-          return respondWithPastDueSubscription(factory.payment_failed_at);
+          return respondWithPastDueSubscription(paymentFailedAt);
         }
 
         // Subscription not active - update status

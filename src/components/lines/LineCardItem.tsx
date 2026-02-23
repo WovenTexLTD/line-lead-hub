@@ -82,29 +82,29 @@ export function LineCardItem({ line, onClick }: LineCardItemProps) {
         </div>
 
         {/* Main metrics row — big, readable numbers */}
-        <div className="flex items-end gap-8 mb-3">
-          <div>
+        <div className="flex items-end gap-4 sm:gap-8 mb-3 overflow-x-auto">
+          <div className="shrink-0">
             <p className="text-xs text-muted-foreground mb-0.5">Target</p>
-            <p className="text-2xl font-bold font-mono tabular-nums text-blue-600 dark:text-blue-400">
+            <p className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-blue-600 dark:text-blue-400">
               {hasTarget ? line.totalTarget.toLocaleString() : "—"}
             </p>
           </div>
-          <div>
+          <div className="shrink-0">
             <p className="text-xs text-muted-foreground mb-0.5">Output</p>
-            <p className="text-2xl font-bold font-mono tabular-nums text-emerald-600 dark:text-emerald-400">
+            <p className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-emerald-600 dark:text-emerald-400">
               {line.totalOutput.toLocaleString()}
             </p>
           </div>
           {hasTarget && (
-            <div>
+            <div className="shrink-0">
               <p className="text-xs text-muted-foreground mb-0.5">Achievement</p>
-              <p className={cn("text-2xl font-bold font-mono tabular-nums", getAchievementColor(line.achievementPct))}>
+              <p className={cn("text-xl sm:text-2xl font-bold font-mono tabular-nums", getAchievementColor(line.achievementPct))}>
                 {line.achievementPct}%
               </p>
             </div>
           )}
           {hasTarget && (
-            <div>
+            <div className="shrink-0">
               <p className="text-xs text-muted-foreground mb-0.5">Variance</p>
               <div className="flex items-center gap-1">
                 {variancePositive ? (
@@ -113,7 +113,7 @@ export function LineCardItem({ line, onClick }: LineCardItemProps) {
                   <TrendingDown className="h-4 w-4 text-red-500" />
                 )}
                 <p className={cn(
-                  "text-xl font-bold font-mono tabular-nums",
+                  "text-lg sm:text-xl font-bold font-mono tabular-nums",
                   variancePositive ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
                 )}>
                   {variancePositive ? "+" : ""}{line.variance.toLocaleString()}
