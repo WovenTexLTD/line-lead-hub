@@ -176,6 +176,12 @@ export function useSubscription() {
     const now = Date.now();
     if (now - lastEdgeFetchTime < EDGE_FETCH_COOLDOWN_MS) return;
 
+    // If the DB already confirms access (active/trialing/trial in grace),
+    // skip the edge function entirely — no need to verify with Stripe.
+    // Only call when access is uncertain or denied by the DB.
+    const derived = checkFromFactory();
+    if (derived.hasAccess && edgeCheckedOnce) return;
+
     inFlightRef.current = true;
 
     try {
