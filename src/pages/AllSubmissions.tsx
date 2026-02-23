@@ -16,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Factory, Package, Search, Download, RefreshCw, FileText, Calendar, Target, ClipboardCheck, Scissors, TrendingUp, AlertTriangle, X } from "lucide-react";
+import { Factory, Package, Warehouse, Search, Download, RefreshCw, FileText, Calendar, Target, ClipboardCheck, Scissors, TrendingUp, AlertTriangle, X } from "lucide-react";
 import { TableSkeleton, StatsCardsSkeleton } from "@/components/ui/table-skeleton";
 import { SubmissionDetailModal } from "@/components/SubmissionDetailModal";
 import { TargetDetailModal } from "@/components/TargetDetailModal";
@@ -566,7 +566,7 @@ export default function AllSubmissions() {
           className="h-14 flex flex-col gap-0.5"
           onClick={() => setDepartment('storage')}
         >
-          <Package className="h-4 w-4" />
+          <Warehouse className="h-4 w-4" />
           <span className="font-semibold text-sm">Storage</span>
         </Button>
         <Button
