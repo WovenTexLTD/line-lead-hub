@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { EmailScheduleSettings } from "@/components/insights/EmailScheduleSettings";
 import { EmptyState } from "@/components/EmptyState";
+import { DEV_FACTORY_ID_PREFIX } from "@/lib/constants";
 import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
 import { useOnboardingChecklist } from "@/hooks/useOnboardingChecklist";
 
@@ -182,6 +183,8 @@ export default function SetupHome() {
     );
   }
 
+  const isDevFactory = profile?.factory_id?.startsWith(DEV_FACTORY_ID_PREFIX);
+
   const setupLinks = [
     {
       title: 'Lines, Units, Floors & Storage',
@@ -204,13 +207,13 @@ export default function SetupHome() {
       href: '/setup/dropdowns',
       stats: 'Configure form dropdowns',
     },
-    {
+    ...(isDevFactory ? [{
       title: 'Error Logs',
       description: 'View and manage application error logs',
       icon: Bug,
       href: '/setup/error-logs',
       stats: 'Monitor app errors',
-    },
+    }] : []),
   ];
 
   return (
