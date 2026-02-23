@@ -287,6 +287,7 @@ serve(async (req) => {
           subscription_tier: tier,
           max_lines: maxLines,
           subscription_status: subscription.status,
+          payment_failed_at: null,
         })
         .eq('id', profile.factory_id);
 
