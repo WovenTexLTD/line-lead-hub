@@ -492,9 +492,6 @@ export default function Auth() {
                               Remember me
                             </Label>
                           </div>
-                          <p className="text-xs text-muted-foreground pl-6">
-                            Only use on your personal device
-                          </p>
                         </div>
 
                         <Dialog open={forgotPasswordOpen} onOpenChange={setForgotPasswordOpen}>
