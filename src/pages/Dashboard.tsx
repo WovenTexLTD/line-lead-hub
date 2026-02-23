@@ -310,104 +310,136 @@ export default function Dashboard() {
     const today = getTodayInTimezone(factory?.timezone || "Asia/Dhaka");
 
     try {
-      // Fetch all active lines
-      const { data: linesData } = await supabase
-        .from('lines')
-        .select('id, line_id, name')
-        .eq('factory_id', profile.factory_id)
-        .eq('is_active', true)
-        .order('line_id');
+      // Fetch all dashboard data in parallel for maximum performance
+      const [
+        linesResult,
+        sewingTargetsResult,
+        finishingTargetsResult,
+        sewingActualsResult,
+        finishingDailyLogsResult,
+        cuttingTargetsResult,
+        cuttingActualsResult,
+        binCardsResult,
+        storageTransactionsResult,
+        sewingBlockersCountResult,
+        finishingBlockersCountResult,
+        linesCountResult,
+        workOrdersCountResult,
+      ] = await Promise.all([
+        // Fetch all active lines
+        supabase
+          .from('lines')
+          .select('id, line_id, name')
+          .eq('factory_id', profile.factory_id)
+          .eq('is_active', true)
+          .order('line_id'),
 
-      // Fetch sewing targets
-      const { data: sewingTargetsData, count: sewingTargetsCount } = await supabase
-        .from('sewing_targets')
-        .select('*, stages:planned_stage_id(name), lines(id, line_id, name), work_orders(po_number, buyer, style)', { count: 'exact' })
-        .eq('factory_id', profile.factory_id)
-        .eq('production_date', today)
-        .order('submitted_at', { ascending: false });
+        // Fetch sewing targets
+        supabase
+          .from('sewing_targets')
+          .select('*, stages:planned_stage_id(name), lines(id, line_id, name), work_orders(po_number, buyer, style)', { count: 'exact' })
+          .eq('factory_id', profile.factory_id)
+          .eq('production_date', today)
+          .order('submitted_at', { ascending: false }),
 
-      // Fetch finishing targets
-      const { data: finishingTargetsData, count: finishingTargetsCount } = await supabase
-        .from('finishing_targets')
-        .select('*, lines(id, line_id, name), work_orders(po_number, buyer, style)', { count: 'exact' })
-        .eq('factory_id', profile.factory_id)
-        .eq('production_date', today)
-        .order('submitted_at', { ascending: false });
+        // Fetch finishing targets
+        supabase
+          .from('finishing_targets')
+          .select('*, lines(id, line_id, name), work_orders(po_number, buyer, style)', { count: 'exact' })
+          .eq('factory_id', profile.factory_id)
+          .eq('production_date', today)
+          .order('submitted_at', { ascending: false }),
 
-      // Fetch sewing end of day (actuals) - from sewing_actuals table
-      const { data: sewingActualsData, count: sewingCount } = await supabase
-        .from('sewing_actuals')
-        .select('*, stages:actual_stage_id(name), lines(id, line_id, name), work_orders(po_number, buyer, style)', { count: 'exact' })
-        .eq('factory_id', profile.factory_id)
-        .eq('production_date', today)
-        .order('submitted_at', { ascending: false });
+        // Fetch sewing end of day (actuals)
+        supabase
+          .from('sewing_actuals')
+          .select('*, stages:actual_stage_id(name), lines(id, line_id, name), work_orders(po_number, buyer, style)', { count: 'exact' })
+          .eq('factory_id', profile.factory_id)
+          .eq('production_date', today)
+          .order('submitted_at', { ascending: false }),
 
-      // Fetch finishing daily logs (new structure)
-      const { data: finishingDailyLogsData, count: finishingCount } = await supabase
-        .from('finishing_daily_logs')
-        .select('*, lines(id, line_id, name), work_orders(po_number, buyer, style)', { count: 'exact' })
-        .eq('factory_id', profile.factory_id)
-        .eq('production_date', today)
-        .order('submitted_at', { ascending: false });
+        // Fetch finishing daily logs
+        supabase
+          .from('finishing_daily_logs')
+          .select('*, lines(id, line_id, name), work_orders(po_number, buyer, style)', { count: 'exact' })
+          .eq('factory_id', profile.factory_id)
+          .eq('production_date', today)
+          .order('submitted_at', { ascending: false }),
 
-      // Fetch cutting targets for today
-      const { data: cuttingTargetsData, count: cuttingTargetsCount } = await supabase
-        .from('cutting_targets')
-        .select('*, lines(id, line_id, name), work_orders(po_number, buyer, style, color)', { count: 'exact' })
-        .eq('factory_id', profile.factory_id)
-        .eq('production_date', today)
-        .order('submitted_at', { ascending: false });
+        // Fetch cutting targets
+        supabase
+          .from('cutting_targets')
+          .select('*, lines(id, line_id, name), work_orders(po_number, buyer, style, color)', { count: 'exact' })
+          .eq('factory_id', profile.factory_id)
+          .eq('production_date', today)
+          .order('submitted_at', { ascending: false }),
 
-      // Fetch cutting actuals for today
-      const { data: cuttingActualsData, count: cuttingActualsCount } = await supabase
-        .from('cutting_actuals')
-        .select('*, lines!cutting_actuals_line_id_fkey(id, line_id, name), work_orders(po_number, buyer, style, color)', { count: 'exact' })
-        .eq('factory_id', profile.factory_id)
-        .eq('production_date', today)
-        .order('submitted_at', { ascending: false });
+        // Fetch cutting actuals
+        supabase
+          .from('cutting_actuals')
+          .select('*, lines!cutting_actuals_line_id_fkey(id, line_id, name), work_orders(po_number, buyer, style, color)', { count: 'exact' })
+          .eq('factory_id', profile.factory_id)
+          .eq('production_date', today)
+          .order('submitted_at', { ascending: false }),
 
-      // Fetch storage bin cards with transactions from today
-      const { data: binCardsData } = await supabase
-        .from('storage_bin_cards')
-        .select('*, work_orders(po_number, buyer, style), storage_bin_card_transactions(*)')
-        .eq('factory_id', profile.factory_id)
-        .order('updated_at', { ascending: false })
-        .limit(20);
+        // Fetch storage bin cards
+        supabase
+          .from('storage_bin_cards')
+          .select('*, work_orders(po_number, buyer, style), storage_bin_card_transactions(*)')
+          .eq('factory_id', profile.factory_id)
+          .order('updated_at', { ascending: false })
+          .limit(20),
 
-      // Count storage transactions from today
-      const { count: storageTransactionsCount } = await supabase
-        .from('storage_bin_card_transactions')
-        .select('*', { count: 'exact', head: true })
-        .gte('transaction_date', today)
-        .lte('transaction_date', today);
+        // Count storage transactions from today
+        supabase
+          .from('storage_bin_card_transactions')
+          .select('*', { count: 'exact', head: true })
+          .gte('transaction_date', today)
+          .lte('transaction_date', today),
 
-      // Blocker counts from production_updates tables (same source as Blockers page)
-      const { count: sewingBlockersCount } = await supabase
-        .from('production_updates_sewing')
-        .select('*', { count: 'exact', head: true })
-        .eq('factory_id', profile.factory_id)
-        .eq('has_blocker', true)
-        .neq('blocker_status', 'resolved');
+        // Blocker counts
+        supabase
+          .from('production_updates_sewing')
+          .select('*', { count: 'exact', head: true })
+          .eq('factory_id', profile.factory_id)
+          .eq('has_blocker', true)
+          .neq('blocker_status', 'resolved'),
 
-      const { count: finishingBlockersCount } = await supabase
-        .from('production_updates_finishing')
-        .select('*', { count: 'exact', head: true })
-        .eq('factory_id', profile.factory_id)
-        .eq('has_blocker', true)
-        .neq('blocker_status', 'resolved');
+        supabase
+          .from('production_updates_finishing')
+          .select('*', { count: 'exact', head: true })
+          .eq('factory_id', profile.factory_id)
+          .eq('has_blocker', true)
+          .neq('blocker_status', 'resolved'),
 
-      // Fetch active lines and work orders
-      const { count: linesCount } = await supabase
-        .from('lines')
-        .select('*', { count: 'exact', head: true })
-        .eq('factory_id', profile.factory_id)
-        .eq('is_active', true);
+        // Active lines count
+        supabase
+          .from('lines')
+          .select('*', { count: 'exact', head: true })
+          .eq('factory_id', profile.factory_id)
+          .eq('is_active', true),
 
-      const { count: workOrdersCount } = await supabase
-        .from('work_orders')
-        .select('*', { count: 'exact', head: true })
-        .eq('factory_id', profile.factory_id)
-        .eq('is_active', true);
+        // Work orders count
+        supabase
+          .from('work_orders')
+          .select('*', { count: 'exact', head: true })
+          .eq('factory_id', profile.factory_id)
+          .eq('is_active', true),
+      ]);
+
+      const { data: linesData } = linesResult;
+      const { data: sewingTargetsData, count: sewingTargetsCount } = sewingTargetsResult;
+      const { data: finishingTargetsData, count: finishingTargetsCount } = finishingTargetsResult;
+      const { data: sewingActualsData, count: sewingCount } = sewingActualsResult;
+      const { data: finishingDailyLogsData, count: finishingCount } = finishingDailyLogsResult;
+      const { data: cuttingTargetsData, count: cuttingTargetsCount } = cuttingTargetsResult;
+      const { data: cuttingActualsData, count: cuttingActualsCount } = cuttingActualsResult;
+      const { data: binCardsData } = binCardsResult;
+      const { count: storageTransactionsCount } = storageTransactionsResult;
+      const { count: sewingBlockersCount } = sewingBlockersCountResult;
+      const { count: finishingBlockersCount } = finishingBlockersCountResult;
+      const { count: linesCount } = linesCountResult;
+      const { count: workOrdersCount } = workOrdersCountResult;
 
       // Format sewing targets
       const formattedSewingTargets: TargetSubmission[] = (sewingTargetsData || []).map(t => ({
