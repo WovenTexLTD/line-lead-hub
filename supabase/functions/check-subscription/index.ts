@@ -387,8 +387,10 @@ serve(async (req) => {
 
     // IMPORTANT: Always check for active subscription by email first
     // This catches cases where customer ID in DB doesn't match the one with active subscription
+    let stripeCheckedSuccessfully = false;
     try {
       const subByEmail = await tryFindSubscriptionByCustomerEmail();
+      stripeCheckedSuccessfully = true; // Stripe API responded (even if no sub found)
       if (subByEmail) {
         const currentCustomerId = typeof subByEmail.customer === 'string'
           ? subByEmail.customer
@@ -423,12 +425,14 @@ serve(async (req) => {
       }
     } catch (err) {
       logStep("Error checking subscription by email", { error: String(err) });
+      // stripeCheckedSuccessfully stays false — don't make destructive DB changes
     }
 
     // Fall back to checking stored subscription ID if email lookup failed
     if (factory.stripe_subscription_id) {
       try {
         const subscription = await stripe.subscriptions.retrieve(factory.stripe_subscription_id);
+        stripeCheckedSuccessfully = true;
         logStep("Stripe subscription retrieved by stored ID", {
           id: subscription.id,
           status: subscription.status,
@@ -458,6 +462,7 @@ serve(async (req) => {
         logStep("Stored subscription not active", { status: subscription.status });
       } catch (err) {
         logStep("Error checking stored Stripe subscription", { error: String(err) });
+        // stripeCheckedSuccessfully stays unchanged — don't make destructive DB changes
       }
     }
 
@@ -520,12 +525,18 @@ serve(async (req) => {
         });
       }
 
-      // Trial expired
-      await supabaseClient
-        .from('factory_accounts')
-        .update({ subscription_status: 'expired' })
-        .eq('id', profile.factory_id);
-      logStep("Trial expired");
+      // Trial expired — only mark as 'expired' in DB if we successfully confirmed
+      // with Stripe that there's no active subscription. If Stripe checks failed
+      // (transient API error), the user may have a valid subscription we couldn't reach.
+      if (stripeCheckedSuccessfully) {
+        await supabaseClient
+          .from('factory_accounts')
+          .update({ subscription_status: 'expired' })
+          .eq('id', profile.factory_id);
+        logStep("Trial expired (confirmed via Stripe)");
+      } else {
+        logStep("Trial expired locally but Stripe check failed — not marking as expired in DB");
+      }
     }
 
     // Past due: grant grace period access

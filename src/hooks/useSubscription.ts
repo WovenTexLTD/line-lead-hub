@@ -19,6 +19,11 @@ interface SubscriptionStatus {
 // and don't each trigger their own edge function call + loading spinner.
 let cachedStatus: SubscriptionStatus | null = null;
 let lastEdgeFetchTime = 0;
+// Whether the edge function has completed at least once since page load.
+// Used to keep showing a spinner (instead of "renew" screen) while we verify
+// with Stripe — prevents false blocks when the DB is stale but Stripe has an
+// active subscription (e.g. webhook didn't sync in time).
+let edgeCheckedOnce = false;
 
 const EDGE_FETCH_COOLDOWN_MS = 60_000; // Don't re-call edge function within 60s
 
@@ -118,6 +123,7 @@ export function useSubscription() {
 
     if (!user) {
       cachedStatus = null;
+      edgeCheckedOnce = false;
       setStatus(null);
       setLoading(false);
       return;
@@ -127,6 +133,15 @@ export function useSubscription() {
     const derived = checkFromFactory();
     cachedStatus = derived;
     setStatus(derived);
+
+    // If the local DB says no access, keep loading until we've verified with
+    // the Stripe edge function at least once. This prevents showing a "renew"
+    // screen when the DB is stale but the user actually has an active subscription.
+    if (!derived.hasAccess && !edgeCheckedOnce) {
+      // Stay in loading state — refreshFromEdge will set loading=false
+      return;
+    }
+
     setLoading(false);
   }, [authLoading, user, checkFromFactory]);
 
@@ -160,6 +175,8 @@ export function useSubscription() {
       // Don't overwrite status — keep the factory-derived status
     } finally {
       inFlightRef.current = false;
+      edgeCheckedOnce = true;
+      setLoading(false);
     }
   }, [user, authLoading]);
 
@@ -167,6 +184,18 @@ export function useSubscription() {
   useEffect(() => {
     if (!authLoading && user) {
       refreshFromEdge();
+
+      // Safety timeout: if the edge function hasn't responded after 8 seconds,
+      // stop loading and fall back to the DB-derived status.
+      if (!edgeCheckedOnce) {
+        const timeoutId = setTimeout(() => {
+          if (!edgeCheckedOnce) {
+            edgeCheckedOnce = true;
+            setLoading(false);
+          }
+        }, 8_000);
+        return () => clearTimeout(timeoutId);
+      }
     }
   }, [authLoading, user, refreshFromEdge]);
 
