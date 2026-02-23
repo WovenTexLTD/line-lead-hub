@@ -81,22 +81,25 @@ export function LineCardItem({ line, onClick }: LineCardItemProps) {
           </div>
         </div>
 
-        {/* Main metrics row — big, readable numbers */}
-        <div className="flex items-end gap-4 sm:gap-8 mb-3 overflow-x-auto">
-          <div className="shrink-0">
+        {/* Main metrics — 2x2 grid on mobile, single row on larger screens */}
+        <div className={cn(
+          "grid gap-x-4 gap-y-2 mb-3",
+          hasTarget ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-2"
+        )}>
+          <div>
             <p className="text-xs text-muted-foreground mb-0.5">Target</p>
             <p className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-blue-600 dark:text-blue-400">
               {hasTarget ? line.totalTarget.toLocaleString() : "—"}
             </p>
           </div>
-          <div className="shrink-0">
+          <div>
             <p className="text-xs text-muted-foreground mb-0.5">Output</p>
             <p className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-emerald-600 dark:text-emerald-400">
               {line.totalOutput.toLocaleString()}
             </p>
           </div>
           {hasTarget && (
-            <div className="shrink-0">
+            <div>
               <p className="text-xs text-muted-foreground mb-0.5">Achievement</p>
               <p className={cn("text-xl sm:text-2xl font-bold font-mono tabular-nums", getAchievementColor(line.achievementPct))}>
                 {line.achievementPct}%
@@ -104,7 +107,7 @@ export function LineCardItem({ line, onClick }: LineCardItemProps) {
             </div>
           )}
           {hasTarget && (
-            <div className="shrink-0">
+            <div>
               <p className="text-xs text-muted-foreground mb-0.5">Variance</p>
               <div className="flex items-center gap-1">
                 {variancePositive ? (
