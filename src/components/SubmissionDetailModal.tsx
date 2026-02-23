@@ -137,12 +137,8 @@ export function SubmissionDetailModal({ submission, open, onOpenChange, onDelete
             <DialogTitle className="flex items-center gap-2">
               {submission.type === 'sewing' ? (
                 <SewingMachine className="h-5 w-5 text-primary" />
-              ) : submission.type === 'finishing' ? (
-                <Package className="h-5 w-5 text-violet-600" />
-              ) : submission.type === 'cutting' ? (
-                <Scissors className="h-5 w-5 text-amber-600" />
               ) : (
-                <Warehouse className="h-5 w-5 text-teal-600" />
+                <Package className="h-5 w-5 text-violet-600" />
               )}
               {submission.line_name}
               <StatusBadge variant={submission.type} size="sm">{submission.type}</StatusBadge>
