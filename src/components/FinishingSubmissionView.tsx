@@ -23,7 +23,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatDate, formatDateTimeInTimezone } from "@/lib/date-utils";
 import { toast } from "sonner";
 import {
-  Factory,
   Crosshair,
   Scissors,
   CheckCircle,
@@ -301,7 +300,7 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange, on
             {hasActual && actual ? (
               <div className="rounded-lg border border-success/20 bg-success/5 p-4 space-y-4">
                 <h4 className="font-semibold text-sm flex items-center gap-2 text-success">
-                  <Factory className="h-4 w-4" />
+                  <Package className="h-4 w-4" />
                   {t('modals.endOfDayActual')}
                 </h4>
 
@@ -377,7 +376,7 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange, on
               </div>
             ) : (
               <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 p-4 flex flex-col items-center justify-center text-center min-h-[200px]">
-                <Factory className="h-8 w-8 mb-2 opacity-40 text-muted-foreground" />
+                <Package className="h-8 w-8 mb-2 opacity-40 text-muted-foreground" />
                 <p className="text-sm text-muted-foreground">{t('modals.endOfDayNotSubmitted')}</p>
               </div>
             )}
