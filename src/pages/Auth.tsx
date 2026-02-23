@@ -10,8 +10,10 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { toast } from "sonner";
 import { Loader2, ArrowRight, KeyRound } from "lucide-react";
 import { SewingMachine } from "@/components/icons/SewingMachine";
+import { Checkbox } from "@/components/ui/checkbox";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
+import { getRememberMe } from "@/lib/auth-storage";
 
 import { getPasswordResetRedirectUrl } from "@/lib/capacitor";
 import logoSvg from "@/assets/logo.svg";
@@ -168,6 +170,7 @@ export default function Auth() {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginErrors, setLoginErrors] = useState<Record<string, string>>({});
+  const [rememberMe, setRememberMe] = useState(getRememberMe);
 
   // Signup form state
   const [signupName, setSignupName] = useState("");
@@ -279,7 +282,7 @@ export default function Auth() {
 
     setIsLoading(true);
 
-    const { error } = await signIn(loginEmail, loginPassword);
+    const { error } = await signIn(loginEmail, loginPassword, rememberMe);
     setIsLoading(false);
 
     if (error) {
@@ -474,6 +477,64 @@ export default function Auth() {
                           <p className="text-sm text-destructive">{loginErrors.password}</p>
                         )}
                       </div>
+
+                      {/* Remember me + Forgot password row */}
+                      <div className="flex items-start justify-between">
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <Checkbox
+                              id="remember-me"
+                              checked={rememberMe}
+                              onCheckedChange={(checked) => setRememberMe(checked === true)}
+                              disabled={isLoading}
+                            />
+                            <Label htmlFor="remember-me" className="text-sm font-normal cursor-pointer">
+                              Remember me
+                            </Label>
+                          </div>
+                          <p className="text-xs text-muted-foreground pl-6">
+                            Only use on your personal device
+                          </p>
+                        </div>
+
+                        <Dialog open={forgotPasswordOpen} onOpenChange={setForgotPasswordOpen}>
+                          <DialogTrigger asChild>
+                            <Button variant="link" type="button" className="px-0 h-auto text-sm text-muted-foreground hover:text-primary">
+                              Forgot password?
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Reset Password</DialogTitle>
+                              <DialogDescription>
+                                Enter your email address and we'll send you a link to reset your password.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <form onSubmit={handleForgotPassword} className="space-y-4 mt-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="forgot-email">Email</Label>
+                                <Input
+                                  id="forgot-email"
+                                  type="email"
+                                  placeholder="you@example.com"
+                                  value={forgotPasswordEmail}
+                                  onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                                  className="h-11"
+                                  disabled={forgotPasswordLoading}
+                                />
+                              </div>
+                              <Button type="submit" className="w-full h-11" disabled={forgotPasswordLoading}>
+                                {forgotPasswordLoading ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  "Send Reset Link"
+                                )}
+                              </Button>
+                            </form>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+
                       <Button type="submit" className="w-full h-11" disabled={isLoading}>
                         {isLoading ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -484,43 +545,6 @@ export default function Auth() {
                           </>
                         )}
                       </Button>
-                      
-                      <Dialog open={forgotPasswordOpen} onOpenChange={setForgotPasswordOpen}>
-                        <DialogTrigger asChild>
-                          <Button variant="link" type="button" className="w-full text-sm text-muted-foreground hover:text-primary">
-                            Forgot your password?
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Reset Password</DialogTitle>
-                            <DialogDescription>
-                              Enter your email address and we'll send you a link to reset your password.
-                            </DialogDescription>
-                          </DialogHeader>
-                          <form onSubmit={handleForgotPassword} className="space-y-4 mt-4">
-                            <div className="space-y-2">
-                              <Label htmlFor="forgot-email">Email</Label>
-                              <Input
-                                id="forgot-email"
-                                type="email"
-                                placeholder="you@example.com"
-                                value={forgotPasswordEmail}
-                                onChange={(e) => setForgotPasswordEmail(e.target.value)}
-                                className="h-11"
-                                disabled={forgotPasswordLoading}
-                              />
-                            </div>
-                            <Button type="submit" className="w-full h-11" disabled={forgotPasswordLoading}>
-                              {forgotPasswordLoading ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                "Send Reset Link"
-                              )}
-                            </Button>
-                          </form>
-                        </DialogContent>
-                      </Dialog>
                     </form>
                   </TabsContent>
 

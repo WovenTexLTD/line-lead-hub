@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import type { AppRole } from '@/lib/constants';
 import { setErrorLoggerUserContext } from '@/lib/error-logger';
+import { setRememberMe as persistRememberMe, REMEMBER_ME_KEY, sweepAuthTokens } from '@/lib/auth-storage';
 
 const profileSchema = z.object({
   id: z.string(),
@@ -50,7 +51,7 @@ interface AuthContextType {
   roles: UserRole[];
   factory: Factory | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signIn: (email: string, password: string, rememberMe?: boolean) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   hasRole: (role: AppRole) => boolean;
@@ -263,7 +264,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  async function signIn(email: string, password: string) {
+  async function signIn(email: string, password: string, rememberMe = true) {
+    // Set preference BEFORE the Supabase call so the storage adapter routes
+    // the session token to the correct store immediately.
+    persistRememberMe(rememberMe);
+
+    // If not remembering, clear stale tokens from localStorage so the adapter
+    // starts fresh in sessionStorage.
+    if (!rememberMe) {
+      sweepAuthTokens(localStorage);
+    }
+
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -295,7 +306,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setRoles([]);
     setFactory(null);
     setErrorLoggerUserContext(null, null);
-    
+
     // Then attempt to sign out from Supabase (may fail if session already expired)
     try {
       await supabase.auth.signOut();
@@ -303,6 +314,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Ignore sign out errors - session may already be invalid
       console.log('Sign out completed (session may have already expired)');
     }
+
+    // Clear remember-me preference and sweep auth tokens from both stores
+    localStorage.removeItem(REMEMBER_ME_KEY);
+    sweepAuthTokens(localStorage);
+    sweepAuthTokens(sessionStorage);
   }
 
   function hasRole(role: AppRole): boolean {
