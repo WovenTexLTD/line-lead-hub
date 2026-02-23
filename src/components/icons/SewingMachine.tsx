@@ -14,12 +14,12 @@ export function SewingMachine(props: SVGProps<SVGSVGElement> & { className?: str
       strokeLinejoin="round"
       {...props}
     >
-      {/* Needle - diagonal from upper-right to lower-left */}
-      <line x1="17" y1="3" x2="4" y2="21" />
+      {/* Needle body - diagonal */}
+      <line x1="14" y1="2" x2="4" y2="18" />
       {/* Needle eye */}
-      <circle cx="15" cy="5.5" r="1.5" />
-      {/* Thread through eye, curving down */}
-      <path d="M16.5 5c2 2 1.5 5-1 8s-3 5-2 7" />
+      <circle cx="12.5" cy="4.5" r="1.5" />
+      {/* Thread flowing through eye and curving down */}
+      <path d="M14 4.5c2 1 3 3 2.5 6s-2 5-1.5 7.5c.3 1.5 1.5 2.5 3 3" />
     </svg>
   );
 }
