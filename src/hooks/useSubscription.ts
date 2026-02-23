@@ -182,7 +182,9 @@ export function useSubscription() {
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData?.session) return;
 
-      const { data, error: fnError } = await supabase.functions.invoke('check-subscription');
+      const { data, error: fnError } = await supabase.functions.invoke('check-subscription', {
+        headers: { Authorization: `Bearer ${sessionData.session.access_token}` },
+      });
 
       // Auth errors (401) — token expired/missing. Don't overwrite valid DB status.
       if (fnError) {
