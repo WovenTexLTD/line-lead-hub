@@ -12,6 +12,7 @@ import type {
   LineFilters,
   FactorySummary,
   AnomalyFlag,
+  DataState,
 } from "./types";
 
 function extractLineNumber(lineId: string): number {
@@ -309,6 +310,14 @@ export function useLinePerformance() {
       const achievementPct = totalTarget > 0 ? Math.round((totalOutput / totalTarget) * 100) : 0;
       const avgManpower = dayCount > 0 ? Math.round(totalManpower / dayCount) : totalManpower;
 
+      const targetSubmitted = (lineTargetMap?.size || 0) > 0;
+      const eodSubmitted = (lineActualMap?.size || 0) > 0;
+      const dataState: DataState =
+        targetSubmitted && eodSubmitted ? "eod-submitted" :
+        targetSubmitted ? "awaiting-eod" :
+        eodSubmitted ? "output-only" :
+        "no-target";
+
       return {
         id: line.id,
         lineId: line.line_id,
@@ -322,9 +331,11 @@ export function useLinePerformance() {
         variance: totalOutput - totalTarget,
         avgManpower,
         totalBlockers,
-        targetSubmitted: (lineTargetMap?.size || 0) > 0,
-        eodSubmitted: (lineActualMap?.size || 0) > 0,
-        anomaly: detectAnomaly(totalTarget, totalOutput, achievementPct),
+        targetSubmitted,
+        eodSubmitted,
+        dataState,
+        // Only flag anomalies once EOD is submitted — before that, zero output is expected
+        anomaly: eodSubmitted ? detectAnomaly(totalTarget, totalOutput, achievementPct) : null,
         poBreakdown,
       };
     });
@@ -470,16 +481,17 @@ export function useLinePerformance() {
     const totalOutput = activeLines.reduce((s, l) => s + l.totalOutput, 0);
     const overallAchievement = totalTarget > 0 ? Math.round((totalOutput / totalTarget) * 100) : 0;
 
-    const linesWithTarget = activeLines.filter((l) => l.totalTarget > 0);
-    const linesOnTarget = linesWithTarget.filter((l) => l.achievementPct >= 90).length;
-    const linesBelowTarget = linesWithTarget.filter((l) => l.achievementPct < 90).length;
+    // Only count lines where EOD has been submitted — awaiting-eod lines have unknown actual output
+    const linesWithEOD = activeLines.filter((l) => l.dataState === "eod-submitted");
+    const linesOnTarget = linesWithEOD.filter((l) => l.achievementPct >= 90).length;
+    const linesBelowTarget = linesWithEOD.filter((l) => l.achievementPct < 90).length;
 
     // Best / worst among lines with target
     let bestLine: FactorySummary["bestLine"] = null;
     let worstLine: FactorySummary["worstLine"] = null;
 
-    if (linesWithTarget.length > 0) {
-      const sorted = [...linesWithTarget].sort((a, b) => b.achievementPct - a.achievementPct);
+    if (linesWithEOD.length > 0) {
+      const sorted = [...linesWithEOD].sort((a, b) => b.achievementPct - a.achievementPct);
       bestLine = { name: sorted[0].name || sorted[0].lineId, pct: sorted[0].achievementPct };
       worstLine = {
         name: sorted[sorted.length - 1].name || sorted[sorted.length - 1].lineId,

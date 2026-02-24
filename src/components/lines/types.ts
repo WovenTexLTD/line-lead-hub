@@ -2,6 +2,15 @@ export type TimeRange = "daily" | "7" | "14" | "21" | "30";
 
 export type AnomalyFlag = "no-output" | "critically-low" | "unusually-high" | null;
 
+/**
+ * Describes what data has been submitted for a line in the selected period.
+ * - "no-target"   : neither target nor EOD submitted
+ * - "awaiting-eod": target submitted, EOD not yet submitted
+ * - "eod-submitted": both target and EOD submitted — metrics are meaningful
+ * - "output-only" : EOD submitted but no target — can show output, not variance/achievement
+ */
+export type DataState = "no-target" | "awaiting-eod" | "eod-submitted" | "output-only";
+
 export interface POBreakdown {
   workOrderId: string;
   poNumber: string;
@@ -33,6 +42,7 @@ export interface LinePerformanceData {
 
   targetSubmitted: boolean;
   eodSubmitted: boolean;
+  dataState: DataState;
   anomaly: AnomalyFlag;
 
   poBreakdown: POBreakdown[];
