@@ -1,7 +1,7 @@
 import { ChevronRight, ChevronDown, Calendar } from "lucide-react";
 import { TableRow, TableCell } from "@/components/ui/table";
-import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { formatShortDate } from "@/lib/date-utils";
 import { HealthBadge } from "./HealthBadge";
 import { POQuickActions } from "./POQuickActions";
@@ -42,10 +42,32 @@ export function POTableRow({ po, isExpanded, onToggle, onViewExtras, showVelocit
         <p className="text-xs text-muted-foreground">{po.style}</p>
       </TableCell>
 
-      {/* Line */}
+      {/* Line — show first only, popover for extras */}
       <TableCell className="text-sm">
-        {po.line_names.length > 0 ? po.line_names.join(", ") : (
+        {po.line_names.length === 0 ? (
           <span className="text-muted-foreground">—</span>
+        ) : (
+          <div className="flex items-center gap-1.5">
+            <span>{po.line_names[0]}</span>
+            {po.line_names.length > 1 && (
+              <Popover>
+                <PopoverTrigger
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:bg-muted/80 transition-colors"
+                >
+                  +{po.line_names.length - 1}
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-2" side="top" align="start">
+                  <p className="text-[10px] font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">All lines</p>
+                  <ul className="space-y-1">
+                    {po.line_names.map((name) => (
+                      <li key={name} className="text-sm">{name}</li>
+                    ))}
+                  </ul>
+                </PopoverContent>
+              </Popover>
+            )}
+          </div>
         )}
       </TableCell>
 
@@ -55,28 +77,38 @@ export function POTableRow({ po, isExpanded, onToggle, onViewExtras, showVelocit
       </TableCell>
 
       {/* Sewing output + green bar */}
-      <TableCell>
-        <div className="w-20">
-          <p className="text-right font-mono text-sm font-medium">
-            {po.sewingOutput > 0 ? po.sewingOutput.toLocaleString() : <span className="text-muted-foreground">—</span>}
-          </p>
-          <Progress
-            value={po.order_qty > 0 ? Math.min((po.sewingOutput / po.order_qty) * 100, 100) : 0}
-            className="h-1.5 [&>div]:bg-green-500"
-          />
+      <TableCell className="min-w-[100px]">
+        <p className="font-mono text-sm font-medium text-right">
+          {po.sewingOutput > 0 ? po.sewingOutput.toLocaleString() : <span className="text-muted-foreground">—</span>}
+        </p>
+        <div className="flex items-center gap-1.5 mt-1">
+          <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden ring-1 ring-border">
+            <div
+              className="h-full rounded-full bg-green-500"
+              style={{ width: `${po.order_qty > 0 ? Math.min((po.sewingOutput / po.order_qty) * 100, 100) : 0}%` }}
+            />
+          </div>
+          <span className="text-[10px] text-muted-foreground w-7 text-right shrink-0">
+            {po.order_qty > 0 ? `${Math.round((po.sewingOutput / po.order_qty) * 100)}%` : "—"}
+          </span>
         </div>
       </TableCell>
 
       {/* Finishing output + purple bar */}
-      <TableCell>
-        <div className="w-20">
-          <p className="text-right font-mono text-sm font-medium">
-            {po.finishedOutput > 0 ? po.finishedOutput.toLocaleString() : <span className="text-muted-foreground">—</span>}
-          </p>
-          <Progress
-            value={po.progressPct}
-            className="h-1.5 [&>div]:bg-purple-500"
-          />
+      <TableCell className="min-w-[100px]">
+        <p className="font-mono text-sm font-medium text-right">
+          {po.finishedOutput > 0 ? po.finishedOutput.toLocaleString() : <span className="text-muted-foreground">—</span>}
+        </p>
+        <div className="flex items-center gap-1.5 mt-1">
+          <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden ring-1 ring-border">
+            <div
+              className="h-full rounded-full bg-purple-500"
+              style={{ width: `${po.progressPct}%` }}
+            />
+          </div>
+          <span className="text-[10px] text-muted-foreground w-7 text-right shrink-0">
+            {Math.round(po.progressPct)}%
+          </span>
         </div>
       </TableCell>
 

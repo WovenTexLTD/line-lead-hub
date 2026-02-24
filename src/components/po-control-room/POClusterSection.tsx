@@ -20,27 +20,27 @@ const CLUSTER_META: Record<POCluster, ClusterMeta> = {
   due_soon: {
     label: "Due Soon",
     description: "Ex-factory within 7 days",
-    colorClass: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-800",
+    colorClass: "bg-red-600 text-white border-red-700",
   },
   behind_plan: {
     label: "Behind Plan",
     description: "Forecast behind deadline",
-    colorClass: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800",
+    colorClass: "bg-amber-500 text-white border-amber-600",
   },
   missing_updates: {
     label: "Missing Updates",
     description: "No EOD submitted today",
-    colorClass: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800",
+    colorClass: "bg-amber-500 text-white border-amber-600",
   },
   on_track: {
     label: "On Track",
     description: "On schedule",
-    colorClass: "bg-green-50 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-400 dark:border-green-800",
+    colorClass: "bg-green-600 text-white border-green-700",
   },
   no_deadline: {
     label: "No Deadline",
     description: "No deadline set",
-    colorClass: "bg-muted/60 text-muted-foreground border-border",
+    colorClass: "bg-slate-500 text-white border-slate-600",
   },
 };
 
