@@ -3,8 +3,14 @@ import { differenceInDays } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { getTodayInTimezone } from "@/lib/date-utils";
+import {
+  computeWorkflowState,
+  computeAvgPerDay,
+  computeNeededPerDay,
+  computeForecastFinish,
+  computeCluster,
+} from "./po-state";
 import type {
-  POViewTab,
   POControlRoomData,
   POKPIs,
   NeedsActionCard,
@@ -14,6 +20,8 @@ import type {
   POSubmissionRow,
   POPipelineStage,
   POQualityData,
+  POWorkflowTab,
+  POCluster,
 } from "./types";
 import {
   ClipboardX,
@@ -130,6 +138,15 @@ function computeHealth(
   return { status, reasons };
 }
 
+// ── Cluster display order ─────────────────────────────
+const CLUSTER_ORDER: POCluster[] = [
+  "due_soon",
+  "behind_plan",
+  "missing_updates",
+  "on_track",
+  "no_deadline",
+];
+
 // ── Hook ──────────────────────────────────────────────
 export function usePOControlRoom() {
   const { profile, factory } = useAuth();
@@ -138,7 +155,7 @@ export function usePOControlRoom() {
 
   const [loading, setLoading] = useState(true);
   const [workOrders, setWorkOrders] = useState<POControlRoomData[]>([]);
-  const [activeTab, setActiveTab] = useState<POViewTab>("all");
+  const [activeTab, setActiveTab] = useState<POWorkflowTab>("running");
   const [searchTerm, setSearchTerm] = useState("");
 
   // Expand state
@@ -169,12 +186,12 @@ export function usePOControlRoom() {
         return;
       }
 
-      const [sewingRes, finishingRes, ledgerRes, eodTodayRes, assignRes] =
+      const [sewingRes, finishingRes, ledgerRes, eodTodayRes, assignRes, targetsRes] =
         await Promise.all([
-          // Sewing output + quality
+          // Sewing output + quality (now includes production_date for velocity)
           supabase
             .from("sewing_actuals")
-            .select("work_order_id, good_today, reject_today, rework_today")
+            .select("work_order_id, good_today, reject_today, rework_today, production_date")
             .eq("factory_id", factoryId)
             .in("work_order_id", ids),
           // Finishing output
@@ -203,20 +220,35 @@ export function usePOControlRoom() {
             .select("work_order_id, line_id, lines(name, line_id)")
             .eq("factory_id", factoryId)
             .in("work_order_id", ids),
+          // Targets existence (used for "planned" state detection)
+          supabase
+            .from("sewing_targets")
+            .select("work_order_id")
+            .eq("factory_id", factoryId)
+            .in("work_order_id", ids),
         ]);
 
-      // Aggregate sewing
+      // Aggregate sewing: totals + per-PO actuals array for velocity
       const sewingMap = new Map<
         string,
-        { good: number; reject: number; rework: number }
+        { good: number; reject: number; rework: number; count: number }
+      >();
+      const sewingActualsByPO = new Map<
+        string,
+        { good_today: number; production_date: string }[]
       >();
       sewingRes.data?.forEach((r) => {
         const id = r.work_order_id || "";
-        const cur = sewingMap.get(id) || { good: 0, reject: 0, rework: 0 };
+        const cur = sewingMap.get(id) || { good: 0, reject: 0, rework: 0, count: 0 };
         cur.good += r.good_today || 0;
         cur.reject += r.reject_today || 0;
         cur.rework += r.rework_today || 0;
+        cur.count += 1;
         sewingMap.set(id, cur);
+
+        const arr = sewingActualsByPO.get(id) || [];
+        arr.push({ good_today: r.good_today || 0, production_date: r.production_date });
+        sewingActualsByPO.set(id, arr);
       });
 
       // Aggregate finishing
@@ -249,12 +281,14 @@ export function usePOControlRoom() {
         assignMap.set(id, cur);
       });
 
+      // Targets existence set
+      const hasTargetSet = new Set<string>();
+      targetsRes.data?.forEach((r: any) => {
+        if (r.work_order_id) hasTargetSet.add(r.work_order_id);
+      });
+
       const result: POControlRoomData[] = (woData || []).map((wo) => {
-        const sewing = sewingMap.get(wo.id) || {
-          good: 0,
-          reject: 0,
-          rework: 0,
-        };
+        const sewing = sewingMap.get(wo.id) || { good: 0, reject: 0, rework: 0, count: 0 };
         const finishedOutput = finMap.get(wo.id) || 0;
         const lineNames = assignMap.get(wo.id) || [];
         const hasEodToday = eodTodaySet.has(wo.id);
@@ -263,7 +297,44 @@ export function usePOControlRoom() {
             ? Math.min((finishedOutput / wo.order_qty) * 100, 100)
             : 0;
 
-        const poData = {
+        const lineNamesResolved =
+          lineNames.length > 0
+            ? lineNames
+            : wo.lines?.name
+              ? [wo.lines.name]
+              : wo.lines?.line_id
+                ? [wo.lines.line_id]
+                : [];
+
+        // Velocity
+        const actuals = sewingActualsByPO.get(wo.id) || [];
+        const { effective: avgPerDay } = computeAvgPerDay(actuals, today);
+        const remaining = Math.max(wo.order_qty - finishedOutput, 0);
+        const neededPerDay = computeNeededPerDay(remaining, wo.planned_ex_factory, today);
+        const forecastFinishDate = computeForecastFinish(remaining, avgPerDay, today);
+
+        // Workflow state
+        const hasLine = lineNamesResolved.length > 0 || wo.line_id != null;
+        const started = sewing.count > 0;
+        const workflowState = computeWorkflowState({
+          hasAnyActual: started,
+          hasTarget: hasTargetSet.has(wo.id),
+          hasLine,
+          remaining,
+        });
+
+        // Cluster
+        const cluster = computeCluster({
+          exFactory: wo.planned_ex_factory,
+          remaining,
+          neededPerDay,
+          avgPerDay,
+          forecastFinish: forecastFinishDate,
+          hasEodToday,
+          today,
+        });
+
+        const poData: POControlRoomData = {
           id: wo.id,
           po_number: wo.po_number,
           buyer: wo.buyer,
@@ -273,13 +344,7 @@ export function usePOControlRoom() {
           order_qty: wo.order_qty,
           status: wo.status,
           planned_ex_factory: wo.planned_ex_factory,
-          line_names: lineNames.length > 0
-            ? lineNames
-            : wo.lines?.name
-              ? [wo.lines.name]
-              : wo.lines?.line_id
-                ? [wo.lines.line_id]
-                : [],
+          line_names: lineNamesResolved,
           line_id: wo.line_id ?? null,
           sewingOutput: sewing.good,
           finishedOutput,
@@ -288,6 +353,13 @@ export function usePOControlRoom() {
           totalRework: sewing.rework,
           hasEodToday,
           progressPct,
+          workflowState,
+          cluster,
+          started,
+          remaining,
+          avgPerDay,
+          neededPerDay,
+          forecastFinishDate,
           health: { status: "healthy", reasons: ["On track"] } as HealthReason,
         };
 
@@ -311,37 +383,28 @@ export function usePOControlRoom() {
   const filteredOrders = useMemo(() => {
     let list = workOrders;
 
-    // Tab filter
     switch (activeTab) {
+      case "running":
+        list = list.filter((po) => po.workflowState === "running");
+        break;
+      case "planned":
+        list = list.filter((po) => po.workflowState === "planned");
+        break;
+      case "not_started":
+        list = list.filter((po) => po.workflowState === "not_started");
+        break;
       case "at_risk":
-        list = list.filter((po) => po.health.status === "at_risk");
-        break;
-      case "ex_factory_soon":
-        list = list.filter((po) => {
-          if (!po.planned_ex_factory) return false;
-          const days = differenceInDays(
-            new Date(po.planned_ex_factory),
-            new Date(today)
-          );
-          return days <= 14;
-        });
-        break;
-      case "no_line":
         list = list.filter(
-          (po) => po.line_names.length === 0 && po.line_id == null
+          (po) =>
+            po.health.status === "at_risk" ||
+            po.health.status === "deadline_passed"
         );
         break;
-      case "updated_today":
-        list = list.filter((po) => po.hasEodToday);
-        break;
-      case "on_target":
-        list = list.filter(
-          (po) => po.health.status === "healthy" && po.progressPct > 0
-        );
+      case "completed":
+        list = list.filter((po) => po.workflowState === "completed");
         break;
     }
 
-    // Search
     if (searchTerm) {
       const q = searchTerm.toLowerCase();
       list = list.filter(
@@ -353,34 +416,41 @@ export function usePOControlRoom() {
     }
 
     return list;
-  }, [workOrders, activeTab, searchTerm, today]);
+  }, [workOrders, activeTab, searchTerm]);
 
   // ── Tab counts ──────────────────────────────────────
-  const tabCounts = useMemo(() => {
-    const counts: Record<POViewTab, number> = {
-      all: workOrders.length,
+  const tabCounts = useMemo((): Record<POWorkflowTab, number> => {
+    const counts: Record<POWorkflowTab, number> = {
+      running: 0,
+      planned: 0,
+      not_started: 0,
       at_risk: 0,
-      ex_factory_soon: 0,
-      no_line: 0,
-      updated_today: 0,
-      on_target: 0,
+      completed: 0,
     };
     workOrders.forEach((po) => {
-      if (po.health.status === "at_risk") counts.at_risk++;
-      if (po.planned_ex_factory) {
-        const days = differenceInDays(
-          new Date(po.planned_ex_factory),
-          new Date(today)
-        );
-        if (days <= 14) counts.ex_factory_soon++;
+      counts[po.workflowState as POWorkflowTab]++;
+      if (
+        po.health.status === "at_risk" ||
+        po.health.status === "deadline_passed"
+      ) {
+        counts.at_risk++;
       }
-      if (po.line_names.length === 0 && po.line_id == null) counts.no_line++;
-      if (po.hasEodToday) counts.updated_today++;
-      if (po.health.status === "healthy" && po.progressPct > 0)
-        counts.on_target++;
     });
     return counts;
-  }, [workOrders, today]);
+  }, [workOrders]);
+
+  // ── Clustered running POs ───────────────────────────
+  const clusteredRunning = useMemo((): Map<POCluster, POControlRoomData[]> => {
+    const running = workOrders.filter((po) => po.workflowState === "running");
+    const map = new Map<POCluster, POControlRoomData[]>();
+
+    CLUSTER_ORDER.forEach((c) => {
+      const group = running.filter((po) => po.cluster === c);
+      if (group.length > 0) map.set(c, group);
+    });
+
+    return map;
+  }, [workOrders]);
 
   // ── KPIs ────────────────────────────────────────────
   const kpis = useMemo<POKPIs>(() => {
@@ -408,18 +478,18 @@ export function usePOControlRoom() {
     let qualitySpike = 0;
 
     workOrders.forEach((po) => {
-      const isActive =
-        po.status === "in_progress" || po.status === "not_started";
-      if (isActive && !po.hasEodToday) noEod++;
+      if (po.workflowState === "running" && !po.hasEodToday) noEod++;
 
       if (po.planned_ex_factory) {
         const days = differenceInDays(
           new Date(po.planned_ex_factory),
           new Date(today)
         );
-        if (days <= 7 && po.progressPct < 80) exFactorySoon++;
+        if (days <= 7 && po.remaining > 0) exFactorySoon++;
       }
 
+      const isActive =
+        po.status === "in_progress" || po.status === "not_started";
       if (isActive && po.line_names.length === 0 && po.line_id == null)
         noLine++;
 
@@ -436,10 +506,10 @@ export function usePOControlRoom() {
         key: "no_eod",
         title: "No EOD Today",
         count: noEod,
-        description: `${noEod} active PO${noEod > 1 ? "s" : ""} with no submission today`,
+        description: `${noEod} running PO${noEod > 1 ? "s" : ""} with no submission today`,
         icon: ClipboardX,
         variant: "warning",
-        targetTab: "updated_today",
+        targetTab: "updated_today" as any,
       });
     }
     if (exFactorySoon > 0) {
@@ -450,7 +520,7 @@ export function usePOControlRoom() {
         description: `${exFactorySoon} PO${exFactorySoon > 1 ? "s" : ""} due within 7 days, behind schedule`,
         icon: CalendarClock,
         variant: "destructive",
-        targetTab: "ex_factory_soon",
+        targetTab: "at_risk" as any,
       });
     }
     if (noLine > 0) {
@@ -461,7 +531,7 @@ export function usePOControlRoom() {
         description: `${noLine} active PO${noLine > 1 ? "s" : ""} without a production line`,
         icon: Unlink,
         variant: "warning",
-        targetTab: "no_line",
+        targetTab: "not_started" as any,
       });
     }
     if (qualitySpike > 0) {
@@ -472,7 +542,7 @@ export function usePOControlRoom() {
         description: `${qualitySpike} PO${qualitySpike > 1 ? "s" : ""} with reject rate > 3%`,
         icon: AlertTriangle,
         variant: "destructive",
-        targetTab: "at_risk",
+        targetTab: "at_risk" as any,
       });
     }
     return cards;
@@ -623,22 +693,19 @@ export function usePOControlRoom() {
         const wo = workOrders.find((w) => w.id === id);
         const orderQty = wo?.order_qty || 1;
 
-        // Storage: sum of receive_qty across all bin cards
+        // Storage
         let storageQty = 0;
         let storageDate: string | null = null;
         storageRes.data?.forEach((card: any) => {
           card.storage_bin_card_transactions?.forEach((tx: any) => {
             storageQty += tx.receive_qty || 0;
-            if (
-              tx.transaction_date &&
-              (!storageDate || tx.transaction_date > storageDate)
-            ) {
+            if (tx.transaction_date && (!storageDate || tx.transaction_date > storageDate)) {
               storageDate = tx.transaction_date;
             }
           });
         });
 
-        // Cutting: take max total_cutting (it's a running cumulative total)
+        // Cutting
         let cuttingQty = 0;
         let cuttingDate: string | null = null;
         cuttingRes.data?.forEach((c: any) => {
@@ -655,51 +722,22 @@ export function usePOControlRoom() {
         let finQty = 0;
         let finDate: string | null = null;
         finLogsRes.data?.forEach((l: any) => {
-          if (l.log_type === "TARGET") return; // only count OUTPUT for pipeline
+          if (l.log_type === "TARGET") return;
           finQty += (l.poly || 0) + (l.carton || 0);
-          if (
-            l.production_date &&
-            (!finDate || l.production_date > finDate)
-          ) {
+          if (l.production_date && (!finDate || l.production_date > finDate)) {
             finDate = l.production_date;
           }
         });
 
-        const pctOf = (q: number) =>
-          Math.min(Math.round((q / orderQty) * 100), 100);
+        const pctOf = (q: number) => Math.min(Math.round((q / orderQty) * 100), 100);
 
         const pipeline: POPipelineStage[] = [
-          {
-            stage: "storage",
-            label: "Storage",
-            qty: storageQty,
-            pct: pctOf(storageQty),
-            lastDate: storageDate,
-          },
-          {
-            stage: "cutting",
-            label: "Cutting",
-            qty: cuttingQty,
-            pct: pctOf(cuttingQty),
-            lastDate: cuttingDate,
-          },
-          {
-            stage: "sewing",
-            label: "Sewing",
-            qty: sewingQty,
-            pct: pctOf(sewingQty),
-            lastDate: sewingDate,
-          },
-          {
-            stage: "finishing",
-            label: "Finishing",
-            qty: finQty,
-            pct: pctOf(finQty),
-            lastDate: finDate,
-          },
+          { stage: "storage", label: "Storage", qty: storageQty, pct: pctOf(storageQty), lastDate: storageDate },
+          { stage: "cutting", label: "Cutting", qty: cuttingQty, pct: pctOf(cuttingQty), lastDate: cuttingDate },
+          { stage: "sewing", label: "Sewing", qty: sewingQty, pct: pctOf(sewingQty), lastDate: sewingDate },
+          { stage: "finishing", label: "Finishing", qty: finQty, pct: pctOf(finQty), lastDate: finDate },
         ];
 
-        // Build quality
         const totalRejects = wo?.totalRejects || 0;
         const totalRework = wo?.totalRework || 0;
         const totalOutput = sewingQty;
@@ -744,6 +782,7 @@ export function usePOControlRoom() {
     detailData,
     detailLoading,
     toggleExpand,
+    clusteredRunning,
     refetch: fetchWorkOrders,
   };
 }

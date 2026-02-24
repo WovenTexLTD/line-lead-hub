@@ -1,6 +1,10 @@
 import type { LucideIcon } from "lucide-react";
+import type { POWorkflowState, POCluster, POWorkflowTab } from "./po-state";
 
-// ── View tab filter keys ──────────────────────────────
+// Re-export from po-state so consumers can import from one place
+export type { POWorkflowState, POCluster, POWorkflowTab } from "./po-state";
+
+// ── Legacy view tab (kept for backwards-compat; new UI uses POWorkflowTab) ───
 export type POViewTab =
   | "all"
   | "at_risk"
@@ -44,6 +48,15 @@ export interface POControlRoomData {
   health: HealthReason;
   hasEodToday: boolean;
   progressPct: number;
+
+  // Workflow state & cluster (new)
+  workflowState: POWorkflowState;
+  cluster: POCluster;
+  started: boolean;         // any sewing_actual exists
+  remaining: number;        // order_qty − finishedOutput
+  avgPerDay: number;        // effective (3d or 7d fallback)
+  neededPerDay: number;     // remaining / days_to_ex_factory (fallback /7)
+  forecastFinishDate: string | null;
 }
 
 // ── KPI summary ───────────────────────────────────────

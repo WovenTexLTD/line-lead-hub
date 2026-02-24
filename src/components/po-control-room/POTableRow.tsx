@@ -12,9 +12,10 @@ interface Props {
   isExpanded: boolean;
   onToggle: () => void;
   onViewExtras?: (po: POControlRoomData) => void;
+  showVelocity?: boolean;
 }
 
-export function POTableRow({ po, isExpanded, onToggle, onViewExtras }: Props) {
+export function POTableRow({ po, isExpanded, onToggle, onViewExtras, showVelocity }: Props) {
   const remaining = Math.max(po.order_qty - po.finishedOutput, 0);
   const extras = Math.max(po.finishedOutput - po.order_qty, 0);
 
@@ -97,6 +98,22 @@ export function POTableRow({ po, isExpanded, onToggle, onViewExtras }: Props) {
           <span className="text-muted-foreground text-xs">—</span>
         )}
       </TableCell>
+
+      {/* Velocity: Avg/day + Need/day (Running tab only) */}
+      {showVelocity && (
+        <>
+          <TableCell className="text-right font-mono text-sm">
+            {po.avgPerDay > 0
+              ? Math.round(po.avgPerDay).toLocaleString()
+              : <span className="text-muted-foreground">—</span>}
+          </TableCell>
+          <TableCell className="text-right font-mono text-sm">
+            {po.neededPerDay > 0
+              ? Math.round(po.neededPerDay).toLocaleString()
+              : <span className="text-muted-foreground">—</span>}
+          </TableCell>
+        </>
+      )}
 
       {/* Actions */}
       <TableCell>

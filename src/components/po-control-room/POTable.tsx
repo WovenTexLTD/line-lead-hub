@@ -20,6 +20,7 @@ interface Props {
   detailLoading: boolean;
   onToggleExpand: (id: string) => void;
   onViewExtras?: (po: POControlRoomData) => void;
+  showVelocity?: boolean;
 }
 
 export function POTable({
@@ -30,6 +31,7 @@ export function POTable({
   detailLoading,
   onToggleExpand,
   onViewExtras,
+  showVelocity,
 }: Props) {
   if (loading) {
     return (
@@ -56,6 +58,12 @@ export function POTable({
                 <TableHead>Progress</TableHead>
                 <TableHead>Health</TableHead>
                 <TableHead>Ex-Factory</TableHead>
+                {showVelocity && (
+                  <>
+                    <TableHead className="text-right">Avg/day</TableHead>
+                    <TableHead className="text-right">Need/day</TableHead>
+                  </>
+                )}
                 <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
@@ -68,10 +76,11 @@ export function POTable({
                     isExpanded={expandedId === po.id}
                     onToggle={() => onToggleExpand(po.id)}
                     onViewExtras={onViewExtras}
+                    showVelocity={showVelocity}
                   />
                   {expandedId === po.id && (
                     <TableRow key={`${po.id}-detail`}>
-                      <TableCell colSpan={11} className="p-0 bg-muted/30">
+                      <TableCell colSpan={showVelocity ? 13 : 11} className="p-0 bg-muted/30">
                         <POExpandedPanel
                           po={po}
                           detailData={detailData}
@@ -85,7 +94,7 @@ export function POTable({
               {orders.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={11}
+                    colSpan={showVelocity ? 13 : 11}
                     className="text-center py-8 text-muted-foreground"
                   >
                     No work orders found

@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { usePOControlRoom } from "@/components/po-control-room/usePOControlRoom";
 import { POControlRoomKPIs } from "@/components/po-control-room/POControlRoomKPIs";
 import { NeedsActionSection } from "@/components/po-control-room/NeedsActionSection";
-import { POFilterTabs } from "@/components/po-control-room/POFilterTabs";
+import { POWorkflowTabs } from "@/components/po-control-room/POWorkflowTabs";
+import { POClusterSection } from "@/components/po-control-room/POClusterSection";
 import { POTable } from "@/components/po-control-room/POTable";
 import { ExtrasLedgerModal } from "@/components/ExtrasLedgerModal";
 import { ExtrasOverviewModal } from "@/components/ExtrasOverviewModal";
@@ -26,6 +27,7 @@ export default function WorkOrdersView() {
     detailData,
     detailLoading,
     toggleExpand,
+    clusteredRunning,
     refetch,
   } = usePOControlRoom();
 
@@ -66,7 +68,7 @@ export default function WorkOrdersView() {
       {/* Needs Action Today */}
       <NeedsActionSection
         cards={needsActionCards}
-        onViewTab={setActiveTab}
+        onViewTab={setActiveTab as any}
       />
 
       {/* Extras Overview + Search */}
@@ -92,23 +94,47 @@ export default function WorkOrdersView() {
         </div>
       </div>
 
-      {/* Filter Tabs */}
-      <POFilterTabs
+      {/* Workflow Tabs */}
+      <POWorkflowTabs
         activeTab={activeTab}
         onTabChange={setActiveTab}
         counts={tabCounts}
       />
 
-      {/* Table */}
-      <POTable
-        orders={filteredOrders}
-        loading={false}
-        expandedId={expandedId}
-        detailData={detailData}
-        detailLoading={detailLoading}
-        onToggleExpand={toggleExpand}
-        onViewExtras={handleViewLedger}
-      />
+      {/* Running tab: cluster sections */}
+      {activeTab === "running" ? (
+        <div className="space-y-4">
+          {clusteredRunning.size === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No running work orders
+            </div>
+          ) : (
+            Array.from(clusteredRunning.entries()).map(([cluster, pos]) => (
+              <POClusterSection
+                key={cluster}
+                cluster={cluster}
+                pos={pos}
+                expandedId={expandedId}
+                detailData={detailData}
+                detailLoading={detailLoading}
+                onToggleExpand={toggleExpand}
+                onViewExtras={handleViewLedger}
+              />
+            ))
+          )}
+        </div>
+      ) : (
+        /* All other tabs: flat table */
+        <POTable
+          orders={filteredOrders}
+          loading={false}
+          expandedId={expandedId}
+          detailData={detailData}
+          detailLoading={detailLoading}
+          onToggleExpand={toggleExpand}
+          onViewExtras={handleViewLedger}
+        />
+      )}
 
       {/* Extras Ledger Modal */}
       {ledgerPO && (
