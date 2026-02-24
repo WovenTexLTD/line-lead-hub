@@ -112,21 +112,6 @@ export default function FinishingDailyTarget() {
 
       setWorkOrders(workOrdersData || []);
 
-      // Smart default: fetch most recent planned_hours from this factory's TARGET logs
-      const { data: recentTarget } = await supabase
-        .from("finishing_daily_logs")
-        .select("planned_hours")
-        .eq("factory_id", profile.factory_id)
-        .eq("log_type", "TARGET")
-        .not("planned_hours", "is", null)
-        .order("production_date", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (recentTarget?.planned_hours != null) {
-        setPlannedHours(recentTarget.planned_hours.toString());
-      }
-
       // Pre-select from URL params
       const woParam = searchParams.get("wo");
       if (woParam && (workOrdersData || []).find(w => w.id === woParam)) {
