@@ -88,9 +88,9 @@ export function POClusterSection({
               <TableHead>Buyer / Style</TableHead>
               <TableHead>Line</TableHead>
               <TableHead className="text-right">PO Qty</TableHead>
-              <TableHead className="text-right">Finished</TableHead>
+              <TableHead className="text-right">Sewing</TableHead>
+              <TableHead className="text-right">Finishing</TableHead>
               <TableHead className="text-right">Remaining</TableHead>
-              <TableHead>Progress</TableHead>
               <TableHead>Health</TableHead>
               <TableHead>Ex-Factory</TableHead>
               <TableHead className="text-right">Avg/day</TableHead>

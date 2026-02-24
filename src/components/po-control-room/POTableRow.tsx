@@ -54,9 +54,30 @@ export function POTableRow({ po, isExpanded, onToggle, onViewExtras, showVelocit
         {po.order_qty.toLocaleString()}
       </TableCell>
 
-      {/* Finished */}
-      <TableCell className="text-right font-mono text-sm text-success font-medium">
-        {po.finishedOutput.toLocaleString()}
+      {/* Sewing output + green bar */}
+      <TableCell>
+        <div className="w-20">
+          <p className="text-right font-mono text-sm font-medium">
+            {po.sewingOutput > 0 ? po.sewingOutput.toLocaleString() : <span className="text-muted-foreground">—</span>}
+          </p>
+          <Progress
+            value={po.order_qty > 0 ? Math.min((po.sewingOutput / po.order_qty) * 100, 100) : 0}
+            className="h-1.5 [&>div]:bg-green-500"
+          />
+        </div>
+      </TableCell>
+
+      {/* Finishing output + purple bar */}
+      <TableCell>
+        <div className="w-20">
+          <p className="text-right font-mono text-sm font-medium">
+            {po.finishedOutput > 0 ? po.finishedOutput.toLocaleString() : <span className="text-muted-foreground">—</span>}
+          </p>
+          <Progress
+            value={po.progressPct}
+            className="h-1.5 [&>div]:bg-purple-500"
+          />
+        </div>
       </TableCell>
 
       {/* Remaining */}
@@ -70,16 +91,6 @@ export function POTableRow({ po, isExpanded, onToggle, onViewExtras, showVelocit
         ) : (
           <span className="text-muted-foreground">—</span>
         )}
-      </TableCell>
-
-      {/* Progress */}
-      <TableCell>
-        <div className="w-20">
-          <Progress value={po.progressPct} className="h-1.5" />
-          <p className="text-[10px] text-muted-foreground mt-0.5 text-center">
-            {Math.round(po.progressPct)}%
-          </p>
-        </div>
       </TableCell>
 
       {/* Health */}
