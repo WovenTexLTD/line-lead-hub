@@ -315,7 +315,7 @@ export function usePOControlRoom() {
 
         // Workflow state
         const hasLine = lineNamesResolved.length > 0 || wo.line_id != null;
-        const started = sewing.count > 0;
+        const started = sewing.count > 0 || finishedOutput > 0;
         const workflowState = computeWorkflowState({
           hasAnyActual: started,
           hasTarget: hasTargetSet.has(wo.id),
