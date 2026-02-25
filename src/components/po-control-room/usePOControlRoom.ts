@@ -478,7 +478,16 @@ export function usePOControlRoom(filters: POFilters = EMPTY_FILTERS) {
 
   // ── Clustered running POs ───────────────────────────
   const clusteredRunning = useMemo((): Map<POCluster, POControlRoomData[]> => {
-    const running = baseOrders.filter((po) => po.workflowState === "running");
+    let running = baseOrders.filter((po) => po.workflowState === "running");
+    if (searchTerm) {
+      const q = searchTerm.toLowerCase();
+      running = running.filter(
+        (po) =>
+          po.po_number.toLowerCase().includes(q) ||
+          po.buyer.toLowerCase().includes(q) ||
+          po.style.toLowerCase().includes(q)
+      );
+    }
     const map = new Map<POCluster, POControlRoomData[]>();
 
     CLUSTER_ORDER.forEach((c) => {
@@ -487,7 +496,7 @@ export function usePOControlRoom(filters: POFilters = EMPTY_FILTERS) {
     });
 
     return map;
-  }, [baseOrders]);
+  }, [baseOrders, searchTerm]);
 
   // ── KPIs ────────────────────────────────────────────
   const kpis = useMemo<POKPIs>(() => {
