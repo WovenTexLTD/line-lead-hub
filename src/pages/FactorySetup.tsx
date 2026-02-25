@@ -523,8 +523,8 @@ export default function FactorySetup() {
           : "Your 14-day free trial has started. Default settings have been added."
       });
 
-      // Reload the page to refresh auth context
-      window.location.reload();
+      // Navigate to dashboard (full reload to refresh auth context with new factory)
+      window.location.href = '/dashboard';
     } catch (error: any) {
       console.error('Error creating factory:', error);
       toast.error("Error", { description: error?.message ?? "An error occurred" });

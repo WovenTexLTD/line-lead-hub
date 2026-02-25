@@ -12,6 +12,7 @@ import { NetworkStatusIndicator } from "@/components/NetworkStatusIndicator";
 import { DMGWarningModal } from "@/components/DMGWarningModal";
 import { ChatWidget } from "@/components/chat";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { OnboardingProvider } from "@/contexts/OnboardingContext";
 
 const APP_THEME_COLOR = '#f1f3f5';
 const DEFAULT_THEME_COLOR = '#0f172a';
@@ -81,12 +82,12 @@ export function AppLayout() {
           aria-hidden="true"
         />
 
-        <TrialExpirationBanner />
-        <SetupProgressBanner />
-
         <div className="flex flex-1 min-w-0 overflow-x-hidden">
           <AppSidebar />
+          <OnboardingProvider>
           <div className="flex flex-1 min-w-0 flex-col overflow-x-hidden">
+            <TrialExpirationBanner />
+            <SetupProgressBanner />
             {/* Header */}
             <header className="sticky top-0 z-40 flex h-14 items-center gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 md:px-6">
               <SidebarTrigger className="lg:hidden" />
@@ -121,6 +122,7 @@ export function AppLayout() {
               </div>
             </main>
           </div>
+          </OnboardingProvider>
         </div>
 
         {/* Safe-area background filler (bottom) */}

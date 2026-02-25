@@ -24,7 +24,7 @@ import { StorageBinCardDetailModal } from "@/components/StorageBinCardDetailModa
 import { StageDashboardSection } from "@/components/dashboard/StageDashboardSection";
 import { FinishingSubmissionView, FinishingTargetData, FinishingActualData } from "@/components/FinishingSubmissionView";
 import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
-import { useOnboardingChecklist } from "@/hooks/useOnboardingChecklist";
+import { useOnboarding } from "@/contexts/OnboardingContext";
 import {
   Package,
   Warehouse,
@@ -269,7 +269,7 @@ export default function Dashboard() {
   } | null>(null);
 
   const canViewDashboard = isAdminOrHigher();
-  const onboarding = useOnboardingChecklist(isAdminOrHigher() ? profile?.factory_id : null);
+  const onboarding = useOnboarding();
 
   useEffect(() => {
     if (authLoading) return;

@@ -66,6 +66,8 @@ function getBannerDismissKey(factoryId: string) {
 export function useOnboardingChecklist(factoryId: string | null | undefined) {
   const [counts, setCounts] = useState<OnboardingCounts | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const refetch = useCallback(() => setRefreshKey(k => k + 1), []);
   const [dismissed, setDismissed] = useState(() => {
     if (!factoryId) return false;
     return localStorage.getItem(getDismissKey(factoryId)) === "true";
@@ -115,8 +117,21 @@ export function useOnboardingChecklist(factoryId: string | null | undefined) {
     }
 
     fetchCounts();
-    return () => { cancelled = true; };
-  }, [factoryId, dismissed, bannerDismissed]);
+
+    // Realtime: re-fetch whenever any of the 4 tracked tables change for this factory
+    const channel = supabase
+      .channel(`onboarding_${factoryId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "lines", filter: `factory_id=eq.${factoryId}` }, () => setRefreshKey(k => k + 1))
+      .on("postgres_changes", { event: "*", schema: "public", table: "work_orders", filter: `factory_id=eq.${factoryId}` }, () => setRefreshKey(k => k + 1))
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles", filter: `factory_id=eq.${factoryId}` }, () => setRefreshKey(k => k + 1))
+      .on("postgres_changes", { event: "*", schema: "public", table: "sewing_targets", filter: `factory_id=eq.${factoryId}` }, () => setRefreshKey(k => k + 1))
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [factoryId, dismissed, bannerDismissed, refreshKey]);
 
   const steps: ChecklistStep[] = useMemo(() =>
     STEP_DEFINITIONS.map((def, index) => ({
@@ -166,8 +181,9 @@ export function useOnboardingChecklist(factoryId: string | null | undefined) {
     dismissBanner,
     loading,
     visible: !!factoryId && !loading && !dismissed && !allComplete,
-    bannerVisible: !!factoryId && !loading && !bannerDismissed && !allComplete,
+    bannerVisible: !!factoryId && !loading && !bannerDismissed,
     currentStep,
     currentStepIndex,
+    refetch,
   };
 }
