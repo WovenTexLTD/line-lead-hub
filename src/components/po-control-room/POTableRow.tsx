@@ -117,9 +117,14 @@ export function POTableRow({ po, isExpanded, onToggle, onViewExtras, showVelocit
         {remaining > 0 ? (
           remaining.toLocaleString()
         ) : extras > 0 ? (
-          <Badge variant="warning" className="font-mono text-[10px]">
-            +{extras.toLocaleString()}
-          </Badge>
+          <button
+            onClick={(e) => { e.stopPropagation(); onViewExtras?.(po); }}
+            className="inline-flex"
+          >
+            <Badge variant="warning" className="font-mono text-[10px] cursor-pointer hover:opacity-80 transition-opacity">
+              +{extras.toLocaleString()}
+            </Badge>
+          </button>
         ) : (
           <span className="text-muted-foreground">—</span>
         )}

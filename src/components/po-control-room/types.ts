@@ -33,6 +33,8 @@ export interface POControlRoomData {
   status: string | null;
   planned_ex_factory: string | null;
   line_names: string[]; // from work_order_line_assignments
+  unit_names: string[]; // units of assigned lines
+  floor_names: string[]; // floors of assigned lines
   line_id: string | null; // direct FK on work_orders (legacy)
 
   // Aggregated production
@@ -76,7 +78,7 @@ export interface NeedsActionCard {
   description: string;
   icon: LucideIcon;
   variant: "warning" | "destructive" | "info";
-  targetTab: POViewTab;
+  targetTab: POWorkflowTab;
 }
 
 // ── Detail data (fetched on row expand) ───────────────

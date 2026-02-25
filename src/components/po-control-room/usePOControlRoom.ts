@@ -10,6 +10,13 @@ import {
   computeForecastFinish,
   computeCluster,
 } from "./po-state";
+import {
+  applyFilters,
+  deriveFilterOptions,
+  EMPTY_FILTERS,
+  type POFilters,
+  type POFilterOptions,
+} from "./po-filters";
 import type {
   POControlRoomData,
   POKPIs,
@@ -148,7 +155,7 @@ const CLUSTER_ORDER: POCluster[] = [
 ];
 
 // ── Hook ──────────────────────────────────────────────
-export function usePOControlRoom() {
+export function usePOControlRoom(filters: POFilters = EMPTY_FILTERS) {
   const { profile, factory } = useAuth();
   const timezone = factory?.timezone || "Asia/Dhaka";
   const today = getTodayInTimezone(timezone);
@@ -174,7 +181,7 @@ export function usePOControlRoom() {
 
       const { data: woData } = await supabase
         .from("work_orders")
-        .select("*, lines(name, line_id)")
+        .select("*, lines(name, line_id, units(name), floors(name))")
         .eq("factory_id", factoryId)
         .eq("is_active", true)
         .order("po_number");
@@ -214,10 +221,10 @@ export function usePOControlRoom() {
             .eq("factory_id", factoryId)
             .eq("production_date", today)
             .in("work_order_id", ids),
-          // Line assignments
+          // Line assignments (with unit + floor)
           supabase
             .from("work_order_line_assignments")
-            .select("work_order_id, line_id, lines(name, line_id)")
+            .select("work_order_id, line_id, lines(name, line_id, units(name), floors(name))")
             .eq("factory_id", factoryId)
             .in("work_order_id", ids),
           // Targets existence (used for "planned" state detection)
@@ -271,14 +278,30 @@ export function usePOControlRoom() {
         if (r.work_order_id) eodTodaySet.add(r.work_order_id);
       });
 
-      // Line assignments map
+      // Line assignments map (names + unit/floor names)
       const assignMap = new Map<string, string[]>();
+      const unitMap = new Map<string, string[]>();
+      const floorMap = new Map<string, string[]>();
       assignRes.data?.forEach((r: any) => {
         const id = r.work_order_id || "";
         const name = r.lines?.name || r.lines?.line_id || "Unknown";
         const cur = assignMap.get(id) || [];
         cur.push(name);
         assignMap.set(id, cur);
+
+        const unitName = r.lines?.units?.name;
+        if (unitName) {
+          const units = unitMap.get(id) || [];
+          if (!units.includes(unitName)) units.push(unitName);
+          unitMap.set(id, units);
+        }
+
+        const floorName = r.lines?.floors?.name;
+        if (floorName) {
+          const floors = floorMap.get(id) || [];
+          if (!floors.includes(floorName)) floors.push(floorName);
+          floorMap.set(id, floors);
+        }
       });
 
       // Targets existence set
@@ -345,6 +368,8 @@ export function usePOControlRoom() {
           status: wo.status,
           planned_ex_factory: wo.planned_ex_factory,
           line_names: lineNamesResolved,
+          unit_names: unitMap.get(wo.id) || (wo.lines?.units?.name ? [wo.lines.units.name] : []),
+          floor_names: floorMap.get(wo.id) || (wo.lines?.floors?.name ? [wo.lines.floors.name] : []),
           line_id: wo.line_id ?? null,
           sewingOutput: sewing.good,
           finishedOutput,
@@ -379,19 +404,28 @@ export function usePOControlRoom() {
     if (profile?.factory_id) fetchWorkOrders();
   }, [fetchWorkOrders, profile?.factory_id]);
 
+  // ── Filter options (derived from all orders, not filtered) ──
+  const filterOptions = useMemo<POFilterOptions>(
+    () => deriveFilterOptions(workOrders),
+    [workOrders]
+  );
+
+  // ── Apply checkbox filters before tab/search ─────────
+  const baseOrders = useMemo(
+    () => applyFilters(workOrders, filters, today),
+    [workOrders, filters, today]
+  );
+
   // ── Tab filtering + search ──────────────────────────
   const filteredOrders = useMemo(() => {
-    let list = workOrders;
+    let list = baseOrders;
 
     switch (activeTab) {
       case "running":
         list = list.filter((po) => po.workflowState === "running");
         break;
-      case "planned":
-        list = list.filter((po) => po.workflowState === "planned");
-        break;
       case "not_started":
-        list = list.filter((po) => po.workflowState === "not_started");
+        list = list.filter((po) => po.workflowState === "not_started" || po.workflowState === "planned");
         break;
       case "at_risk":
         list = list.filter(
@@ -416,19 +450,22 @@ export function usePOControlRoom() {
     }
 
     return list;
-  }, [workOrders, activeTab, searchTerm]);
+  }, [baseOrders, activeTab, searchTerm]);
 
   // ── Tab counts ──────────────────────────────────────
   const tabCounts = useMemo((): Record<POWorkflowTab, number> => {
     const counts: Record<POWorkflowTab, number> = {
       running: 0,
-      planned: 0,
       not_started: 0,
       at_risk: 0,
       completed: 0,
     };
-    workOrders.forEach((po) => {
-      counts[po.workflowState as POWorkflowTab]++;
+    baseOrders.forEach((po) => {
+      if (po.workflowState === "planned" || po.workflowState === "not_started") {
+        counts.not_started++;
+      } else if (po.workflowState === "running" || po.workflowState === "completed") {
+        counts[po.workflowState]++;
+      }
       if (
         po.health.status === "at_risk" ||
         po.health.status === "deadline_passed"
@@ -437,11 +474,11 @@ export function usePOControlRoom() {
       }
     });
     return counts;
-  }, [workOrders]);
+  }, [baseOrders]);
 
   // ── Clustered running POs ───────────────────────────
   const clusteredRunning = useMemo((): Map<POCluster, POControlRoomData[]> => {
-    const running = workOrders.filter((po) => po.workflowState === "running");
+    const running = baseOrders.filter((po) => po.workflowState === "running");
     const map = new Map<POCluster, POControlRoomData[]>();
 
     CLUSTER_ORDER.forEach((c) => {
@@ -450,7 +487,7 @@ export function usePOControlRoom() {
     });
 
     return map;
-  }, [workOrders]);
+  }, [baseOrders]);
 
   // ── KPIs ────────────────────────────────────────────
   const kpis = useMemo<POKPIs>(() => {
@@ -509,7 +546,7 @@ export function usePOControlRoom() {
         description: `${noEod} running PO${noEod > 1 ? "s" : ""} with no submission today`,
         icon: ClipboardX,
         variant: "warning",
-        targetTab: "updated_today" as any,
+        targetTab: "running",
       });
     }
     if (exFactorySoon > 0) {
@@ -520,7 +557,7 @@ export function usePOControlRoom() {
         description: `${exFactorySoon} PO${exFactorySoon > 1 ? "s" : ""} due within 7 days, behind schedule`,
         icon: CalendarClock,
         variant: "destructive",
-        targetTab: "at_risk" as any,
+        targetTab: "at_risk",
       });
     }
     if (noLine > 0) {
@@ -531,7 +568,7 @@ export function usePOControlRoom() {
         description: `${noLine} active PO${noLine > 1 ? "s" : ""} without a production line`,
         icon: Unlink,
         variant: "warning",
-        targetTab: "not_started" as any,
+        targetTab: "not_started",
       });
     }
     if (qualitySpike > 0) {
@@ -542,7 +579,7 @@ export function usePOControlRoom() {
         description: `${qualitySpike} PO${qualitySpike > 1 ? "s" : ""} with reject rate > 3%`,
         icon: AlertTriangle,
         variant: "destructive",
-        targetTab: "at_risk" as any,
+        targetTab: "at_risk",
       });
     }
     return cards;
@@ -783,6 +820,7 @@ export function usePOControlRoom() {
     detailLoading,
     toggleExpand,
     clusteredRunning,
+    filterOptions,
     refetch: fetchWorkOrders,
   };
 }

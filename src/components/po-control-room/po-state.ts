@@ -13,7 +13,6 @@ export type POCluster =
 
 export type POWorkflowTab =
   | "running"
-  | "planned"
   | "not_started"
   | "at_risk"
   | "completed";

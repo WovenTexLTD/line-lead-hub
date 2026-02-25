@@ -7,11 +7,11 @@ import {
   CollapsibleTrigger,
   CollapsibleContent,
 } from "@/components/ui/collapsible";
-import type { NeedsActionCard, POViewTab } from "./types";
+import type { NeedsActionCard, POWorkflowTab } from "./types";
 
 interface Props {
   cards: NeedsActionCard[];
-  onViewTab: (tab: POViewTab) => void;
+  onViewTab: (tab: POWorkflowTab) => void;
 }
 
 export function NeedsActionSection({ cards, onViewTab }: Props) {

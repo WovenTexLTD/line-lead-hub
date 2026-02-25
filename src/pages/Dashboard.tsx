@@ -234,7 +234,7 @@ export default function Dashboard() {
     activeWorkOrders: 0,
     avgEfficiency: 0,
   });
-  const [departmentTab, setDepartmentTab] = useState<'sewing' | 'finishing' | 'cutting' | 'storage'>('storage');
+  const [departmentTab, setDepartmentTab] = useState<'sewing' | 'finishing' | 'cutting' | 'storage'>('sewing');
   const [sewingTargets, setSewingTargets] = useState<TargetSubmission[]>([]);
   const [finishingTargets, setFinishingTargets] = useState<TargetSubmission[]>([]);
   const [sewingEndOfDay, setSewingEndOfDay] = useState<EndOfDaySubmission[]>([]);
@@ -993,7 +993,7 @@ export default function Dashboard() {
                   Morning Targets
                 </CardTitle>
                 <div className="flex gap-1 sm:gap-2">
-                  <Link to="/cutting/submissions">
+                  <Link to="/today?tab=cutting">
                     <Button variant="ghost" size="sm" className="h-8 px-2 sm:px-3 text-xs sm:text-sm">
                       View All
                       <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 ml-0.5 sm:ml-1" />
@@ -1068,7 +1068,7 @@ export default function Dashboard() {
                   End of Day
                 </CardTitle>
                 <div className="flex gap-1 sm:gap-2">
-                  <Link to="/cutting/submissions">
+                  <Link to="/today?tab=cutting">
                     <Button variant="ghost" size="sm" className="h-8 px-2 sm:px-3 text-xs sm:text-sm">
                       View All
                       <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 ml-0.5 sm:ml-1" />
@@ -1149,7 +1149,7 @@ export default function Dashboard() {
                 <Warehouse className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                 Bin Cards
               </CardTitle>
-              <Link to="/submissions?department=storage">
+              <Link to="/today?tab=storage">
                 <Button variant="ghost" size="sm" className="h-8 px-2 sm:px-3 text-xs sm:text-sm">
                   View All
                   <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 ml-0.5 sm:ml-1" />

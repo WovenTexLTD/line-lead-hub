@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -222,6 +222,12 @@ export default function TodayUpdates() {
     const timezone = factory?.timezone || "Asia/Dhaka";
     return formatTimeInTimezone(dateString, timezone);
   };
+  const renderPct = (pct: number | null) => {
+    if (pct === null) return <span className="text-muted-foreground">—</span>;
+    const color = pct >= 100 ? "text-green-600" : pct >= 90 ? "text-green-500" : pct >= 70 ? "text-amber-600" : "text-red-600";
+    return <span className={`font-mono font-semibold text-sm ${color}`}>{Math.round(pct)}%</span>;
+  };
+
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [sewingUpdates, setSewingUpdates] = useState<SewingUpdate[]>([]);
@@ -234,7 +240,13 @@ export default function TodayUpdates() {
   const [selectedCuttingTarget, setSelectedCuttingTarget] = useState<CuttingTargetFull | null>(null);
   const [cuttingTargetModalOpen, setCuttingTargetModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState("all");
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(() => {
+    const tab = searchParams.get("tab");
+    return ["all", "storage", "cutting", "sewing", "finishing"].includes(tab ?? "")
+      ? (tab as string)
+      : "all";
+  });
   const [sewingViewOpen, setSewingViewOpen] = useState(false);
   const [sewingViewKey, setSewingViewKey] = useState<string | null>(null);
   const [selectedLegacySewing, setSelectedLegacySewing] = useState<SewingUpdate | null>(null);
@@ -1016,6 +1028,7 @@ export default function TodayUpdates() {
                         <TableHead className="text-right">Target/hr</TableHead>
                         <TableHead className="text-right">Manpower</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead className="text-right">vs Target</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1025,6 +1038,8 @@ export default function TodayUpdates() {
                         const manpower = item.actual?.manpower_actual ?? item.target?.manpower_planned;
                         const hasBoth = item.actual && item.target;
                         const hasBlocker = item.actual?.has_blocker;
+                        const targetTotal = item.target?.target_total_planned ?? (item.target ? Math.round((item.target.per_hour_target ?? 0) * (item.target.hours_planned ?? 8)) : null);
+                        const sewingPct = (output != null && targetTotal != null && targetTotal > 0) ? (output / targetTotal) * 100 : null;
                         return (
                           <TableRow
                             key={item.key}
@@ -1054,6 +1069,7 @@ export default function TodayUpdates() {
                                 )}
                               </div>
                             </TableCell>
+                            <TableCell className="text-right">{renderPct(sewingPct)}</TableCell>
                           </TableRow>
                         );
                       })}
@@ -1085,6 +1101,7 @@ export default function TodayUpdates() {
                         <TableHead className="text-right">Output (Carton)</TableHead>
                         <TableHead className="text-right">Target (Carton)</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead className="text-right">vs Target</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1094,10 +1111,14 @@ export default function TodayUpdates() {
                         const targetPoly = item.target?.poly || 0;
                         const targetCarton = item.target?.carton || 0;
                         const totalOutput = outputPoly + outputCarton;
-                        const totalTarget = targetPoly + targetCarton;
                         const hasOutput = totalOutput > 0;
-                        const hasTarget = totalTarget > 0;
-                        const percent = totalTarget > 0 ? (totalOutput / totalTarget) * 100 : null;
+                        // target.poly/carton are per-hour rates; multiply by planned hours for total
+                        const targetHours = (item.target?.planned_hours ?? 0) + (item.target?.ot_hours_planned ?? 0);
+                        const targetPolyTotal = targetPoly * targetHours;
+                        const targetCartonTotal = targetCarton * targetHours;
+                        const totalTargetCalc = targetPolyTotal + targetCartonTotal;
+                        const hasTarget = totalTargetCalc > 0;
+                        const finishingPct = hasTarget ? (totalOutput / totalTargetCalc) * 100 : null;
                         return (
                           <TableRow
                             key={`finishing-merged-${idx}`}
@@ -1112,15 +1133,14 @@ export default function TodayUpdates() {
                             <TableCell className="text-right font-mono text-muted-foreground">{targetCarton.toLocaleString()}</TableCell>
                             <TableCell>
                               {hasOutput && hasTarget ? (
-                                <StatusBadge variant={percent && percent >= 100 ? 'success' : percent && percent >= 80 ? 'warning' : 'danger'} size="sm">
-                                  {Math.round(percent || 0)}%
-                                </StatusBadge>
+                                <StatusBadge variant="success" size="sm">Complete</StatusBadge>
                               ) : hasOutput ? (
-                                <StatusBadge variant="success" size="sm">Output</StatusBadge>
+                                <StatusBadge variant="warning" size="sm">No Target</StatusBadge>
                               ) : (
-                                <StatusBadge variant="info" size="sm">Target</StatusBadge>
+                                <StatusBadge variant="info" size="sm">Target Only</StatusBadge>
                               )}
                             </TableCell>
+                            <TableCell className="text-right">{renderPct(finishingPct)}</TableCell>
                           </TableRow>
                         );
                       })}
@@ -1153,6 +1173,7 @@ export default function TodayUpdates() {
                         <TableHead className="text-right">Manpower</TableHead>
                         <TableHead className="text-right">Day Input</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead className="text-right">vs Target</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1163,9 +1184,9 @@ export default function TodayUpdates() {
                         const dayInput = item.actual?.day_input;
                         const hasActual = dayCutting !== null && dayCutting !== undefined;
                         const hasTarget = cuttingCapacity !== null && cuttingCapacity !== undefined && cuttingCapacity > 0;
-                        const percent = hasActual && hasTarget ? (dayCutting! / cuttingCapacity!) * 100 : null;
+                        const cuttingPct = hasActual && hasTarget ? (dayCutting! / cuttingCapacity!) * 100 : null;
                         return (
-                          <TableRow 
+                          <TableRow
                             key={`cutting-merged-${idx}`}
                             className="cursor-pointer hover:bg-muted/50"
                             onClick={() => item.actual && handleCuttingClick(item.actual)}
@@ -1180,19 +1201,18 @@ export default function TodayUpdates() {
                             <TableCell>
                               <div className="flex items-center gap-1 flex-wrap">
                                 {hasActual && hasTarget ? (
-                                  <StatusBadge variant={percent && percent >= 100 ? 'success' : percent && percent >= 80 ? 'warning' : 'danger'} size="sm">
-                                    {Math.round(percent || 0)}%
-                                  </StatusBadge>
+                                  <StatusBadge variant="success" size="sm">Complete</StatusBadge>
                                 ) : hasActual ? (
-                                  <StatusBadge variant="success" size="sm">Output</StatusBadge>
+                                  <StatusBadge variant="warning" size="sm">No Target</StatusBadge>
                                 ) : (
-                                  <StatusBadge variant="info" size="sm">Target</StatusBadge>
+                                  <StatusBadge variant="info" size="sm">Target Only</StatusBadge>
                                 )}
                                 {item.actual?.leftover_recorded && (
                                   <StatusBadge variant="warning" size="sm">Left Over</StatusBadge>
                                 )}
                               </div>
                             </TableCell>
+                            <TableCell className="text-right">{renderPct(cuttingPct)}</TableCell>
                           </TableRow>
                         );
                       })}
@@ -1314,10 +1334,13 @@ export default function TodayUpdates() {
                         <TableHead className="text-right">Manpower</TableHead>
                         <TableHead className="text-right">Progress</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead className="text-right">vs Target</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredSewing.map((update) => (
+                      {filteredSewing.map((update) => {
+                        const oldSewingPct = update.target_qty && update.target_qty > 0 ? (update.output_qty / update.target_qty) * 100 : null;
+                        return (
                         <TableRow
                           key={update.id}
                           className="cursor-pointer hover:bg-muted/50"
@@ -1337,8 +1360,10 @@ export default function TodayUpdates() {
                               <StatusBadge variant="success" size="sm">OK</StatusBadge>
                             )}
                           </TableCell>
+                          <TableCell className="text-right">{renderPct(oldSewingPct)}</TableCell>
                         </TableRow>
-                      ))}
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>
@@ -1367,6 +1392,7 @@ export default function TodayUpdates() {
                       <TableHead className="text-right">Reject</TableHead>
                       <TableHead className="text-right">Manpower</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead className="text-right">vs Target</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1377,6 +1403,8 @@ export default function TodayUpdates() {
                       const manpower = item.actual?.manpower_actual ?? item.target?.manpower_planned;
                       const hasBoth = item.actual && item.target;
                       const hasBlocker = item.actual?.has_blocker;
+                      const targetTotal = item.target?.target_total_planned ?? (item.target ? Math.round((item.target.per_hour_target ?? 0) * (item.target.hours_planned ?? 8)) : null);
+                      const sewingTabPct = (output != null && targetTotal != null && targetTotal > 0) ? (output / targetTotal) * 100 : null;
                       return (
                         <TableRow
                           key={item.key}
@@ -1407,12 +1435,13 @@ export default function TodayUpdates() {
                               )}
                             </div>
                           </TableCell>
+                          <TableCell className="text-right">{renderPct(sewingTabPct)}</TableCell>
                         </TableRow>
                       );
                     })}
                     {filteredSewing.length === 0 && mergedSewingData.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                           No sewing updates today
                         </TableCell>
                       </TableRow>
@@ -1444,6 +1473,7 @@ export default function TodayUpdates() {
                         <TableHead className="text-right">Output (Carton)</TableHead>
                         <TableHead className="text-right">Target (Carton)</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead className="text-right">vs Target</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1452,6 +1482,10 @@ export default function TodayUpdates() {
                         const targetPoly = row.target?.poly || 0;
                         const outputCarton = row.output?.carton || 0;
                         const targetCarton = row.target?.carton || 0;
+                        // target.poly/carton are per-hour rates; multiply by planned hours for total
+                        const finTabHours = (row.target?.planned_hours ?? 0) + (row.target?.ot_hours_planned ?? 0);
+                        const finTabTargetTotal = (targetPoly * finTabHours) + (targetCarton * finTabHours);
+                        const finTabPct = finTabTargetTotal > 0 ? ((outputPoly + outputCarton) / finTabTargetTotal) * 100 : null;
                         return (
                           <TableRow
                             key={row.key}
@@ -1473,12 +1507,13 @@ export default function TodayUpdates() {
                                 <StatusBadge variant="info" size="sm">Target Only</StatusBadge>
                               )}
                             </TableCell>
+                            <TableCell className="text-right">{renderPct(finTabPct)}</TableCell>
                           </TableRow>
                         );
                       })}
                       {mergedFinishingData.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                             No finishing logs today
                           </TableCell>
                         </TableRow>
@@ -1511,6 +1546,7 @@ export default function TodayUpdates() {
                       <TableHead className="text-right">Manpower</TableHead>
                       <TableHead className="text-right">Day Input</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead className="text-right">vs Target</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1519,8 +1555,9 @@ export default function TodayUpdates() {
                       const target = row.target?.cutting_capacity || 0;
                       const manpower = row.target?.man_power || 0;
                       const dayInput = row.actual?.day_input || 0;
+                      const cutTabPct = (output > 0 && target > 0) ? (output / target) * 100 : null;
                       return (
-                        <TableRow 
+                        <TableRow
                           key={row.key}
                           className="cursor-pointer hover:bg-muted/50"
                           onClick={() => row.actual ? handleCuttingClick(row.actual) : row.target && handleCuttingTargetClick(row.target)}
@@ -1541,12 +1578,13 @@ export default function TodayUpdates() {
                               <StatusBadge variant="info" size="sm">Target Only</StatusBadge>
                             )}
                           </TableCell>
+                          <TableCell className="text-right">{renderPct(cutTabPct)}</TableCell>
                         </TableRow>
                       );
                     })}
                     {mergedCuttingData.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                           No cutting submissions today
                         </TableCell>
                       </TableRow>

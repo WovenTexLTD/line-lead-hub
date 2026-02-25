@@ -4,7 +4,6 @@ import type { POWorkflowTab } from "./types";
 
 const TABS: { value: POWorkflowTab; label: string; badgeVariant?: "destructive" | "success" | "secondary" }[] = [
   { value: "running", label: "Running" },
-  { value: "planned", label: "Planned" },
   { value: "not_started", label: "Not Started" },
   { value: "at_risk", label: "At Risk", badgeVariant: "destructive" },
   { value: "completed", label: "Completed", badgeVariant: "success" },

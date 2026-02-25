@@ -1,24 +1,67 @@
-import { useState } from "react";
-import { Radar, Search, Archive, Loader2 } from "lucide-react";
+import { useState, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Radar, Search, Archive, Loader2, SlidersHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { usePOControlRoom } from "@/components/po-control-room/usePOControlRoom";
 import { POControlRoomKPIs } from "@/components/po-control-room/POControlRoomKPIs";
-import { NeedsActionSection } from "@/components/po-control-room/NeedsActionSection";
 import { POWorkflowTabs } from "@/components/po-control-room/POWorkflowTabs";
 import { POClusterSection } from "@/components/po-control-room/POClusterSection";
 import { POTable } from "@/components/po-control-room/POTable";
+import { POFilterDrawer } from "@/components/po-control-room/POFilterDrawer";
+import { POFilterChips } from "@/components/po-control-room/POFilterChips";
 import { ExtrasLedgerModal } from "@/components/ExtrasLedgerModal";
 import { ExtrasOverviewModal } from "@/components/ExtrasOverviewModal";
+import {
+  EMPTY_FILTERS,
+  countActiveFilters,
+  filtersFromParams,
+  filtersToParams,
+  type POFilters,
+} from "@/components/po-control-room/po-filters";
 import type { POControlRoomData } from "@/components/po-control-room/types";
 
 export default function WorkOrdersView() {
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // ── Filter state (URL-persisted) ──────────────────────────────────────────
+  const [filters, setFilters] = useState<POFilters>(() =>
+    filtersFromParams(searchParams)
+  );
+  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
+
+  const handleFiltersChange = useCallback(
+    (next: POFilters) => {
+      setFilters(next);
+      setSearchParams(
+        (prev) => {
+          // Preserve non-filter params (e.g., tab)
+          const merged = new URLSearchParams(prev);
+          // Clear existing filter keys
+          ["buyer", "po", "style", "line", "unit", "floor", "health", "ex", "updated"].forEach(
+            (k) => merged.delete(k)
+          );
+          // Set new filter params
+          Object.entries(filtersToParams(next)).forEach(([k, v]) =>
+            merged.set(k, v)
+          );
+          return merged;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams]
+  );
+
+  const activeFilterCount = countActiveFilters(filters);
+
+  // ── Hook ─────────────────────────────────────────────────────────────────
   const {
     loading,
     filteredOrders,
     kpis,
     tabCounts,
-    needsActionCards,
     activeTab,
     setActiveTab,
     searchTerm,
@@ -28,8 +71,9 @@ export default function WorkOrdersView() {
     detailLoading,
     toggleExpand,
     clusteredRunning,
+    filterOptions,
     refetch,
-  } = usePOControlRoom();
+  } = usePOControlRoom(filters);
 
   // Extras ledger modal state
   const [ledgerPO, setLedgerPO] = useState<POControlRoomData | null>(null);
@@ -65,13 +109,7 @@ export default function WorkOrdersView() {
       {/* KPI Cards */}
       <POControlRoomKPIs kpis={kpis} />
 
-      {/* Needs Action Today */}
-      <NeedsActionSection
-        cards={needsActionCards}
-        onViewTab={setActiveTab as any}
-      />
-
-      {/* Extras Overview + Search */}
+      {/* Extras Overview + Search + Filters */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
         <Button
           variant="default"
@@ -92,7 +130,31 @@ export default function WorkOrdersView() {
             className="pl-9"
           />
         </div>
+
+        {/* Filters button */}
+        <Button
+          variant="outline"
+          size="default"
+          className="gap-2 shrink-0"
+          onClick={() => setFilterDrawerOpen(true)}
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+          Filters
+          {activeFilterCount > 0 && (
+            <Badge
+              variant="secondary"
+              className="ml-0.5 h-5 min-w-[20px] px-1.5 text-[11px] font-semibold"
+            >
+              {activeFilterCount}
+            </Badge>
+          )}
+        </Button>
       </div>
+
+      {/* Active filter chips */}
+      {activeFilterCount > 0 && (
+        <POFilterChips filters={filters} onChange={handleFiltersChange} />
+      )}
 
       {/* Workflow Tabs */}
       <POWorkflowTabs
@@ -106,7 +168,7 @@ export default function WorkOrdersView() {
         <div className="space-y-4">
           {clusteredRunning.size === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No running work orders
+              No running work orders{activeFilterCount > 0 ? " matching the current filters" : ""}
             </div>
           ) : (
             Array.from(clusteredRunning.entries()).map(([cluster, pos]) => (
@@ -135,6 +197,15 @@ export default function WorkOrdersView() {
           onViewExtras={handleViewLedger}
         />
       )}
+
+      {/* Filter drawer */}
+      <POFilterDrawer
+        open={filterDrawerOpen}
+        onOpenChange={setFilterDrawerOpen}
+        filters={filters}
+        onChange={handleFiltersChange}
+        options={filterOptions}
+      />
 
       {/* Extras Ledger Modal */}
       {ledgerPO && (

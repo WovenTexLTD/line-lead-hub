@@ -66,8 +66,8 @@ const STAGE_CONFIGS: Record<"sewing" | "finishing", StageConfig> = {
   sewing: {
     addTargetLink: "/sewing/morning-targets",
     addEodLink: "/sewing/end-of-day",
-    viewAllTargetsLink: "/submissions?department=sewing&category=targets",
-    viewAllEodLink: "/submissions?department=sewing&category=actuals",
+    viewAllTargetsLink: "/today?tab=sewing",
+    viewAllEodLink: "/today?tab=sewing",
     eodMetricLabel: "output",
     targetMetricLabel: "per hour",
     targetIconColor: "text-primary",
@@ -79,8 +79,8 @@ const STAGE_CONFIGS: Record<"sewing" | "finishing", StageConfig> = {
   finishing: {
     addTargetLink: "/finishing/daily-target",
     addEodLink: "/finishing/daily-output",
-    viewAllTargetsLink: "/submissions?department=finishing&category=targets",
-    viewAllEodLink: "/submissions?department=finishing&category=actuals",
+    viewAllTargetsLink: "/today?tab=finishing",
+    viewAllEodLink: "/today?tab=finishing",
     eodMetricLabel: "cartons",
     targetMetricLabel: "cartons",
     targetIconColor: "text-violet-600",
