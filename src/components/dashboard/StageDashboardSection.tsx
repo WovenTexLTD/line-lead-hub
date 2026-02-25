@@ -194,7 +194,7 @@ export function StageDashboardSection<
                         <p className="text-sm text-muted-foreground">
                           {isFinishing
                             ? `${[target.buyer, target.style].filter(Boolean).join(" • ") || "No details"} • `
-                            : `${target.po_number || "No PO"} • `}
+                            : `${[target.buyer, target.po_number].filter(Boolean).join(" • ") || "No PO"} • `}
                           {target.submitted_at
                             ? formatTime(target.submitted_at)
                             : "-"}
@@ -293,7 +293,7 @@ export function StageDashboardSection<
                         <p className="text-sm text-muted-foreground">
                           {isFinishing
                             ? `${[update.buyer, update.style].filter(Boolean).join(" • ") || "No details"} • `
-                            : `${update.po_number || "No PO"} • `}
+                            : `${[update.buyer, update.po_number].filter(Boolean).join(" • ") || "No PO"} • `}
                           {formatTime(update.submitted_at)}
                         </p>
                       </div>

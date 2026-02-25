@@ -532,6 +532,7 @@ export default function TodayUpdates() {
       line_name: string;
       work_order_id: string;
       po_number: string | null;
+      buyer: string | null;
       target: CuttingTargetFull | null;
       actual: CuttingActual | null;
       submitted_at: string | null;
@@ -546,6 +547,7 @@ export default function TodayUpdates() {
         line_name: target.lines?.name || target.lines?.line_id || 'Unknown',
         work_order_id: target.work_order_id,
         po_number: target.work_orders?.po_number || target.po_no || null,
+        buyer: target.work_orders?.buyer || target.buyer || null,
         target,
         actual: null,
         submitted_at: target.submitted_at,
@@ -558,6 +560,7 @@ export default function TodayUpdates() {
       const existing = map.get(key);
       if (existing) {
         existing.actual = actual;
+        if (!existing.buyer) existing.buyer = actual.work_orders?.buyer || null;
         // Use the later submission time
         if (actual.submitted_at && (!existing.submitted_at || actual.submitted_at > existing.submitted_at)) {
           existing.submitted_at = actual.submitted_at;
@@ -569,6 +572,7 @@ export default function TodayUpdates() {
           line_name: actual.lines?.name || actual.lines?.line_id || 'Unknown',
           work_order_id: actual.work_order_id,
           po_number: actual.work_orders?.po_number || null,
+          buyer: actual.work_orders?.buyer || null,
           target: null,
           actual,
           submitted_at: actual.submitted_at,
@@ -981,7 +985,10 @@ export default function TodayUpdates() {
                         >
                           <TableCell className="font-mono text-sm">{update.submitted_at ? formatTime(update.submitted_at) : '-'}</TableCell>
                           <TableCell className="font-medium">{update.lines?.name || update.lines?.line_id}</TableCell>
-                          <TableCell>{update.work_orders?.po_number || '-'}</TableCell>
+                          <TableCell>
+                            <div>{update.work_orders?.po_number || '-'}</div>
+                            {update.work_orders?.buyer && <div className="text-xs text-muted-foreground">{update.work_orders.buyer}</div>}
+                          </TableCell>
                           <TableCell className="text-right font-mono">{update.output_qty.toLocaleString()}</TableCell>
                           <TableCell className="text-right font-mono text-muted-foreground">{update.target_qty?.toLocaleString() || '-'}</TableCell>
                           <TableCell className="text-right">
@@ -1052,7 +1059,10 @@ export default function TodayUpdates() {
                           >
                             <TableCell className="font-mono text-sm">{item.submitted_at ? formatTime(item.submitted_at) : '-'}</TableCell>
                             <TableCell className="font-medium">{item.line_name}</TableCell>
-                            <TableCell>{item.po_number || '-'}</TableCell>
+                            <TableCell>
+                              <div>{item.po_number || '-'}</div>
+                              {item.buyer && <div className="text-xs text-muted-foreground">{item.buyer}</div>}
+                            </TableCell>
                             <TableCell className="text-right font-mono">{output?.toLocaleString() || '-'}</TableCell>
                             <TableCell className="text-right font-mono text-muted-foreground">{target?.toLocaleString() || '-'}</TableCell>
                             <TableCell className="text-right font-mono">{manpower || '-'}</TableCell>
@@ -1126,7 +1136,12 @@ export default function TodayUpdates() {
                             onClick={() => item.output && handleFinishingClick(item.output)}
                           >
                             <TableCell className="font-mono text-sm">{formatTime(item.submitted_at)}</TableCell>
-                            <TableCell>{item.po_number || '-'}</TableCell>
+                            <TableCell>
+                              <div>{item.po_number || '-'}</div>
+                              {(item.output?.work_orders?.buyer || item.target?.work_orders?.buyer) && (
+                                <div className="text-xs text-muted-foreground">{item.output?.work_orders?.buyer || item.target?.work_orders?.buyer}</div>
+                              )}
+                            </TableCell>
                             <TableCell className="text-right font-mono">{outputPoly.toLocaleString()}</TableCell>
                             <TableCell className="text-right font-mono text-muted-foreground">{targetPoly.toLocaleString()}</TableCell>
                             <TableCell className="text-right font-mono">{outputCarton.toLocaleString()}</TableCell>
@@ -1193,7 +1208,10 @@ export default function TodayUpdates() {
                           >
                             <TableCell className="font-mono text-sm">{item.submitted_at ? formatTime(item.submitted_at) : '-'}</TableCell>
                             <TableCell className="font-medium">{item.line_name}</TableCell>
-                            <TableCell>{item.po_number || '-'}</TableCell>
+                            <TableCell>
+                              <div>{item.po_number || '-'}</div>
+                              {item.buyer && <div className="text-xs text-muted-foreground">{item.buyer}</div>}
+                            </TableCell>
                             <TableCell className="text-right font-mono">{dayCutting?.toLocaleString() || '-'}</TableCell>
                             <TableCell className="text-right font-mono text-muted-foreground">{cuttingCapacity?.toLocaleString() || '-'}</TableCell>
                             <TableCell className="text-right font-mono">{manpower || '-'}</TableCell>
@@ -1348,7 +1366,10 @@ export default function TodayUpdates() {
                         >
                           <TableCell className="font-mono text-sm">{update.submitted_at ? formatTime(update.submitted_at) : '-'}</TableCell>
                           <TableCell className="font-medium">{update.lines?.name || update.lines?.line_id}</TableCell>
-                          <TableCell>{update.work_orders?.po_number || '-'}</TableCell>
+                          <TableCell>
+                            <div>{update.work_orders?.po_number || '-'}</div>
+                            {update.work_orders?.buyer && <div className="text-xs text-muted-foreground">{update.work_orders.buyer}</div>}
+                          </TableCell>
                           <TableCell className="text-right font-mono font-bold">{update.output_qty.toLocaleString()}</TableCell>
                           <TableCell className="text-right font-mono">{update.target_qty?.toLocaleString() || '-'}</TableCell>
                           <TableCell className="text-right">{update.manpower || '-'}</TableCell>
@@ -1417,7 +1438,10 @@ export default function TodayUpdates() {
                         >
                           <TableCell className="font-mono text-sm">{item.submitted_at ? formatTime(item.submitted_at) : '-'}</TableCell>
                           <TableCell className="font-medium">{item.line_name}</TableCell>
-                          <TableCell>{item.po_number || '-'}</TableCell>
+                          <TableCell>
+                            <div>{item.po_number || '-'}</div>
+                            {item.buyer && <div className="text-xs text-muted-foreground">{item.buyer}</div>}
+                          </TableCell>
                           <TableCell className="text-right font-mono font-bold">{output?.toLocaleString() || '-'}</TableCell>
                           <TableCell className="text-right font-mono">{target?.toLocaleString() || '-'}</TableCell>
                           <TableCell className="text-right font-mono">{reject?.toLocaleString() || '-'}</TableCell>
@@ -1493,7 +1517,12 @@ export default function TodayUpdates() {
                             onClick={() => row.output ? handleFinishingClick(row.output) : row.target && handleFinishingClick(row.target)}
                           >
                             <TableCell className="font-mono text-sm">{formatTime(row.submitted_at)}</TableCell>
-                            <TableCell>{row.po_number || '-'}</TableCell>
+                            <TableCell>
+                              <div>{row.po_number || '-'}</div>
+                              {(row.output?.work_orders?.buyer || row.target?.work_orders?.buyer) && (
+                                <div className="text-xs text-muted-foreground">{row.output?.work_orders?.buyer || row.target?.work_orders?.buyer}</div>
+                              )}
+                            </TableCell>
                             <TableCell className="text-right font-mono font-bold">{outputPoly.toLocaleString()}</TableCell>
                             <TableCell className="text-right font-mono">{targetPoly > 0 ? targetPoly.toLocaleString() : '-'}</TableCell>
                             <TableCell className="text-right font-mono font-bold">{outputCarton.toLocaleString()}</TableCell>
@@ -1564,7 +1593,10 @@ export default function TodayUpdates() {
                         >
                           <TableCell className="font-mono text-sm">{row.submitted_at ? formatTime(row.submitted_at) : '-'}</TableCell>
                           <TableCell className="font-medium">{row.line_name}</TableCell>
-                          <TableCell>{row.po_number || '-'}</TableCell>
+                          <TableCell>
+                            <div>{row.po_number || '-'}</div>
+                            {row.buyer && <div className="text-xs text-muted-foreground">{row.buyer}</div>}
+                          </TableCell>
                           <TableCell className="text-right font-mono font-bold">{output.toLocaleString()}</TableCell>
                           <TableCell className="text-right font-mono">{target > 0 ? target.toLocaleString() : '-'}</TableCell>
                           <TableCell className="text-right">{manpower || '-'}</TableCell>

@@ -40,27 +40,23 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        // Base layout
-        "fixed left-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] gap-4 border bg-background shadow-xl duration-200 overflow-y-auto",
-        // Mobile: bottom sheet — anchors below the browser URL bar so the X button is always reachable
-        "bottom-0 translate-y-0 rounded-t-2xl rounded-b-none p-4 max-h-[90svh]",
-        // Desktop (sm+): centered dialog
-        "sm:bottom-auto sm:top-[50%] sm:translate-y-[-50%] sm:w-[calc(100%-2rem)] sm:rounded-xl sm:p-6 sm:max-h-[90vh]",
-        // Animations: slide from bottom on mobile, zoom+slide from center on desktop
+        "fixed left-[50%] z-50 w-full max-w-lg translate-x-[-50%] border bg-background shadow-xl duration-200 rounded-xl overflow-y-auto p-6",
+        // Mobile: positioned lower so X button clears the browser URL bar
+        "top-[10%] max-h-[85dvh]",
+        // Desktop: centered
+        "sm:top-[50%] sm:translate-y-[-50%] sm:max-h-[90vh]",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-        "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
-        "sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:zoom-in-95",
-        "sm:data-[state=closed]:slide-out-to-bottom-0 sm:data-[state=open]:slide-in-from-bottom-0",
-        "sm:data-[state=closed]:slide-out-to-left-1/2 sm:data-[state=closed]:slide-out-to-top-[48%]",
-        "sm:data-[state=open]:slide-in-from-left-1/2 sm:data-[state=open]:slide-in-from-top-[48%]",
+        "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+        "data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%]",
+        "data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
         className,
       )}
       {...props}
     >
       {children}
       {!hideCloseButton && (
-        <DialogPrimitive.Close className="absolute right-3 top-3 sm:right-4 sm:top-4 rounded-md p-1 opacity-70 ring-offset-background transition-all duration-200 hover:bg-muted hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
+        <DialogPrimitive.Close className="absolute right-4 top-4 rounded-md p-1 opacity-70 ring-offset-background transition-all duration-200 hover:bg-muted hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
           <X className="h-4 w-4" />
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>

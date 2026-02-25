@@ -8,19 +8,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { formatShortDate, formatTimeInTimezone, formatDateTimeInTimezone } from "@/lib/date-utils";
+import { formatShortDate, formatTimeInTimezone } from "@/lib/date-utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { SewingSubmissionView } from "@/components/SewingSubmissionView";
 import { FinishingSubmissionView } from "@/components/FinishingSubmissionView";
+import { CuttingSubmissionView } from "@/components/CuttingSubmissionView";
 import type { SewingTargetData, SewingActualData } from "@/components/SewingSubmissionView";
 import type { FinishingTargetData, FinishingActualData } from "@/components/FinishingSubmissionView";
-import { Scissors } from "lucide-react";
+import type { CuttingActualData } from "@/components/CuttingSubmissionView";
 import type { POSubmissionRow, SubmissionType } from "./types";
 
 // ── Badge config per type ────────────────────────────────
@@ -51,7 +46,7 @@ export function POSubmissionsTab({ submissions }: Props) {
   const [finActual, setFinActual] = useState<FinishingActualData | null>(null);
 
   const [cuttingOpen, setCuttingOpen] = useState(false);
-  const [cuttingRow, setCuttingRow] = useState<Record<string, unknown> | null>(null);
+  const [cuttingActual, setCuttingActual] = useState<CuttingActualData | null>(null);
 
   if (submissions.length === 0) {
     return (
@@ -141,6 +136,42 @@ export function POSubmissionsTab({ submissions }: Props) {
     };
   }
 
+  function buildCuttingActual(raw: Record<string, unknown>): CuttingActualData {
+    const r = raw as any;
+    return {
+      id: r.id,
+      production_date: r.production_date,
+      line_name: r.lines?.name || r.lines?.line_id || "—",
+      buyer: r.work_orders?.buyer ?? null,
+      style: r.work_orders?.style ?? r.style ?? null,
+      po_number: r.work_orders?.po_number ?? r.po_no ?? null,
+      colour: r.colour ?? null,
+      order_qty: r.work_orders?.order_qty ?? r.order_qty ?? null,
+      submitted_at: r.submitted_at ?? null,
+      man_power: r.man_power ?? null,
+      marker_capacity: r.marker_capacity ?? null,
+      lay_capacity: r.lay_capacity ?? null,
+      cutting_capacity: r.cutting_capacity ?? null,
+      under_qty: r.under_qty ?? null,
+      day_cutting: r.day_cutting ?? 0,
+      day_input: r.day_input ?? 0,
+      total_cutting: r.total_cutting ?? null,
+      total_input: r.total_input ?? null,
+      balance: r.balance ?? null,
+      hours_actual: r.hours_actual ?? null,
+      actual_per_hour: r.actual_per_hour ?? null,
+      ot_hours_actual: r.ot_hours_actual ?? null,
+      ot_manpower_actual: r.ot_manpower_actual ?? null,
+      leftover_recorded: r.leftover_recorded ?? null,
+      leftover_type: r.leftover_type ?? null,
+      leftover_unit: r.leftover_unit ?? null,
+      leftover_quantity: r.leftover_quantity ?? null,
+      leftover_notes: r.leftover_notes ?? null,
+      leftover_location: r.leftover_location ?? null,
+      leftover_photo_urls: r.leftover_photo_urls ?? null,
+    };
+  }
+
   function buildFinishingActual(raw: Record<string, unknown>): FinishingActualData {
     const r = raw as any;
     return {
@@ -190,7 +221,7 @@ export function POSubmissionsTab({ submissions }: Props) {
       setFinActual(pairedActual ? buildFinishingActual(pairedActual.raw) : null);
       setFinishingOpen(true);
     } else if (row.type === "cutting_actual") {
-      setCuttingRow(row.raw);
+      setCuttingActual(buildCuttingActual(row.raw));
       setCuttingOpen(true);
     }
   }
@@ -313,70 +344,12 @@ export function POSubmissionsTab({ submissions }: Props) {
       />
 
       {/* Cutting detail modal */}
-      <CuttingDetailDialog
+      <CuttingSubmissionView
         open={cuttingOpen}
         onOpenChange={setCuttingOpen}
-        data={cuttingRow}
-        timezone={tz}
+        actual={cuttingActual}
       />
     </>
   );
 }
 
-// ── Cutting Detail Dialog (no existing modal for cutting) ─
-function CuttingDetailDialog({
-  open,
-  onOpenChange,
-  data,
-  timezone,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  data: Record<string, unknown> | null;
-  timezone: string;
-}) {
-  if (!data) return null;
-  const r = data as any;
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Scissors className="h-5 w-5" />
-            Cutting Submission
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3 text-sm">
-          <div className="grid grid-cols-2 gap-3">
-            <Stat label="Date" value={formatShortDate(r.production_date)} />
-            <Stat label="Line" value={r.lines?.name || r.lines?.line_id || "—"} />
-            <Stat label="PO" value={r.po_no || "—"} />
-            <Stat label="Style" value={r.style || "—"} />
-            <Stat label="Total Cutting" value={(r.total_cutting || 0).toLocaleString()} bold />
-            <Stat label="Total Input" value={(r.total_input || 0).toLocaleString()} bold />
-            <Stat label="Day Cutting" value={(r.day_cutting || 0).toLocaleString()} />
-            <Stat label="Day Input" value={(r.day_input || 0).toLocaleString()} />
-            <Stat label="Balance" value={(r.balance || 0).toLocaleString()} />
-            <Stat label="Manpower" value={r.man_power ?? "—"} />
-            <Stat label="Hours" value={r.hours_actual ?? "—"} />
-            <Stat label="Order Qty" value={(r.order_qty || 0).toLocaleString()} />
-          </div>
-          {r.submitted_at && (
-            <p className="text-xs text-muted-foreground">
-              Submitted: {formatDateTimeInTimezone(r.submitted_at, timezone)}
-            </p>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function Stat({ label, value, bold }: { label: string; value: string | number; bold?: boolean }) {
-  return (
-    <div>
-      <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{label}</p>
-      <p className={bold ? "font-semibold font-mono" : "font-mono"}>{value}</p>
-    </div>
-  );
-}
