@@ -1,9 +1,9 @@
 -- Drop existing function first (required when changing return type)
-DROP FUNCTION IF EXISTS public.search_knowledge(vector, double precision, integer, uuid, text);
+DROP FUNCTION IF EXISTS public.search_knowledge(extensions.vector, double precision, integer, uuid, text);
 
 -- Recreate with updated return type including document_type, page_number, source_url
 CREATE OR REPLACE FUNCTION public.search_knowledge(
-  query_embedding vector(1536),
+  query_embedding extensions.vector(1536),
   match_threshold float DEFAULT 0.5,
   match_count int DEFAULT 5,
   p_factory_id uuid DEFAULT NULL,

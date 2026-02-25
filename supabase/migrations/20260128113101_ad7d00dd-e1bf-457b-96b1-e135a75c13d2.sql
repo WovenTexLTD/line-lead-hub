@@ -1,5 +1,5 @@
--- Enable vector extension for embeddings
-CREATE EXTENSION IF NOT EXISTS vector;
+-- Enable vector extension for embeddings (already enabled in extensions schema)
+-- CREATE EXTENSION IF NOT EXISTS vector;
 
 -- Create knowledge_documents table
 CREATE TABLE public.knowledge_documents (
@@ -25,7 +25,7 @@ CREATE TABLE public.knowledge_chunks (
   section_heading TEXT,
   page_number INTEGER,
   chunk_index INTEGER NOT NULL,
-  embedding vector(1536),
+  embedding extensions.vector(1536),
   tokens_count INTEGER,
   created_at TIMESTAMPTZ DEFAULT now()
 );
@@ -123,7 +123,7 @@ INSERT INTO public.role_feature_access (role, feature) VALUES
 
 -- Create indexes for performance
 CREATE INDEX idx_knowledge_chunks_document ON public.knowledge_chunks(document_id);
-CREATE INDEX idx_knowledge_chunks_embedding ON public.knowledge_chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+CREATE INDEX idx_knowledge_chunks_embedding ON public.knowledge_chunks USING ivfflat (embedding extensions.vector_cosine_ops) WITH (lists = 100);
 CREATE INDEX idx_chat_messages_conversation ON public.chat_messages(conversation_id);
 CREATE INDEX idx_chat_conversations_user ON public.chat_conversations(user_id);
 CREATE INDEX idx_chat_analytics_factory ON public.chat_analytics(factory_id);
@@ -226,7 +226,7 @@ CREATE POLICY "Anyone can view role features" ON public.role_feature_access
 
 -- Create function to search knowledge base
 CREATE OR REPLACE FUNCTION public.search_knowledge(
-  query_embedding vector(1536),
+  query_embedding extensions.vector(1536),
   match_threshold float DEFAULT 0.5,
   match_count int DEFAULT 5,
   p_factory_id uuid DEFAULT NULL,

@@ -1,16 +1,13 @@
--- Add monthly option to schedule_type enum if it doesn't exist
-DO $$
-BEGIN
-  -- Check if the enum value exists
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_enum
-    WHERE enumlabel = 'monthly'
-    AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'schedule_type')
-  ) THEN
-    -- Add monthly to the enum
-    ALTER TYPE schedule_type ADD VALUE 'monthly';
-  END IF;
-END$$;
+-- Add monthly option to schedule_type by updating the CHECK constraint
+-- First, drop the old constraint and add the new one that includes 'monthly'
+
+-- Drop the existing check constraint on schedule_type
+ALTER TABLE email_schedules DROP CONSTRAINT IF EXISTS email_schedules_schedule_type_check;
+
+-- Add new check constraint that includes 'monthly'
+ALTER TABLE email_schedules
+ADD CONSTRAINT email_schedules_schedule_type_check
+CHECK (schedule_type IN ('daily', 'weekly', 'monthly'));
 
 -- Add day_of_month column to email_schedules table
 ALTER TABLE email_schedules
@@ -20,6 +17,13 @@ ADD COLUMN IF NOT EXISTS day_of_month integer;
 COMMENT ON COLUMN email_schedules.day_of_month IS 'Day of month (1-28) for monthly schedules. Used only when schedule_type is monthly.';
 
 -- Add check constraint to ensure day_of_month is between 1 and 28 if provided
-ALTER TABLE email_schedules
-ADD CONSTRAINT IF NOT EXISTS check_day_of_month_range
-CHECK (day_of_month IS NULL OR (day_of_month >= 1 AND day_of_month <= 28));
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'check_day_of_month_range'
+  ) THEN
+    ALTER TABLE email_schedules
+    ADD CONSTRAINT check_day_of_month_range
+    CHECK (day_of_month IS NULL OR (day_of_month >= 1 AND day_of_month <= 28));
+  END IF;
+END$$;

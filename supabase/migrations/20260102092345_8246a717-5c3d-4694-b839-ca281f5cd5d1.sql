@@ -26,7 +26,7 @@ CREATE TYPE public.subscription_tier AS ENUM ('starter', 'professional', 'enterp
 
 -- Factory Accounts (Tenants)
 CREATE TABLE public.factory_accounts (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     slug TEXT UNIQUE NOT NULL,
     subscription_tier subscription_tier DEFAULT 'starter',
@@ -56,7 +56,7 @@ CREATE TABLE public.profiles (
 
 -- User Roles (separate table for security)
 CREATE TABLE public.user_roles (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
     role app_role NOT NULL,
     factory_id UUID REFERENCES public.factory_accounts(id) ON DELETE CASCADE,
@@ -70,7 +70,7 @@ CREATE TABLE public.user_roles (
 
 -- Units (Buildings/Sections)
 CREATE TABLE public.units (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     factory_id UUID REFERENCES public.factory_accounts(id) ON DELETE CASCADE NOT NULL,
     name TEXT NOT NULL,
     code TEXT NOT NULL,
@@ -82,7 +82,7 @@ CREATE TABLE public.units (
 
 -- Floors
 CREATE TABLE public.floors (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     factory_id UUID REFERENCES public.factory_accounts(id) ON DELETE CASCADE NOT NULL,
     unit_id UUID REFERENCES public.units(id) ON DELETE CASCADE NOT NULL,
     name TEXT NOT NULL,
@@ -95,7 +95,7 @@ CREATE TABLE public.floors (
 
 -- Production Lines
 CREATE TABLE public.lines (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     factory_id UUID REFERENCES public.factory_accounts(id) ON DELETE CASCADE NOT NULL,
     unit_id UUID REFERENCES public.units(id) ON DELETE SET NULL,
     floor_id UUID REFERENCES public.floors(id) ON DELETE SET NULL,
@@ -114,7 +114,7 @@ CREATE TABLE public.lines (
 -- ================================
 
 CREATE TABLE public.work_orders (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     factory_id UUID REFERENCES public.factory_accounts(id) ON DELETE CASCADE NOT NULL,
     po_number TEXT NOT NULL,
     buyer TEXT NOT NULL,
@@ -140,7 +140,7 @@ CREATE TABLE public.work_orders (
 
 -- Production Stages
 CREATE TABLE public.stages (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     factory_id UUID REFERENCES public.factory_accounts(id) ON DELETE CASCADE NOT NULL,
     name TEXT NOT NULL,
     code TEXT NOT NULL,
@@ -152,7 +152,7 @@ CREATE TABLE public.stages (
 
 -- Blocker Types
 CREATE TABLE public.blocker_types (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     factory_id UUID REFERENCES public.factory_accounts(id) ON DELETE CASCADE NOT NULL,
     name TEXT NOT NULL,
     code TEXT NOT NULL,
@@ -169,7 +169,7 @@ CREATE TABLE public.blocker_types (
 
 -- Sewing Line Updates
 CREATE TABLE public.production_updates_sewing (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     factory_id UUID REFERENCES public.factory_accounts(id) ON DELETE CASCADE NOT NULL,
     line_id UUID REFERENCES public.lines(id) ON DELETE SET NULL NOT NULL,
     work_order_id UUID REFERENCES public.work_orders(id) ON DELETE SET NULL,
@@ -209,7 +209,7 @@ CREATE TABLE public.production_updates_sewing (
 
 -- Finishing/QC/Packing Updates
 CREATE TABLE public.production_updates_finishing (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     factory_id UUID REFERENCES public.factory_accounts(id) ON DELETE CASCADE NOT NULL,
     line_id UUID REFERENCES public.lines(id) ON DELETE SET NULL NOT NULL,
     work_order_id UUID REFERENCES public.work_orders(id) ON DELETE SET NULL,
@@ -253,7 +253,7 @@ CREATE TABLE public.production_updates_finishing (
 
 -- Daily Insights (stored snapshots)
 CREATE TABLE public.daily_insights (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     factory_id UUID REFERENCES public.factory_accounts(id) ON DELETE CASCADE NOT NULL,
     insight_date DATE NOT NULL DEFAULT CURRENT_DATE,
     insights_data JSONB NOT NULL DEFAULT '{}',
@@ -263,7 +263,7 @@ CREATE TABLE public.daily_insights (
 
 -- Notifications
 CREATE TABLE public.notifications (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     factory_id UUID REFERENCES public.factory_accounts(id) ON DELETE CASCADE NOT NULL,
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     type TEXT NOT NULL,
@@ -276,7 +276,7 @@ CREATE TABLE public.notifications (
 
 -- Audit Log
 CREATE TABLE public.audit_log (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     factory_id UUID REFERENCES public.factory_accounts(id) ON DELETE CASCADE,
     user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     action TEXT NOT NULL,

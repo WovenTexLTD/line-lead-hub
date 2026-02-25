@@ -1,7 +1,7 @@
 
 -- Create stage_progress_options table
 CREATE TABLE public.stage_progress_options (
-  id uuid NOT NULL DEFAULT extensions.uuid_generate_v4() PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   factory_id uuid NOT NULL,
   label text NOT NULL,
   sort_order integer DEFAULT 0,
@@ -11,7 +11,7 @@ CREATE TABLE public.stage_progress_options (
 
 -- Create next_milestone_options table
 CREATE TABLE public.next_milestone_options (
-  id uuid NOT NULL DEFAULT extensions.uuid_generate_v4() PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   factory_id uuid NOT NULL,
   label text NOT NULL,
   sort_order integer DEFAULT 0,
@@ -21,7 +21,7 @@ CREATE TABLE public.next_milestone_options (
 
 -- Create blocker_owner_options table
 CREATE TABLE public.blocker_owner_options (
-  id uuid NOT NULL DEFAULT extensions.uuid_generate_v4() PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   factory_id uuid NOT NULL,
   label text NOT NULL,
   sort_order integer DEFAULT 0,
@@ -31,7 +31,7 @@ CREATE TABLE public.blocker_owner_options (
 
 -- Create blocker_impact_options table (per-factory customizable)
 CREATE TABLE public.blocker_impact_options (
-  id uuid NOT NULL DEFAULT extensions.uuid_generate_v4() PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   factory_id uuid NOT NULL,
   label text NOT NULL,
   sort_order integer DEFAULT 0,

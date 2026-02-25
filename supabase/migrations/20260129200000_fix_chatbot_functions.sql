@@ -1,6 +1,9 @@
 -- Fix search_knowledge to return document_type and source_url (needed by chat citations)
+-- Drop existing function first since return type is changing
+DROP FUNCTION IF EXISTS public.search_knowledge(extensions.vector, float, int, uuid, text);
+
 CREATE OR REPLACE FUNCTION public.search_knowledge(
-  query_embedding vector(1536),
+  query_embedding extensions.vector(1536),
   match_threshold float DEFAULT 0.5,
   match_count int DEFAULT 5,
   p_factory_id uuid DEFAULT NULL,
