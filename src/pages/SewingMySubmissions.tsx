@@ -22,7 +22,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { format, isToday, parseISO, startOfWeek, endOfWeek, isWithinInterval } from "date-fns";
+import { format, parseISO, startOfWeek, endOfWeek, isWithinInterval } from "date-fns";
+import { isTodayInTimezone } from "@/lib/date-utils";
 import { FileText, Target, TrendingUp, Search, Users, Crosshair, ClipboardCheck, Pencil, Clock } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TargetDetailModal } from "@/components/TargetDetailModal";
@@ -86,7 +87,7 @@ interface SewingActual {
 
 export default function SewingMySubmissions() {
   const navigate = useNavigate();
-  const { profile, user } = useAuth();
+  const { profile, user, factory } = useAuth();
   const { canEditSubmission, getTimeUntilCutoff } = useEditPermission();
   const [loading, setLoading] = useState(true);
   const [targets, setTargets] = useState<SewingTarget[]>([]);
@@ -204,7 +205,7 @@ export default function SewingMySubmissions() {
 
     // Date filter
     if (dateFilter === "today") {
-      result = result.filter((item) => isToday(parseISO(item.production_date)));
+      result = result.filter((item) => isTodayInTimezone(item.production_date, factory?.timezone || "Asia/Dhaka"));
     } else if (dateFilter === "week") {
       const now = new Date();
       const weekStart = startOfWeek(now, { weekStartsOn: 1 });
@@ -399,7 +400,7 @@ export default function SewingMySubmissions() {
                   <TableBody>
                     {filteredTargets.map((target) => {
                       const date = parseISO(target.production_date);
-                      const isTodayItem = isToday(date);
+                      const isTodayItem = isTodayInTimezone(target.production_date, factory?.timezone || "Asia/Dhaka");
                       const editCheck = canEditSubmission(target.production_date);
 
                       return (
@@ -517,7 +518,7 @@ export default function SewingMySubmissions() {
                   <TableBody>
                     {filteredActuals.map((actual) => {
                       const date = parseISO(actual.production_date);
-                      const isTodayItem = isToday(date);
+                      const isTodayItem = isTodayInTimezone(actual.production_date, factory?.timezone || "Asia/Dhaka");
                       const editCheck = canEditSubmission(actual.production_date);
 
                       return (

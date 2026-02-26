@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { format, subDays, isToday, parseISO } from "date-fns";
+import { format, subDays, parseISO } from "date-fns";
+import { getTodayInTimezone, isTodayInTimezone } from "@/lib/date-utils";
 import { toast } from "sonner";
 import { Loader2, Download, RefreshCw, Scissors, Target, ClipboardCheck, Package, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -90,7 +91,7 @@ interface Line {
 }
 
 export default function CuttingAllSubmissions() {
-  const { profile } = useAuth();
+  const { profile, factory } = useAuth();
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [targets, setTargets] = useState<CuttingTarget[]>([]);
@@ -245,7 +246,7 @@ export default function CuttingAllSubmissions() {
   }
 
   const stats = useMemo(() => {
-    const today = format(new Date(), "yyyy-MM-dd");
+    const today = getTodayInTimezone(factory?.timezone || "Asia/Dhaka");
     const todayTargets = targets.filter(s => s.production_date === today);
     const todayActuals = actuals.filter(s => s.production_date === today);
     return {
@@ -454,7 +455,7 @@ export default function CuttingAllSubmissions() {
                         <Target className="h-3 w-3 mr-1" />
                         {t('cutting.target')}
                       </Badge>
-                      {isToday(parseISO(target.production_date)) && (
+                      {isTodayInTimezone(target.production_date, factory?.timezone || "Asia/Dhaka") && (
                         <Badge variant="secondary" className="text-xs">Today</Badge>
                       )}
                     </div>
@@ -510,7 +511,7 @@ export default function CuttingAllSubmissions() {
                           <ClipboardCheck className="h-3 w-3 mr-1" />
                           {t('cutting.actual')}
                         </Badge>
-                        {isToday(parseISO(actual.production_date)) && (
+                        {isTodayInTimezone(actual.production_date, factory?.timezone || "Asia/Dhaka") && (
                           <Badge variant="secondary" className="text-xs">Today</Badge>
                         )}
                       </div>

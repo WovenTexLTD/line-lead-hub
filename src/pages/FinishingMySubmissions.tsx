@@ -23,7 +23,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { format, isToday, parseISO, startOfWeek, endOfWeek, isWithinInterval } from "date-fns";
+import { format, parseISO, startOfWeek, endOfWeek, isWithinInterval } from "date-fns";
+import { isTodayInTimezone } from "@/lib/date-utils";
 import { FileText, Clock, Target, TrendingUp, Search, Package, Edit2, Eye } from "lucide-react";
 import { FinishingSubmissionView, FinishingTargetData, FinishingActualData } from "@/components/FinishingSubmissionView";
 import { useEditPermission } from "@/hooks/useEditPermission";
@@ -65,7 +66,7 @@ interface FinishingDailyLog {
 
 export default function FinishingMySubmissions() {
   const navigate = useNavigate();
-  const { profile, user } = useAuth();
+  const { profile, user, factory } = useAuth();
   const { getTimeUntilCutoff } = useEditPermission();
   const [loading, setLoading] = useState(true);
   const [logs, setLogs] = useState<FinishingDailyLog[]>([]);
@@ -122,9 +123,9 @@ export default function FinishingMySubmissions() {
       return isWithinInterval(date, { start: weekStart, end: weekEnd });
     });
 
-    // Total output = Carton only (standard rule: OUTPUT = Carton)
+    // Total output = Poly (primary finishing metric)
     const totalPcs = logsThisWeek.reduce((sum, log) => {
-      return sum + log.carton;
+      return sum + log.poly;
     }, 0);
 
     const avgPerDay = logsThisWeek.length > 0 
@@ -144,7 +145,7 @@ export default function FinishingMySubmissions() {
     let result = currentLogs;
 
     if (dateFilter === "today") {
-      result = result.filter((item) => isToday(parseISO(item.production_date)));
+      result = result.filter((item) => isTodayInTimezone(item.production_date, factory?.timezone || "Asia/Dhaka"));
     } else if (dateFilter === "week") {
       const now = new Date();
       const weekStart = startOfWeek(now, { weekStartsOn: 1 });
@@ -191,7 +192,7 @@ export default function FinishingMySubmissions() {
   };
 
   const calculateLogTotal = (log: FinishingDailyLog) => {
-    return (log.carton || 0);
+    return (log.poly || 0);
   };
 
   if (loading) {
@@ -348,7 +349,7 @@ export default function FinishingMySubmissions() {
                     <TableBody>
                       {filteredLogs.map((log) => {
                         const date = parseISO(log.production_date);
-                        const isTodaySubmission = isToday(date);
+                        const isTodaySubmission = isTodayInTimezone(log.production_date, factory?.timezone || "Asia/Dhaka");
                         const total = calculateLogTotal(log);
 
                         return (

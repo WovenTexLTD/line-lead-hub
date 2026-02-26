@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { parseISO, isToday, format } from "date-fns";
-import { getCurrentTimeInTimezone, formatCutoffTime } from "@/lib/date-utils";
+import { getCurrentTimeInTimezone, formatCutoffTime, isTodayInTimezone } from "@/lib/date-utils";
 
 /**
  * Hook to determine if a submission can be edited based on:
@@ -19,9 +18,9 @@ export function useEditPermission() {
         return { canEdit: false, reason: "Not logged in" };
       }
 
-      // Check if production date is today
-      const prodDate = parseISO(productionDate);
-      if (!isToday(prodDate)) {
+      // Check if production date is today (in factory timezone)
+      const timezone = factory?.timezone || "Asia/Dhaka";
+      if (!isTodayInTimezone(productionDate, timezone)) {
         return { canEdit: false, reason: "Can only edit today's submissions" };
       }
 
