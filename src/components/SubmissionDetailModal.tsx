@@ -63,6 +63,7 @@ interface FinishingSubmission {
   total_hour: number | null;
   day_carton: number | null;
   total_carton: number | null;
+  ot_manpower_actual: number | null;
   remarks: string | null;
   has_blocker: boolean;
   blocker_description: string | null;
@@ -247,6 +248,7 @@ export function SubmissionDetailModal({ submission, open, onOpenChange, onDelete
                     <MetricCard label={t('modals.totalHour')} value={(submission as FinishingSubmission).total_hour} />
                     <MetricCard label={t('modals.dayCarton')} value={(submission as FinishingSubmission).day_carton} />
                     <MetricCard label={t('modals.totalCarton')} value={(submission as FinishingSubmission).total_carton} />
+                    <MetricCard label={t('modals.otManpowerActual')} value={(submission as FinishingSubmission).ot_manpower_actual} />
                     <MetricCard label={t('modals.orderQty')} value={(submission as FinishingSubmission).order_quantity} />
                   </>
                 )}
