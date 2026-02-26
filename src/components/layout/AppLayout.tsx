@@ -13,6 +13,7 @@ import { DMGWarningModal } from "@/components/DMGWarningModal";
 import { ChatWidget } from "@/components/chat";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { OnboardingProvider } from "@/contexts/OnboardingContext";
+import { TourProvider } from "@/contexts/TourContext";
 
 const APP_THEME_COLOR = '#f1f3f5';
 const DEFAULT_THEME_COLOR = '#0f172a';
@@ -83,6 +84,7 @@ export function AppLayout() {
         />
 
         <div className="flex flex-1 min-w-0 overflow-x-hidden">
+          <TourProvider>
           <AppSidebar />
           <OnboardingProvider>
           <div className="flex flex-1 min-w-0 flex-col overflow-x-hidden">
@@ -123,6 +125,7 @@ export function AppLayout() {
             </main>
           </div>
           </OnboardingProvider>
+          </TourProvider>
         </div>
 
         {/* Safe-area background filler (bottom) */}

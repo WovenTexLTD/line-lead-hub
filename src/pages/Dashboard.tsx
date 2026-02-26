@@ -870,7 +870,7 @@ export default function Dashboard() {
       )}
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4" data-tour="dashboard-kpis">
         <KPICard
           title={t('dashboard.updatesToday')}
           value={stats.updatesToday}

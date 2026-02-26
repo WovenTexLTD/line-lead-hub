@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { StatusBadge } from "@/components/ui/status-badge";
 import {
   Table,
@@ -17,15 +17,96 @@ import type { SewingTargetData, SewingActualData } from "@/components/SewingSubm
 import type { FinishingTargetData, FinishingActualData } from "@/components/FinishingSubmissionView";
 import type { CuttingActualData } from "@/components/CuttingSubmissionView";
 import type { POSubmissionRow, SubmissionType } from "./types";
+import { resolveStageLabel } from "@/lib/resolve-stage-label";
 
-// ── Badge config per type ────────────────────────────────
-const TYPE_BADGE: Record<SubmissionType, { label: string; variant: "info" | "success" | "warning" | "sewing" | "finishing" }> = {
-  sewing_target: { label: "Sewing Target", variant: "info" },
-  sewing_actual: { label: "Sewing EOD", variant: "success" },
-  cutting_actual: { label: "Cutting", variant: "warning" },
-  finishing_target: { label: "Finishing Target", variant: "info" },
-  finishing_actual: { label: "Finishing EOD", variant: "finishing" },
+// ── Types for merged rows ─────────────────────────────────
+type StageName = "sewing" | "cutting" | "finishing";
+
+interface MergedRow {
+  key: string;
+  stage: StageName;
+  label: string;
+  variant: "info" | "success" | "warning" | "sewing" | "finishing";
+  date: string;
+  lineName: string;
+  submittedAt: string | null;
+  targetRow: POSubmissionRow | null;
+  actualRow: POSubmissionRow | null;
+}
+
+// ── Stage badge variant when both target + actual exist ───
+const STAGE_VARIANT: Record<StageName, MergedRow["variant"]> = {
+  sewing: "sewing",
+  cutting: "warning",
+  finishing: "finishing",
 };
+
+function getStage(type: SubmissionType): StageName {
+  if (type.startsWith("sewing")) return "sewing";
+  if (type.startsWith("cutting")) return "cutting";
+  return "finishing";
+}
+
+function mergeSubmissions(submissions: POSubmissionRow[]): MergedRow[] {
+  const groups = new Map<string, { target: POSubmissionRow | null; actual: POSubmissionRow | null; stage: StageName }>();
+
+  for (const row of submissions) {
+    const stage = getStage(row.type);
+    const key = `${stage}-${row.date}-${row.lineName}`;
+
+    if (!groups.has(key)) {
+      groups.set(key, { target: null, actual: null, stage });
+    }
+    const group = groups.get(key)!;
+
+    if (row.type.endsWith("_target")) {
+      group.target = row;
+    } else {
+      group.actual = row;
+    }
+  }
+
+  const result: MergedRow[] = [];
+
+  for (const [key, group] of groups) {
+    const hasTarget = !!group.target;
+    const hasActual = !!group.actual;
+    const stageName = group.stage.charAt(0).toUpperCase() + group.stage.slice(1);
+    const label = resolveStageLabel(stageName, hasTarget, hasActual);
+
+    // Badge variant: combined uses stage color, target-only uses "info", actual-only keeps existing
+    let variant: MergedRow["variant"];
+    if (hasTarget && hasActual) {
+      variant = STAGE_VARIANT[group.stage];
+    } else if (hasTarget) {
+      variant = "info";
+    } else {
+      variant = STAGE_VARIANT[group.stage];
+    }
+
+    // Latest submittedAt for the time column
+    const times = [group.target?.submittedAt, group.actual?.submittedAt].filter(Boolean) as string[];
+    const submittedAt = times.sort().pop() ?? null;
+
+    const primaryRow = group.actual || group.target!;
+
+    result.push({
+      key,
+      stage: group.stage,
+      label,
+      variant,
+      date: primaryRow.date,
+      lineName: primaryRow.lineName,
+      submittedAt,
+      targetRow: group.target,
+      actualRow: group.actual,
+    });
+  }
+
+  // Sort by date descending
+  result.sort((a, b) => b.date.localeCompare(a.date));
+  return result;
+}
 
 interface Props {
   submissions: POSubmissionRow[];
@@ -196,38 +277,27 @@ export function POSubmissionsTab({ submissions }: Props) {
     };
   }
 
-  // ── Click handler ─────────────────────────────────────
-  function handleClick(row: POSubmissionRow) {
-    if (row.type === "sewing_target" || row.type === "sewing_actual") {
-      // Pair target + actual by same line + date
-      const pairedTarget = submissions.find(
-        (s) => s.type === "sewing_target" && s.date === row.date && s.lineName === row.lineName
-      );
-      const pairedActual = submissions.find(
-        (s) => s.type === "sewing_actual" && s.date === row.date && s.lineName === row.lineName
-      );
-      setSewingTarget(pairedTarget ? buildSewingTarget(pairedTarget.raw) : null);
-      setSewingActual(pairedActual ? buildSewingActual(pairedActual.raw) : null);
+  // ── Merge submissions into grouped rows ──────────────
+  const mergedRows = useMemo(() => mergeSubmissions(submissions), [submissions]);
+
+  // ── Click handler (works with merged rows) ─────────────
+  function handleMergedClick(merged: MergedRow) {
+    if (merged.stage === "sewing") {
+      setSewingTarget(merged.targetRow ? buildSewingTarget(merged.targetRow.raw) : null);
+      setSewingActual(merged.actualRow ? buildSewingActual(merged.actualRow.raw) : null);
       setSewingOpen(true);
-    } else if (row.type === "finishing_target" || row.type === "finishing_actual") {
-      // Pair finishing target + actual by same line + date
-      const pairedTarget = submissions.find(
-        (s) => s.type === "finishing_target" && s.date === row.date && s.lineName === row.lineName
-      );
-      const pairedActual = submissions.find(
-        (s) => s.type === "finishing_actual" && s.date === row.date && s.lineName === row.lineName
-      );
-      setFinTarget(pairedTarget ? buildFinishingTarget(pairedTarget.raw) : null);
-      setFinActual(pairedActual ? buildFinishingActual(pairedActual.raw) : null);
+    } else if (merged.stage === "finishing") {
+      setFinTarget(merged.targetRow ? buildFinishingTarget(merged.targetRow.raw) : null);
+      setFinActual(merged.actualRow ? buildFinishingActual(merged.actualRow.raw) : null);
       setFinishingOpen(true);
-    } else if (row.type === "cutting_actual") {
-      setCuttingActual(buildCuttingActual(row.raw));
+    } else if (merged.stage === "cutting" && merged.actualRow) {
+      setCuttingActual(buildCuttingActual(merged.actualRow.raw));
       setCuttingOpen(true);
     }
   }
 
-  // ── Key metric per type ───────────────────────────────
-  function keyMetric(row: POSubmissionRow) {
+  // ── Key metric for a single submission row ─────────────
+  function singleMetric(row: POSubmissionRow): string {
     const r = row.raw as any;
     switch (row.type) {
       case "sewing_target": {
@@ -247,31 +317,49 @@ export function POSubmissionsTab({ submissions }: Props) {
     }
   }
 
-  function keyMetricLabel(type: SubmissionType) {
-    switch (type) {
-      case "sewing_target": return "Target";
-      case "sewing_actual": return "Output";
-      case "cutting_actual": return "Total Cut";
-      case "finishing_target": return "Target";
-      case "finishing_actual": return "Output";
+  // ── Key metric display for merged row ──────────────────
+  function mergedMetric(merged: MergedRow) {
+    if (merged.targetRow && merged.actualRow) {
+      return (
+        <>
+          {singleMetric(merged.targetRow)}
+          <span className="text-[10px] text-muted-foreground font-normal ml-1 mr-2">Target</span>
+          {singleMetric(merged.actualRow)}
+          <span className="text-[10px] text-muted-foreground font-normal ml-1">Output</span>
+        </>
+      );
     }
+    const row = merged.actualRow || merged.targetRow!;
+    const metricLabel = row.type.endsWith("_target") ? "Target"
+      : row.type === "cutting_actual" ? "Total Cut"
+      : "Output";
+    return (
+      <>
+        {singleMetric(row)}
+        <span className="text-[10px] text-muted-foreground font-normal ml-1">{metricLabel}</span>
+      </>
+    );
   }
 
-  function statusCell(row: POSubmissionRow) {
-    const r = row.raw as any;
-    // Targets: flag if submitted late
-    if (row.type === "sewing_target" || row.type === "finishing_target") {
-      if (r.is_late) return <StatusBadge variant="warning" size="sm">Late</StatusBadge>;
-      return <StatusBadge variant="success" size="sm">On Time</StatusBadge>;
-    }
-    // Actuals: flag if blocker reported
-    if (row.type === "sewing_actual" || row.type === "finishing_actual") {
+  // ── Status cell for merged row ─────────────────────────
+  function mergedStatusCell(merged: MergedRow) {
+    // Actual blocker takes priority
+    if (merged.actualRow) {
+      const r = merged.actualRow.raw as any;
       if (r.has_blocker) return <StatusBadge variant="danger" size="sm">Blocker</StatusBadge>;
-      return <StatusBadge variant="success" size="sm">On Time</StatusBadge>;
     }
-    // Cutting
-    if (r.acknowledged) return <StatusBadge variant="success" size="sm">On Time</StatusBadge>;
-    return <StatusBadge variant="info" size="sm">Pending</StatusBadge>;
+    // Target late flag
+    if (merged.targetRow) {
+      const r = merged.targetRow.raw as any;
+      if (r.is_late) return <StatusBadge variant="warning" size="sm">Late</StatusBadge>;
+    }
+    // Cutting pending/acknowledged
+    if (merged.stage === "cutting" && merged.actualRow) {
+      const r = merged.actualRow.raw as any;
+      if (r.acknowledged) return <StatusBadge variant="success" size="sm">On Time</StatusBadge>;
+      return <StatusBadge variant="info" size="sm">Pending</StatusBadge>;
+    }
+    return <StatusBadge variant="success" size="sm">On Time</StatusBadge>;
   }
 
   return (
@@ -289,40 +377,34 @@ export function POSubmissionsTab({ submissions }: Props) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {submissions.map((row) => {
-              const badge = TYPE_BADGE[row.type];
-              return (
-                <TableRow
-                  key={`${row.type}-${row.id}`}
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => handleClick(row)}
-                >
-                  <TableCell className="font-mono text-sm">
-                    {formatShortDate(row.date)}
-                  </TableCell>
-                  <TableCell className="font-mono text-sm text-muted-foreground">
-                    {row.submittedAt ? formatTime(row.submittedAt) : "—"}
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge variant={badge.variant} size="sm">
-                      {badge.label}
-                    </StatusBadge>
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {row.lineName}
-                  </TableCell>
-                  <TableCell className="text-right font-mono font-bold">
-                    {keyMetric(row)}
-                    <span className="text-[10px] text-muted-foreground font-normal ml-1">
-                      {keyMetricLabel(row.type)}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    {statusCell(row)}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
+            {mergedRows.map((merged) => (
+              <TableRow
+                key={merged.key}
+                className="cursor-pointer hover:bg-muted/50"
+                onClick={() => handleMergedClick(merged)}
+              >
+                <TableCell className="font-mono text-sm">
+                  {formatShortDate(merged.date)}
+                </TableCell>
+                <TableCell className="font-mono text-sm text-muted-foreground">
+                  {merged.submittedAt ? formatTime(merged.submittedAt) : "—"}
+                </TableCell>
+                <TableCell>
+                  <StatusBadge variant={merged.variant} size="sm">
+                    {merged.label}
+                  </StatusBadge>
+                </TableCell>
+                <TableCell className="font-medium">
+                  {merged.lineName}
+                </TableCell>
+                <TableCell className="text-right font-mono font-bold">
+                  {mergedMetric(merged)}
+                </TableCell>
+                <TableCell>
+                  {mergedStatusCell(merged)}
+                </TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       </div>

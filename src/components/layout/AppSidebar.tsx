@@ -19,6 +19,7 @@ import {
   Receipt,
   Headphones,
   HelpCircle,
+  PlayCircle,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -56,6 +57,7 @@ import { openExternalUrl, isTauri } from "@/lib/capacitor";
 import { isRunningFromDMG } from "@/lib/dmg-detection";
 import { DMGWarningModal } from "@/components/DMGWarningModal";
 import { useOnboardingChecklist } from "@/hooks/useOnboardingChecklist";
+import { useTourContext } from "@/contexts/TourContext";
 import logoSvg from "@/assets/logo.svg";
 
 // Web fallback version (desktop uses the runtime version from the installed app)
@@ -150,6 +152,8 @@ export function AppSidebar() {
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [appVersion, setAppVersion] = useState<string>(WEB_APP_VERSION);
   const [showDMGWarning, setShowDMGWarning] = useState(false);
+
+  const { startTour } = useTourContext();
 
   // Setup progress badge for admin/owner sidebar
   const isAdminOrOwner = roles.some(ur => ['admin', 'owner'].includes(ur.role));
@@ -481,6 +485,13 @@ export function AppSidebar() {
                     >
                       <Link
                         to={item.path}
+                        data-tour={
+                          item.path === '/today' ? 'nav-today' :
+                          item.path === '/lines' ? 'nav-lines' :
+                          item.path === '/work-orders' ? 'nav-work-orders' :
+                          item.path === '/blockers' ? 'nav-blockers' :
+                          undefined
+                        }
                         className={cn(
                           "flex items-center gap-3 rounded-lg px-3 py-2 transition-colors",
                           isActive(item.path)
@@ -638,6 +649,13 @@ Settings
           )}
           {!collapsed && (
             <>
+              <button
+                onClick={startTour}
+                className="shrink-0 h-8 w-8 flex items-center justify-center rounded-md text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+                title="Restart tour"
+              >
+                <PlayCircle className="h-4 w-4" />
+              </button>
               <button
                 onClick={() => openExternalUrl('https://productionportal.co')}
                 className="shrink-0 h-8 w-8 flex items-center justify-center rounded-md text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"

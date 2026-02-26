@@ -244,9 +244,9 @@ export const HEALTH_LABELS: Record<string, string> = {
   healthy: "Healthy",
   watch: "Watch",
   at_risk: "At Risk",
-  no_deadline: "No Deadline",
-  deadline_passed: "Deadline Passed",
-  completed: "Completed",
+  no_deadline: "No date",
+  deadline_passed: "Overdue",
+  completed: "Complete",
 };
 
 export const EX_FACTORY_OPTIONS: { value: string; label: string }[] = [
