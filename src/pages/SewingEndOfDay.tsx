@@ -28,7 +28,6 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { format } from "date-fns";
 import { useEditPermission } from "@/hooks/useEditPermission";
 
 interface Line {
@@ -152,8 +151,8 @@ export default function SewingEndOfDay() {
       }
 
       try {
-        const today = format(new Date(), "yyyy-MM-dd");
-        
+        const today = getTodayInTimezone(factory?.timezone || "Asia/Dhaka");
+
         // Get the most recent submission for this line/work order (before today)
         const { data, error } = await supabase
           .from("sewing_actuals")
@@ -308,7 +307,7 @@ export default function SewingEndOfDay() {
     setSubmitting(true);
 
     try {
-      const productionDate = format(new Date(), "yyyy-MM-dd");
+      const productionDate = getTodayInTimezone(factory?.timezone || "Asia/Dhaka");
 
       const insertData = {
         factory_id: profile.factory_id,

@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatTimeInTimezone, getTodayInTimezone } from "@/lib/date-utils";
+import { useMidnightRefresh } from "@/hooks/useMidnightRefresh";
 import { supabase } from "@/integrations/supabase/client";
 import { KPICard } from "@/components/ui/kpi-card";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -295,6 +296,13 @@ export default function Dashboard() {
     }
   }, [profile?.factory_id, canViewDashboard]);
 
+  // Auto-refresh at midnight (factory timezone) and on tab refocus
+  useMidnightRefresh(useCallback(() => {
+    if (profile?.factory_id && canViewDashboard) {
+      fetchDashboardData();
+    }
+  }, [profile?.factory_id, canViewDashboard]));
+
   if (authLoading || (!canViewDashboard && profile?.factory_id)) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -533,15 +541,15 @@ export default function Dashboard() {
       // Format finishing daily logs (OUTPUT type only for end of day)
       const finishingOutputLogs = (finishingDailyLogsData || []).filter((log: any) => log.log_type === 'OUTPUT');
       const formattedFinishingEOD: EndOfDaySubmission[] = finishingOutputLogs.map((log: any) => {
-        const totalCarton = log.carton || 0;
-        
+        const totalPoly = log.poly || 0;
+
         return {
           id: log.id,
           type: 'finishing' as const,
           line_uuid: log.line_id,
           line_id: log.lines?.line_id || 'Unknown',
           line_name: log.lines?.name || log.lines?.line_id || 'Unknown',
-          output: totalCarton, // Total is carton only
+          output: totalPoly, // Poly is primary finishing metric
           submitted_at: log.submitted_at,
           production_date: log.production_date,
           has_blocker: false,
@@ -721,10 +729,10 @@ export default function Dashboard() {
       // Calculate daily sewing output (using good_today from sewing_actuals)
       const daySewingOutput = (sewingActualsData || []).reduce((sum: number, u: any) => sum + (u.good_today || 0), 0);
 
-      // Calculate daily finishing output (carton only from OUTPUT logs)
+      // Calculate daily finishing output (poly is the primary finishing metric)
       const dayFinishingOutput = (finishingDailyLogsData || [])
         .filter((log: any) => log.log_type === 'OUTPUT')
-        .reduce((sum: number, log: any) => sum + (log.carton || 0), 0);
+        .reduce((sum: number, log: any) => sum + (log.poly || 0), 0);
 
       setStats({
         updatesToday: (sewingTargetsCount || 0) + (sewingCount || 0) + (finishingTargetsCount || 0) + (finishingCount || 0) + (cuttingTargetsCount || 0) + (cuttingActualsCount || 0) + (storageTransactionsCount || 0),
@@ -779,7 +787,7 @@ export default function Dashboard() {
         po_number: log.work_orders?.po_number || null,
         buyer: log.work_orders?.buyer || null,
         style: log.work_orders?.style || null,
-        per_hour_target: log.carton || 0, // carton is the primary metric
+        per_hour_target: log.poly || 0, // poly is the primary finishing metric
         submitted_at: log.submitted_at,
         production_date: log.production_date,
         // Extra fields for rendering
@@ -967,13 +975,13 @@ export default function Dashboard() {
               return (
                 <div className="flex gap-3">
                   <div>
-                    <p className="font-mono font-bold text-lg">{(t._carton || 0).toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground">cartons</p>
+                    <p className="font-mono font-bold text-lg">{(t._poly || 0).toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">poly</p>
                   </div>
-                  {t._poly > 0 && (
+                  {t._carton > 0 && (
                     <div>
-                      <p className="font-mono font-semibold text-base text-muted-foreground">{t._poly.toLocaleString()}</p>
-                      <p className="text-xs text-muted-foreground">poly</p>
+                      <p className="font-mono font-semibold text-base text-muted-foreground">{t._carton.toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground">cartons</p>
                     </div>
                   )}
                 </div>

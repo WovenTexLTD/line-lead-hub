@@ -258,11 +258,11 @@ export function usePOControlRoom(filters: POFilters = EMPTY_FILTERS) {
         sewingActualsByPO.set(id, arr);
       });
 
-      // Aggregate finishing
+      // Aggregate finishing (poly is primary finishing metric)
       const finMap = new Map<string, number>();
       finishingRes.data?.forEach((r: any) => {
         const id = r.work_order_id || "";
-        finMap.set(id, (finMap.get(id) || 0) + (r.poly || 0) + (r.carton || 0));
+        finMap.set(id, (finMap.get(id) || 0) + (r.poly || 0));
       });
 
       // Aggregate ledger
@@ -707,7 +707,7 @@ export function usePOControlRoom(filters: POFilters = EMPTY_FILTERS) {
           const isTgt = f.log_type === "TARGET";
           const qty = isTgt
             ? (f.per_hour_target || 0)
-            : (f.poly || 0) + (f.carton || 0);
+            : (f.poly || 0);
           submissions.push({
             id: f.id,
             type: isTgt ? "finishing_target" : "finishing_actual",
@@ -769,7 +769,7 @@ export function usePOControlRoom(filters: POFilters = EMPTY_FILTERS) {
         let finDate: string | null = null;
         finLogsRes.data?.forEach((l: any) => {
           if (l.log_type === "TARGET") return;
-          finQty += (l.poly || 0) + (l.carton || 0);
+          finQty += (l.poly || 0);
           if (l.production_date && (!finDate || l.production_date > finDate)) {
             finDate = l.production_date;
           }

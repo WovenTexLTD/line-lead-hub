@@ -112,6 +112,16 @@ export function formatCutoffTime(cutoffTime: string): string {
 }
 
 /**
+ * Check if a date string (YYYY-MM-DD) represents "today" in the given timezone.
+ * Replaces date-fns isToday() which uses browser local time.
+ * @param dateString - Date string in "YYYY-MM-DD" format
+ * @param timezone - IANA timezone (e.g., "Asia/Dhaka")
+ */
+export function isTodayInTimezone(dateString: string, timezone: string): boolean {
+  return dateString === getTodayInTimezone(timezone);
+}
+
+/**
  * Format a date for display in a specific timezone (full date with day name)
  * @param date - Date object
  * @param timezone - IANA timezone (e.g., "Asia/Dhaka")

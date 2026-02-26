@@ -34,7 +34,7 @@ import { useSortableTable } from "@/hooks/useSortableTable";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { formatShortDate, formatTimeInTimezone } from "@/lib/date-utils";
+import { formatShortDate, formatTimeInTimezone, getTodayInTimezone, getCurrentTimeInTimezone } from "@/lib/date-utils";
 import { format } from "date-fns";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -192,9 +192,12 @@ export default function AllSubmissions() {
     if (!profile?.factory_id) return;
     setLoading(true);
 
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - parseInt(dateRange));
+    const timezone = factory?.timezone || "Asia/Dhaka";
+    const endDateStr = getTodayInTimezone(timezone);
+    const endDateObj = getCurrentTimeInTimezone(timezone);
+    const startDateObj = new Date(endDateObj);
+    startDateObj.setDate(startDateObj.getDate() - parseInt(dateRange));
+    const startDateStr = format(startDateObj, "yyyy-MM-dd");
 
     try {
       const [
@@ -210,56 +213,56 @@ export default function AllSubmissions() {
           .from('sewing_targets')
           .select('*, stages:planned_stage_id(name), lines(line_id, name), work_orders(po_number, buyer, style, order_qty)')
           .eq('factory_id', profile.factory_id)
-          .gte('production_date', startDate.toISOString().split('T')[0])
-          .lte('production_date', endDate.toISOString().split('T')[0])
+          .gte('production_date', startDateStr)
+          .lte('production_date', endDateStr)
           .order('production_date', { ascending: false })
           .order('submitted_at', { ascending: false }),
         supabase
           .from('finishing_targets')
           .select('*, lines(line_id, name), work_orders(po_number, buyer, style, order_qty)')
           .eq('factory_id', profile.factory_id)
-          .gte('production_date', startDate.toISOString().split('T')[0])
-          .lte('production_date', endDate.toISOString().split('T')[0])
+          .gte('production_date', startDateStr)
+          .lte('production_date', endDateStr)
           .order('production_date', { ascending: false })
           .order('submitted_at', { ascending: false }),
         supabase
           .from('sewing_actuals')
           .select('*, stages:actual_stage_id(name), lines(line_id, name), work_orders(po_number, buyer, style, order_qty)')
           .eq('factory_id', profile.factory_id)
-          .gte('production_date', startDate.toISOString().split('T')[0])
-          .lte('production_date', endDate.toISOString().split('T')[0])
+          .gte('production_date', startDateStr)
+          .lte('production_date', endDateStr)
           .order('production_date', { ascending: false })
           .order('submitted_at', { ascending: false }),
         supabase
           .from('finishing_actuals')
           .select('*, lines(line_id, name), work_orders(po_number, buyer, style, order_qty)')
           .eq('factory_id', profile.factory_id)
-          .gte('production_date', startDate.toISOString().split('T')[0])
-          .lte('production_date', endDate.toISOString().split('T')[0])
+          .gte('production_date', startDateStr)
+          .lte('production_date', endDateStr)
           .order('production_date', { ascending: false })
           .order('submitted_at', { ascending: false }),
         supabase
           .from('cutting_targets')
           .select('*, lines(line_id, name), work_orders(po_number, buyer, style, order_qty)')
           .eq('factory_id', profile.factory_id)
-          .gte('production_date', startDate.toISOString().split('T')[0])
-          .lte('production_date', endDate.toISOString().split('T')[0])
+          .gte('production_date', startDateStr)
+          .lte('production_date', endDateStr)
           .order('production_date', { ascending: false })
           .order('submitted_at', { ascending: false }),
         supabase
           .from('cutting_actuals')
           .select('*, lines(line_id, name), work_orders(po_number, buyer, style, order_qty)')
           .eq('factory_id', profile.factory_id)
-          .gte('production_date', startDate.toISOString().split('T')[0])
-          .lte('production_date', endDate.toISOString().split('T')[0])
+          .gte('production_date', startDateStr)
+          .lte('production_date', endDateStr)
           .order('production_date', { ascending: false })
           .order('submitted_at', { ascending: false }),
         supabase
           .from('storage_bin_cards')
           .select('*, work_orders(po_number, buyer, style)')
           .eq('factory_id', profile.factory_id)
-          .gte('created_at', startDate.toISOString())
-          .lte('created_at', endDate.toISOString())
+          .gte('created_at', startDateObj.toISOString())
+          .lte('created_at', endDateObj.toISOString())
           .order('created_at', { ascending: false }),
       ]);
 

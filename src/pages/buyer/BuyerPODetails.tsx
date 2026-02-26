@@ -141,7 +141,7 @@ export default function BuyerPODetails() {
 
   const health = computeHealth(workOrder, aggregates);
   const producedPct = workOrder.order_qty > 0 ? Math.min(100, Math.round((aggregates.cumulativeGood / workOrder.order_qty) * 100)) : 0;
-  const packedPct = workOrder.order_qty > 0 ? Math.min(100, Math.round((aggregates.finishingCarton / workOrder.order_qty) * 100)) : 0;
+  const packedPct = workOrder.order_qty > 0 ? Math.min(100, Math.round((aggregates.finishingPoly / workOrder.order_qty) * 100)) : 0;
 
   return (
     <motion.div
@@ -257,8 +257,8 @@ export default function BuyerPODetails() {
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
               <PackageCheck className="h-3.5 w-3.5" /> Finishing
             </div>
-            <div className="text-lg font-bold">{stageData.finishing.todayCarton > 0 ? <AnimatedNumber value={stageData.finishing.todayCarton} /> : "—"}</div>
-            <div className="text-xs text-muted-foreground">Total: {stageData.finishing.totalCarton.toLocaleString()}</div>
+            <div className="text-lg font-bold">{stageData.finishing.todayPoly > 0 ? <AnimatedNumber value={stageData.finishing.todayPoly} /> : "—"}</div>
+            <div className="text-xs text-muted-foreground">Total: {stageData.finishing.totalPoly.toLocaleString()}</div>
             {stageData.finishing.lastUpdate && (
               <div className="text-[10px] text-muted-foreground/70 mt-1">{formatTimeInTimezone(stageData.finishing.lastUpdate, timezone)}</div>
             )}

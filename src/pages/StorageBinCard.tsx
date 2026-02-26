@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Warehouse, Search, Plus, Save, AlertTriangle, Unlock, ChevronDown, ChevronUp, X, Check, Layers } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { format } from "date-fns";
+import { getTodayInTimezone } from "@/lib/date-utils";
 import { useOfflineSubmission } from "@/hooks/useOfflineSubmission";
 import {
   Command,
@@ -95,7 +96,7 @@ interface BulkBinCardInfo {
 
 export default function StorageBinCard() {
   const navigate = useNavigate();
-  const { user, profile, isStorageUser, isAdminOrHigher } = useAuth();
+  const { user, profile, factory, isStorageUser, isAdminOrHigher } = useAuth();
   const { t } = useTranslation();
 
   const { submit: offlineSubmit } = useOfflineSubmission();
@@ -323,7 +324,7 @@ export default function StorageBinCard() {
     setExistingGroupId(null);
     setExistingGroupFound(false);
     setGroupName("");
-    const today = format(new Date(), "yyyy-MM-dd");
+    const today = getTodayInTimezone(factory?.timezone || "Asia/Dhaka");
 
     try {
       // Compute po_set_signature for this selection
@@ -635,7 +636,7 @@ export default function StorageBinCard() {
       const newTransaction = {
         bin_card_id: binCard.id,
         factory_id: profile.factory_id,
-        transaction_date: format(new Date(), "yyyy-MM-dd"),
+        transaction_date: getTodayInTimezone(factory?.timezone || "Asia/Dhaka"),
         receive_qty: previewReceive,
         issue_qty: previewIssue,
         ttl_receive: previewTtlReceive,
@@ -695,7 +696,7 @@ export default function StorageBinCard() {
     // Reuse existing group ID if same PO set was previously submitted, otherwise create new
     const binGroupId = existingGroupId || crypto.randomUUID();
     const signature = computePoSetSignature(selectedWorkOrders.map(wo => wo.id));
-    const today = format(new Date(), "yyyy-MM-dd");
+    const today = getTodayInTimezone(factory?.timezone || "Asia/Dhaka");
 
     // Set bin_group_id + po_set_signature + group_name + apply shared header to all bin cards
     const allBinCardIds = bulkBinCards.filter(b => b.binCard).map(b => b.binCard!.id);

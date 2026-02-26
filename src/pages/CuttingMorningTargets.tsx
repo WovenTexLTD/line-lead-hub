@@ -179,7 +179,7 @@ export default function CuttingMorningTargets() {
   async function checkExistingTarget() {
     if (!profile?.factory_id || !selectedLine || !selectedWorkOrder) return;
 
-    const today = format(new Date(), "yyyy-MM-dd");
+    const today = getTodayInTimezone(factory?.timezone || "Asia/Dhaka");
 
     try {
       const { data, error } = await supabase

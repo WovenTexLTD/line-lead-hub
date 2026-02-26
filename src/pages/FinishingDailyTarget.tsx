@@ -19,7 +19,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { format } from "date-fns";
+import { getTodayInTimezone } from "@/lib/date-utils";
 
 interface WorkOrder {
   id: string;
@@ -132,7 +132,7 @@ export default function FinishingDailyTarget() {
     if (!profile?.factory_id || !selectedWorkOrderId) return;
 
     try {
-      const today = format(new Date(), "yyyy-MM-dd");
+      const today = getTodayInTimezone(factory?.timezone || "Asia/Dhaka");
       const query = supabase
         .from("finishing_daily_logs")
         .select("*")
@@ -232,7 +232,7 @@ export default function FinishingDailyTarget() {
     setSubmitting(true);
 
     try {
-      const today = format(new Date(), "yyyy-MM-dd");
+      const today = getTodayInTimezone(factory?.timezone || "Asia/Dhaka");
       const logData = {
         factory_id: profile.factory_id,
         production_date: today,
@@ -308,9 +308,9 @@ export default function FinishingDailyTarget() {
   }
 
   const calculateTotal = () => {
-    // Total output = Carton only (standard rule: OUTPUT = Carton)
-    const carton = parseInt(processValues.carton) || 0;
-    return carton;
+    // Total = Poly (primary finishing metric)
+    const poly = parseInt(processValues.poly) || 0;
+    return poly;
   };
 
   if (loading) {

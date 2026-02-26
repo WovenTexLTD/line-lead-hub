@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMidnightRefresh } from "@/hooks/useMidnightRefresh";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -287,6 +288,11 @@ export default function TodayUpdates() {
 
   const selectedDateStr = toISODate(selectedDate, timezone);
   const isToday = selectedDateStr === todayStr;
+
+  // Auto-refresh at midnight (factory timezone) and on tab refocus
+  useMidnightRefresh(useCallback((newDate: string) => {
+    setSelectedDate(new Date(newDate + "T00:00:00"));
+  }, []));
 
   useEffect(() => {
     if (profile?.factory_id) {
@@ -628,10 +634,10 @@ export default function TodayUpdates() {
   const totalOutput = sewingUpdates.reduce((sum, u) => sum + (u.output_qty || 0), 0)
     + sewingActuals.reduce((sum, a) => sum + (a.good_today || 0), 0);
   
-  // Total Finishing Output = Total Carton only (from OUTPUT logs)
+  // Total Finishing Output = Total Poly (primary finishing metric)
   const totalFinishingOutput = finishingDailyLogs
     .filter(log => log.log_type === 'OUTPUT')
-    .reduce((sum, log) => sum + (log.carton || 0), 0);
+    .reduce((sum, log) => sum + (log.poly || 0), 0);
 
   const totalCutting = cuttingActuals.reduce((sum, c) => sum + (c.day_cutting || 0), 0);
   const totalStorageReceived = storageTransactions.reduce((sum, s) => sum + (s.receive_qty || 0), 0);
@@ -1120,15 +1126,14 @@ export default function TodayUpdates() {
                         const outputCarton = item.output?.carton || 0;
                         const targetPoly = item.target?.poly || 0;
                         const targetCarton = item.target?.carton || 0;
-                        const totalOutput = outputPoly + outputCarton;
-                        const hasOutput = totalOutput > 0;
+                        const hasOutput = outputPoly > 0 || outputCarton > 0;
                         // target.poly/carton are per-hour rates; multiply by planned hours for total
                         const targetHours = (item.target?.planned_hours ?? 0) + (item.target?.ot_hours_planned ?? 0);
                         const targetPolyTotal = targetPoly * targetHours;
                         const targetCartonTotal = targetCarton * targetHours;
-                        const totalTargetCalc = targetPolyTotal + targetCartonTotal;
-                        const hasTarget = totalTargetCalc > 0;
-                        const finishingPct = hasTarget ? (totalOutput / totalTargetCalc) * 100 : null;
+                        // Performance % uses poly as primary metric
+                        const hasTarget = targetPolyTotal > 0;
+                        const finishingPct = hasTarget ? (outputPoly / targetPolyTotal) * 100 : null;
                         return (
                           <TableRow
                             key={`finishing-merged-${idx}`}
@@ -1506,10 +1511,10 @@ export default function TodayUpdates() {
                         const targetPoly = row.target?.poly || 0;
                         const outputCarton = row.output?.carton || 0;
                         const targetCarton = row.target?.carton || 0;
-                        // target.poly/carton are per-hour rates; multiply by planned hours for total
+                        // Performance % uses poly as primary metric
                         const finTabHours = (row.target?.planned_hours ?? 0) + (row.target?.ot_hours_planned ?? 0);
-                        const finTabTargetTotal = (targetPoly * finTabHours) + (targetCarton * finTabHours);
-                        const finTabPct = finTabTargetTotal > 0 ? ((outputPoly + outputCarton) / finTabTargetTotal) * 100 : null;
+                        const finTabPolyTarget = targetPoly * finTabHours;
+                        const finTabPct = finTabPolyTarget > 0 ? (outputPoly / finTabPolyTarget) * 100 : null;
                         return (
                           <TableRow
                             key={row.key}

@@ -21,7 +21,7 @@ import { LineDrillDown } from "@/components/insights/LineDrillDown";
 import { ExportInsights } from "@/components/insights/ExportInsights";
 
 import { LineEfficiencyTargets } from "@/components/insights/LineEfficiencyTargets";
-import { NotificationPreferences } from "@/components/NotificationPreferences";
+
 import { InteractiveChart } from "@/components/ui/interactive-chart";
 
 interface DailyData {
@@ -30,8 +30,8 @@ interface DailyData {
   sewingOutput: number;
   sewingTarget: number;
   finishingQcPass: number;
-  finishingCartonOutput: number;
-  finishingCartonTarget: number;
+  finishingPolyOutput: number;
+  finishingPolyTarget: number;
   efficiency: number;
   blockers: number;
   manpower: number;
@@ -149,7 +149,7 @@ export default function Insights() {
 
   const finishingAutoMax = useMemo(() => {
     if (dailyData.length === 0) return 1000;
-    const max = Math.max(...dailyData.map(d => Math.max(d.finishingCartonOutput, d.finishingCartonTarget)));
+    const max = Math.max(...dailyData.map(d => Math.max(d.finishingPolyOutput, d.finishingPolyTarget)));
     return Math.ceil(max / 500) * 500 || 1000;
   }, [dailyData]);
 
@@ -260,8 +260,8 @@ export default function Insights() {
           sewingOutput: 0,
           sewingTarget: 0,
           finishingQcPass: 0,
-          finishingCartonOutput: 0,
-          finishingCartonTarget: 0,
+          finishingPolyOutput: 0,
+          finishingPolyTarget: 0,
           efficiency: 0,
           blockers: 0,
           manpower: 0,
@@ -284,19 +284,19 @@ export default function Insights() {
         dailyMap.set(t.production_date, existing);
       });
 
-      // Finishing daily logs (OUTPUT) → poly + carton output
+      // Finishing daily logs (OUTPUT) → poly is primary output
       finishingDailyLogs?.forEach(u => {
         const existing = getOrCreateDaily(u.production_date);
         existing.finishingQcPass += (u.poly || 0) + (u.carton || 0);
-        existing.finishingCartonOutput += (u.carton || 0);
+        existing.finishingPolyOutput += (u.poly || 0);
         dailyMap.set(u.production_date, existing);
       });
 
-      // Finishing daily logs (TARGET) → carton target (per-hour × planned_hours)
+      // Finishing daily logs (TARGET) → poly target (per-hour × planned_hours)
       finishingTargetLogs?.forEach(t => {
         const existing = getOrCreateDaily(t.production_date);
         const plannedHrs = t.planned_hours || 0;
-        existing.finishingCartonTarget += (t.carton || 0) * (plannedHrs > 0 ? plannedHrs : 1);
+        existing.finishingPolyTarget += (t.poly || 0) * (plannedHrs > 0 ? plannedHrs : 1);
         dailyMap.set(t.production_date, existing);
       });
 
@@ -808,17 +808,17 @@ export default function Insights() {
           </CardContent>
         </Card>
 
-        {/* Finishing Carton Trend Chart */}
+        {/* Finishing Poly Trend Chart */}
         <Card className="w-full overflow-hidden">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Package className="h-5 w-5 text-violet-600" />
-              Finishing Carton Output vs Target
+              Finishing Poly Output vs Target
             </CardTitle>
-            <CardDescription>Daily finishing carton output compared to target over time</CardDescription>
+            <CardDescription>Daily finishing poly output compared to target over time</CardDescription>
           </CardHeader>
           <CardContent className="p-2 sm:p-6">
-            {dailyData.some(d => d.finishingCartonOutput > 0 || d.finishingCartonTarget > 0) ? (
+            {dailyData.some(d => d.finishingPolyOutput > 0 || d.finishingPolyTarget > 0) ? (
               <InteractiveChart
                 data={dailyData}
                 height={300}
@@ -828,14 +828,14 @@ export default function Insights() {
                 onYDomainChange={([min, max]) => { setFinishingYMin(min); setFinishingYMax(max); }}
                 onYReset={() => { setFinishingYMin(0); setFinishingYMax('auto'); }}
                 isYCustom={finishingYMax !== 'auto' || finishingYMin !== 0}
-                emptyMessage="No finishing carton data in selected range"
+                emptyMessage="No finishing poly data in selected range"
               >
                 <defs>
-                  <linearGradient id="colorFinCartonOutput" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id="colorFinPolyOutput" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
                     <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
                   </linearGradient>
-                  <linearGradient id="colorFinCartonTarget" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id="colorFinPolyTarget" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#7c3aed" stopOpacity={0.15}/>
                     <stop offset="95%" stopColor="#7c3aed" stopOpacity={0}/>
                   </linearGradient>
@@ -851,12 +851,12 @@ export default function Insights() {
                   }}
                 />
                 <Legend wrapperStyle={{ paddingTop: '8px' }} />
-                <Area type="monotone" dataKey="finishingCartonTarget" name="Carton Target" stroke="#7c3aed" fillOpacity={1} fill="url(#colorFinCartonTarget)" strokeWidth={2} strokeDasharray="5 5" />
-                <Area type="monotone" dataKey="finishingCartonOutput" name="Carton Output" stroke="#22c55e" fillOpacity={1} fill="url(#colorFinCartonOutput)" strokeWidth={2} />
+                <Area type="monotone" dataKey="finishingPolyTarget" name="Poly Target" stroke="#7c3aed" fillOpacity={1} fill="url(#colorFinPolyTarget)" strokeWidth={2} strokeDasharray="5 5" />
+                <Area type="monotone" dataKey="finishingPolyOutput" name="Poly Output" stroke="#22c55e" fillOpacity={1} fill="url(#colorFinPolyOutput)" strokeWidth={2} />
               </InteractiveChart>
             ) : (
               <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                No finishing carton data available for this period
+                No finishing poly data available for this period
               </div>
             )}
           </CardContent>
@@ -1459,7 +1459,7 @@ export default function Insights() {
             efficiency: l.efficiency,
           }))}
         />
-        <NotificationPreferences />
+
       </div>
     </div>
   );

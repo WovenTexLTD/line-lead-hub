@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMidnightRefresh } from "@/hooks/useMidnightRefresh";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Scissors, Check, RefreshCw, Eye } from "lucide-react";
@@ -29,6 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { format, subDays } from "date-fns";
+import { getTodayInTimezone, getCurrentTimeInTimezone } from "@/lib/date-utils";
 import { useTranslation } from "react-i18next";
 
 interface CuttingHandoff {
@@ -62,7 +64,7 @@ interface CuttingHandoff {
 type DateFilter = "today" | "7days" | "30days" | "all";
 
 export default function CuttingHandoffs() {
-  const { user, profile, isAdminOrHigher } = useAuth();
+  const { user, profile, factory, isAdminOrHigher } = useAuth();
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [handoffs, setHandoffs] = useState<CuttingHandoff[]>([]);
@@ -82,6 +84,13 @@ export default function CuttingHandoffs() {
       fetchHandoffs();
     }
   }, [profile?.factory_id, dateFilter, userLineIds, isAdminOrHigher]);
+
+  // Auto-refresh at midnight (factory timezone) and on tab refocus
+  useMidnightRefresh(useCallback(() => {
+    if (profile?.factory_id) {
+      fetchHandoffs();
+    }
+  }, [profile?.factory_id, dateFilter, userLineIds]));
 
   async function fetchUserLineAssignments() {
     if (!user?.id || !profile?.factory_id) return;
@@ -113,12 +122,13 @@ export default function CuttingHandoffs() {
     setLoading(true);
 
     try {
-      let dateFrom = format(new Date(), "yyyy-MM-dd");
-      
+      const tz = factory?.timezone || "Asia/Dhaka";
+      let dateFrom = getTodayInTimezone(tz);
+
       if (dateFilter === "7days") {
-        dateFrom = format(subDays(new Date(), 7), "yyyy-MM-dd");
+        dateFrom = format(subDays(getCurrentTimeInTimezone(tz), 7), "yyyy-MM-dd");
       } else if (dateFilter === "30days") {
-        dateFrom = format(subDays(new Date(), 30), "yyyy-MM-dd");
+        dateFrom = format(subDays(getCurrentTimeInTimezone(tz), 30), "yyyy-MM-dd");
       } else if (dateFilter === "all") {
         dateFrom = "2000-01-01";
       }
@@ -197,7 +207,7 @@ export default function CuttingHandoffs() {
   }
 
   const stats = useMemo(() => {
-    const today = format(new Date(), "yyyy-MM-dd");
+    const today = getTodayInTimezone(factory?.timezone || "Asia/Dhaka");
     const todayHandoffs = handoffs.filter(h => h.production_date === today);
     const unacknowledged = handoffs.filter(h => !h.acknowledged);
     const totalCutting = todayHandoffs.reduce((sum, h) => sum + (h.day_cutting || 0), 0);

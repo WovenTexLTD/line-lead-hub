@@ -102,7 +102,7 @@ export default function ThisWeek() {
             .eq('production_date', dateStr),
           supabase
             .from('finishing_daily_logs')
-            .select('log_type, carton, planned_hours')
+            .select('log_type, poly, carton, planned_hours')
             .eq('factory_id', profile.factory_id)
             .eq('production_date', dateStr),
           supabase
@@ -130,16 +130,16 @@ export default function ThisWeek() {
 
         const daySewingOutput = sewingData.reduce((sum, u) => sum + (u.good_today || 0), 0);
         
-        // Finishing target: carton per hour × planned_hours = daily carton target
+        // Finishing target: poly per hour × planned_hours = daily poly target
         const finishingTargetLogs = finishingData.filter(f => f.log_type === 'TARGET');
         const dayFinishingTarget = finishingTargetLogs.reduce((sum, f) => {
           const hours = (f as any).planned_hours || 1;
-          return sum + ((f.carton || 0) * hours);
+          return sum + (((f as any).poly || 0) * hours);
         }, 0);
 
-        // Finishing output: carton is the daily total
+        // Finishing output: poly is the primary metric
         const finishingOutputLogs = finishingData.filter(f => f.log_type === 'OUTPUT');
-        const dayFinishingOutput = finishingOutputLogs.reduce((sum, f) => sum + (f.carton || 0), 0);
+        const dayFinishingOutput = finishingOutputLogs.reduce((sum, f) => sum + ((f as any).poly || 0), 0);
         
         // Cutting data
         const dayCuttingTarget = cuttingTargetsData.reduce((sum, t) => sum + (t.cutting_capacity || 0), 0);

@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { getTodayInTimezone, getCurrentTimeInTimezone } from "@/lib/date-utils";
+import { format } from "date-fns";
 import { useBuyerPOAccess } from "@/hooks/useBuyerPOAccess";
 import { KPICard } from "@/components/ui/kpi-card";
 import { AnimatedNumber } from "@/components/ui/animated-number";
@@ -59,8 +61,10 @@ export default function BuyerDashboard() {
     async function fetchAggregates() {
       setDataLoading(true);
 
-      const today = new Date().toISOString().split("T")[0];
-      const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+      const today = getTodayInTimezone(timezone);
+      const yesterdayDate = getCurrentTimeInTimezone(timezone);
+      yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+      const yesterday = format(yesterdayDate, "yyyy-MM-dd");
 
       const [sewingRes, finishingRes, cuttingRes] = await Promise.all([
         supabase
@@ -139,11 +143,11 @@ export default function BuyerDashboard() {
         agg.finishingQcPass += row.day_qc_pass || 0;
         if (row.production_date === today) {
           const t = todayAgg.get(row.work_order_id);
-          if (t) t.finishing += row.day_carton || 0;
+          if (t) t.finishing += row.day_poly || 0;
         }
         if (row.production_date === yesterday) {
           const y = yesterdayAgg.get(row.work_order_id);
-          if (y) y.finishing += row.day_carton || 0;
+          if (y) y.finishing += row.day_poly || 0;
         }
         if (row.submitted_at) {
           const prev = submitMap.get(row.work_order_id);
@@ -157,7 +161,7 @@ export default function BuyerDashboard() {
         const dayMap = finDailyRaw.get(row.work_order_id)!;
         dayMap.set(
           row.production_date,
-          (dayMap.get(row.production_date) || 0) + (row.day_carton || 0)
+          (dayMap.get(row.production_date) || 0) + (row.day_poly || 0)
         );
       }
 
@@ -225,7 +229,7 @@ export default function BuyerDashboard() {
       const agg = aggregates.get(wo.id);
       if (agg) {
         totalSewed += agg.cumulativeGood;
-        totalPacked += agg.finishingCarton;
+        totalPacked += agg.finishingPoly;
       }
     }
 

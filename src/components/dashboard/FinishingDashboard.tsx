@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatTimeInTimezone, getTodayInTimezone } from "@/lib/date-utils";
+import { useMidnightRefresh } from "@/hooks/useMidnightRefresh";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -74,6 +75,13 @@ export function FinishingDashboard() {
       fetchFinishingData();
     }
   }, [profile?.factory_id]);
+
+  // Auto-refresh at midnight (factory timezone) and on tab refocus
+  useMidnightRefresh(useCallback(() => {
+    if (profile?.factory_id) {
+      fetchFinishingData();
+    }
+  }, [profile?.factory_id]));
 
   async function fetchFinishingData() {
     if (!profile?.factory_id) return;
@@ -222,7 +230,7 @@ export function FinishingDashboard() {
                     <p className="text-sm text-muted-foreground">Poly Packed</p>
                   </div>
                   <div>
-                    <p className="text-3xl font-bold text-warning">{stats.totalCarton.toLocaleString()}</p>
+                    <p className="text-xl font-semibold text-muted-foreground">{stats.totalCarton.toLocaleString()}</p>
                     <p className="text-sm text-muted-foreground">Cartons Packed</p>
                   </div>
                 </div>
@@ -293,10 +301,12 @@ export function FinishingDashboard() {
                             <p className="font-mono font-bold text-lg text-success">{log.poly.toLocaleString()}</p>
                             <p className="text-xs text-muted-foreground">poly</p>
                           </div>
+                          {log.carton > 0 && (
                           <div>
-                            <p className="font-mono font-bold text-lg text-warning">{log.carton.toLocaleString()}</p>
+                            <p className="font-mono font-semibold text-base text-muted-foreground">{log.carton.toLocaleString()}</p>
                             <p className="text-xs text-muted-foreground">carton</p>
                           </div>
+                          )}
                         </div>
                       </div>
                     </div>

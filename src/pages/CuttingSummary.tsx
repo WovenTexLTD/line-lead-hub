@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays } from "date-fns";
+import { getTodayInTimezone } from "@/lib/date-utils";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2, Download, RefreshCw, Scissors } from "lucide-react";
@@ -68,7 +69,7 @@ interface Line {
 
 export default function CuttingSummary() {
   const navigate = useNavigate();
-  const { profile, isAdminOrHigher } = useAuth();
+  const { profile, factory, isAdminOrHigher } = useAuth();
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [submissions, setSubmissions] = useState<CuttingSubmission[]>([]);
@@ -183,7 +184,7 @@ export default function CuttingSummary() {
   }, [submissions, selectedLine, selectedPO]);
 
   const stats = useMemo(() => {
-    const today = format(new Date(), "yyyy-MM-dd");
+    const today = getTodayInTimezone(factory?.timezone || "Asia/Dhaka");
     const todaySubmissions = submissions.filter(s => s.production_date === today);
     return {
       submissionsToday: todaySubmissions.length,

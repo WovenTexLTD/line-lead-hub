@@ -183,7 +183,7 @@ export function useBuyerPODetails(poId: string | undefined) {
       if (!map.has(d)) {
         map.set(d, { date: d, displayDate: format(new Date(d + "T00:00:00"), "MMM d"), sewingOutput: 0, finishingOutput: 0 });
       }
-      map.get(d)!.finishingOutput += (row.day_carton || 0);
+      map.get(d)!.finishingOutput += (row.day_poly || 0);
     }
 
     return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
@@ -263,9 +263,10 @@ export function useBuyerPODetails(poId: string | undefined) {
         lastUpdate: todaySewing.length > 0 ? todaySewing[todaySewing.length - 1].submitted_at : null,
       },
       finishing: {
-        todayCarton: todayFinishing.reduce((s, r) => s + (r.day_carton || 0), 0),
         todayPoly: todayFinishing.reduce((s, r) => s + (r.day_poly || 0), 0),
+        todayCarton: todayFinishing.reduce((s, r) => s + (r.day_carton || 0), 0),
         todayQcPass: todayFinishing.reduce((s, r) => s + (r.day_qc_pass || 0), 0),
+        totalPoly: aggregates.finishingPoly,
         totalCarton: aggregates.finishingCarton,
         lastUpdate: todayFinishing.length > 0 ? todayFinishing[todayFinishing.length - 1].submitted_at : null,
       },

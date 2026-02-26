@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { formatShortDate, formatTimeInTimezone } from "@/lib/date-utils";
+import { formatShortDate, formatTimeInTimezone, getTodayInTimezone, getCurrentTimeInTimezone } from "@/lib/date-utils";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
@@ -94,9 +94,11 @@ export function FinishingDailySheetsTable({
 
   async function fetchLogs() {
     setLoading(true);
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - parseInt(dateRange));
+    const timezone = factory?.timezone || "Asia/Dhaka";
+    const endDateStr = getTodayInTimezone(timezone);
+    const startDateObj = getCurrentTimeInTimezone(timezone);
+    startDateObj.setDate(startDateObj.getDate() - parseInt(dateRange));
+    const startDateStr = `${startDateObj.getFullYear()}-${String(startDateObj.getMonth() + 1).padStart(2, "0")}-${String(startDateObj.getDate()).padStart(2, "0")}`;
 
     try {
       const { data, error } = await supabase
@@ -107,8 +109,8 @@ export function FinishingDailySheetsTable({
           work_orders(po_number, buyer, style)
         `)
         .eq("factory_id", factoryId)
-        .gte("production_date", startDate.toISOString().split("T")[0])
-        .lte("production_date", endDate.toISOString().split("T")[0])
+        .gte("production_date", startDateStr)
+        .lte("production_date", endDateStr)
         .order("production_date", { ascending: false })
         .order("submitted_at", { ascending: false });
 
@@ -312,11 +314,11 @@ export function FinishingDailySheetsTable({
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-warning/10 flex items-center justify-center">
-                    <Package className="h-5 w-5 text-warning" />
+                  <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
+                    <Package className="h-5 w-5 text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-warning">{totalCarton.toLocaleString()}</p>
+                    <p className="text-xl font-semibold text-muted-foreground">{totalCarton.toLocaleString()}</p>
                     <p className="text-xs text-muted-foreground">Total Cartons</p>
                   </div>
                 </div>
@@ -337,7 +339,7 @@ export function FinishingDailySheetsTable({
                 <ResponsiveContainer width="100%" height={200}>
                   <AreaChart data={finishingDailyTrend}>
                     <defs>
-                      <linearGradient id="colorFinishingCarton" x1="0" y1="0" x2="0" y2="1">
+                      <linearGradient id="colorFinishingPoly" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
                         <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
                       </linearGradient>
@@ -355,18 +357,18 @@ export function FinishingDailySheetsTable({
                     />
                     <Area
                       type="monotone"
-                      dataKey="carton"
-                      name="Carton"
+                      dataKey="poly"
+                      name="Poly"
                       stroke="hsl(var(--primary))"
-                      fill="url(#colorFinishingCarton)"
+                      fill="url(#colorFinishingPoly)"
                       strokeWidth={2}
                     />
                     <Area
                       type="monotone"
-                      dataKey="poly"
-                      name="Poly"
-                      stroke="hsl(var(--destructive))"
-                      fill="hsl(var(--destructive))"
+                      dataKey="carton"
+                      name="Carton"
+                      stroke="hsl(var(--muted-foreground))"
+                      fill="hsl(var(--muted-foreground))"
                       fillOpacity={0.1}
                       strokeWidth={1.5}
                     />

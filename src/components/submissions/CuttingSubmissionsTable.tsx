@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { getTodayInTimezone } from "@/lib/date-utils";
 import { format, subDays } from "date-fns";
 import { toast } from "sonner";
 import { Search, Scissors, Package, Download, X } from "lucide-react";
@@ -67,7 +68,7 @@ export function CuttingSubmissionsTable({
   searchTerm,
   onSearchChange,
 }: CuttingSubmissionsTableProps) {
-  const { isAdminOrHigher } = useAuth();
+  const { factory, isAdminOrHigher } = useAuth();
   const isAdmin = isAdminOrHigher();
   const [loading, setLoading] = useState(true);
   const [submissions, setSubmissions] = useState<CuttingSubmission[]>([]);
@@ -226,7 +227,7 @@ export function CuttingSubmissionsTable({
     endIndex,
   } = usePagination(sortedData, { pageSize });
   const stats = useMemo(() => {
-    const today = format(new Date(), "yyyy-MM-dd");
+    const today = getTodayInTimezone(factory?.timezone || "Asia/Dhaka");
     const todaySubmissions = submissions.filter(s => s.production_date === today);
     
     // Calculate total leftover fabric in yards

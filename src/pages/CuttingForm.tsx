@@ -23,7 +23,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { format } from "date-fns";
 import { isLateForCutoff, getTodayInTimezone } from "@/lib/date-utils";
 
 interface WorkOrder {
@@ -148,7 +147,7 @@ export default function CuttingForm() {
         .select("day_cutting, day_input")
         .eq("factory_id", profile.factory_id)
         .eq("work_order_id", selectedWorkOrder.id)
-        .lt("production_date", format(new Date(), "yyyy-MM-dd"));
+        .lt("production_date", getTodayInTimezone(factory?.timezone || "Asia/Dhaka"));
 
       const prevTotalCutting = previousActuals?.reduce((sum, a) => sum + (a.day_cutting || 0), 0) || 0;
       const prevTotalInput = previousActuals?.reduce((sum, a) => sum + (a.day_input || 0), 0) || 0;

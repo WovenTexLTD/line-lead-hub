@@ -235,13 +235,13 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange, on
                         />
                       );
                     })}
-                    <FieldDisplay label={t('modals.poly')} value={target.poly} suffix=" /hr" className="text-success" />
+                    <FieldDisplay label={t('modals.poly')} value={target.poly} suffix=" /hr" className="text-lg text-success" />
                     {target.planned_hours != null && target.planned_hours > 0 && (
-                      <FieldDisplay label={t('modals.targetTotalPoly')} value={Math.round(target.poly * target.planned_hours)} className="text-success" />
+                      <FieldDisplay label={t('modals.targetTotalPoly')} value={Math.round(target.poly * target.planned_hours)} className="text-lg text-success" />
                     )}
-                    <FieldDisplay label={t('modals.carton')} value={target.carton} suffix=" /hr" className="text-lg text-warning" />
+                    <FieldDisplay label={t('modals.carton')} value={target.carton} suffix=" /hr" className="text-muted-foreground" />
                     {target.planned_hours != null && target.planned_hours > 0 && (
-                      <FieldDisplay label={t('modals.targetTotalCarton')} value={Math.round(target.carton * target.planned_hours)} className="text-lg text-warning" />
+                      <FieldDisplay label={t('modals.targetTotalCarton')} value={Math.round(target.carton * target.planned_hours)} className="text-muted-foreground" />
                     )}
                   </div>
                 </div>
@@ -322,13 +322,13 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange, on
                       );
                     })}
                     {actual.actual_hours != null && actual.actual_hours > 0 && (
-                      <FieldDisplay label={t('modals.polyPerHour')} value={Math.round((actual.poly / actual.actual_hours) * 100) / 100} suffix=" /hr" className="text-success" />
+                      <FieldDisplay label={t('modals.polyPerHour')} value={Math.round((actual.poly / actual.actual_hours) * 100) / 100} suffix=" /hr" className="text-lg text-success" />
                     )}
-                    <FieldDisplay label={t('modals.poly')} value={actual.poly} className="text-success" />
+                    <FieldDisplay label={t('modals.poly')} value={actual.poly} className="text-lg text-success" />
                     {actual.actual_hours != null && actual.actual_hours > 0 && (
-                      <FieldDisplay label={t('modals.cartonPerHour')} value={Math.round((actual.carton / actual.actual_hours) * 100) / 100} suffix=" /hr" className="text-lg text-warning" />
+                      <FieldDisplay label={t('modals.cartonPerHour')} value={Math.round((actual.carton / actual.actual_hours) * 100) / 100} suffix=" /hr" className="text-muted-foreground" />
                     )}
-                    <FieldDisplay label={t('modals.carton')} value={actual.carton} className="text-lg text-warning" />
+                    <FieldDisplay label={t('modals.carton')} value={actual.carton} className="text-muted-foreground" />
                   </div>
                 </div>
 
@@ -408,16 +408,16 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange, on
                       const tgtHours = target.planned_hours;
                       const actHours = actual.actual_hours;
 
-                      // Carton per-hour rate row (target is already per-hour; derive actual per-hour)
-                      const cartonPerHourActual = actHours && actHours > 0
-                        ? Math.round((actual.carton / actHours) * 100) / 100
+                      // Poly per-hour rate row (target is already per-hour; derive actual per-hour)
+                      const polyPerHourActual = actHours && actHours > 0
+                        ? Math.round((actual.poly / actHours) * 100) / 100
                         : null;
 
                       const rows: { label: string; tgt: number | null | undefined; act: number | null | undefined; decimals?: number }[] = [
                         // Manpower comparison
                         { label: t('modals.mPower'), tgt: target.m_power_planned, act: actual.m_power_actual },
-                        // Per-hour rate comparison (carton = primary output metric)
-                        { label: t('modals.cartonPerHour'), tgt: target.carton, act: cartonPerHourActual, decimals: 2 },
+                        // Per-hour rate comparison (poly = primary output metric)
+                        { label: t('modals.polyPerHour'), tgt: target.poly, act: polyPerHourActual, decimals: 2 },
                         // Total comparisons: target per-hour × planned_hours vs actual day total
                         ...PROCESS_ITEMS.map(item => {
                           const tgtPerHour = target[item.key as keyof FinishingTargetData] as number;

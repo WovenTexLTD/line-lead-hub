@@ -566,10 +566,10 @@ export default function BuyerTodayUpdates() {
                       <TableRow>
                         <TableHead>PO</TableHead>
                         <TableHead>Style</TableHead>
-                        <TableHead className="text-right">Carton</TableHead>
                         <TableHead className="text-right">Poly</TableHead>
+                        <TableHead className="text-right">Carton</TableHead>
                         <TableHead className="text-right">QC Pass</TableHead>
-                        <TableHead className="text-right">Total Carton</TableHead>
+                        <TableHead className="text-right">Total Poly</TableHead>
                         <TableHead className="text-right">Submitted</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -581,16 +581,16 @@ export default function BuyerTodayUpdates() {
                           </TableCell>
                           <TableCell>{row.work_orders?.style || "—"}</TableCell>
                           <TableCell className="text-right font-medium">
-                            {(row.day_carton || 0).toLocaleString()}
+                            {(row.day_poly || 0).toLocaleString()}
                           </TableCell>
                           <TableCell className="text-right">
-                            {(row.day_poly || 0).toLocaleString()}
+                            {(row.day_carton || 0).toLocaleString()}
                           </TableCell>
                           <TableCell className="text-right">
                             {(row.day_qc_pass || 0).toLocaleString()}
                           </TableCell>
                           <TableCell className="text-right">
-                            {(row.total_carton || 0).toLocaleString()}
+                            {(row.total_poly || 0).toLocaleString()}
                           </TableCell>
                           <TableCell className="text-right text-sm text-muted-foreground">
                             {row.submitted_at

@@ -37,7 +37,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { format } from "date-fns";
 import { isLateForCutoff, getTodayInTimezone } from "@/lib/date-utils";
 import { useOfflineSubmission } from "@/hooks/useOfflineSubmission";
 
@@ -225,7 +224,7 @@ export default function CuttingEndOfDay() {
   async function checkExistingData() {
     if (!profile?.factory_id || !selectedLine || !selectedWorkOrder) return;
 
-    const today = format(new Date(), "yyyy-MM-dd");
+    const today = getTodayInTimezone(factory?.timezone || "Asia/Dhaka");
 
     try {
       // Check for today's actual
@@ -296,8 +295,8 @@ export default function CuttingEndOfDay() {
     if (!profile?.factory_id || !selectedWorkOrder) return;
 
     try {
-      const today = format(new Date(), "yyyy-MM-dd");
-      
+      const today = getTodayInTimezone(factory?.timezone || "Asia/Dhaka");
+
       // Get all previous actuals for this work order (excluding today if editing)
       const { data: previousActuals } = await supabase
         .from("cutting_actuals")

@@ -77,11 +77,11 @@ export function ExtrasOverviewModal({ open, onOpenChange }: ExtrasOverviewModalP
 
       const workOrderIds = workOrders.map(wo => wo.id);
 
-      // Fetch finishing carton output and ledger entries in parallel
-      const [cartonRes, ledgerRes] = await Promise.all([
+      // Fetch finishing poly output and ledger entries in parallel
+      const [polyRes, ledgerRes] = await Promise.all([
         supabase
           .from('finishing_daily_logs')
-          .select('work_order_id, carton')
+          .select('work_order_id, poly')
           .eq('factory_id', profile.factory_id)
           .eq('log_type', 'OUTPUT')
           .in('work_order_id', workOrderIds),
@@ -92,11 +92,11 @@ export function ExtrasOverviewModal({ open, onOpenChange }: ExtrasOverviewModalP
           .in('work_order_id', workOrderIds),
       ]);
 
-      // Aggregate carton by work order
-      const cartonByWo = new Map<string, number>();
-      cartonRes.data?.forEach((log: any) => {
-        const current = cartonByWo.get(log.work_order_id) || 0;
-        cartonByWo.set(log.work_order_id, current + (log.carton || 0));
+      // Aggregate poly by work order (poly is primary finishing metric)
+      const polyByWo = new Map<string, number>();
+      polyRes.data?.forEach((log: any) => {
+        const current = polyByWo.get(log.work_order_id) || 0;
+        polyByWo.set(log.work_order_id, current + (log.poly || 0));
       });
 
       // Aggregate ledger by work order: stocked vs consumed
@@ -115,7 +115,7 @@ export function ExtrasOverviewModal({ open, onOpenChange }: ExtrasOverviewModalP
       // Build overview data - only include work orders with extras
       const overviewData: ExtrasOverviewData[] = workOrders
         .map(wo => {
-          const totalCarton = cartonByWo.get(wo.id) || 0;
+          const totalCarton = polyByWo.get(wo.id) || 0;
           const extrasTotal = Math.max(totalCarton - wo.order_qty, 0);
           const stocked = stockedByWo.get(wo.id) || 0;
           const consumed = consumedByWo.get(wo.id) || 0;

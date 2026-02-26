@@ -19,7 +19,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { format } from "date-fns";
+import { getTodayInTimezone } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
@@ -64,7 +64,7 @@ export default function FinishingDailyOutput() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { t } = useTranslation();
-  const { user, profile, isAdminOrHigher } = useAuth();
+  const { user, profile, factory, isAdminOrHigher } = useAuth();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [existingLog, setExistingLog] = useState<any>(null);
@@ -151,7 +151,7 @@ export default function FinishingDailyOutput() {
     if (!profile?.factory_id || !selectedWorkOrderId) return;
 
     try {
-      const today = format(new Date(), "yyyy-MM-dd");
+      const today = getTodayInTimezone(factory?.timezone || "Asia/Dhaka");
 
       // Build query for existing output and target
       const outputQuery = supabase
@@ -228,38 +228,37 @@ export default function FinishingDailyOutput() {
       }
 
       // Fetch previous carton total, passing existing log ID directly to avoid stale state
-      fetchPreviousCartonTotal(outputRes.data?.id || null);
+      fetchPreviousPolyTotal(outputRes.data?.id || null);
     } catch (error) {
       console.error("Error checking existing logs:", error);
     }
   }
 
-  async function fetchPreviousCartonTotal(existingLogId: string | null) {
+  async function fetchPreviousPolyTotal(existingLogId: string | null) {
     if (!profile?.factory_id || !selectedWorkOrderId) return;
 
     try {
-      // Fetch all carton values for this work order (excluding today's entry if editing)
+      // Fetch all poly values for this work order (poly is primary finishing metric)
       const { data, error } = await supabase
         .from("finishing_daily_logs")
-        .select("id, carton")
+        .select("id, poly")
         .eq("factory_id", profile.factory_id)
         .eq("work_order_id", selectedWorkOrderId)
         .eq("log_type", "OUTPUT");
 
       if (error) throw error;
 
-      // Sum all carton values, excluding the current log if editing
+      // Sum all poly values, excluding the current log if editing
       const total = (data || []).reduce((sum, log) => {
-        // If we're editing, exclude the current log's carton from previous total
         if (existingLogId && log.id === existingLogId) {
           return sum;
         }
-        return sum + (log.carton || 0);
+        return sum + (log.poly || 0);
       }, 0);
 
       setPreviousCartonTotal(total);
     } catch (error) {
-      console.error("Error fetching previous carton total:", error);
+      console.error("Error fetching previous poly total:", error);
     }
   }
 
@@ -310,7 +309,7 @@ export default function FinishingDailyOutput() {
     setSubmitting(true);
 
     try {
-      const today = format(new Date(), "yyyy-MM-dd");
+      const today = getTodayInTimezone(factory?.timezone || "Asia/Dhaka");
       const logData = {
         factory_id: profile.factory_id,
         production_date: today,
@@ -386,14 +385,14 @@ export default function FinishingDailyOutput() {
   }
 
   const calculateTotal = () => {
-    // Total output = Carton only (standard rule: OUTPUT = Carton)
-    return parseInt(processValues.carton) || 0;
+    // Total output = Poly (primary finishing metric)
+    return parseInt(processValues.poly) || 0;
   };
 
   const calculateTargetTotal = () => {
-    // Total output = Carton only (standard rule: OUTPUT = Carton)
+    // Total target = Poly (primary finishing metric)
     if (!targetLog) return 0;
-    return (targetLog as any).carton || 0;
+    return (targetLog as any).poly || 0;
   };
 
   const getVariance = (key: ProcessKey): number => {
@@ -756,12 +755,12 @@ export default function FinishingDailyOutput() {
                 <div className="border-t pt-3">
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <span className="text-muted-foreground">Today's Carton Entry:</span>
-                      <p className="text-lg font-bold text-primary font-mono">+{parseInt(processValues.carton).toLocaleString()}</p>
+                      <span className="text-muted-foreground">Today's Poly Entry:</span>
+                      <p className="text-lg font-bold text-primary font-mono">+{parseInt(processValues.poly).toLocaleString()}</p>
                     </div>
                     <div>
-                      <span className="text-muted-foreground">New Total Carton:</span>
-                      <p className="text-lg font-bold font-mono">{(previousCartonTotal + parseInt(processValues.carton)).toLocaleString()}</p>
+                      <span className="text-muted-foreground">New Total Poly:</span>
+                      <p className="text-lg font-bold font-mono">{(previousCartonTotal + parseInt(processValues.poly)).toLocaleString()}</p>
                     </div>
                   </div>
                 </div>
@@ -769,7 +768,7 @@ export default function FinishingDailyOutput() {
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Remaining:</span>
                     {(() => {
-                      const newTotal = previousCartonTotal + parseInt(processValues.carton);
+                      const newTotal = previousCartonTotal + parseInt(processValues.poly);
                       const remaining = selectedWorkOrder.order_qty - newTotal;
                       return (
                         <span className={cn("text-lg font-bold font-mono", remaining > 0 ? "text-amber-600" : remaining < 0 ? "text-green-600" : "text-green-600")}>
@@ -783,17 +782,17 @@ export default function FinishingDailyOutput() {
                     <div 
                       className={cn(
                         "h-full rounded-full transition-all",
-                        (previousCartonTotal + parseInt(processValues.carton)) >= selectedWorkOrder.order_qty 
+                        (previousCartonTotal + parseInt(processValues.poly)) >= selectedWorkOrder.order_qty 
                           ? "bg-green-500" 
                           : "bg-primary"
                       )}
                       style={{ 
-                        width: `${Math.min(100, ((previousCartonTotal + parseInt(processValues.carton)) / selectedWorkOrder.order_qty) * 100)}%` 
+                        width: `${Math.min(100, ((previousCartonTotal + parseInt(processValues.poly)) / selectedWorkOrder.order_qty) * 100)}%` 
                       }}
                     />
                   </div>
                   <p className="text-xs text-muted-foreground mt-1 text-right">
-                    {((previousCartonTotal + parseInt(processValues.carton)) / selectedWorkOrder.order_qty * 100).toFixed(1)}% of order
+                    {((previousCartonTotal + parseInt(processValues.poly)) / selectedWorkOrder.order_qty * 100).toFixed(1)}% of order
                   </p>
                 </div>
               </div>

@@ -473,7 +473,7 @@ async function fetchWorkOrders(
           .eq("factory_id", factoryId)
           .eq("production_date", today)
           .in("work_order_id", woIds),
-        // Finishing output from finishing_daily_logs (poly + carton, OUTPUT type)
+        // Finishing output from finishing_daily_logs (poly is primary metric)
         // No cumulative column available, so fetch all dates with explicit limit.
         sb.from("finishing_daily_logs")
           .select("work_order_id, poly, carton, production_date")
@@ -498,7 +498,7 @@ async function fetchWorkOrders(
         for (const log of finishingRes.data) {
           const woId = log.work_order_id;
           if (woId) {
-            const output = (log.poly || 0) + (log.carton || 0);
+            const output = (log.poly || 0);
             finishingMap.set(woId, (finishingMap.get(woId) || 0) + output);
             if (log.production_date === today) {
               finishingTodayMap.set(woId, (finishingTodayMap.get(woId) || 0) + output);

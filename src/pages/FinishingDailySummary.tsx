@@ -169,8 +169,8 @@ export default function FinishingDailySummary() {
 
   const calculateTotal = (log: FinishingDailyLog | null) => {
     if (!log) return 0;
-    // Total output = Carton only (standard rule: OUTPUT = Carton)
-    return (log as any).carton || 0;
+    // Total output = Poly (primary finishing metric)
+    return (log as any).poly || 0;
   };
 
   const VarianceCell = ({ target, output }: { target: number; output: number }) => {
