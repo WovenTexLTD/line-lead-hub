@@ -84,6 +84,7 @@ export default function FinishingEndOfDayForm() {
   const [totalCarton, setTotalCarton] = useState("");
   const [averageProduction, setAverageProduction] = useState("");
   const [mPowerActual, setMPowerActual] = useState("");
+  const [otManpowerActual, setOtManpowerActual] = useState("0");
   const [dayHourActual, setDayHourActual] = useState("");
   const [dayOverTimeActual, setDayOverTimeActual] = useState("0");
   const [totalHour, setTotalHour] = useState("");
@@ -172,6 +173,7 @@ export default function FinishingEndOfDayForm() {
       dayCarton: z.number().int().min(0, t("forms.dayCartonRequired")),
       totalCarton: z.number().int().min(0, t("forms.totalCartonRequired")),
       mPowerActual: z.number().int().positive(t("forms.mPowerRequired")),
+      otManpowerActual: z.number().int().min(0, t("forms.otManpowerRequired") || "OT Manpower must be 0 or more"),
       dayHourActual: z.number().min(0, t("forms.dayHoursRequired")),
       dayOverTimeActual: z.number().min(0, t("forms.otHoursRequired")),
     });
@@ -186,6 +188,7 @@ export default function FinishingEndOfDayForm() {
       dayCarton: dayCarton ? parseInt(dayCarton) : -1,
       totalCarton: totalCarton ? parseInt(totalCarton) : -1,
       mPowerActual: parseInt(mPowerActual) || 0,
+      otManpowerActual: otManpowerActual === "" ? -1 : parseInt(otManpowerActual),
       dayHourActual: dayHourActual ? parseFloat(dayHourActual) : -1,
       dayOverTimeActual: dayOverTimeActual === "" ? -1 : parseFloat(dayOverTimeActual),
     });
@@ -238,6 +241,7 @@ export default function FinishingEndOfDayForm() {
         total_carton: parseInt(totalCarton),
         average_production: averageProduction ? parseInt(averageProduction) : 0,
         m_power_actual: parseInt(mPowerActual),
+        ot_manpower_actual: parseInt(otManpowerActual) || 0,
         day_hour_actual: parseFloat(dayHourActual),
         day_over_time_actual: parseFloat(dayOverTimeActual),
         total_hour: totalHour ? parseFloat(totalHour) : 0,
@@ -527,6 +531,18 @@ export default function FinishingEndOfDayForm() {
               {errors.mPowerActual && <p className="text-sm text-destructive">{errors.mPowerActual}</p>}
             </div>
 
+            <div className="space-y-2">
+              <Label>{t("forms.otManpowerActual") || "OT Manpower Actual"}</Label>
+              <Input
+                type="number"
+                value={otManpowerActual}
+                onChange={(e) => setOtManpowerActual(e.target.value)}
+                placeholder="0"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>{t("forms.dayHoursActual")} *</Label>
               <Input

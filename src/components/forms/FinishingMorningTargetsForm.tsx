@@ -77,6 +77,7 @@ export default function FinishingMorningTargetsForm() {
   const [selectedWorkOrderId, setSelectedWorkOrderId] = useState("");
   const [perHourTarget, setPerHourTarget] = useState("");
   const [mPowerPlanned, setMPowerPlanned] = useState("");
+  const [otManpowerPlanned, setOtManpowerPlanned] = useState("0");
   const [dayHourPlanned, setDayHourPlanned] = useState("");
   const [dayOverTimePlanned, setDayOverTimePlanned] = useState("0");
   const [remarks, setRemarks] = useState("");
@@ -155,6 +156,7 @@ export default function FinishingMorningTargetsForm() {
     workOrder: z.string().min(1, "PO is required"),
     perHourTarget: z.number().int().positive("Per hour target is required"),
     mPowerPlanned: z.number().int().positive("M Power is required"),
+    otManpowerPlanned: z.number().int().min(0, "OT Manpower must be 0 or more"),
     dayHourPlanned: z.number().min(0, "Day hours is required"),
     dayOverTimePlanned: z.number().min(0, "OT hours must be 0 or more"),
   });
@@ -165,6 +167,7 @@ export default function FinishingMorningTargetsForm() {
       workOrder: selectedWorkOrderId,
       perHourTarget: parseInt(perHourTarget) || 0,
       mPowerPlanned: parseInt(mPowerPlanned) || 0,
+      otManpowerPlanned: otManpowerPlanned === "" ? -1 : parseInt(otManpowerPlanned),
       dayHourPlanned: parseFloat(dayHourPlanned) || -1,
       dayOverTimePlanned: dayOverTimePlanned === "" ? -1 : parseFloat(dayOverTimePlanned),
     });
@@ -217,6 +220,7 @@ export default function FinishingMorningTargetsForm() {
         order_qty: selectedWorkOrder?.order_qty || 0,
         per_hour_target: parseInt(perHourTarget),
         m_power_planned: parseInt(mPowerPlanned),
+        ot_manpower_planned: parseInt(otManpowerPlanned) || 0,
         day_hour_planned: parseFloat(dayHourPlanned),
         day_over_time_planned: parseFloat(dayOverTimePlanned),
         remarks: remarks || null,
@@ -447,6 +451,18 @@ export default function FinishingMorningTargetsForm() {
                 className={errors.dayOverTimePlanned ? "border-destructive" : ""}
               />
               {errors.dayOverTimePlanned && <p className="text-sm text-destructive">{errors.dayOverTimePlanned}</p>}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>OT Manpower Planned</Label>
+              <Input
+                type="number"
+                value={otManpowerPlanned}
+                onChange={(e) => setOtManpowerPlanned(e.target.value)}
+                placeholder="0"
+              />
             </div>
           </div>
         </CardContent>
