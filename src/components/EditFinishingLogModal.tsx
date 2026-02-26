@@ -72,8 +72,10 @@ export function EditFinishingLogModal({ log, open, onOpenChange, onSaved }: Edit
       };
 
       if (isTarget) {
+        updateData.m_power_planned = formData.m_power_planned || null;
         updateData.planned_hours = formData.planned_hours || null;
       } else {
+        updateData.m_power_actual = formData.m_power_actual || null;
         updateData.actual_hours = formData.actual_hours || null;
       }
 
@@ -131,19 +133,33 @@ export function EditFinishingLogModal({ log, open, onOpenChange, onSaved }: Edit
             ))}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="hours">
-              {isTarget ? t('modals.plannedHours') : t('modals.actualHours')}
-            </Label>
-            <Input
-              id="hours"
-              type="number"
-              step="0.5"
-              min="0"
-              max="24"
-              value={isTarget ? (formData.planned_hours ?? '') : (formData.actual_hours ?? '')}
-              onChange={(e) => handleNumberChange(isTarget ? 'planned_hours' : 'actual_hours', e.target.value)}
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="m_power">
+                {isTarget ? t('modals.mPowerPlanned') : t('modals.mPowerActual')}
+              </Label>
+              <Input
+                id="m_power"
+                type="number"
+                min="0"
+                value={isTarget ? (formData.m_power_planned ?? '') : (formData.m_power_actual ?? '')}
+                onChange={(e) => handleNumberChange(isTarget ? 'm_power_planned' : 'm_power_actual', e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="hours">
+                {isTarget ? t('modals.plannedHours') : t('modals.actualHours')}
+              </Label>
+              <Input
+                id="hours"
+                type="number"
+                step="0.5"
+                min="0"
+                max="24"
+                value={isTarget ? (formData.planned_hours ?? '') : (formData.actual_hours ?? '')}
+                onChange={(e) => handleNumberChange(isTarget ? 'planned_hours' : 'actual_hours', e.target.value)}
+              />
+            </div>
           </div>
 
           <div className="space-y-2">

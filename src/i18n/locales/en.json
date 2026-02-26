@@ -691,6 +691,7 @@
     "totalInputLabel": "Total Input",
     "orderQtyLabel": "Order Qty",
     "mPowerPlanned": "M Power Planned",
+    "mPowerActual": "M Power Actual",
     "dayHoursPlanned": "Day Hours Planned",
     "estimatedExFactory": "Estimated Ex-Factory",
     "goodToday": "Good Today",

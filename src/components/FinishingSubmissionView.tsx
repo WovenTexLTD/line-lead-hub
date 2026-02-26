@@ -55,6 +55,7 @@ export interface FinishingTargetData {
   get_up: number;
   poly: number;
   carton: number;
+  m_power_planned: number | null;
   planned_hours: number | null;
   ot_hours_planned: number | null;
   ot_manpower_planned: number | null;
@@ -76,6 +77,7 @@ export interface FinishingActualData {
   get_up: number;
   poly: number;
   carton: number;
+  m_power_actual: number | null;
   actual_hours: number | null;
   ot_hours_actual: number | null;
   ot_manpower_actual: number | null;
@@ -248,6 +250,7 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange, on
                 <div>
                   <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">{t('modals.hoursAndResources')}</p>
                   <div className="grid grid-cols-2 gap-3">
+                    <FieldDisplay label={t('modals.mPowerPlanned')} value={target.m_power_planned} />
                     <FieldDisplay label={t('modals.plannedHours')} value={target.planned_hours} />
                     <FieldDisplay label={t('modals.otHoursPlanned')} value={target.ot_hours_planned} />
                     {target.ot_manpower_planned != null && target.ot_manpower_planned > 0 && (
@@ -333,6 +336,7 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange, on
                 <div>
                   <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">{t('modals.hoursAndResources')}</p>
                   <div className="grid grid-cols-2 gap-3">
+                    <FieldDisplay label={t('modals.mPowerActual')} value={actual.m_power_actual} />
                     <FieldDisplay label={t('modals.actualHours')} value={actual.actual_hours} />
                     <FieldDisplay label={t('modals.otHoursActual')} value={actual.ot_hours_actual} />
                     {actual.ot_manpower_actual != null && actual.ot_manpower_actual > 0 && (
@@ -410,6 +414,8 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange, on
                         : null;
 
                       const rows: { label: string; tgt: number | null | undefined; act: number | null | undefined; decimals?: number }[] = [
+                        // Manpower comparison
+                        { label: t('modals.mPower'), tgt: target.m_power_planned, act: actual.m_power_actual },
                         // Per-hour rate comparison (carton = primary output metric)
                         { label: t('modals.cartonPerHour'), tgt: target.carton, act: cartonPerHourActual, decimals: 2 },
                         // Total comparisons: target per-hour × planned_hours vs actual day total

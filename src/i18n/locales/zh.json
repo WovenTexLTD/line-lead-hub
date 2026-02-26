@@ -691,6 +691,7 @@
     "totalInputLabel": "投入总数",
     "orderQtyLabel": "订单数量",
     "mPowerPlanned": "计划人力",
+    "mPowerActual": "实际人力",
     "dayHoursPlanned": "计划日工时",
     "estimatedExFactory": "预计出厂日期",
     "goodToday": "今日良品",
