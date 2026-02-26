@@ -168,7 +168,7 @@ export function AppSidebar() {
   }, [isAdminOrOwner, profile?.id, profile?.factory_id, (profile as any)?.onboarding_setup_dismissed_at, (profile as any)?.onboarding_banner_dismissed_at]);
   const onboarding = useOnboardingChecklist(onboardingProfile);
   const setupRemaining = onboarding.totalCount - onboarding.completedCount;
-  const showSetupBadge = isAdminOrOwner && !onboarding.loading && !onboarding.allComplete && onboarding.totalCount > 0;
+  const showSetupBadge = isAdminOrOwner && !onboarding.loading && !onboarding.dismissed && !onboarding.allComplete && onboarding.totalCount > 0;
 
   useEffect(() => {
     let cancelled = false;
