@@ -80,6 +80,9 @@ export default function FinishingDailyOutput() {
   const [remarks, setRemarks] = useState("");
   const [actualHours, setActualHours] = useState("");
 
+  // Manpower
+  const [mPowerActual, setMPowerActual] = useState("");
+
   // OT fields
   const [otHoursActual, setOtHoursActual] = useState("0");
   const [otManpowerActual, setOtManpowerActual] = useState("0");
@@ -189,6 +192,7 @@ export default function FinishingDailyOutput() {
         // Pre-fill form with existing data
         setRemarks(outputRes.data.remarks || "");
         setActualHours(outputRes.data.actual_hours?.toString() || "");
+        setMPowerActual(outputRes.data.m_power_actual?.toString() || "");
         setOtHoursActual(outputRes.data.ot_hours_actual?.toString() || "0");
         setOtManpowerActual(outputRes.data.ot_manpower_actual?.toString() || "0");
         setProcessValues({
@@ -207,6 +211,7 @@ export default function FinishingDailyOutput() {
         setIsEditing(false);
         // Prefill actual hours from target's planned_hours
         setActualHours(targetRes.data?.planned_hours?.toString() || "");
+        setMPowerActual(targetRes.data?.m_power_planned?.toString() || "");
         setOtHoursActual(targetRes.data?.ot_hours_planned?.toString() || "0");
         setOtManpowerActual(targetRes.data?.ot_manpower_planned?.toString() || "0");
         // Reset form
@@ -277,6 +282,10 @@ export default function FinishingDailyOutput() {
       newErrors.processes = "Enter at least one output value";
     }
 
+    if (!mPowerActual || parseInt(mPowerActual) <= 0) {
+      newErrors.mPowerActual = "M Power is required";
+    }
+
     if (!actualHours || parseFloat(actualHours) <= 0) {
       newErrors.actualHours = "Actual hours must be greater than 0";
     }
@@ -318,6 +327,7 @@ export default function FinishingDailyOutput() {
         poly: processValues.poly ? parseInt(processValues.poly) : 0,
         carton: processValues.carton ? parseInt(processValues.carton) : 0,
         remarks: remarks || null,
+        m_power_actual: parseInt(mPowerActual) || 0,
         actual_hours: parseFloat(actualHours),
         ot_hours_actual: parseFloat(otHoursActual) || 0,
         ot_manpower_actual: parseInt(otManpowerActual) || 0,
@@ -633,6 +643,27 @@ export default function FinishingDailyOutput() {
                   </div>
                 );
               })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Manpower */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Manpower</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <Label>M Power Actual *</Label>
+              <Input
+                type="number"
+                min="1"
+                value={mPowerActual}
+                onChange={(e) => setMPowerActual(e.target.value)}
+                placeholder="0"
+                className={errors.mPowerActual ? "border-destructive" : ""}
+              />
+              {errors.mPowerActual && <p className="text-sm text-destructive">{errors.mPowerActual}</p>}
             </div>
           </CardContent>
         </Card>

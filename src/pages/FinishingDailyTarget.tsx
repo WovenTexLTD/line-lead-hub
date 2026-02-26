@@ -63,6 +63,9 @@ export default function FinishingDailyTarget() {
   const [remarks, setRemarks] = useState("");
   const [plannedHours, setPlannedHours] = useState("");
 
+  // Manpower
+  const [mPowerPlanned, setMPowerPlanned] = useState("");
+
   // OT fields
   const [otHoursPlanned, setOtHoursPlanned] = useState("0");
   const [otManpowerPlanned, setOtManpowerPlanned] = useState("0");
@@ -148,6 +151,7 @@ export default function FinishingDailyTarget() {
         // Pre-fill form with existing data
         setRemarks(data.remarks || "");
         setPlannedHours(data.planned_hours != null ? data.planned_hours.toString() : "");
+        setMPowerPlanned(data.m_power_planned?.toString() || "");
         setOtHoursPlanned(data.ot_hours_planned?.toString() || "0");
         setOtManpowerPlanned(data.ot_manpower_planned?.toString() || "0");
         setProcessValues({
@@ -200,6 +204,10 @@ export default function FinishingDailyTarget() {
       newErrors.processes = "Enter at least one target value";
     }
 
+    if (!mPowerPlanned || parseInt(mPowerPlanned) <= 0) {
+      newErrors.mPowerPlanned = "M Power is required";
+    }
+
     if (!plannedHours || parseFloat(plannedHours) <= 0) {
       newErrors.plannedHours = "Planned hours must be greater than 0";
     }
@@ -242,6 +250,7 @@ export default function FinishingDailyTarget() {
         carton: processValues.carton ? parseInt(processValues.carton) : 0,
         remarks: remarks || null,
         submitted_by: user.id,
+        m_power_planned: parseInt(mPowerPlanned) || 0,
         planned_hours: parseFloat(plannedHours),
         ot_hours_planned: parseFloat(otHoursPlanned) || 0,
         ot_manpower_planned: parseInt(otManpowerPlanned) || 0,
@@ -462,6 +471,27 @@ export default function FinishingDailyTarget() {
                   </div>
                 );
               })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Manpower */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Manpower</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <Label>M Power Planned *</Label>
+              <Input
+                type="number"
+                min="1"
+                value={mPowerPlanned}
+                onChange={(e) => setMPowerPlanned(e.target.value)}
+                placeholder="0"
+                className={errors.mPowerPlanned ? "border-destructive" : ""}
+              />
+              {errors.mPowerPlanned && <p className="text-sm text-destructive">{errors.mPowerPlanned}</p>}
             </div>
           </CardContent>
         </Card>

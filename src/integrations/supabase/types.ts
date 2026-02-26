@@ -1278,6 +1278,8 @@ export type Database = {
           locked_at: string | null
           locked_by: string | null
           log_type: Database["public"]["Enums"]["finishing_log_type"]
+          m_power_actual: number | null
+          m_power_planned: number | null
           ot_hours_actual: number | null
           ot_hours_planned: number | null
           ot_manpower_actual: number | null
@@ -1310,6 +1312,8 @@ export type Database = {
           locked_at?: string | null
           locked_by?: string | null
           log_type: Database["public"]["Enums"]["finishing_log_type"]
+          m_power_actual?: number | null
+          m_power_planned?: number | null
           ot_hours_actual?: number | null
           ot_hours_planned?: number | null
           ot_manpower_actual?: number | null
@@ -1342,6 +1346,8 @@ export type Database = {
           locked_at?: string | null
           locked_by?: string | null
           log_type?: Database["public"]["Enums"]["finishing_log_type"]
+          m_power_actual?: number | null
+          m_power_planned?: number | null
           ot_hours_actual?: number | null
           ot_hours_planned?: number | null
           ot_manpower_actual?: number | null
