@@ -44,6 +44,8 @@ interface FinishingDailyLog {
   get_up: number;
   poly: number;
   carton: number;
+  m_power_planned: number | null;
+  m_power_actual: number | null;
   planned_hours: number | null;
   actual_hours: number | null;
   ot_hours_planned: number | null;

@@ -41,7 +41,7 @@ interface FactoryStats {
 export default function SetupHome() {
   const { profile, factory, isAdminOrHigher } = useAuth();
   const navigate = useNavigate();
-  const onboarding = useOnboardingChecklist(profile?.factory_id);
+  const onboarding = useOnboardingChecklist(profile?.factory_id ? profile as any : null);
 
   
   const [loading, setLoading] = useState(true);

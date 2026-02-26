@@ -68,6 +68,8 @@ interface FinishingDailyLog {
   carton: number | null;
   planned_hours: number | null;
   actual_hours: number | null;
+  m_power_planned: number | null;
+  m_power_actual: number | null;
   ot_hours_actual: number | null;
   ot_manpower_actual: number | null;
   ot_hours_planned: number | null;
