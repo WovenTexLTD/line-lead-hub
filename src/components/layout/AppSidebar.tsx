@@ -153,11 +153,20 @@ export function AppSidebar() {
   const [appVersion, setAppVersion] = useState<string>(WEB_APP_VERSION);
   const [showDMGWarning, setShowDMGWarning] = useState(false);
 
-  const { startTour } = useTourContext();
+  const { startTour, resetTour } = useTourContext();
 
   // Setup progress badge for admin/owner sidebar
   const isAdminOrOwner = roles.some(ur => ['admin', 'owner'].includes(ur.role));
-  const onboarding = useOnboardingChecklist(isAdminOrOwner ? profile?.factory_id : null);
+  const onboardingProfile = React.useMemo(() => {
+    if (!isAdminOrOwner || !profile?.id || !profile?.factory_id) return null;
+    return {
+      id: profile.id,
+      factory_id: profile.factory_id,
+      onboarding_setup_dismissed_at: (profile as any).onboarding_setup_dismissed_at ?? null,
+      onboarding_banner_dismissed_at: (profile as any).onboarding_banner_dismissed_at ?? null,
+    };
+  }, [isAdminOrOwner, profile?.id, profile?.factory_id, (profile as any)?.onboarding_setup_dismissed_at, (profile as any)?.onboarding_banner_dismissed_at]);
+  const onboarding = useOnboardingChecklist(onboardingProfile);
   const setupRemaining = onboarding.totalCount - onboarding.completedCount;
   const showSetupBadge = isAdminOrOwner && !onboarding.loading && !onboarding.allComplete && onboarding.totalCount > 0;
 
@@ -650,7 +659,7 @@ Settings
           {!collapsed && (
             <>
               <button
-                onClick={startTour}
+                onClick={async () => { await resetTour(); startTour(); }}
                 className="shrink-0 h-8 w-8 flex items-center justify-center rounded-md text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
                 title="Restart tour"
               >

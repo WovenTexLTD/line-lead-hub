@@ -2352,6 +2352,10 @@ export type Database = {
           id: string
           invitation_status: string | null
           is_active: boolean | null
+          onboarding_banner_dismissed_at: string | null
+          onboarding_setup_dismissed_at: string | null
+          onboarding_tour_completed_at: string | null
+          onboarding_version: string | null
           phone: string | null
           updated_at: string | null
         }
@@ -2368,6 +2372,10 @@ export type Database = {
           id: string
           invitation_status?: string | null
           is_active?: boolean | null
+          onboarding_banner_dismissed_at?: string | null
+          onboarding_setup_dismissed_at?: string | null
+          onboarding_tour_completed_at?: string | null
+          onboarding_version?: string | null
           phone?: string | null
           updated_at?: string | null
         }
@@ -2384,6 +2392,10 @@ export type Database = {
           id?: string
           invitation_status?: string | null
           is_active?: boolean | null
+          onboarding_banner_dismissed_at?: string | null
+          onboarding_setup_dismissed_at?: string | null
+          onboarding_tour_completed_at?: string | null
+          onboarding_version?: string | null
           phone?: string | null
           updated_at?: string | null
         }

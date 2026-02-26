@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Rows3, ClipboardList, UserPlus, Target, type LucideIcon } from "lucide-react";
 
@@ -18,6 +18,13 @@ interface OnboardingCounts {
   workOrders: number;
   teamMembers: number;
   morningTargets: number;
+}
+
+interface ProfileOnboarding {
+  id: string;
+  factory_id: string;
+  onboarding_setup_dismissed_at?: string | null;
+  onboarding_banner_dismissed_at?: string | null;
 }
 
 const STEP_DEFINITIONS = [
@@ -55,36 +62,65 @@ const STEP_DEFINITIONS = [
   },
 ] as const;
 
-function getDismissKey(factoryId: string) {
-  return `onboarding_dismissed_${factoryId}`;
+function getDismissKey(userId: string, factoryId: string) {
+  return `onboarding_setup_dismissed_${userId}_${factoryId}`;
 }
 
-function getBannerDismissKey(factoryId: string) {
-  return `onboarding_banner_dismissed_${factoryId}`;
+function getBannerDismissKey(userId: string, factoryId: string) {
+  return `onboarding_banner_dismissed_${userId}_${factoryId}`;
 }
 
-export function useOnboardingChecklist(factoryId: string | null | undefined) {
+export function useOnboardingChecklist(profile: ProfileOnboarding | null) {
+  const factoryId = profile?.factory_id ?? null;
+  const userId = profile?.id ?? null;
+
   const [counts, setCounts] = useState<OnboardingCounts | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const refetch = useCallback(() => setRefreshKey(k => k + 1), []);
+  const autoCompleteRan = useRef(false);
+
+  // Initialize dismissed state from localStorage (fast) OR profile DB columns
   const [dismissed, setDismissed] = useState(() => {
-    if (!factoryId) return false;
-    return localStorage.getItem(getDismissKey(factoryId)) === "true";
-  });
-  const [bannerDismissed, setBannerDismissed] = useState(() => {
-    if (!factoryId) return false;
-    return localStorage.getItem(getBannerDismissKey(factoryId)) === "true";
+    if (!userId || !factoryId) return false;
+    if (localStorage.getItem(getDismissKey(userId, factoryId)) === "true") return true;
+    const p = profile as any;
+    return p?.onboarding_setup_dismissed_at != null;
   });
 
+  const [bannerDismissed, setBannerDismissed] = useState(() => {
+    if (!userId || !factoryId) return false;
+    if (localStorage.getItem(getBannerDismissKey(userId, factoryId)) === "true") return true;
+    const p = profile as any;
+    return p?.onboarding_banner_dismissed_at != null;
+  });
+
+  // Re-sync when profile/factory changes
   useEffect(() => {
-    if (!factoryId) {
+    if (!userId || !factoryId) {
       setLoading(false);
       return;
     }
-    setDismissed(localStorage.getItem(getDismissKey(factoryId)) === "true");
-    setBannerDismissed(localStorage.getItem(getBannerDismissKey(factoryId)) === "true");
-  }, [factoryId]);
+
+    const p = profile as any;
+
+    const setupDismissedFromDb = p?.onboarding_setup_dismissed_at != null;
+    const setupDismissedFromCache = localStorage.getItem(getDismissKey(userId, factoryId)) === "true";
+    setDismissed(setupDismissedFromDb || setupDismissedFromCache);
+
+    // Backfill cache from DB
+    if (setupDismissedFromDb && !setupDismissedFromCache) {
+      localStorage.setItem(getDismissKey(userId, factoryId), "true");
+    }
+
+    const bannerDismissedFromDb = p?.onboarding_banner_dismissed_at != null;
+    const bannerDismissedFromCache = localStorage.getItem(getBannerDismissKey(userId, factoryId)) === "true";
+    setBannerDismissed(bannerDismissedFromDb || bannerDismissedFromCache);
+
+    if (bannerDismissedFromDb && !bannerDismissedFromCache) {
+      localStorage.setItem(getBannerDismissKey(userId, factoryId), "true");
+    }
+  }, [userId, factoryId, profile]);
 
   useEffect(() => {
     // Only skip fetch if BOTH card and banner are dismissed
@@ -156,19 +192,55 @@ export function useOnboardingChecklist(factoryId: string | null | undefined) {
   const currentStepIndex = steps.findIndex((s) => !s.completed);
   const currentStep = currentStepIndex >= 0 ? steps[currentStepIndex] : null;
 
-  const dismiss = useCallback(() => {
-    if (factoryId) {
-      localStorage.setItem(getDismissKey(factoryId), "true");
-    }
+  // Auto-dismiss card + banner when all steps complete (once, persisted to DB)
+  useEffect(() => {
+    if (!allComplete || !userId || !factoryId || autoCompleteRan.current) return;
+    if (dismissed && bannerDismissed) return; // already dismissed
+
+    autoCompleteRan.current = true;
+    const now = new Date().toISOString();
+
     setDismissed(true);
-  }, [factoryId]);
+    setBannerDismissed(true);
+    localStorage.setItem(getDismissKey(userId, factoryId), "true");
+    localStorage.setItem(getBannerDismissKey(userId, factoryId), "true");
+
+    // Persist to DB
+    supabase
+      .from("profiles")
+      .update({
+        onboarding_setup_dismissed_at: now,
+        onboarding_banner_dismissed_at: now,
+      } as any)
+      .eq("id", userId)
+      .then();
+  }, [allComplete, userId, factoryId, dismissed, bannerDismissed]);
+
+  const dismiss = useCallback(() => {
+    if (!userId || !factoryId) return;
+    setDismissed(true);
+    localStorage.setItem(getDismissKey(userId, factoryId), "true");
+
+    // Persist to DB
+    supabase
+      .from("profiles")
+      .update({ onboarding_setup_dismissed_at: new Date().toISOString() } as any)
+      .eq("id", userId)
+      .then();
+  }, [userId, factoryId]);
 
   const dismissBanner = useCallback(() => {
-    if (factoryId) {
-      localStorage.setItem(getBannerDismissKey(factoryId), "true");
-    }
+    if (!userId || !factoryId) return;
     setBannerDismissed(true);
-  }, [factoryId]);
+    localStorage.setItem(getBannerDismissKey(userId, factoryId), "true");
+
+    // Persist to DB
+    supabase
+      .from("profiles")
+      .update({ onboarding_banner_dismissed_at: new Date().toISOString() } as any)
+      .eq("id", userId)
+      .then();
+  }, [userId, factoryId]);
 
   return {
     steps,
@@ -181,7 +253,7 @@ export function useOnboardingChecklist(factoryId: string | null | undefined) {
     dismissBanner,
     loading,
     visible: !!factoryId && !loading && !dismissed && !allComplete,
-    bannerVisible: !!factoryId && !loading && !bannerDismissed,
+    bannerVisible: !!factoryId && !loading && !bannerDismissed && !allComplete,
     currentStep,
     currentStepIndex,
     refetch,

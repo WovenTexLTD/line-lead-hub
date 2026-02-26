@@ -7,18 +7,23 @@ import { useTour } from "@/hooks/useTour";
 
 interface TourContextValue {
   startTour: () => void;
+  resetTour: () => Promise<void>;
 }
 
 const TourContext = createContext<TourContextValue | null>(null);
 
 export function TourProvider({ children }: { children: ReactNode }) {
-  const { markCompleted, isCompleted } = useTour();
+  const { markCompleted, isCompleted, resetTour } = useTour();
   const { setOpen } = useSidebar();
   const location = useLocation();
   const driverRef = useRef<ReturnType<typeof driver> | null>(null);
   const hasAutoStarted = useRef(false);
+  const tourInProgress = useRef(false);
 
   const startTour = useCallback(() => {
+    if (tourInProgress.current) return;
+    tourInProgress.current = true;
+
     // Open sidebar so nav items are visible and highlightable
     setOpen(true);
 
@@ -103,6 +108,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
         },
       ],
       onDestroyStarted: () => {
+        tourInProgress.current = false;
         markCompleted();
         driverObj.destroy();
       },
@@ -112,10 +118,11 @@ export function TourProvider({ children }: { children: ReactNode }) {
     driverObj.drive();
   }, [markCompleted, setOpen]);
 
-  // Auto-start on first dashboard visit
+  // Auto-start on first dashboard visit (once per session, only if not completed)
   useEffect(() => {
     if (location.pathname !== "/dashboard") return;
     if (hasAutoStarted.current) return;
+    if (tourInProgress.current) return;
     if (isCompleted()) return;
 
     hasAutoStarted.current = true;
@@ -134,7 +141,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <TourContext.Provider value={{ startTour }}>
+    <TourContext.Provider value={{ startTour, resetTour }}>
       {children}
     </TourContext.Provider>
   );
