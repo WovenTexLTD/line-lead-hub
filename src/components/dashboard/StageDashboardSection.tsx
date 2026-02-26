@@ -300,8 +300,8 @@ export function StageDashboardSection<
                     </div>
                     <div className="text-right">
                       {isFinishing &&
-                      update.total_poly != null &&
-                      update.total_poly > 0 ? (
+                      update.total_carton != null &&
+                      update.total_carton > 0 ? (
                         <div className="flex gap-3">
                           <div>
                             <p className="font-mono font-bold text-lg">
@@ -313,10 +313,10 @@ export function StageDashboardSection<
                           </div>
                           <div>
                             <p className="font-mono font-semibold text-base text-muted-foreground">
-                              {update.total_poly.toLocaleString()}
+                              {update.total_carton.toLocaleString()}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              poly
+                              cartons
                             </p>
                           </div>
                         </div>
