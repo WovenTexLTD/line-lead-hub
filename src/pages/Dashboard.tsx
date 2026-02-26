@@ -562,7 +562,7 @@ export default function Dashboard() {
           style: log.work_orders?.style || null,
           hours_logged: 0,
           total_poly: log.poly || 0,
-          total_carton: totalCarton,
+          total_carton: log.carton || 0,
         };
       });
 
