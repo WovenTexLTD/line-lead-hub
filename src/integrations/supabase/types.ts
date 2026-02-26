@@ -1102,7 +1102,7 @@ export type Database = {
           line_id: string
           m_power_actual: number
           order_qty: number | null
-          ot_manpower_actual: number
+          ot_manpower_actual: number | null
           photo_urls: string[] | null
           production_date: string
           remarks: string | null
@@ -1140,7 +1140,7 @@ export type Database = {
           line_id: string
           m_power_actual?: number
           order_qty?: number | null
-          ot_manpower_actual?: number
+          ot_manpower_actual?: number | null
           photo_urls?: string[] | null
           production_date?: string
           remarks?: string | null
@@ -1178,7 +1178,7 @@ export type Database = {
           line_id?: string
           m_power_actual?: number
           order_qty?: number | null
-          ot_manpower_actual?: number
+          ot_manpower_actual?: number | null
           photo_urls?: string[] | null
           production_date?: string
           remarks?: string | null
@@ -1565,7 +1565,7 @@ export type Database = {
           line_id: string
           m_power_planned: number
           order_qty: number | null
-          ot_manpower_planned: number
+          ot_manpower_planned: number | null
           per_hour_target: number
           production_date: string
           remarks: string | null
@@ -1588,7 +1588,7 @@ export type Database = {
           line_id: string
           m_power_planned: number
           order_qty?: number | null
-          ot_manpower_planned?: number
+          ot_manpower_planned?: number | null
           per_hour_target: number
           production_date?: string
           remarks?: string | null
@@ -1611,7 +1611,7 @@ export type Database = {
           line_id?: string
           m_power_planned?: number
           order_qty?: number | null
-          ot_manpower_planned?: number
+          ot_manpower_planned?: number | null
           per_hour_target?: number
           production_date?: string
           remarks?: string | null
