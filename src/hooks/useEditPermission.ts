@@ -29,7 +29,6 @@ export function useEditPermission() {
       const [cutoffHour, cutoffMinute] = cutoffTimeStr.split(":").map(Number);
 
       // Use factory timezone for comparison
-      const timezone = factory?.timezone || "Asia/Dhaka";
       const now = getCurrentTimeInTimezone(timezone);
 
       // Handle midnight (00:00) cutoff - means end of day

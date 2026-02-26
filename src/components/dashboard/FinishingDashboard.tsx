@@ -37,6 +37,8 @@ interface DailyLogSummary {
   get_up: number;
   poly: number;
   carton: number;
+  m_power_planned: number | null;
+  m_power_actual: number | null;
   planned_hours: number | null;
   actual_hours: number | null;
   remarks: string | null;
@@ -116,6 +118,8 @@ export function FinishingDashboard() {
         get_up: log.get_up || 0,
         poly: log.poly || 0,
         carton: log.carton || 0,
+        m_power_planned: log.m_power_planned ?? null,
+        m_power_actual: log.m_power_actual ?? null,
         planned_hours: log.planned_hours ?? null,
         actual_hours: log.actual_hours ?? null,
         remarks: log.remarks || null,
