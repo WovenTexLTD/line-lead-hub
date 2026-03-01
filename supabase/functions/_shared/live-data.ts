@@ -464,15 +464,22 @@ async function fetchWorkOrders(
     const finishingTodayMap = new Map<string, number>();
     if (data && data.length > 0) {
       const woIds = data.map((wo: any) => wo.id);
-      const [sewingRes, finishingRes] = await Promise.all([
-        // Sewing output from sewing_actuals — filter by today (matches Lines page query).
-        // Uses cumulative_good_total for all-time totals instead of fetching every
-        // historical row (which can exceed Supabase's default 1000-row limit).
+      const [sewingTodayRes, sewingCumulativeRes, finishingRes] = await Promise.all([
+        // Today's sewing output (for "today" numbers)
         sb.from("sewing_actuals")
-          .select("work_order_id, good_today, cumulative_good_total")
+          .select("work_order_id, good_today")
           .eq("factory_id", factoryId)
           .eq("production_date", today)
           .in("work_order_id", woIds),
+        // Cumulative sewing output — fetch the latest record per work order
+        // (no date filter) so we get totals even if nothing was submitted today.
+        // Order by production_date desc so the first row per WO has the latest cumulative.
+        sb.from("sewing_actuals")
+          .select("work_order_id, good_today, cumulative_good_total, production_date")
+          .eq("factory_id", factoryId)
+          .in("work_order_id", woIds)
+          .order("production_date", { ascending: false })
+          .limit(5000),
         // Finishing output from finishing_daily_logs (poly is primary metric)
         // No cumulative column available, so fetch all dates with explicit limit.
         sb.from("finishing_daily_logs")
@@ -483,14 +490,42 @@ async function fetchWorkOrders(
           .limit(5000),
       ]);
 
-      if (sewingRes.data) {
-        for (const row of sewingRes.data) {
+      // Today's sewing output
+      if (sewingTodayRes.data) {
+        for (const row of sewingTodayRes.data) {
           const woId = row.work_order_id;
           if (woId) {
             sewingTodayMap.set(woId, (sewingTodayMap.get(woId) || 0) + (row.good_today || 0));
-            // cumulative_good_total includes today; fall back to good_today when not set
-            const cum = row.cumulative_good_total || 0;
-            sewingMap.set(woId, (sewingMap.get(woId) || 0) + (cum > 0 ? cum : (row.good_today || 0)));
+          }
+        }
+      }
+      // Cumulative sewing output — take the latest cumulative_good_total per WO.
+      // Rows are ordered by production_date desc, so the first row per WO is the latest.
+      // Fall back to summing good_today across all dates if cumulative_good_total is absent.
+      if (sewingCumulativeRes.data) {
+        const seenWo = new Set<string>();
+        let fallbackSum = new Map<string, number>();
+        for (const row of sewingCumulativeRes.data) {
+          const woId = row.work_order_id;
+          if (!woId) continue;
+
+          // Track fallback sum (good_today across all dates) in case cumulative is missing
+          fallbackSum.set(woId, (fallbackSum.get(woId) || 0) + (row.good_today || 0));
+
+          // Only take the first (latest) row per WO for cumulative
+          if (seenWo.has(woId)) continue;
+          seenWo.add(woId);
+
+          const cum = row.cumulative_good_total || 0;
+          if (cum > 0) {
+            sewingMap.set(woId, cum);
+          }
+        }
+
+        // For any WO that didn't have cumulative_good_total, use summed good_today
+        for (const [woId, total] of fallbackSum) {
+          if (!sewingMap.has(woId) && total > 0) {
+            sewingMap.set(woId, total);
           }
         }
       }
