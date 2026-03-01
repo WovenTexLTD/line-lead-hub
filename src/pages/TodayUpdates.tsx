@@ -2094,6 +2094,7 @@ export default function TodayUpdates() {
             totalIssued: t.issue_qty,
             balance: t.balance_qty,
           })),
+          finishingDailyLogs: finishingDailyLogs || [],
         }}
         dateRange="1"
       />
