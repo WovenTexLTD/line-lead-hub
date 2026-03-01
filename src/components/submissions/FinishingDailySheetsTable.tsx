@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatShortDate, formatTimeInTimezone, getTodayInTimezone, getCurrentTimeInTimezone } from "@/lib/date-utils";
+import { format } from "date-fns";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
@@ -238,36 +239,65 @@ export function FinishingDailySheetsTable({
   }
 
   function exportSelectedCsv() {
-    const rows = sortedData.filter(l => selectedIds.has(l.id));
-    const headers = ["Date", "PO", "Buyer", "Style", "Type", "Thread Cutting", "Inside Check", "Top Side Check", "Buttoning", "Iron", "Get Up", "Poly", "Carton", "Planned Hours", "Actual Hours"];
-    const csvRows = [headers.join(",")];
-    rows.forEach(l => {
-      csvRows.push([
+    const selected = sortedData.filter(l => selectedIds.has(l.id));
+    const esc = (cell: string) => `"${String(cell ?? "").replace(/"/g, '""')}"`;
+    const exportDate = format(new Date(), "PPpp");
+    const fileDate = format(new Date(), "yyyy-MM-dd");
+
+    const rows: string[][] = [];
+
+    // Report header
+    rows.push([`FINISHING ${activeTab.toUpperCase()} REPORT`]);
+    rows.push([`Factory: ${factory?.name || "—"}`]);
+    rows.push([`Period: Last ${dateRange} days`]);
+    rows.push([`Exported: ${exportDate}`]);
+    rows.push([]);
+
+    // Section summary
+    const totalPoly = selected.reduce((s, l) => s + (l.poly || 0), 0);
+    const totalCarton = selected.reduce((s, l) => s + (l.carton || 0), 0);
+    rows.push(["SUMMARY"]);
+    rows.push(["Metric", "Value"]);
+    rows.push(["Total Records", String(selected.length)]);
+    rows.push(["Total Poly", totalPoly.toLocaleString()]);
+    rows.push(["Total Carton", totalCarton.toLocaleString()]);
+    rows.push([]);
+
+    // Data section
+    rows.push([`═══ FINISHING ${activeTab.toUpperCase()} ═══`]);
+    rows.push(["Date", "PO", "Buyer", "Style", "Type", "Thread Cutting", "Inside Check", "Top Side Check", "Buttoning", "Iron", "Get Up", "Poly", "Carton", "Planned Hours", "Actual Hours"]);
+    selected.forEach(l => {
+      rows.push([
         l.production_date,
-        `"${l.po_number || ""}"`,
-        `"${l.buyer || ""}"`,
-        `"${l.style || ""}"`,
+        l.po_number || "-",
+        l.buyer || "-",
+        l.style || "-",
         l.log_type,
-        l.thread_cutting,
-        l.inside_check,
-        l.top_side_check,
-        l.buttoning,
-        l.iron,
-        l.get_up,
-        l.poly,
-        l.carton,
-        l.planned_hours ?? "",
-        l.actual_hours ?? "",
-      ].join(","));
+        String(l.thread_cutting),
+        String(l.inside_check),
+        String(l.top_side_check),
+        String(l.buttoning),
+        String(l.iron),
+        String(l.get_up),
+        String(l.poly),
+        String(l.carton),
+        String(l.planned_hours ?? "-"),
+        String(l.actual_hours ?? "-"),
+      ]);
     });
-    const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
+    rows.push([]);
+    rows.push(["═══ END OF REPORT ═══"]);
+
+    const csvContent = rows.map(row => row.map(esc).join(",")).join("\n");
+    const BOM = "\uFEFF";
+    const blob = new Blob([BOM + csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `finishing-${activeTab}-${new Date().toISOString().split("T")[0]}.csv`;
+    a.download = `finishing-${activeTab}-${fileDate}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success(`Exported ${rows.length} rows`);
+    toast.success(`Exported ${selected.length} rows`);
   }
 
   if (loading) {

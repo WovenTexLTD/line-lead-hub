@@ -96,7 +96,7 @@ interface PreviousPeriodData {
 export default function Insights() {
   const { profile, factory } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState<'7' | '14' | '30'>('7');
+  const [period, setPeriod] = useState<'7' | '14' | '21' | '30'>('7');
   const [dailyData, setDailyData] = useState<DailyData[]>([]);
   const [linePerformance, setLinePerformance] = useState<LinePerformance[]>([]);
   const [blockerBreakdown, setBlockerBreakdown] = useState<BlockerBreakdown[]>([]);
@@ -598,7 +598,7 @@ export default function Insights() {
           <p className="text-muted-foreground">Deep-dive analytics and performance trends</p>
         </div>
         <div className="flex items-center gap-3">
-          <Select value={period} onValueChange={(v) => setPeriod(v as '7' | '14' | '30')}>
+          <Select value={period} onValueChange={(v) => setPeriod(v as '7' | '14' | '21' | '30')}>
             <SelectTrigger className="w-[160px]">
               <Calendar className="h-4 w-4 mr-2" />
               <SelectValue />
@@ -606,10 +606,13 @@ export default function Insights() {
             <SelectContent>
               <SelectItem value="7">Last 7 days</SelectItem>
               <SelectItem value="14">Last 14 days</SelectItem>
+              <SelectItem value="21">Last 21 days</SelectItem>
               <SelectItem value="30">Last 30 days</SelectItem>
             </SelectContent>
           </Select>
           <ExportInsights
+            loading={loading}
+            onChangePeriod={(days) => setPeriod(String(days) as '7' | '14' | '21' | '30')}
             data={{
               summary: {
                 totalSewingOutput: summary.totalSewingOutput,
@@ -653,7 +656,7 @@ export default function Insights() {
               })),
               periodDays: parseInt(period),
               exportDate: new Date().toISOString().split('T')[0],
-              factoryName: profile?.factory_id || 'Unknown',
+              factoryName: factory?.name || 'Unknown',
             }}
           />
         </div>

@@ -255,7 +255,7 @@ export default function AllSubmissions() {
           .order('submitted_at', { ascending: false }),
         supabase
           .from('cutting_actuals')
-          .select('*, lines(line_id, name), work_orders(po_number, buyer, style, order_qty)')
+          .select('*, lines!cutting_actuals_line_id_fkey(line_id, name), work_orders(po_number, buyer, style, order_qty)')
           .eq('factory_id', profile.factory_id)
           .gte('production_date', startDateStr)
           .lte('production_date', endDateStr)
