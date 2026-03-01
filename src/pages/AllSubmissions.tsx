@@ -167,6 +167,9 @@ export default function AllSubmissions() {
   const [cuttingActuals, setCuttingActuals] = useState<any[]>([]);
   const [storageBinCards, setStorageBinCards] = useState<any[]>([]);
 
+  // Finishing daily logs (newer system)
+  const [finishingDailyLogs, setFinishingDailyLogs] = useState<any[]>([]);
+
   // Finishing log counts (reported by FinishingDailySheetsTable)
   const [finishingLogCounts, setFinishingLogCounts] = useState({ targets: 0, outputs: 0 });
 
@@ -208,6 +211,7 @@ export default function AllSubmissions() {
         cuttingTargetsRes,
         cuttingActualsRes,
         storageBinCardsRes,
+        finishingDailyLogsRes,
       ] = await Promise.all([
         supabase
           .from('sewing_targets')
@@ -264,6 +268,14 @@ export default function AllSubmissions() {
           .gte('created_at', startDateObj.toISOString())
           .lte('created_at', endDateObj.toISOString())
           .order('created_at', { ascending: false }),
+        supabase
+          .from('finishing_daily_logs')
+          .select('*, lines(line_id, name), work_orders(po_number, buyer, style, order_qty)')
+          .eq('factory_id', profile.factory_id)
+          .gte('production_date', startDateStr)
+          .lte('production_date', endDateStr)
+          .order('production_date', { ascending: false })
+          .order('submitted_at', { ascending: false }),
       ]);
 
       setSewingTargets(sewingTargetsRes.data || []);
@@ -273,6 +285,7 @@ export default function AllSubmissions() {
       setCuttingTargets(cuttingTargetsRes.data || []);
       setCuttingActuals(cuttingActualsRes.data || []);
       setStorageBinCards(storageBinCardsRes.data || []);
+      setFinishingDailyLogs(finishingDailyLogsRes.data || []);
     } catch (error) {
       console.error('Error fetching submissions:', error);
       toast.error("Failed to load submissions");
@@ -505,6 +518,7 @@ export default function AllSubmissions() {
     cuttingTargets,
     cuttingActuals,
     storageBinCards,
+    finishingDailyLogs,
   });
 
   if (loading) {

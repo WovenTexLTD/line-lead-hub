@@ -26,6 +26,7 @@ interface ExportData {
   cuttingTargets: any[];
   cuttingActuals: any[];
   storageBinCards: any[];
+  finishingDailyLogs: any[];
 }
 
 interface ExportSubmissionsDialogProps {
@@ -35,7 +36,7 @@ interface ExportSubmissionsDialogProps {
   dateRange: string;
 }
 
-const escape = (cell: string) => `"${String(cell ?? '').replace(/"/g, '""')}"`;
+const esc = (cell: string) => `"${String(cell ?? "").replace(/"/g, '""')}"`;
 
 export function ExportSubmissionsDialog({
   open,
@@ -50,16 +51,24 @@ export function ExportSubmissionsDialog({
   const timezone = factory?.timezone || "Asia/Dhaka";
   const fmtTime = (dateString: string) => formatTimeInTimezone(dateString, timezone);
 
-  // Department selection
   const [includeSewing, setIncludeSewing] = useState(true);
   const [includeFinishing, setIncludeFinishing] = useState(true);
   const [includeCutting, setIncludeCutting] = useState(true);
   const [includeStorage, setIncludeStorage] = useState(true);
 
+  // Finishing daily logs split by type
+  const finishingLogTargets = (data.finishingDailyLogs || []).filter((l: any) => l.log_type === "TARGET");
+  const finishingLogOutputs = (data.finishingDailyLogs || []).filter((l: any) => l.log_type === "OUTPUT");
+
+  // Use finishing_daily_logs if available, otherwise fall back to legacy tables
+  const hasFinishingLogs = (data.finishingDailyLogs || []).length > 0;
+  const effectiveFinishingTargetCount = hasFinishingLogs ? finishingLogTargets.length : data.finishingTargets.length;
+  const effectiveFinishingActualCount = hasFinishingLogs ? finishingLogOutputs.length : data.finishingActuals.length;
+
   const getExportCounts = () => {
     let total = 0;
     if (includeSewing) total += data.sewingTargets.length + data.sewingActuals.length;
-    if (includeFinishing) total += data.finishingTargets.length + data.finishingActuals.length;
+    if (includeFinishing) total += effectiveFinishingTargetCount + effectiveFinishingActualCount;
     if (includeCutting) total += data.cuttingTargets.length + data.cuttingActuals.length;
     if (includeStorage) total += data.storageBinCards.length;
     return total;
@@ -80,7 +89,6 @@ export function ExportSubmissionsDialog({
       rows.push([`Exported: ${exportDate}`]);
       rows.push([]);
 
-      // Build department labels
       const deptParts: string[] = [];
       if (includeSewing) deptParts.push("Sewing");
       if (includeFinishing) deptParts.push("Finishing");
@@ -95,17 +103,30 @@ export function ExportSubmissionsDialog({
 
       const totalSewingOutput = data.sewingActuals.reduce((s: number, a: any) => s + (a.good_today || 0), 0);
       const totalSewingRejects = data.sewingActuals.reduce((s: number, a: any) => s + (a.reject_today || 0), 0);
-      const totalFinishingQcPass = data.finishingActuals.reduce((s: number, a: any) => s + (a.day_qc_pass || 0), 0);
-      const totalFinishingCarton = data.finishingActuals.reduce((s: number, a: any) => s + (a.day_carton || 0), 0);
+
+      // Finishing: use daily logs if available
+      const finOutputData = hasFinishingLogs ? finishingLogOutputs : data.finishingActuals;
+      const totalFinishingCarton = hasFinishingLogs
+        ? finOutputData.reduce((s: number, l: any) => s + (l.carton || 0), 0)
+        : finOutputData.reduce((s: number, a: any) => s + (a.day_carton || 0), 0);
+      const totalFinishingPoly = hasFinishingLogs
+        ? finOutputData.reduce((s: number, l: any) => s + (l.poly || 0), 0)
+        : finOutputData.reduce((s: number, a: any) => s + (a.day_poly || 0), 0);
+      const totalFinishingQcPass = hasFinishingLogs
+        ? totalFinishingCarton // In daily logs, carton IS the output
+        : finOutputData.reduce((s: number, a: any) => s + (a.day_qc_pass || 0), 0);
+
       const totalCuttingOutput = data.cuttingActuals.reduce((s: number, a: any) => s + (a.day_cutting || 0), 0);
       const totalCuttingInput = data.cuttingActuals.reduce((s: number, a: any) => s + (a.day_input || 0), 0);
 
       const sewingBlockers = data.sewingActuals.filter((a: any) => a.has_blocker).length;
-      const finishingBlockers = data.finishingActuals.filter((a: any) => a.has_blocker).length;
+      const finishingBlockers = hasFinishingLogs ? 0 : data.finishingActuals.filter((a: any) => a.has_blocker).length;
       const totalBlockers = sewingBlockers + finishingBlockers;
 
       const sewingLines = new Set(data.sewingActuals.map((a: any) => a.lines?.name || a.lines?.line_id)).size;
-      const finishingLines = new Set(data.finishingActuals.map((a: any) => a.lines?.name || a.lines?.line_id)).size;
+      const finishingLines = hasFinishingLogs
+        ? new Set(finOutputData.map((l: any) => l.lines?.name || l.lines?.line_id)).size
+        : new Set(finOutputData.map((a: any) => a.lines?.name || a.lines?.line_id)).size;
 
       if (includeSewing) {
         rows.push(["Sewing Targets", String(data.sewingTargets.length)]);
@@ -115,10 +136,10 @@ export function ExportSubmissionsDialog({
         rows.push(["Sewing Lines Reporting", String(sewingLines)]);
       }
       if (includeFinishing) {
-        rows.push(["Finishing Targets", String(data.finishingTargets.length)]);
-        rows.push(["Finishing Actuals", String(data.finishingActuals.length)]);
-        rows.push(["Finishing Total QC Pass (pcs)", totalFinishingQcPass.toLocaleString()]);
-        rows.push(["Finishing Total Carton", totalFinishingCarton.toLocaleString()]);
+        rows.push(["Finishing Targets", String(effectiveFinishingTargetCount)]);
+        rows.push(["Finishing Outputs", String(effectiveFinishingActualCount)]);
+        rows.push(["Finishing Total Carton (pcs)", totalFinishingCarton.toLocaleString()]);
+        rows.push(["Finishing Total Poly", totalFinishingPoly.toLocaleString()]);
         rows.push(["Finishing Lines Reporting", String(finishingLines)]);
       }
       if (includeCutting) {
@@ -138,20 +159,15 @@ export function ExportSubmissionsDialog({
       // ════════════════════════════════════════════════
       if (includeSewing && data.sewingTargets.length > 0) {
         rows.push(["═══ SEWING TARGETS ═══"]);
-
-        // Section summary
         const avgTargetPerHr = data.sewingTargets.length > 0
-          ? Math.round(data.sewingTargets.reduce((s: number, t: any) => s + (t.per_hour_target || 0), 0) / data.sewingTargets.length)
-          : 0;
+          ? Math.round(data.sewingTargets.reduce((s: number, t: any) => s + (t.per_hour_target || 0), 0) / data.sewingTargets.length) : 0;
         const avgManpower = data.sewingTargets.length > 0
-          ? Math.round(data.sewingTargets.reduce((s: number, t: any) => s + (t.manpower_planned || 0), 0) / data.sewingTargets.length)
-          : 0;
+          ? Math.round(data.sewingTargets.reduce((s: number, t: any) => s + (t.manpower_planned || 0), 0) / data.sewingTargets.length) : 0;
         const lateTargets = data.sewingTargets.filter((t: any) => t.is_late).length;
         rows.push(["Section Summary:", `${data.sewingTargets.length} records | Avg Target/hr: ${avgTargetPerHr} | Avg Manpower: ${avgManpower} | Late: ${lateTargets}`]);
 
         rows.push(["Date", "Time", "Line", "PO Number", "Buyer", "Style", "Order Qty", "Target/hr", "Planned Total", "Manpower", "Hours Planned", "OT Hours", "Progress %", "Stage", "Next Milestone", "Status", "Remarks"]);
         data.sewingTargets.forEach((t: any) => {
-          const status = t.is_late ? "⚠ Late" : "✓ On Time";
           rows.push([
             formatDate(t.production_date), fmtTime(t.submitted_at),
             t.lines?.name || t.lines?.line_id || "-", t.work_orders?.po_number || "-",
@@ -160,7 +176,8 @@ export function ExportSubmissionsDialog({
             String(t.per_hour_target || 0), String(t.target_total_planned || "-"),
             String(t.manpower_planned || 0), String(t.hours_planned || "-"),
             String(t.ot_hours_planned || 0), `${t.planned_stage_progress || 0}%`,
-            t.stages?.name || "-", t.next_milestone || "-", status, t.remarks || "-",
+            t.stages?.name || "-", t.next_milestone || "-",
+            t.is_late ? "⚠ Late" : "✓ On Time", t.remarks || "-",
           ]);
         });
         rows.push([]);
@@ -168,11 +185,8 @@ export function ExportSubmissionsDialog({
 
       if (includeSewing && data.sewingActuals.length > 0) {
         rows.push(["═══ SEWING END OF DAY ═══"]);
-
-        // Section summary
         const avgActualPerHr = data.sewingActuals.length > 0
-          ? Math.round(data.sewingActuals.reduce((s: number, a: any) => s + (a.actual_per_hour || 0), 0) / data.sewingActuals.length)
-          : 0;
+          ? Math.round(data.sewingActuals.reduce((s: number, a: any) => s + (a.actual_per_hour || 0), 0) / data.sewingActuals.length) : 0;
         rows.push(["Section Summary:", `${data.sewingActuals.length} records | Output: ${totalSewingOutput.toLocaleString()} pcs | Rejects: ${totalSewingRejects} | Avg Actual/hr: ${avgActualPerHr} | Blockers: ${sewingBlockers}`]);
 
         rows.push(["Date", "Time", "Line", "PO Number", "Buyer", "Style", "Order Qty",
@@ -181,9 +195,7 @@ export function ExportSubmissionsDialog({
           "Has Blocker", "Blocker Type", "Blocker Impact", "Blocker Owner", "Status", "Remarks"]);
         data.sewingActuals.forEach((a: any) => {
           const pct = a.work_orders?.order_qty > 0
-            ? Math.round((a.cumulative_good_total / a.work_orders.order_qty) * 100)
-            : 0;
-          const status = a.has_blocker ? "⚠ Blocker" : pct >= 100 ? "✓ Complete" : "In Progress";
+            ? Math.round((a.cumulative_good_total / a.work_orders.order_qty) * 100) : 0;
           rows.push([
             formatDate(a.production_date), fmtTime(a.submitted_at),
             a.lines?.name || a.lines?.line_id || "-", a.work_orders?.po_number || "-",
@@ -196,71 +208,112 @@ export function ExportSubmissionsDialog({
             `${a.actual_stage_progress || 0}%`, a.stages?.name || "-",
             a.has_blocker ? "Yes" : "No", a.blocker_description || "-",
             a.blocker_impact || "-", a.blocker_owner || "-",
-            status, a.remarks || "-",
+            a.has_blocker ? "⚠ Blocker" : pct >= 100 ? "✓ Complete" : "In Progress",
+            a.remarks || "-",
           ]);
         });
         rows.push([]);
       }
 
       // ════════════════════════════════════════════════
-      // FINISHING SECTION
+      // FINISHING SECTION (uses finishing_daily_logs if available)
       // ════════════════════════════════════════════════
-      if (includeFinishing && data.finishingTargets.length > 0) {
-        rows.push(["═══ FINISHING TARGETS ═══"]);
+      if (includeFinishing && hasFinishingLogs) {
+        // ── Finishing Daily Logs (newer system) ──
+        if (finishingLogTargets.length > 0) {
+          rows.push(["═══ FINISHING TARGETS (Daily Logs) ═══"]);
+          rows.push(["Section Summary:", `${finishingLogTargets.length} records`]);
+          rows.push(["Date", "Time", "Line", "PO Number", "Buyer", "Style",
+            "Thread Cutting", "Inside Check", "Top Side Check", "Buttoning", "Iron", "Get Up", "Poly", "Carton",
+            "Planned Hours", "Manpower Planned", "OT Hours Planned", "OT Manpower Planned", "Remarks"]);
+          finishingLogTargets.forEach((l: any) => {
+            rows.push([
+              formatDate(l.production_date), fmtTime(l.submitted_at),
+              l.lines?.name || l.lines?.line_id || "-",
+              l.work_orders?.po_number || "-", l.work_orders?.buyer || "-", l.work_orders?.style || "-",
+              String(l.thread_cutting || 0), String(l.inside_check || 0), String(l.top_side_check || 0),
+              String(l.buttoning || 0), String(l.iron || 0), String(l.get_up || 0),
+              String(l.poly || 0), String(l.carton || 0),
+              String(l.planned_hours ?? "-"), String(l.m_power_planned ?? "-"),
+              String(l.ot_hours_planned ?? "-"), String(l.ot_manpower_planned ?? "-"),
+              l.remarks || "-",
+            ]);
+          });
+          rows.push([]);
+        }
 
-        const avgTargetPerHr = data.finishingTargets.length > 0
-          ? Math.round(data.finishingTargets.reduce((s: number, t: any) => s + (t.per_hour_target || 0), 0) / data.finishingTargets.length)
-          : 0;
-        const lateTargets = data.finishingTargets.filter((t: any) => t.is_late).length;
-        rows.push(["Section Summary:", `${data.finishingTargets.length} records | Avg Target/hr: ${avgTargetPerHr} | Late: ${lateTargets}`]);
+        if (finishingLogOutputs.length > 0) {
+          rows.push(["═══ FINISHING OUTPUTS (Daily Logs) ═══"]);
+          rows.push(["Section Summary:", `${finishingLogOutputs.length} records | Carton: ${totalFinishingCarton.toLocaleString()} | Poly: ${totalFinishingPoly.toLocaleString()}`]);
+          rows.push(["Date", "Time", "Line", "PO Number", "Buyer", "Style",
+            "Thread Cutting", "Inside Check", "Top Side Check", "Buttoning", "Iron", "Get Up", "Poly", "Carton",
+            "Actual Hours", "Manpower Actual", "OT Hours Actual", "OT Manpower Actual", "Locked", "Remarks"]);
+          finishingLogOutputs.forEach((l: any) => {
+            rows.push([
+              formatDate(l.production_date), fmtTime(l.submitted_at),
+              l.lines?.name || l.lines?.line_id || "-",
+              l.work_orders?.po_number || "-", l.work_orders?.buyer || "-", l.work_orders?.style || "-",
+              String(l.thread_cutting || 0), String(l.inside_check || 0), String(l.top_side_check || 0),
+              String(l.buttoning || 0), String(l.iron || 0), String(l.get_up || 0),
+              String(l.poly || 0), String(l.carton || 0),
+              String(l.actual_hours ?? "-"), String(l.m_power_actual ?? "-"),
+              String(l.ot_hours_actual ?? "-"), String(l.ot_manpower_actual ?? "-"),
+              l.is_locked ? "Yes" : "No", l.remarks || "-",
+            ]);
+          });
+          rows.push([]);
+        }
+      } else if (includeFinishing) {
+        // ── Legacy finishing_targets / finishing_actuals ──
+        if (data.finishingTargets.length > 0) {
+          rows.push(["═══ FINISHING TARGETS ═══"]);
+          const avgTargetPerHr = data.finishingTargets.length > 0
+            ? Math.round(data.finishingTargets.reduce((s: number, t: any) => s + (t.per_hour_target || 0), 0) / data.finishingTargets.length) : 0;
+          const lateTargets = data.finishingTargets.filter((t: any) => t.is_late).length;
+          rows.push(["Section Summary:", `${data.finishingTargets.length} records | Avg Target/hr: ${avgTargetPerHr} | Late: ${lateTargets}`]);
+          rows.push(["Date", "Time", "Line", "PO Number", "Buyer", "Style", "Order Qty", "Target/hr", "Manpower", "Day Hours", "OT Hours", "OT Manpower", "Status", "Remarks"]);
+          data.finishingTargets.forEach((t: any) => {
+            rows.push([
+              formatDate(t.production_date), fmtTime(t.submitted_at),
+              t.lines?.name || t.lines?.line_id || "-", t.work_orders?.po_number || "-",
+              t.work_orders?.buyer || "-", t.work_orders?.style || "-",
+              t.work_orders?.order_qty?.toLocaleString() || "-",
+              String(t.per_hour_target || 0), String(t.m_power_planned || 0),
+              String(t.day_hour_planned || 0), String(t.day_over_time_planned || 0),
+              String(t.ot_manpower_planned || "-"),
+              t.is_late ? "⚠ Late" : "✓ On Time", t.remarks || "-",
+            ]);
+          });
+          rows.push([]);
+        }
 
-        rows.push(["Date", "Time", "Line", "PO Number", "Buyer", "Style", "Order Qty", "Target/hr", "Manpower", "Day Hours", "OT Hours", "OT Manpower", "Status", "Remarks"]);
-        data.finishingTargets.forEach((t: any) => {
-          const status = t.is_late ? "⚠ Late" : "✓ On Time";
-          rows.push([
-            formatDate(t.production_date), fmtTime(t.submitted_at),
-            t.lines?.name || t.lines?.line_id || "-", t.work_orders?.po_number || "-",
-            t.work_orders?.buyer || "-", t.work_orders?.style || "-",
-            t.work_orders?.order_qty?.toLocaleString() || "-",
-            String(t.per_hour_target || 0), String(t.m_power_planned || 0),
-            String(t.day_hour_planned || 0), String(t.day_over_time_planned || 0),
-            String(t.ot_manpower_planned || "-"),
-            status, t.remarks || "-",
-          ]);
-        });
-        rows.push([]);
-      }
-
-      if (includeFinishing && data.finishingActuals.length > 0) {
-        rows.push(["═══ FINISHING END OF DAY ═══"]);
-
-        const totalPoly = data.finishingActuals.reduce((s: number, a: any) => s + (a.day_poly || 0), 0);
-        rows.push(["Section Summary:", `${data.finishingActuals.length} records | QC Pass: ${totalFinishingQcPass.toLocaleString()} pcs | Poly: ${totalPoly.toLocaleString()} | Carton: ${totalFinishingCarton.toLocaleString()} | Blockers: ${finishingBlockers}`]);
-
-        rows.push(["Date", "Time", "Line", "PO Number", "Buyer", "Style", "Order Qty",
-          "Day QC Pass", "Total QC Pass", "Day Poly", "Total Poly", "Day Carton", "Total Carton",
-          "Manpower", "OT Manpower", "Day Hours", "OT Hours", "Total Hours", "Total OT",
-          "Avg Production", "Has Blocker", "Blocker Type", "Blocker Impact", "Blocker Owner", "Status", "Remarks"]);
-        data.finishingActuals.forEach((a: any) => {
-          const status = a.has_blocker ? "⚠ Blocker" : "✓ OK";
-          rows.push([
-            formatDate(a.production_date), fmtTime(a.submitted_at),
-            a.lines?.name || a.lines?.line_id || "-", a.work_orders?.po_number || "-",
-            a.work_orders?.buyer || "-", a.work_orders?.style || "-",
-            a.work_orders?.order_qty?.toLocaleString() || "-",
-            String(a.day_qc_pass || 0), String(a.total_qc_pass || 0),
-            String(a.day_poly || 0), String(a.total_poly || 0),
-            String(a.day_carton || 0), String(a.total_carton || 0),
-            String(a.m_power_actual || 0), String(a.ot_manpower_actual || "-"),
-            String(a.day_hour_actual || 0), String(a.day_over_time_actual || 0),
-            String(a.total_hour || "-"), String(a.total_over_time || "-"),
-            String(a.average_production || "-"),
-            a.has_blocker ? "Yes" : "No", a.blocker_description || "-",
-            a.blocker_impact || "-", a.blocker_owner || "-",
-            status, a.remarks || "-",
-          ]);
-        });
-        rows.push([]);
+        if (data.finishingActuals.length > 0) {
+          rows.push(["═══ FINISHING END OF DAY ═══"]);
+          rows.push(["Section Summary:", `${data.finishingActuals.length} records | QC Pass: ${totalFinishingQcPass.toLocaleString()} pcs | Carton: ${totalFinishingCarton.toLocaleString()} | Blockers: ${finishingBlockers}`]);
+          rows.push(["Date", "Time", "Line", "PO Number", "Buyer", "Style", "Order Qty",
+            "Day QC Pass", "Total QC Pass", "Day Poly", "Total Poly", "Day Carton", "Total Carton",
+            "Manpower", "OT Manpower", "Day Hours", "OT Hours", "Total Hours", "Total OT",
+            "Avg Production", "Has Blocker", "Blocker Type", "Blocker Impact", "Blocker Owner", "Status", "Remarks"]);
+          data.finishingActuals.forEach((a: any) => {
+            rows.push([
+              formatDate(a.production_date), fmtTime(a.submitted_at),
+              a.lines?.name || a.lines?.line_id || "-", a.work_orders?.po_number || "-",
+              a.work_orders?.buyer || "-", a.work_orders?.style || "-",
+              a.work_orders?.order_qty?.toLocaleString() || "-",
+              String(a.day_qc_pass || 0), String(a.total_qc_pass || 0),
+              String(a.day_poly || 0), String(a.total_poly || 0),
+              String(a.day_carton || 0), String(a.total_carton || 0),
+              String(a.m_power_actual || 0), String(a.ot_manpower_actual || "-"),
+              String(a.day_hour_actual || 0), String(a.day_over_time_actual || 0),
+              String(a.total_hour || "-"), String(a.total_over_time || "-"),
+              String(a.average_production || "-"),
+              a.has_blocker ? "Yes" : "No", a.blocker_description || "-",
+              a.blocker_impact || "-", a.blocker_owner || "-",
+              a.has_blocker ? "⚠ Blocker" : "✓ OK", a.remarks || "-",
+            ]);
+          });
+          rows.push([]);
+        }
       }
 
       // ════════════════════════════════════════════════
@@ -268,7 +321,6 @@ export function ExportSubmissionsDialog({
       // ════════════════════════════════════════════════
       if (includeCutting && data.cuttingTargets.length > 0) {
         rows.push(["═══ CUTTING TARGETS ═══"]);
-
         const totalMarker = data.cuttingTargets.reduce((s: number, t: any) => s + (t.marker_capacity || 0), 0);
         const totalLay = data.cuttingTargets.reduce((s: number, t: any) => s + (t.lay_capacity || 0), 0);
         const lateTargets = data.cuttingTargets.filter((t: any) => t.is_late).length;
@@ -278,7 +330,6 @@ export function ExportSubmissionsDialog({
           "Marker Capacity", "Lay Capacity", "Cutting Capacity", "Day Cutting", "Day Input",
           "Manpower", "Hours Planned", "OT Hours", "OT Manpower", "Target/hr", "Under Qty", "Status"]);
         data.cuttingTargets.forEach((t: any) => {
-          const status = t.is_late ? "⚠ Late" : "✓ On Time";
           rows.push([
             formatDate(t.production_date), fmtTime(t.submitted_at),
             t.lines?.name || t.lines?.line_id || "-",
@@ -290,7 +341,8 @@ export function ExportSubmissionsDialog({
             String(t.day_cutting || 0), String(t.day_input || 0),
             String(t.man_power || 0), String(t.hours_planned || "-"),
             String(t.ot_hours_planned || 0), String(t.ot_manpower_planned || "-"),
-            String(t.target_per_hour || "-"), String(t.under_qty || 0), status,
+            String(t.target_per_hour || "-"), String(t.under_qty || 0),
+            t.is_late ? "⚠ Late" : "✓ On Time",
           ]);
         });
         rows.push([]);
@@ -298,7 +350,6 @@ export function ExportSubmissionsDialog({
 
       if (includeCutting && data.cuttingActuals.length > 0) {
         rows.push(["═══ CUTTING ACTUALS ═══"]);
-
         const totalBalance = data.cuttingActuals.reduce((s: number, a: any) => s + (a.balance || 0), 0);
         const acknowledged = data.cuttingActuals.filter((a: any) => a.acknowledged).length;
         rows.push(["Section Summary:", `${data.cuttingActuals.length} records | Output: ${totalCuttingOutput.toLocaleString()} pcs | Input: ${totalCuttingInput.toLocaleString()} pcs | Balance: ${totalBalance.toLocaleString()} | Acknowledged: ${acknowledged}/${data.cuttingActuals.length}`]);
@@ -308,7 +359,6 @@ export function ExportSubmissionsDialog({
           "Manpower", "Hours Actual", "OT Hours", "OT Manpower", "Actual/hr",
           "Status", "Acknowledged"]);
         data.cuttingActuals.forEach((a: any) => {
-          const status = a.is_late ? "⚠ Late" : "✓ On Time";
           rows.push([
             formatDate(a.production_date), fmtTime(a.submitted_at),
             a.lines?.name || a.lines?.line_id || "-",
@@ -321,7 +371,7 @@ export function ExportSubmissionsDialog({
             String(a.man_power || 0), String(a.hours_actual || "-"),
             String(a.ot_hours_actual || 0), String(a.ot_manpower_actual || "-"),
             String(a.actual_per_hour || "-"),
-            status, a.acknowledged ? "Yes" : "No",
+            a.is_late ? "⚠ Late" : "✓ On Time", a.acknowledged ? "Yes" : "No",
           ]);
         });
         rows.push([]);
@@ -333,7 +383,6 @@ export function ExportSubmissionsDialog({
       if (includeStorage && data.storageBinCards.length > 0) {
         rows.push(["═══ STORAGE BIN CARDS ═══"]);
         rows.push(["Section Summary:", `${data.storageBinCards.length} bin cards`]);
-
         rows.push(["Date", "PO Number", "Buyer", "Style", "Color", "Supplier",
           "Description", "Construction", "Width", "Package Qty",
           "Total Received", "Total Issued", "Balance"]);
@@ -349,13 +398,9 @@ export function ExportSubmissionsDialog({
         rows.push([]);
       }
 
-      // ── END OF REPORT ──
       rows.push(["═══ END OF REPORT ═══"]);
 
-      // Convert to CSV with proper escaping
-      const csvContent = rows.map(row => row.map(escape).join(",")).join("\n");
-
-      // UTF-8 BOM for Excel compatibility
+      const csvContent = rows.map(row => row.map(esc).join(",")).join("\n");
       const BOM = "\uFEFF";
       const blob = new Blob([BOM + csvContent], { type: "text/csv;charset=utf-8;" });
       const link = document.createElement("a");
@@ -377,22 +422,11 @@ export function ExportSubmissionsDialog({
     }
   };
 
-  const selectAll = () => {
-    setIncludeSewing(true);
-    setIncludeFinishing(true);
-    setIncludeCutting(true);
-    setIncludeStorage(true);
-  };
-
-  const clearAll = () => {
-    setIncludeSewing(false);
-    setIncludeFinishing(false);
-    setIncludeCutting(false);
-    setIncludeStorage(false);
-  };
+  const selectAll = () => { setIncludeSewing(true); setIncludeFinishing(true); setIncludeCutting(true); setIncludeStorage(true); };
+  const clearAll = () => { setIncludeSewing(false); setIncludeFinishing(false); setIncludeCutting(false); setIncludeStorage(false); };
 
   const getSewingCount = () => data.sewingTargets.length + data.sewingActuals.length;
-  const getFinishingCount = () => data.finishingTargets.length + data.finishingActuals.length;
+  const getFinishingCount = () => effectiveFinishingTargetCount + effectiveFinishingActualCount;
   const getCuttingCount = () => data.cuttingTargets.length + data.cuttingActuals.length;
   const getStorageCount = () => data.storageBinCards.length;
 
@@ -410,108 +444,63 @@ export function ExportSubmissionsDialog({
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* Quick Actions */}
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={selectAll}>
-              {t('modals.selectAll')}
-            </Button>
-            <Button variant="outline" size="sm" onClick={clearAll}>
-              {t('modals.clearAll')}
-            </Button>
+            <Button variant="outline" size="sm" onClick={selectAll}>{t('modals.selectAll')}</Button>
+            <Button variant="outline" size="sm" onClick={clearAll}>{t('modals.clearAll')}</Button>
           </div>
 
-          {/* Department Selection */}
           <div className="space-y-3">
             <Label className="text-sm font-medium">{t('modals.departments')}</Label>
             <div className="grid grid-cols-2 gap-4">
               <div className="flex items-center space-x-3 rounded-lg border p-3 hover:bg-accent/50 transition-colors">
-                <Checkbox
-                  id="sewing"
-                  checked={includeSewing}
-                  onCheckedChange={(checked) => setIncludeSewing(checked === true)}
-                />
+                <Checkbox id="sewing" checked={includeSewing} onCheckedChange={(c) => setIncludeSewing(c === true)} />
                 <div className="flex-1">
                   <Label htmlFor="sewing" className="cursor-pointer font-medium flex items-center gap-2">
-                    <SewingMachine className="h-4 w-4" />
-                    {t('modals.sewing')}
+                    <SewingMachine className="h-4 w-4" />{t('modals.sewing')}
                   </Label>
-                  <p className="text-xs text-muted-foreground">
-                    {getSewingCount()} {t('modals.records')}
-                  </p>
+                  <p className="text-xs text-muted-foreground">{getSewingCount()} {t('modals.records')}</p>
                 </div>
               </div>
               <div className="flex items-center space-x-3 rounded-lg border p-3 hover:bg-accent/50 transition-colors">
-                <Checkbox
-                  id="finishing"
-                  checked={includeFinishing}
-                  onCheckedChange={(checked) => setIncludeFinishing(checked === true)}
-                />
+                <Checkbox id="finishing" checked={includeFinishing} onCheckedChange={(c) => setIncludeFinishing(c === true)} />
                 <div className="flex-1">
                   <Label htmlFor="finishing" className="cursor-pointer font-medium flex items-center gap-2">
-                    <Package className="h-4 w-4" />
-                    {t('modals.finishing')}
+                    <Package className="h-4 w-4" />{t('modals.finishing')}
                   </Label>
-                  <p className="text-xs text-muted-foreground">
-                    {getFinishingCount()} {t('modals.records')}
-                  </p>
+                  <p className="text-xs text-muted-foreground">{getFinishingCount()} {t('modals.records')}</p>
                 </div>
               </div>
               <div className="flex items-center space-x-3 rounded-lg border p-3 hover:bg-accent/50 transition-colors">
-                <Checkbox
-                  id="cutting"
-                  checked={includeCutting}
-                  onCheckedChange={(checked) => setIncludeCutting(checked === true)}
-                />
+                <Checkbox id="cutting" checked={includeCutting} onCheckedChange={(c) => setIncludeCutting(c === true)} />
                 <div className="flex-1">
                   <Label htmlFor="cutting" className="cursor-pointer font-medium flex items-center gap-2">
-                    <Scissors className="h-4 w-4" />
-                    {t('modals.cutting')}
+                    <Scissors className="h-4 w-4" />{t('modals.cutting')}
                   </Label>
-                  <p className="text-xs text-muted-foreground">
-                    {getCuttingCount()} {t('modals.records')}
-                  </p>
+                  <p className="text-xs text-muted-foreground">{getCuttingCount()} {t('modals.records')}</p>
                 </div>
               </div>
               <div className="flex items-center space-x-3 rounded-lg border p-3 hover:bg-accent/50 transition-colors">
-                <Checkbox
-                  id="storage"
-                  checked={includeStorage}
-                  onCheckedChange={(checked) => setIncludeStorage(checked === true)}
-                />
+                <Checkbox id="storage" checked={includeStorage} onCheckedChange={(c) => setIncludeStorage(c === true)} />
                 <div className="flex-1">
                   <Label htmlFor="storage" className="cursor-pointer font-medium flex items-center gap-2">
-                    <Package className="h-4 w-4" />
-                    {t('modals.storage')}
+                    <Package className="h-4 w-4" />{t('modals.storage')}
                   </Label>
-                  <p className="text-xs text-muted-foreground">
-                    {getStorageCount()} {t('modals.records')}
-                  </p>
+                  <p className="text-xs text-muted-foreground">{getStorageCount()} {t('modals.records')}</p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Export Summary */}
           <div className="rounded-lg bg-muted/50 p-3">
-            <p className="text-sm">
-              <span className="font-medium">{getExportCounts()}</span> {t('modals.recordsWillBeExported')}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {t('modals.dateRangeLastDays', { days: dateRange })}
-            </p>
+            <p className="text-sm"><span className="font-medium">{getExportCounts()}</span> {t('modals.recordsWillBeExported')}</p>
+            <p className="text-xs text-muted-foreground">{t('modals.dateRangeLastDays', { days: dateRange })}</p>
           </div>
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            {t('modals.cancel')}
-          </Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t('modals.cancel')}</Button>
           <Button onClick={handleExport} disabled={!canExport || exporting}>
-            {exporting ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Download className="h-4 w-4 mr-2" />
-            )}
+            {exporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
             {t('modals.exportCSV')}
           </Button>
         </DialogFooter>
