@@ -278,6 +278,13 @@ export default function AllSubmissions() {
           .order('submitted_at', { ascending: false }),
       ]);
 
+      console.log('[AllSubmissions] fetch results:', {
+        sewingTargets: sewingTargetsRes.data?.length, sewingTargetsErr: sewingTargetsRes.error,
+        cuttingTargets: cuttingTargetsRes.data?.length, cuttingTargetsErr: cuttingTargetsRes.error,
+        cuttingActuals: cuttingActualsRes.data?.length, cuttingActualsErr: cuttingActualsRes.error,
+        finishingDailyLogs: finishingDailyLogsRes.data?.length, finishingDailyLogsErr: finishingDailyLogsRes.error,
+        dateRange: { start: startDateStr, end: endDateStr },
+      });
       setSewingTargets(sewingTargetsRes.data || []);
       setFinishingTargets(finishingTargetsRes.data || []);
       setSewingActuals(sewingActualsRes.data || []);
