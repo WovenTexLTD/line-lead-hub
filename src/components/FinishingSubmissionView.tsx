@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -133,6 +134,7 @@ function FieldDisplay({ label, value, className, suffix }: {
 export function FinishingSubmissionView({ target, actual, open, onOpenChange, onEditTarget, onEditActual, onDeleteTarget, onDeleteActual }: FinishingSubmissionViewProps) {
   const { factory } = useAuth();
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [deleteType, setDeleteType] = useState<"target" | "actual" | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -207,7 +209,19 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange, on
             <FieldDisplay label={t('modals.date')} value={formatDate(primary.production_date)} />
             <FieldDisplay label={t('modals.buyer')} value={primary.buyer} />
             <FieldDisplay label={t('modals.style')} value={primary.style} />
-            <FieldDisplay label={t('modals.poNumber')} value={primary.po_number} />
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">{t('modals.poNumber')}</p>
+              {primary.po_number ? (
+                <button
+                  className="font-semibold text-primary underline underline-offset-2 hover:text-primary/80 transition-colors cursor-pointer"
+                  onClick={() => { onOpenChange(false); navigate(`/work-orders?po=${encodeURIComponent(primary.po_number!)}`); }}
+                >
+                  {primary.po_number}
+                </button>
+              ) : (
+                <p className="font-semibold">-</p>
+              )}
+            </div>
           </div>
 
           {/* Two-column Target & Actual display */}

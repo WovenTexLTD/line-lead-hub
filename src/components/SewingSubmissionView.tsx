@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Dialog,
@@ -123,6 +124,7 @@ function FieldDisplay({ label, value, className, suffix }: {
 export function SewingSubmissionView({ target, actual, open, onOpenChange, onEditTarget, onEditActual, onDeleteTarget, onDeleteActual }: SewingSubmissionViewProps) {
   const { factory } = useAuth();
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [deleteType, setDeleteType] = useState<"target" | "actual" | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -201,7 +203,19 @@ export function SewingSubmissionView({ target, actual, open, onOpenChange, onEdi
             <FieldDisplay label={t('modals.line')} value={primary.line_name} />
             <FieldDisplay label={t('modals.buyer')} value={primary.buyer} />
             <FieldDisplay label={t('modals.style')} value={primary.style} />
-            <FieldDisplay label={t('modals.poNumber')} value={primary.po_number} />
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">{t('modals.poNumber')}</p>
+              {primary.po_number ? (
+                <button
+                  className="font-semibold text-primary underline underline-offset-2 hover:text-primary/80 transition-colors cursor-pointer"
+                  onClick={() => { onOpenChange(false); navigate(`/work-orders?po=${encodeURIComponent(primary.po_number!)}`); }}
+                >
+                  {primary.po_number}
+                </button>
+              ) : (
+                <p className="font-semibold">-</p>
+              )}
+            </div>
             <FieldDisplay label={t('modals.orderQty')} value={primary.order_qty} />
           </div>
 

@@ -250,6 +250,23 @@ export default function Insights() {
         .eq('factory_id', profile.factory_id)
         .eq('is_active', true);
 
+      // Build pairing sets: only count targets that have matching actuals
+      // Sewing: match by line_id + production_date
+      const sewingActualKeys = new Set(
+        sewingActualsData?.map(u => `${u.line_id}_${u.production_date}`) || []
+      );
+      const pairedSewingTargets = sewingTargetsData?.filter(t =>
+        sewingActualKeys.has(`${t.line_id}_${t.production_date}`)
+      ) || [];
+
+      // Finishing: match TARGET to OUTPUT by work_order_id + production_date
+      const finishingOutputKeys = new Set(
+        finishingDailyLogs?.map(u => `${(u as any).work_order_id}_${u.production_date}`) || []
+      );
+      const pairedFinishingTargets = finishingTargetLogs?.filter(t =>
+        finishingOutputKeys.has(`${(t as any).work_order_id}_${t.production_date}`)
+      ) || [];
+
       // Process daily data
       const dailyMap = new Map<string, DailyData>();
 
@@ -277,8 +294,8 @@ export default function Insights() {
         dailyMap.set(u.production_date, existing);
       });
 
-      // Sewing targets → daily target (per_hour_target * 8)
-      sewingTargetsData?.forEach(t => {
+      // Sewing targets → daily target (per_hour_target * 8) — only paired with actuals
+      pairedSewingTargets.forEach(t => {
         const existing = getOrCreateDaily(t.production_date);
         existing.sewingTarget += (t.per_hour_target || 0) * 8;
         dailyMap.set(t.production_date, existing);
@@ -292,8 +309,8 @@ export default function Insights() {
         dailyMap.set(u.production_date, existing);
       });
 
-      // Finishing daily logs (TARGET) → poly target (per-hour × planned_hours)
-      finishingTargetLogs?.forEach(t => {
+      // Finishing daily logs (TARGET) → poly target (per-hour × planned_hours) — only paired with outputs
+      pairedFinishingTargets.forEach(t => {
         const existing = getOrCreateDaily(t.production_date);
         const plannedHrs = t.planned_hours || 0;
         existing.finishingPolyTarget += (t.poly || 0) * (plannedHrs > 0 ? plannedHrs : 1);
@@ -332,8 +349,8 @@ export default function Insights() {
         lineMap.set(lineId, existing);
       });
 
-      // From sewing targets: daily target per line
-      sewingTargetsData?.forEach(t => {
+      // From sewing targets: daily target per line — only paired with actuals
+      pairedSewingTargets.forEach(t => {
         const lineId = t.line_id;
         const lineName = t.lines?.name || t.lines?.line_id || 'Unknown';
         const existing = lineMap.get(lineId) || {
@@ -408,7 +425,7 @@ export default function Insights() {
 
       // Calculate summary
       const totalSewingOutput = sewingActualsData?.reduce((sum, u) => sum + (u.good_today || 0), 0) || 0;
-      const totalSewingTarget = sewingTargetsData?.reduce((sum, t) => sum + ((t.per_hour_target || 0) * 8), 0) || 0;
+      const totalSewingTarget = pairedSewingTargets.reduce((sum, t) => sum + ((t.per_hour_target || 0) * 8), 0) || 0;
       const totalFinishingQcPass = finishingDailyLogs?.reduce((sum, u) => sum + (u.poly || 0) + (u.carton || 0), 0) || 0;
       const totalManpower = sewingActualsData?.reduce((sum, u) => sum + (u.manpower_actual || 0), 0) || 0;
 

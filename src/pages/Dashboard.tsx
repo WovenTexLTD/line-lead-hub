@@ -793,6 +793,8 @@ export default function Dashboard() {
         // Extra fields for rendering
         _poly: log.poly || 0,
         _carton: log.carton || 0,
+        _planned_hours: log.planned_hours || 0,
+        _ot_hours_planned: log.ot_hours_planned || 0,
       }));
   }, [finishingDailyLogs]);
 
@@ -949,6 +951,23 @@ export default function Dashboard() {
               setSewingViewOpen(true);
             }}
             formatTime={formatTime}
+            renderTargetMetric={(target) => {
+              const t = target as TargetSubmission;
+              const totalPlanned = t.target_total_planned
+                ?? (t.hours_planned && t.per_hour_target
+                  ? Math.round(t.per_hour_target * t.hours_planned)
+                  : null);
+              return (
+                <>
+                  <p className="font-mono font-bold text-lg">
+                    {totalPlanned != null ? totalPlanned.toLocaleString() : t.per_hour_target.toLocaleString()}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {totalPlanned != null ? "target output" : "per hour"}
+                  </p>
+                </>
+              );
+            }}
           />
         </TabsContent>
 
@@ -972,15 +991,18 @@ export default function Dashboard() {
             formatTime={formatTime}
             renderTargetMetric={(target) => {
               const t = target as any;
+              const totalHours = (t._planned_hours || 0) + (t._ot_hours_planned || 0);
+              const totalPoly = totalHours > 0 ? Math.round((t._poly || 0) * totalHours) : (t._poly || 0);
+              const totalCarton = totalHours > 0 ? Math.round((t._carton || 0) * totalHours) : (t._carton || 0);
               return (
                 <div className="flex gap-3">
                   <div>
-                    <p className="font-mono font-bold text-lg">{(t._poly || 0).toLocaleString()}</p>
+                    <p className="font-mono font-bold text-lg">{totalPoly.toLocaleString()}</p>
                     <p className="text-xs text-muted-foreground">poly</p>
                   </div>
-                  {t._carton > 0 && (
+                  {totalCarton > 0 && (
                     <div>
-                      <p className="font-mono font-semibold text-base text-muted-foreground">{t._carton.toLocaleString()}</p>
+                      <p className="font-mono font-semibold text-base text-muted-foreground">{totalCarton.toLocaleString()}</p>
                       <p className="text-xs text-muted-foreground">cartons</p>
                     </div>
                   )}

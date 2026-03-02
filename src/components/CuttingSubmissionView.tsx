@@ -34,6 +34,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 
 export interface CuttingTargetData {
   id: string;
@@ -128,6 +129,7 @@ function FieldDisplay({ label, value, className }: {
 export function CuttingSubmissionView({ target, actual, open, onOpenChange, onEditTarget, onEditActual, onDeleteTarget, onDeleteActual }: CuttingSubmissionViewProps) {
   const { factory } = useAuth();
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [deleteType, setDeleteType] = useState<"target" | "actual" | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -206,7 +208,19 @@ export function CuttingSubmissionView({ target, actual, open, onOpenChange, onEd
             <FieldDisplay label={t('cutting.line')} value={primary.line_name} />
             <FieldDisplay label={t('cutting.buyer')} value={primary.buyer} />
             <FieldDisplay label={t('cutting.style')} value={primary.style} />
-            <FieldDisplay label={t('cutting.po')} value={primary.po_number} />
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">{t('cutting.po')}</p>
+              {primary.po_number ? (
+                <button
+                  className="font-semibold text-primary underline underline-offset-2 hover:text-primary/80 transition-colors cursor-pointer"
+                  onClick={() => { onOpenChange(false); navigate(`/work-orders?po=${encodeURIComponent(primary.po_number!)}`); }}
+                >
+                  {primary.po_number}
+                </button>
+              ) : (
+                <p className="font-semibold">-</p>
+              )}
+            </div>
             <FieldDisplay label={t('cutting.colour')} value={primary.colour} />
             <FieldDisplay label={t('cutting.orderQtyLabel')} value={primary.order_qty} />
           </div>
@@ -228,7 +242,7 @@ export function CuttingSubmissionView({ target, actual, open, onOpenChange, onEd
                     <FieldDisplay label={t('cutting.manPower')} value={target.man_power} />
                     <FieldDisplay label={t('cutting.markerCapacity')} value={target.marker_capacity} />
                     <FieldDisplay label={t('cutting.layCapacity')} value={target.lay_capacity} />
-                    <FieldDisplay label={t('cutting.cuttingCapacity')} value={target.cutting_capacity} className="text-primary" />
+                    <FieldDisplay label={t('cutting.cuttingCapacity')} value={target.cutting_capacity} />
                     <FieldDisplay label={t('cutting.underQty')} value={target.under_qty} />
                     {target.hours_planned != null && (
                       <FieldDisplay label={t('cutting.hoursPlanned')} value={target.hours_planned} />
@@ -246,7 +260,7 @@ export function CuttingSubmissionView({ target, actual, open, onOpenChange, onEd
                 <div>
                   <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">{t('cutting.dailyOutput')}</p>
                   <div className="grid grid-cols-2 gap-3">
-                    <FieldDisplay label={t('cutting.dayCutting')} value={target.day_cutting ?? 0} className="text-lg" />
+                    <FieldDisplay label={t('cutting.dayCutting')} value={target.day_cutting ?? 0} className="text-lg text-success" />
                     <FieldDisplay label={t('cutting.dayInput')} value={target.day_input ?? 0} className="text-lg text-primary" />
                   </div>
                 </div>
@@ -298,7 +312,7 @@ export function CuttingSubmissionView({ target, actual, open, onOpenChange, onEd
                     <FieldDisplay label={t('cutting.manPower')} value={actual.man_power} />
                     <FieldDisplay label={t('cutting.markerCapacity')} value={actual.marker_capacity} />
                     <FieldDisplay label={t('cutting.layCapacity')} value={actual.lay_capacity} />
-                    <FieldDisplay label={t('cutting.cuttingCapacity')} value={actual.cutting_capacity} className="text-success" />
+                    <FieldDisplay label={t('cutting.cuttingCapacity')} value={actual.cutting_capacity} />
                     <FieldDisplay label={t('cutting.underQty')} value={actual.under_qty} />
                     {actual.hours_actual != null && (
                       <FieldDisplay label={t('cutting.hoursActual')} value={actual.hours_actual} />
@@ -316,8 +330,8 @@ export function CuttingSubmissionView({ target, actual, open, onOpenChange, onEd
                 <div>
                   <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">{t('cutting.dailyOutput')}</p>
                   <div className="grid grid-cols-2 gap-3">
-                    <FieldDisplay label={t('cutting.dayCutting')} value={actual.day_cutting} className="text-lg" />
-                    <FieldDisplay label={t('cutting.dayInput')} value={actual.day_input} className="text-lg text-success" />
+                    <FieldDisplay label={t('cutting.dayCutting')} value={actual.day_cutting} className="text-lg text-success" />
+                    <FieldDisplay label={t('cutting.dayInput')} value={actual.day_input} className="text-lg text-primary" />
                   </div>
                 </div>
 

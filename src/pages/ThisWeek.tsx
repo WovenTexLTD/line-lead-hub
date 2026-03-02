@@ -97,17 +97,17 @@ export default function ThisWeek() {
         const [sewingRes, finishingRes, sewingTargetsRes, cuttingTargetsRes, cuttingActualsRes] = await Promise.all([
           supabase
             .from('sewing_actuals')
-            .select('good_today, has_blocker')
+            .select('line_id, good_today, has_blocker')
             .eq('factory_id', profile.factory_id)
             .eq('production_date', dateStr),
           supabase
             .from('finishing_daily_logs')
-            .select('log_type, poly, carton, planned_hours')
+            .select('log_type, poly, carton, planned_hours, work_order_id')
             .eq('factory_id', profile.factory_id)
             .eq('production_date', dateStr),
           supabase
             .from('sewing_targets')
-            .select('per_hour_target, manpower_planned')
+            .select('line_id, per_hour_target, manpower_planned')
             .eq('factory_id', profile.factory_id)
             .eq('production_date', dateStr),
           supabase
@@ -129,20 +129,31 @@ export default function ThisWeek() {
         const cuttingActualsData = cuttingActualsRes.data || [];
 
         const daySewingOutput = sewingData.reduce((sum, u) => sum + (u.good_today || 0), 0);
-        
-        // Finishing target: poly per hour × planned_hours = daily poly target
+
+        // Only count targets that have matching actuals (exclude target-only submissions)
+        const sewingActualLineIds = new Set(sewingData.map((u: any) => u.line_id));
+        const pairedSewingTargets = sewingTargetsData.filter((t: any) => sewingActualLineIds.has(t.line_id));
+
+        // Finishing: separate TARGET and OUTPUT logs
+        const finishingOutputLogs = finishingData.filter(f => f.log_type === 'OUTPUT');
         const finishingTargetLogs = finishingData.filter(f => f.log_type === 'TARGET');
-        const dayFinishingTarget = finishingTargetLogs.reduce((sum, f) => {
+
+        // Only count finishing targets that have matching output logs
+        const finishingOutputWoIds = new Set(finishingOutputLogs.map((f: any) => f.work_order_id));
+        const pairedFinishingTargets = finishingTargetLogs.filter((f: any) => finishingOutputWoIds.has(f.work_order_id));
+
+        // Finishing target: poly per hour × planned_hours = daily poly target
+        const dayFinishingTarget = pairedFinishingTargets.reduce((sum, f) => {
           const hours = (f as any).planned_hours || 1;
           return sum + (((f as any).poly || 0) * hours);
         }, 0);
 
         // Finishing output: poly is the primary metric
-        const finishingOutputLogs = finishingData.filter(f => f.log_type === 'OUTPUT');
         const dayFinishingOutput = finishingOutputLogs.reduce((sum, f) => sum + ((f as any).poly || 0), 0);
-        
-        // Cutting data
-        const dayCuttingTarget = cuttingTargetsData.reduce((sum, t) => sum + (t.cutting_capacity || 0), 0);
+
+        // Cutting data - only count targets with matching actuals
+        const cuttingActualExists = cuttingActualsData.length > 0;
+        const dayCuttingTarget = cuttingActualExists ? cuttingTargetsData.reduce((sum, t) => sum + (t.cutting_capacity || 0), 0) : 0;
         const dayCuttingActual = cuttingActualsData.reduce((sum, a) => sum + (a.day_cutting || 0), 0);
         
         // Calculate leftover fabric in yards for this day
@@ -160,8 +171,8 @@ export default function ThisWeek() {
         
         const dayBlockers = sewingData.filter(u => u.has_blocker).length;
 
-        // Calculate sewing targets (per_hour_target * 8 hours as daily estimate)
-        const daySewingTarget = sewingTargetsData.reduce((sum, t) => sum + ((t.per_hour_target || 0) * 8), 0);
+        // Calculate sewing targets (per_hour_target * 8 hours as daily estimate) - only paired targets
+        const daySewingTarget = pairedSewingTargets.reduce((sum: number, t: any) => sum + ((t.per_hour_target || 0) * 8), 0);
 
         totalSewing += daySewingOutput;
         totalFinishingTarget += dayFinishingTarget;
