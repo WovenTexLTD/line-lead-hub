@@ -21,7 +21,8 @@ import {
   AlertTriangle,
   Factory,
   Mail,
-  Bug
+  Bug,
+  Blocks
 } from "lucide-react";
 import { EmailScheduleSettings } from "@/components/insights/EmailScheduleSettings";
 import { EmptyState } from "@/components/EmptyState";
@@ -206,6 +207,13 @@ export default function SetupHome() {
       icon: ListOrdered,
       href: '/setup/dropdowns',
       stats: 'Configure form dropdowns',
+    },
+    {
+      title: 'Form Builder',
+      description: 'Customize form fields, sections, and role visibility',
+      icon: Blocks,
+      href: '/setup/form-builder',
+      stats: 'Configure form layouts',
     },
     ...(isDevFactory ? [{
       title: 'Error Logs',

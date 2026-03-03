@@ -29,6 +29,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { useEditPermission } from "@/hooks/useEditPermission";
+import { DynamicFormRenderer } from "@/components/forms/DynamicFormRenderer";
 
 interface Line {
   id: string;
@@ -91,8 +92,20 @@ export default function SewingEndOfDay() {
   const { user, profile, factory, isAdminOrHigher } = useAuth();
   const { canEditSubmission } = useEditPermission();
   const [loading, setLoading] = useState(true);
-  
+
   const dateLocale = i18n.language === 'bn' ? 'bn-BD' : 'en-US';
+
+  // Dynamic form toggle
+  if (factory?.use_dynamic_forms) {
+    return (
+      <div className="container max-w-2xl py-4 px-4 pb-24">
+        <div className="mb-6">
+          <h1 className="text-xl font-bold">{t("forms.sewing")} — {t("forms.endOfDayOutput")}</h1>
+        </div>
+        <DynamicFormRenderer formType="sewing_eod" />
+      </div>
+    );
+  }
   const [submitting, setSubmitting] = useState(false);
 
   // Master data

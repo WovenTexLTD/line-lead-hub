@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { format } from "date-fns";
 import { isLateForCutoff, getTodayInTimezone } from "@/lib/date-utils";
+import { DynamicFormRenderer } from "@/components/forms/DynamicFormRenderer";
 
 interface Line {
   id: string;
@@ -57,6 +58,18 @@ export default function FinishingMorningTargets() {
   const [submitting, setSubmitting] = useState(false);
 
   const dateLocale = i18n.language === 'bn' ? 'bn-BD' : 'en-US';
+
+  // Dynamic form toggle
+  if (factory?.use_dynamic_forms) {
+    return (
+      <div className="container max-w-2xl py-4 px-4 pb-24">
+        <div className="mb-6">
+          <h1 className="text-xl font-bold">{t("forms.finishing")} — {t("forms.morningTargets")}</h1>
+        </div>
+        <DynamicFormRenderer formType="finishing_targets" />
+      </div>
+    );
+  }
 
   // Master data
   const [lines, setLines] = useState<Line[]>([]);

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
+import { DynamicFormRenderer } from "@/components/forms/DynamicFormRenderer";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Search, Scissors, ClipboardCheck, ChevronDown, ChevronRight, Package } from "lucide-react";
@@ -91,6 +92,18 @@ export default function CuttingEndOfDay() {
   const [submitting, setSubmitting] = useState(false);
 
   const dateLocale = i18n.language === 'bn' ? 'bn-BD' : i18n.language === 'zh' ? 'zh-CN' : 'en-US';
+
+  // Dynamic form toggle
+  if (factory?.use_dynamic_forms) {
+    return (
+      <div className="container max-w-2xl py-4 px-4 pb-24">
+        <div className="mb-6">
+          <h1 className="text-xl font-bold">{t("cutting.title")} — {t("forms.endOfDayOutput")}</h1>
+        </div>
+        <DynamicFormRenderer formType="cutting_eod" />
+      </div>
+    );
+  }
 
   // Master data
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);

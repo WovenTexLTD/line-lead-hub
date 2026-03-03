@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useTranslation } from "react-i18next";
+import { DynamicFormRenderer } from "@/components/forms/DynamicFormRenderer";
 
 interface Line {
   id: string;
@@ -59,8 +60,20 @@ export default function FinishingEndOfDay() {
   const { t, i18n } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  
+
   const dateLocale = i18n.language === 'bn' ? 'bn-BD' : 'en-US';
+
+  // Dynamic form toggle
+  if (factory?.use_dynamic_forms) {
+    return (
+      <div className="container max-w-2xl py-4 px-4 pb-24">
+        <div className="mb-6">
+          <h1 className="text-xl font-bold">{t("forms.finishing")} — {t("forms.endOfDayOutput")}</h1>
+        </div>
+        <DynamicFormRenderer formType="finishing_eod" />
+      </div>
+    );
+  }
 
   // Master data
   const [lines, setLines] = useState<Line[]>([]);

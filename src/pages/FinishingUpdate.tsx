@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { useAuth } from "@/contexts/AuthContext";
+import { DynamicFormRenderer } from "@/components/forms/DynamicFormRenderer";
 import type { AppRole } from "@/lib/constants";
 import { supabase } from "@/integrations/supabase/client";
 import { getTodayInTimezone } from "@/lib/date-utils";
@@ -84,12 +85,24 @@ const finishingSchema = z.object({
 
 export default function FinishingUpdate() {
   const { t, i18n } = useTranslation();
-  const { profile, user, hasRole, isAdminOrHigher } = useAuth();
+  const { profile, user, factory: authFactory, hasRole, isAdminOrHigher } = useAuth();
   const navigate = useNavigate();
 
   const { submit: offlineSubmit } = useOfflineSubmission();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Dynamic form toggle
+  if (authFactory?.use_dynamic_forms) {
+    return (
+      <div className="container max-w-2xl py-4 px-4 pb-24">
+        <div className="mb-6">
+          <h1 className="text-xl font-bold">{t("forms.finishing")} — Update</h1>
+        </div>
+        <DynamicFormRenderer formType="finishing_update" />
+      </div>
+    );
+  }
 
   // Master data
   const [lines, setLines] = useState<Line[]>([]);

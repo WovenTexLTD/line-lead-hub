@@ -64,6 +64,8 @@ const CuttingSummary = lazy(() => import("./pages/CuttingSummary"));
 const CuttingAllSubmissions = lazy(() => import("./pages/CuttingAllSubmissions"));
 const CuttingHandoffs = lazy(() => import("./pages/CuttingHandoffs"));
 const ErrorLogs = lazy(() => import("./pages/ErrorLogs"));
+const FormBuilder = lazy(() => import("./pages/FormBuilder"));
+const FormBuilderEditor = lazy(() => import("./pages/FormBuilderEditor"));
 const BuyerDashboard = lazy(() => import("./pages/buyer/BuyerDashboard"));
 const BuyerTodayUpdates = lazy(() => import("./pages/buyer/BuyerTodayUpdates"));
 const BuyerSubmissions = lazy(() => import("./pages/buyer/BuyerSubmissions"));
@@ -183,6 +185,8 @@ function AppRoutes() {
         <Route path="/setup/knowledge-base" element={<SubscriptionGate><ProtectedRoute adminOnly><KnowledgeBase /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/setup/chat-analytics" element={<SubscriptionGate><ProtectedRoute adminOnly><ChatAnalytics /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/setup/error-logs" element={<SubscriptionGate><ProtectedRoute adminOnly><ErrorLogs /></ProtectedRoute></SubscriptionGate>} />
+        <Route path="/setup/form-builder" element={<SubscriptionGate><ProtectedRoute adminOnly><FormBuilder /></ProtectedRoute></SubscriptionGate>} />
+        <Route path="/setup/form-builder/:formType" element={<SubscriptionGate><ProtectedRoute adminOnly><FormBuilderEditor /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/users" element={<SubscriptionGate><ProtectedRoute adminOnly><UsersPage /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/submissions" element={<SubscriptionGate><ProtectedRoute adminOnly><AllSubmissions /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/my-submissions" element={<SubscriptionGate><LegacyMySubmissionsRedirect /></SubscriptionGate>} />

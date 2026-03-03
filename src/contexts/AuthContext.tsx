@@ -38,6 +38,7 @@ const factorySchema = z.object({
   max_lines: z.number().nullable(),
   low_stock_threshold: z.number(),
   payment_failed_at: z.string().nullable().optional(),
+  use_dynamic_forms: z.boolean().nullable().optional().transform(v => v ?? false),
 });
 
 type Profile = z.infer<typeof profileSchema>;

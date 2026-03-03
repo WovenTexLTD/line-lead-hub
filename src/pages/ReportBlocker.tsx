@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
+import { DynamicFormRenderer } from "@/components/forms/DynamicFormRenderer";
 import { supabase } from "@/integrations/supabase/client";
 import { getTodayInTimezone } from "@/lib/date-utils";
 import { Button } from "@/components/ui/button";
@@ -75,6 +76,18 @@ export default function ReportBlocker() {
   const { submit: offlineSubmit } = useOfflineSubmission();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Dynamic form toggle
+  if (factory?.use_dynamic_forms) {
+    return (
+      <div className="container max-w-2xl py-4 px-4 pb-24">
+        <div className="mb-6">
+          <h1 className="text-xl font-bold">{t("blockers.reportBlocker")}</h1>
+        </div>
+        <DynamicFormRenderer formType="report_blocker" />
+      </div>
+    );
+  }
 
   // Master data
   const [lines, setLines] = useState<Line[]>([]);
