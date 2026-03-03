@@ -34,13 +34,29 @@ window.onunhandledrejection = (event: PromiseRejectionEvent) => {
 // a React instance mismatch (e.g. "Cannot read properties of null (reading 'useEffect')").
 if ("serviceWorker" in navigator) {
   if (import.meta.env.PROD) {
+    // Reload the page when a new service worker takes control.
+    // This handles the case where the new SW activates (skipWaiting + clients.claim)
+    // and ensures users always run the latest code.
+    let swRefreshing = false;
+    navigator.serviceWorker.addEventListener("controllerchange", async () => {
+      if (swRefreshing) return;
+      swRefreshing = true;
+      // Clear all caches before reloading so the browser fetches everything fresh
+      if ("caches" in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+      window.location.reload();
+    });
+
     window.addEventListener("load", () => {
       navigator.serviceWorker
         .register("/sw.js", { updateViaCache: 'none' })
         .then((registration) => {
           console.log("SW registered:", registration.scope);
-          // Check for updates immediately and then periodically
+          // Check for updates immediately and then every 2 minutes
           registration.update();
+          setInterval(() => registration.update(), 2 * 60 * 1000);
         })
         .catch((error) => {
           console.log("SW registration failed:", error);

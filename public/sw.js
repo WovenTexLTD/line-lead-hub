@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-const CACHE_NAME = 'production-portal-v3';
+const CACHE_NAME = 'production-portal-v4';
 const OFFLINE_QUEUE_KEY = 'offline_submission_queue';
 const SYNC_TAG = 'sync-submissions';
 
@@ -13,12 +13,13 @@ const STATIC_ASSETS = [
   '/icons/icon-512x512.png',
 ];
 
-// Patterns for resources we should NOT cache (sensitive data)
+// Patterns for resources we should NOT cache (sensitive data + version check)
 const NO_CACHE_PATTERNS = [
   /supabase/,
   /\/api\//,
   /\/auth\//,
   /\/rest\/v1\//,
+  /version\.json/,
 ];
 
 // Install event - cache static assets

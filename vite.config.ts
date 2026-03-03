@@ -1,7 +1,28 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import { writeFileSync } from "fs";
 import { componentTagger } from "lovable-tagger";
+
+// Generates a version.json in the build output so the app can detect new deployments.
+function versionPlugin(): Plugin {
+  const buildId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  return {
+    name: "version-json",
+    apply: "build",
+    // Expose build ID to app code via import.meta.env
+    config() {
+      return { define: { "import.meta.env.VITE_BUILD_ID": JSON.stringify(buildId) } };
+    },
+    // Write version.json alongside other assets after the bundle closes
+    closeBundle() {
+      writeFileSync(
+        path.resolve(__dirname, "dist", "version.json"),
+        JSON.stringify({ buildId, builtAt: new Date().toISOString() }),
+      );
+    },
+  };
+}
 
 // Tauri packages that need special handling
 const tauriPackages = [
@@ -34,7 +55,7 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
   },
-  plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+  plugins: [react(), versionPlugin(), mode === "development" && componentTagger()].filter(Boolean),
   esbuild: {
     drop: mode === "production" ? ["console", "debugger"] : [],
   },

@@ -12,6 +12,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import i18n from "@/i18n/config";
+import { useVersionCheck } from "@/hooks/useVersionCheck";
 
 // Eager-loaded: needed immediately on every page load
 import Index from "./pages/Index";
@@ -80,6 +81,9 @@ const queryClient = new QueryClient({
 function AppRoutes() {
   const { loading } = useContext(AuthContext)!;
   const location = useLocation();
+
+  // Auto-reload when a new deployment is detected
+  useVersionCheck();
 
   const hash = location.hash.startsWith("#") ? location.hash.slice(1) : location.hash;
   const hashParams = new URLSearchParams(hash);
