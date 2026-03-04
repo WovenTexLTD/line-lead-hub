@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { MoreHorizontal, Link2, Eye, AlertTriangle, Archive } from "lucide-react";
+import { MoreHorizontal, Link2, AlertTriangle, Archive } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -33,14 +33,6 @@ export function POQuickActions({ workOrderId, poNumber, onViewExtras }: Props) {
         <DropdownMenuItem onClick={() => navigate("/setup/work-orders")}>
           <Link2 className="h-4 w-4 mr-2" />
           Assign Line
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() =>
-            navigate(`/all-submissions?search=${encodeURIComponent(poNumber)}`)
-          }
-        >
-          <Eye className="h-4 w-4 mr-2" />
-          View Submissions
         </DropdownMenuItem>
         {onViewExtras && (
           <DropdownMenuItem onClick={onViewExtras}>

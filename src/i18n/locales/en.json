@@ -137,6 +137,8 @@
     "todaysSummary": "Today's Summary",
     "sewing": "Sewing",
     "finishing": "Finishing",
+    "cutting": "Cutting",
+    "storage": "Storage",
     "submitLineData": "Submit line production data",
     "qcPackingData": "QC, packing & shipping data",
     "noUpdatesYet": "No updates submitted yet",

@@ -11,7 +11,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Loader2, AlertTriangle, ArrowLeft, CalendarIcon, Search, Factory } from "lucide-react";
-import { SewingMachine } from "@/components/icons/SewingMachine";
 import {
   Command,
   CommandEmpty,
@@ -98,10 +97,9 @@ export default function ReportBlocker() {
   const showLineSelection = !isCuttingOrStorage;
   
   // Determine update type based on role or legacy department
-  const userDepartment = hasRole("sewing") ? "sewing" : hasRole("finishing") ? "finishing" : (profile?.department || "sewing");
-  const canAccessBoth = userDepartment === "both" || isAdminOrHigher();
-  const defaultUpdateType = userDepartment === "finishing" ? "finishing" : "sewing";
-  const [updateType, setUpdateType] = useState<"sewing" | "finishing">(defaultUpdateType);
+  type Department = "sewing" | "finishing" | "cutting" | "storage";
+  const defaultDept: Department = hasRole("cutting") ? "cutting" : hasRole("storage") ? "storage" : hasRole("finishing") ? "finishing" : "sewing";
+  const [updateType, setUpdateType] = useState<Department>(defaultDept);
 
   // Auto-filled
   const [unitName, setUnitName] = useState("");
@@ -111,21 +109,13 @@ export default function ReportBlocker() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [poSearchOpen, setPoSearchOpen] = useState(false);
 
-  // Set update type based on role or department when profile loads
+  // Set update type based on role when profile loads
   useEffect(() => {
-    if (hasRole("finishing")) {
-      setUpdateType("finishing");
-    } else if (hasRole("sewing")) {
-      setUpdateType("sewing");
-    } else if (profile?.department) {
-      if (profile.department === "finishing") {
-        setUpdateType("finishing");
-      } else if (profile.department === "sewing") {
-        setUpdateType("sewing");
-      }
-      // If "both", keep whatever is currently selected (defaults to sewing)
-    }
-  }, [profile?.department, hasRole]);
+    if (hasRole("cutting")) setUpdateType("cutting");
+    else if (hasRole("storage")) setUpdateType("storage");
+    else if (hasRole("finishing")) setUpdateType("finishing");
+    else if (hasRole("sewing")) setUpdateType("sewing");
+  }, [hasRole]);
 
   useEffect(() => {
     if (profile?.factory_id) {
@@ -268,8 +258,7 @@ export default function ReportBlocker() {
   function validateForm(): boolean {
     const newErrors: Record<string, string> = {};
 
-    // Line is required for workers (non-cutting/storage)
-    if (showLineSelection && !selectedLine) newErrors.line = "Line is required";
+    // Line is optional — user can leave it blank
     if (!selectedPO) newErrors.po = "PO is required";
     if (!blockerType) newErrors.blockerType = "Blocker Type is required";
     if (!blockerOwner) newErrors.blockerOwner = "Blocker Owner is required";
@@ -298,10 +287,8 @@ export default function ReportBlocker() {
       const severityValue = blockerSeverity as "low" | "medium" | "high" | "critical";
 
       const workOrder = workOrders.find((w) => w.id === selectedPO);
-      // For cutting/storage use PO's line_id, for workers use selectedLine
-      const lineId = isCuttingOrStorage 
-        ? (workOrder?.line_id || lines[0]?.id)
-        : selectedLine;
+      // Use selectedLine if set, otherwise fall back to PO's line_id
+      const lineId = selectedLine || workOrder?.line_id || lines[0]?.id;
 
       const insertData: Record<string, unknown> = {
         factory_id: profile?.factory_id,
@@ -325,13 +312,12 @@ export default function ReportBlocker() {
         factory_name: factory?.name || "",
       };
 
-      // Add blocker_resolution_date only for sewing (finishing table doesn't have this field)
-      if (updateType === "sewing") {
-        insertData.blocker_resolution_date = blockerResolution ? format(blockerResolution, "yyyy-MM-dd") : null;
-      }
+      // Route: finishing → finishing table, everything else → sewing table
+      // (cutting/storage tables don't have blocker fields)
+      const useFinishingTable = updateType === "finishing";
 
-      // Add table-specific required fields
-      if (updateType === "sewing") {
+      if (!useFinishingTable) {
+        insertData.blocker_resolution_date = blockerResolution ? format(blockerResolution, "yyyy-MM-dd") : null;
         Object.assign(insertData, {
           buyer_name: workOrder?.buyer || "",
           po_number: workOrder?.po_number || "",
@@ -347,8 +333,8 @@ export default function ReportBlocker() {
         });
       }
 
-      const table = updateType === "sewing" ? "production_updates_sewing" : "production_updates_finishing";
-      const formType = updateType === "sewing" ? "production_updates_sewing" as const : "production_updates_finishing" as const;
+      const table = useFinishingTable ? "production_updates_finishing" : "production_updates_sewing";
+      const formType = useFinishingTable ? "production_updates_finishing" as const : "production_updates_sewing" as const;
 
       const result = await offlineSubmit(formType, table, insertData as Record<string, unknown>, {
         showSuccessToast: false,
@@ -468,25 +454,25 @@ export default function ReportBlocker() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Update Type - Only show if user has access to both */}
-        {canAccessBoth ? (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">{t('reportBlocker.updateType')}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Select value={updateType} onValueChange={(v) => setUpdateType(v as "sewing" | "finishing")}>
-                <SelectTrigger className="h-12">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="sewing">{t('dashboard.sewing')}</SelectItem>
-                  <SelectItem value="finishing">{t('dashboard.finishing')}</SelectItem>
-                </SelectContent>
-              </Select>
-            </CardContent>
-          </Card>
-        ) : null}
+        {/* Department */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">{t('reportBlocker.updateType')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Select value={updateType} onValueChange={(v) => setUpdateType(v as Department)}>
+              <SelectTrigger className="h-12">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="sewing">{t('dashboard.sewing')}</SelectItem>
+                <SelectItem value="finishing">{t('dashboard.finishing')}</SelectItem>
+                <SelectItem value="cutting">{t('dashboard.cutting')}</SelectItem>
+                <SelectItem value="storage">{t('dashboard.storage')}</SelectItem>
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
 
         {/* Location Selection */}
         <Card>
@@ -494,12 +480,12 @@ export default function ReportBlocker() {
             <CardTitle className="text-base">{t('reportBlocker.location')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Line Selection - Only for Worker roles (not Cutting/Storage) */}
+            {/* Line Selection - optional for all users */}
             {showLineSelection && (
               <div className="space-y-2">
-                <Label>{t('sewing.lineNo')} *</Label>
+                <Label>{t('sewing.lineNo')}</Label>
                 <Select value={selectedLine} onValueChange={setSelectedLine}>
-                  <SelectTrigger className={`h-12 ${errors.line ? "border-destructive" : ""}`}>
+                  <SelectTrigger className="h-12">
                     <SelectValue
                       placeholder={
                         lines.length === 0
@@ -516,7 +502,6 @@ export default function ReportBlocker() {
                     ))}
                   </SelectContent>
                 </Select>
-                {errors.line && <p className="text-xs text-destructive">{errors.line}</p>}
               </div>
             )}
 
