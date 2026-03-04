@@ -56,6 +56,8 @@ export function EditCuttingTargetModal({ target, open, onOpenChange, onSaved }: 
   const handleSave = async () => {
     setSaving(true);
     try {
+      const dayCutting = formData.day_cutting ?? 0;
+      const hours = formData.hours_planned || 0;
       const { error } = await supabase
         .from('cutting_targets')
         .update({
@@ -64,9 +66,10 @@ export function EditCuttingTargetModal({ target, open, onOpenChange, onSaved }: 
           lay_capacity: formData.lay_capacity ?? 0,
           cutting_capacity: formData.cutting_capacity ?? 0,
           under_qty: formData.under_qty ?? 0,
-          day_cutting: formData.day_cutting ?? 0,
+          day_cutting: dayCutting,
           day_input: formData.day_input ?? 0,
           hours_planned: formData.hours_planned || null,
+          target_per_hour: hours > 0 ? Math.round((dayCutting / hours) * 100) / 100 : null,
           ot_hours_planned: formData.ot_hours_planned || null,
           ot_manpower_planned: formData.ot_manpower_planned || null,
           remarks: formData.remarks || null,

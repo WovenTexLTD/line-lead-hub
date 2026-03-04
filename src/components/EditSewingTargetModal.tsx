@@ -51,12 +51,15 @@ export function EditSewingTargetModal({ target, open, onOpenChange, onSaved }: E
   const handleSave = async () => {
     setSaving(true);
     try {
+      const perHour = formData.per_hour_target ?? 0;
+      const hours = formData.hours_planned || 0;
       const { error } = await supabase
         .from('sewing_targets')
         .update({
-          per_hour_target: formData.per_hour_target ?? 0,
+          per_hour_target: perHour,
           manpower_planned: formData.manpower_planned ?? 0,
           hours_planned: formData.hours_planned || null,
+          target_total_planned: hours > 0 ? Math.round(perHour * hours) : null,
           ot_hours_planned: formData.ot_hours_planned ?? 0,
           remarks: formData.remarks,
         })
