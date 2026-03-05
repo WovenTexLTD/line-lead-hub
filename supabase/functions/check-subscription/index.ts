@@ -28,6 +28,7 @@ const TIER_MAX_LINES: Record<string, number> = {
 // Map email → tier. These users skip all Stripe checks.
 const GRANTED_FREE_ACCESS: Record<string, string> = {
   'karimsabbagh21@gmail.com': 'starter',
+  'karimsabbagh@woventex.co': 'starter',
 };
 
 // Stripe may return timestamps as Unix seconds (number) or ISO strings depending on API version.
