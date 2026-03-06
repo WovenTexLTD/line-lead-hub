@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useBuyerPODetails } from "@/hooks/useBuyerPODetails";
-import { computeHealth, healthColors } from "@/lib/buyer-health";
+import { computeHealth, healthColors, type HealthStatus } from "@/lib/buyer-health";
 import { computeBuyerAlerts, sortAlerts } from "@/lib/buyer-alerts";
 import { formatTimeInTimezone, formatShortDate } from "@/lib/date-utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,20 +42,54 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-import { format } from "date-fns";
+
+const healthAccent: Record<HealthStatus, string> = {
+  healthy: "from-emerald-400 to-emerald-500",
+  watch: "from-amber-400 to-amber-500",
+  at_risk: "from-red-400 to-red-500",
+  no_deadline: "from-slate-300 to-slate-400",
+  completed: "from-blue-400 to-blue-500",
+};
 
 const DEPT_COLORS: Record<string, string> = {
-  sewing: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-  cutting: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
-  finishing: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
-  storage: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
+  sewing: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800",
+  cutting: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800",
+  finishing: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 border-violet-200 dark:border-violet-800",
+  storage: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200 dark:border-orange-800",
+};
+
+const DEPT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  sewing: TrendingUp,
+  cutting: Scissors,
+  finishing: PackageCheck,
+  storage: Warehouse,
+};
+
+const DEPT_DOT_COLOR: Record<string, string> = {
+  sewing: "bg-blue-500",
+  cutting: "bg-emerald-500",
+  finishing: "bg-violet-500",
+  storage: "bg-orange-500",
 };
 
 const SEVERITY_COLORS: Record<string, string> = {
-  critical: "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/30",
-  warning: "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30",
-  info: "border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30",
+  critical: "border-red-200 bg-red-50/80 dark:border-red-800/50 dark:bg-red-950/20",
+  warning: "border-amber-200 bg-amber-50/80 dark:border-amber-800/50 dark:bg-amber-950/20",
+  info: "border-blue-200 bg-blue-50/80 dark:border-blue-800/50 dark:bg-blue-950/20",
 };
+
+const SEVERITY_ICON_COLOR: Record<string, string> = {
+  critical: "text-red-500",
+  warning: "text-amber-500",
+  info: "text-blue-500",
+};
+
+const STAGE_CARD_STYLES = [
+  { icon: Warehouse, label: "Storage", bg: "bg-orange-50/80 dark:bg-orange-950/20", border: "border-orange-100 dark:border-orange-900/30", iconColor: "text-orange-600 dark:text-orange-400", labelColor: "text-orange-600 dark:text-orange-400" },
+  { icon: Scissors, label: "Cutting", bg: "bg-emerald-50/80 dark:bg-emerald-950/20", border: "border-emerald-100 dark:border-emerald-900/30", iconColor: "text-emerald-600 dark:text-emerald-400", labelColor: "text-emerald-600 dark:text-emerald-400" },
+  { icon: TrendingUp, label: "Sewing", bg: "bg-blue-50/80 dark:bg-blue-950/20", border: "border-blue-100 dark:border-blue-900/30", iconColor: "text-blue-600 dark:text-blue-400", labelColor: "text-blue-600 dark:text-blue-400" },
+  { icon: PackageCheck, label: "Finishing", bg: "bg-violet-50/80 dark:bg-violet-950/20", border: "border-violet-100 dark:border-violet-900/30", iconColor: "text-violet-600 dark:text-violet-400", labelColor: "text-violet-600 dark:text-violet-400" },
+];
 
 export default function BuyerPODetails() {
   const { poId } = useParams<{ poId: string }>();
@@ -76,19 +110,16 @@ export default function BuyerPODetails() {
     todayStr,
   } = useBuyerPODetails(poId);
 
-  // Filter trend data by period
   const filteredTrend = useMemo(() => {
     const days = parseInt(period);
     return trendData.slice(-days);
   }, [trendData, period]);
 
-  // Compute alerts
   const alerts = useMemo(() => {
     if (!workOrder) return [];
     return sortAlerts(computeBuyerAlerts(workOrder, aggregates, sewingHistory));
   }, [workOrder, aggregates, sewingHistory]);
 
-  // CSV export
   const handleExport = () => {
     if (!workOrder) return;
     let csv = `PO Report: ${workOrder.po_number}\n`;
@@ -126,9 +157,11 @@ export default function BuyerPODetails() {
         <Button variant="ghost" size="sm" onClick={() => navigate("/buyer/dashboard")} className="gap-2">
           <ArrowLeft className="h-4 w-4" /> Back to Overview
         </Button>
-        <Card>
+        <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-16">
-            <Package className="h-12 w-12 text-muted-foreground/50 mb-4" />
+            <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center mb-4">
+              <Package className="h-8 w-8 text-muted-foreground/60" />
+            </div>
             <h3 className="text-lg font-medium mb-2">PO Not Found</h3>
             <p className="text-sm text-muted-foreground text-center max-w-md">
               {error || "This purchase order doesn't exist or you don't have access to it."}
@@ -142,6 +175,14 @@ export default function BuyerPODetails() {
   const health = computeHealth(workOrder, aggregates);
   const producedPct = workOrder.order_qty > 0 ? Math.min(100, Math.round((aggregates.cumulativeGood / workOrder.order_qty) * 100)) : 0;
   const packedPct = workOrder.order_qty > 0 ? Math.min(100, Math.round((aggregates.finishingPoly / workOrder.order_qty) * 100)) : 0;
+  const accent = healthAccent[health.status] || healthAccent.no_deadline;
+
+  const stageCards = [
+    { ...STAGE_CARD_STYLES[0], value: stageData.storage.todayReceived, prefix: "+", sub: `Balance: ${stageData.storage.balance.toLocaleString()}`, lastUpdate: stageData.storage.lastUpdate },
+    { ...STAGE_CARD_STYLES[1], value: stageData.cutting.todayCut, sub: `Total: ${stageData.cutting.totalCut.toLocaleString()}`, lastUpdate: stageData.cutting.lastUpdate },
+    { ...STAGE_CARD_STYLES[2], value: stageData.sewing.todayOutput, sub: `Cumulative: ${stageData.sewing.cumulative.toLocaleString()}`, lastUpdate: stageData.sewing.lastUpdate },
+    { ...STAGE_CARD_STYLES[3], value: stageData.finishing.todayPoly, sub: `Total: ${stageData.finishing.totalPoly.toLocaleString()}`, lastUpdate: stageData.finishing.lastUpdate },
+  ];
 
   return (
     <motion.div
@@ -150,143 +191,118 @@ export default function BuyerPODetails() {
       initial="hidden"
       animate="show"
     >
-      {/* Back + Header */}
-      <motion.div className="flex flex-col gap-4" variants={fadeUp}>
-        <Button variant="ghost" size="sm" onClick={() => navigate("/buyer/dashboard")} className="gap-2 self-start -ml-2">
+      {/* Back button */}
+      <motion.div variants={fadeUp}>
+        <Button variant="ghost" size="sm" onClick={() => navigate("/buyer/dashboard")} className="gap-2 -ml-2 text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> Back to Overview
         </Button>
+      </motion.div>
 
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-2xl font-bold">{workOrder.po_number}</h1>
-              <Badge variant="outline" className={healthColors[health.status]}>{health.label}</Badge>
-              {workOrder.status && <Badge variant="secondary" className="text-xs">{workOrder.status.replace("_", " ")}</Badge>}
-            </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              {workOrder.style}
-              {workOrder.color && ` — ${workOrder.color}`}
-              {workOrder.item && ` — ${workOrder.item}`}
-            </p>
-          </div>
-          <div className="text-right text-sm flex flex-col gap-1">
-            <div className="font-medium">Order: {workOrder.order_qty.toLocaleString()} pcs</div>
-            {workOrder.planned_ex_factory && (
-              <div className="text-muted-foreground flex items-center gap-1 justify-end">
-                <Clock className="h-3 w-3" />
-                Ex-factory: {formatShortDate(workOrder.planned_ex_factory)}
+      {/* Header card */}
+      <motion.div variants={fadeUp}>
+        <div className="relative overflow-hidden rounded-2xl border bg-card">
+          <div className={`h-1.5 bg-gradient-to-r ${accent}`} />
+          <div className="p-5 md:p-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{workOrder.po_number}</h1>
+                  <Badge variant="outline" className={`text-xs ${healthColors[health.status]}`}>{health.label}</Badge>
+                  {workOrder.status && <Badge variant="secondary" className="text-xs">{workOrder.status.replace("_", " ")}</Badge>}
+                </div>
+                <p className="text-sm text-muted-foreground mt-1.5">
+                  {workOrder.style}
+                  {workOrder.color && ` \u2014 ${workOrder.color}`}
+                  {workOrder.item && ` \u2014 ${workOrder.item}`}
+                </p>
               </div>
-            )}
-            <Button variant="outline" size="sm" onClick={handleExport} className="gap-2 mt-1">
-              <Download className="h-3.5 w-3.5" /> Export CSV
-            </Button>
+              <div className="text-right text-sm flex flex-col gap-1.5 items-end">
+                <div className="font-semibold text-base">Order: {workOrder.order_qty.toLocaleString()} pcs</div>
+                {workOrder.planned_ex_factory && (
+                  <div className="text-muted-foreground flex items-center gap-1">
+                    <Clock className="h-3.5 w-3.5" />
+                    Ex-factory: {formatShortDate(workOrder.planned_ex_factory)}
+                  </div>
+                )}
+                <Button variant="outline" size="sm" onClick={handleExport} className="gap-2 mt-1">
+                  <Download className="h-3.5 w-3.5" /> Export CSV
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       </motion.div>
 
       {/* Progress Bars */}
       <motion.div className="grid grid-cols-1 md:grid-cols-2 gap-4" variants={fadeUp}>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between text-sm mb-2">
-              <span className="font-medium flex items-center gap-1.5">
-                <TrendingUp className="h-4 w-4 text-blue-500" /> Sewn
-              </span>
-              <span className="text-muted-foreground">
-                {aggregates.cumulativeGood.toLocaleString()} / {workOrder.order_qty.toLocaleString()} ({producedPct}%)
-              </span>
-            </div>
-            <Progress value={producedPct} className="h-3" />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between text-sm mb-2">
-              <span className="font-medium flex items-center gap-1.5">
-                <PackageCheck className="h-4 w-4 text-emerald-500" /> Packed
-              </span>
-              <span className="text-muted-foreground">
-                {aggregates.finishingCarton.toLocaleString()} / {workOrder.order_qty.toLocaleString()} ({packedPct}%)
-              </span>
-            </div>
-            <Progress value={packedPct} className="h-3" />
-          </CardContent>
-        </Card>
+        <div className="rounded-xl border bg-blue-50/50 dark:bg-blue-950/20 border-blue-100 dark:border-blue-900/30 p-4">
+          <div className="flex items-center justify-between text-sm mb-2">
+            <span className="font-semibold flex items-center gap-1.5 text-blue-700 dark:text-blue-400">
+              <TrendingUp className="h-4 w-4" /> Sewn
+            </span>
+            <span className="text-muted-foreground tabular-nums">
+              {aggregates.cumulativeGood.toLocaleString()} / {workOrder.order_qty.toLocaleString()} ({producedPct}%)
+            </span>
+          </div>
+          <Progress value={producedPct} className="h-3" />
+        </div>
+        <div className="rounded-xl border bg-violet-50/50 dark:bg-violet-950/20 border-violet-100 dark:border-violet-900/30 p-4">
+          <div className="flex items-center justify-between text-sm mb-2">
+            <span className="font-semibold flex items-center gap-1.5 text-violet-700 dark:text-violet-400">
+              <PackageCheck className="h-4 w-4" /> Packed
+            </span>
+            <span className="text-muted-foreground tabular-nums">
+              {aggregates.finishingCarton.toLocaleString()} / {workOrder.order_qty.toLocaleString()} ({packedPct}%)
+            </span>
+          </div>
+          <Progress value={packedPct} className="h-3 [&>div]:from-violet-500 [&>div]:to-violet-400" />
+        </div>
       </motion.div>
 
       {/* Stage Cards */}
       <motion.div className="grid grid-cols-2 md:grid-cols-4 gap-3" variants={fadeUp}>
-        <Card>
-          <CardContent className="p-3">
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
-              <Warehouse className="h-3.5 w-3.5" /> Storage
+        {stageCards.map((stage) => {
+          const Icon = stage.icon;
+          return (
+            <div key={stage.label} className={`rounded-xl border ${stage.bg} ${stage.border} p-4 transition-all duration-300 hover:shadow-md`}>
+              <div className={`flex items-center gap-1.5 text-xs font-medium mb-2.5 ${stage.labelColor}`}>
+                <Icon className="h-3.5 w-3.5" /> {stage.label}
+              </div>
+              <div className="text-xl font-bold tabular-nums">
+                {stage.value > 0 ? (
+                  <>{stage.prefix || ""}<AnimatedNumber value={stage.value} /></>
+                ) : "\u2014"}
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">{stage.sub}</div>
+              {stage.lastUpdate && (
+                <div className="text-[10px] text-muted-foreground/60 mt-1.5">{formatTimeInTimezone(stage.lastUpdate, timezone)}</div>
+              )}
             </div>
-            <div className="text-lg font-bold">{stageData.storage.todayReceived > 0 ? <span>+<AnimatedNumber value={stageData.storage.todayReceived} /></span> : "—"}</div>
-            <div className="text-xs text-muted-foreground">Balance: {stageData.storage.balance.toLocaleString()}</div>
-            {stageData.storage.lastUpdate && (
-              <div className="text-[10px] text-muted-foreground/70 mt-1">{formatTimeInTimezone(stageData.storage.lastUpdate, timezone)}</div>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
-              <Scissors className="h-3.5 w-3.5" /> Cutting
-            </div>
-            <div className="text-lg font-bold">{stageData.cutting.todayCut > 0 ? <AnimatedNumber value={stageData.cutting.todayCut} /> : "—"}</div>
-            <div className="text-xs text-muted-foreground">Total: {stageData.cutting.totalCut.toLocaleString()}</div>
-            {stageData.cutting.lastUpdate && (
-              <div className="text-[10px] text-muted-foreground/70 mt-1">{formatTimeInTimezone(stageData.cutting.lastUpdate, timezone)}</div>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
-              <TrendingUp className="h-3.5 w-3.5" /> Sewing
-            </div>
-            <div className="text-lg font-bold">{stageData.sewing.todayOutput > 0 ? <AnimatedNumber value={stageData.sewing.todayOutput} /> : "—"}</div>
-            <div className="text-xs text-muted-foreground">Cumulative: {stageData.sewing.cumulative.toLocaleString()}</div>
-            {stageData.sewing.lastUpdate && (
-              <div className="text-[10px] text-muted-foreground/70 mt-1">{formatTimeInTimezone(stageData.sewing.lastUpdate, timezone)}</div>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
-              <PackageCheck className="h-3.5 w-3.5" /> Finishing
-            </div>
-            <div className="text-lg font-bold">{stageData.finishing.todayPoly > 0 ? <AnimatedNumber value={stageData.finishing.todayPoly} /> : "—"}</div>
-            <div className="text-xs text-muted-foreground">Total: {stageData.finishing.totalPoly.toLocaleString()}</div>
-            {stageData.finishing.lastUpdate && (
-              <div className="text-[10px] text-muted-foreground/70 mt-1">{formatTimeInTimezone(stageData.finishing.lastUpdate, timezone)}</div>
-            )}
-          </CardContent>
-        </Card>
+          );
+        })}
       </motion.div>
 
       {/* Risks & Flags */}
       {alerts.length > 0 && (
-        <motion.div className="space-y-2" variants={fadeUp}>
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Risks & Flags</h2>
+        <motion.div className="space-y-3" variants={fadeUp}>
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Risks & Flags</h2>
           {alerts.map((alert, i) => (
-            <Card key={i} className={SEVERITY_COLORS[alert.severity]}>
-              <CardContent className="flex items-start gap-3 p-3">
-                <AlertTriangle className={`h-4 w-4 shrink-0 mt-0.5 ${alert.severity === "critical" ? "text-red-500" : "text-amber-500"}`} />
-                <div>
-                  <div className="text-sm font-medium">{alert.title}</div>
-                  <div className="text-xs text-muted-foreground">{alert.message}</div>
-                </div>
-              </CardContent>
-            </Card>
+            <div key={i} className={`flex items-start gap-3 rounded-xl border p-4 ${SEVERITY_COLORS[alert.severity]}`}>
+              <div className={`rounded-full p-1.5 ${alert.severity === "critical" ? "bg-red-100 dark:bg-red-900/40" : alert.severity === "warning" ? "bg-amber-100 dark:bg-amber-900/40" : "bg-blue-100 dark:bg-blue-900/40"}`}>
+                <AlertTriangle className={`h-4 w-4 ${SEVERITY_ICON_COLOR[alert.severity]}`} />
+              </div>
+              <div>
+                <div className="text-sm font-semibold">{alert.title}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">{alert.message}</div>
+              </div>
+            </div>
           ))}
         </motion.div>
       )}
 
-      {/* Trend Chart */}
+      {/* Trend Chart — unchanged */}
       <motion.div variants={fadeUp}>
-      <Card>
+      <Card className="rounded-xl">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <CardTitle className="text-base">Production Trend</CardTitle>
@@ -333,28 +349,47 @@ export default function BuyerPODetails() {
 
       {/* Today Timeline */}
       <motion.div variants={fadeUp}>
-      <Card>
+      <Card className="rounded-xl">
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Today's Activity</CardTitle>
         </CardHeader>
         <CardContent>
           {todayTimeline.length === 0 ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">No submissions today</div>
+            <div className="py-10 text-center">
+              <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+                <Clock className="h-6 w-6 text-muted-foreground/60" />
+              </div>
+              <p className="text-sm text-muted-foreground">No submissions today</p>
+            </div>
           ) : (
-            <div className="space-y-3">
-              {todayTimeline.map((entry, i) => (
-                <div key={i} className="flex items-start gap-3">
-                  <Badge variant="outline" className={`text-[10px] px-1.5 py-0 shrink-0 mt-0.5 ${DEPT_COLORS[entry.department]}`}>
-                    {entry.department}
-                  </Badge>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm">{entry.label}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {entry.time ? formatTimeInTimezone(entry.time, timezone) : "—"}
+            <div className="space-y-0">
+              {todayTimeline.map((entry, i) => {
+                const Icon = DEPT_ICONS[entry.department];
+                const dotColor = DEPT_DOT_COLOR[entry.department] || "bg-gray-400";
+                return (
+                  <div key={i} className="flex items-start gap-3 py-2">
+                    <div className="flex flex-col items-center mt-1.5">
+                      <div className={`h-2.5 w-2.5 rounded-full ${dotColor} ring-2 ring-background`} />
+                      {i < todayTimeline.length - 1 && <div className="w-px flex-1 bg-border mt-1 min-h-[20px]" />}
+                    </div>
+                    <div className="min-w-0 flex-1 pb-1">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] px-1.5 py-0 ${DEPT_COLORS[entry.department]}`}
+                        >
+                          {Icon && <Icon className="h-2.5 w-2.5 mr-1" />}
+                          {entry.department}
+                        </Badge>
+                        <span className="text-[10px] text-muted-foreground">
+                          {entry.time ? formatTimeInTimezone(entry.time, timezone) : "\u2014"}
+                        </span>
+                      </div>
+                      <div className="text-sm">{entry.label}</div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>

@@ -204,8 +204,8 @@ export function CompactPOCard({
               <DeltaChip current={todaySewing} yesterday={yesterdaySewing} />
             </div>
           </div>
-          <div className="rounded-xl bg-emerald-50/80 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 p-3">
-            <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium mb-1">
+          <div className="rounded-xl bg-violet-50/80 dark:bg-violet-950/20 border border-violet-100 dark:border-violet-900/30 p-3">
+            <div className="flex items-center gap-1.5 text-xs text-violet-600 dark:text-violet-400 font-medium mb-1">
               <PackageCheck className="h-3.5 w-3.5" /> Packed Today
             </div>
             <div className="text-lg font-bold tabular-nums">
