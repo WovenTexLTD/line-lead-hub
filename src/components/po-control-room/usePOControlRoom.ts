@@ -393,6 +393,37 @@ export function usePOControlRoom(filters: POFilters = EMPTY_FILTERS) {
       });
 
       setWorkOrders(result);
+
+      // ── Auto-sync work_orders.status with computed workflow state ──
+      // When finishing output meets/exceeds order_qty the Control Room
+      // considers the PO "completed", but the DB status column may still
+      // say "in_progress" (or vice-versa). Sync them so the PO Master
+      // page stays consistent.
+      const toComplete = result
+        .filter((po) => po.workflowState === "completed" && po.status !== "completed")
+        .map((po) => po.id);
+      const toReopen = result
+        .filter((po) => po.workflowState !== "completed" && po.status === "completed")
+        .map((po) => po.id);
+
+      if (toComplete.length > 0) {
+        supabase
+          .from("work_orders")
+          .update({ status: "completed" })
+          .in("id", toComplete)
+          .then(({ error }) => {
+            if (error) console.error("Auto-sync to completed failed:", error);
+          });
+      }
+      if (toReopen.length > 0) {
+        supabase
+          .from("work_orders")
+          .update({ status: "in_progress" })
+          .in("id", toReopen)
+          .then(({ error }) => {
+            if (error) console.error("Auto-sync to in_progress failed:", error);
+          });
+      }
     } catch (err) {
       console.error("Error fetching work orders:", err);
     } finally {
