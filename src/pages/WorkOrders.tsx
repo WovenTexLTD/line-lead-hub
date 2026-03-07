@@ -379,8 +379,41 @@ export default function WorkOrders() {
     const id = itemToDelete;
     setDeleteDialogOpen(false);
     setItemToDelete(null);
-    
+
     try {
+      // Delete child records first (foreign key constraints)
+      // storage_bin_card_transactions must be deleted before storage_bin_cards
+      const { data: binCards } = await supabase
+        .from('storage_bin_cards')
+        .select('id')
+        .eq('work_order_id', id);
+      if (binCards && binCards.length > 0) {
+        const binCardIds = binCards.map((b) => b.id);
+        await supabase.from('storage_bin_card_transactions').delete().in('bin_card_id', binCardIds);
+      }
+
+      const childTables = [
+        'sewing_targets',
+        'sewing_actuals',
+        'cutting_actuals',
+        'cutting_targets',
+        'finishing_daily_logs',
+        'finishing_daily_sheets',
+        'finishing_actuals',
+        'finishing_targets',
+        'production_updates_sewing',
+        'production_updates_finishing',
+        'extras_ledger',
+        'storage_bin_cards',
+        'work_order_line_assignments',
+        'buyer_po_access',
+      ] as const;
+
+      for (const table of childTables) {
+        const { error } = await supabase.from(table).delete().eq('work_order_id', id);
+        if (error) console.warn(`Failed to clean ${table}:`, error.message);
+      }
+
       const { error } = await supabase.from('work_orders').delete().eq('id', id);
       if (error) throw error;
       toast.success("Work order deleted");
