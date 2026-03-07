@@ -550,14 +550,16 @@ export default function AllSubmissions() {
     <div className="py-4 lg:py-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <FileText className="h-6 w-6 text-primary" />
-            All Submissions
-          </h1>
-          <p className="text-muted-foreground">
-            View and export historical targets and end of day data
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-indigo-500/10 flex items-center justify-center shrink-0">
+            <FileText className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">All Submissions</h1>
+            <p className="text-sm text-muted-foreground">
+              View and export historical targets and end of day data
+            </p>
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           <Select value={dateRange} onValueChange={setDateRange}>
@@ -591,7 +593,7 @@ export default function AllSubmissions() {
       <div className="grid grid-cols-4 gap-3">
         <Button
           variant={department === 'storage' ? 'default' : 'outline'}
-          className="h-14 flex flex-col gap-0.5"
+          className={`h-14 flex flex-col gap-0.5 ${department === 'storage' ? 'bg-orange-600 hover:bg-orange-700 border-orange-600' : 'hover:border-orange-300 hover:text-orange-600'}`}
           onClick={() => setDepartment('storage')}
         >
           <Warehouse className="h-4 w-4" />
@@ -599,7 +601,7 @@ export default function AllSubmissions() {
         </Button>
         <Button
           variant={department === 'cutting' ? 'default' : 'outline'}
-          className="h-14 flex flex-col gap-0.5"
+          className={`h-14 flex flex-col gap-0.5 ${department === 'cutting' ? 'bg-emerald-600 hover:bg-emerald-700 border-emerald-600' : 'hover:border-emerald-300 hover:text-emerald-600'}`}
           onClick={() => setDepartment('cutting')}
         >
           <Scissors className="h-4 w-4" />
@@ -607,7 +609,7 @@ export default function AllSubmissions() {
         </Button>
         <Button
           variant={department === 'sewing' ? 'default' : 'outline'}
-          className="h-14 flex flex-col gap-0.5"
+          className={`h-14 flex flex-col gap-0.5 ${department === 'sewing' ? 'bg-blue-600 hover:bg-blue-700 border-blue-600' : 'hover:border-blue-300 hover:text-blue-600'}`}
           onClick={() => setDepartment('sewing')}
         >
           <SewingMachine className="h-4 w-4" />
@@ -615,7 +617,7 @@ export default function AllSubmissions() {
         </Button>
         <Button
           variant={department === 'finishing' ? 'default' : 'outline'}
-          className="h-14 flex flex-col gap-0.5"
+          className={`h-14 flex flex-col gap-0.5 ${department === 'finishing' ? 'bg-violet-600 hover:bg-violet-700 border-violet-600' : 'hover:border-violet-300 hover:text-violet-600'}`}
           onClick={() => setDepartment('finishing')}
         >
           <Package className="h-4 w-4" />
@@ -715,44 +717,52 @@ export default function AllSubmissions() {
 
           {/* KPI Summary Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Card>
+            <Card className="border-border/50">
               <CardContent className="pt-4 pb-3 px-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
-                  <p className="text-xs text-muted-foreground">Submissions</p>
+                <div className="flex items-center gap-2.5 mb-2">
+                  <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
+                    <ClipboardCheck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <p className="text-xs text-muted-foreground font-medium">Submissions</p>
                 </div>
-                <div className="text-2xl font-bold text-primary">{sewingKpiStats.count}</div>
+                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{sewingKpiStats.count}</div>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="border-border/50">
               <CardContent className="pt-4 pb-3 px-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                  <p className="text-xs text-muted-foreground">{sewingKpiStats.metric1Label}</p>
+                <div className="flex items-center gap-2.5 mb-2">
+                  <div className="h-8 w-8 rounded-lg bg-indigo-500/10 flex items-center justify-center shrink-0">
+                    <TrendingUp className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                  </div>
+                  <p className="text-xs text-muted-foreground font-medium">{sewingKpiStats.metric1Label}</p>
                 </div>
-                <div className="text-2xl font-bold text-blue-600">{sewingKpiStats.metric1.toLocaleString()}</div>
+                <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 font-mono tabular-nums">{sewingKpiStats.metric1.toLocaleString()}</div>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="border-border/50">
               <CardContent className="pt-4 pb-3 px-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <SewingMachine className="h-4 w-4 text-muted-foreground" />
-                  <p className="text-xs text-muted-foreground">{sewingKpiStats.metric2Label}</p>
+                <div className="flex items-center gap-2.5 mb-2">
+                  <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
+                    <SewingMachine className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <p className="text-xs text-muted-foreground font-medium">{sewingKpiStats.metric2Label}</p>
                 </div>
-                <div className="text-2xl font-bold text-green-600">{sewingKpiStats.metric2.toLocaleString()}</div>
+                <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 font-mono tabular-nums">{sewingKpiStats.metric2.toLocaleString()}</div>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="border-border/50">
               <CardContent className="pt-4 pb-3 px-4">
-                <div className="flex items-center gap-2 mb-1">
-                  {category === 'actuals' ? (
-                    <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-                  ) : (
-                    <SewingMachine className="h-4 w-4 text-muted-foreground" />
-                  )}
-                  <p className="text-xs text-muted-foreground">{sewingKpiStats.metric3Label}</p>
+                <div className="flex items-center gap-2.5 mb-2">
+                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${category === 'actuals' && sewingKpiStats.metric3 > 0 ? 'bg-amber-500/10' : 'bg-muted/50'}`}>
+                    {category === 'actuals' ? (
+                      <AlertTriangle className={`h-4 w-4 ${sewingKpiStats.metric3 > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`} />
+                    ) : (
+                      <SewingMachine className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground font-medium">{sewingKpiStats.metric3Label}</p>
                 </div>
-                <div className={`text-2xl font-bold ${category === 'actuals' && sewingKpiStats.metric3 > 0 ? 'text-amber-500' : 'text-muted-foreground'}`}>
+                <div className={`text-2xl font-bold font-mono tabular-nums ${category === 'actuals' && sewingKpiStats.metric3 > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`}>
                   {sewingKpiStats.metric3.toLocaleString()}
                 </div>
               </CardContent>
@@ -761,10 +771,10 @@ export default function AllSubmissions() {
 
           {/* Daily Output Trend Chart */}
           {sewingDailyTrend.length > 1 && (
-            <Card>
+            <Card className="border-border/50">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-primary" />
+                  <TrendingUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                   Daily Output Trend
                 </CardTitle>
               </CardHeader>
@@ -773,8 +783,8 @@ export default function AllSubmissions() {
                   <AreaChart data={sewingDailyTrend}>
                     <defs>
                       <linearGradient id="colorSewingOutput" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                        <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
@@ -792,7 +802,7 @@ export default function AllSubmissions() {
                       type="monotone"
                       dataKey="output"
                       name="Output"
-                      stroke="hsl(var(--primary))"
+                      stroke="#2563eb"
                       fill="url(#colorSewingOutput)"
                       strokeWidth={2}
                     />
@@ -800,8 +810,8 @@ export default function AllSubmissions() {
                       type="monotone"
                       dataKey="rejects"
                       name="Rejects"
-                      stroke="hsl(var(--destructive))"
-                      fill="hsl(var(--destructive))"
+                      stroke="#dc2626"
+                      fill="#dc2626"
                       fillOpacity={0.1}
                       strokeWidth={1.5}
                     />
@@ -812,13 +822,13 @@ export default function AllSubmissions() {
           )}
 
           {/* Data Table */}
-          <Card>
+          <Card className="border-border/50">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 {category === 'targets' ? (
-                  <Target className="h-4 w-4 text-primary" />
+                  <Target className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 ) : (
-                  <ClipboardCheck className="h-4 w-4 text-primary" />
+                  <ClipboardCheck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 )}
                 Sewing {category === 'targets' ? 'Targets' : 'End of Day'}
                 <Badge variant="secondary" className="ml-2">{sewingData.length}</Badge>
