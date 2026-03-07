@@ -1178,7 +1178,7 @@ export default function TodayUpdates() {
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Scissors className="h-4 w-4 text-warning" />
+                  <Scissors className="h-4 w-4 text-emerald-600" />
                   Cutting Updates
                 </CardTitle>
               </CardHeader>
@@ -1253,7 +1253,7 @@ export default function TodayUpdates() {
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Warehouse className="h-4 w-4 text-success" />
+                  <Warehouse className="h-4 w-4 text-orange-600" />
                   Storage Transactions
                 </CardTitle>
               </CardHeader>
