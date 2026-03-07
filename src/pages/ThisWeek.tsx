@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Loader2, Calendar, TrendingUp, TrendingDown, Minus, Package, ChevronLeft, ChevronRight, Scissors } from "lucide-react";
+import { Loader2, Calendar, TrendingUp, TrendingDown, Minus, Package, ChevronLeft, ChevronRight, Scissors, AlertTriangle } from "lucide-react";
 import { SewingMachine } from "@/components/icons/SewingMachine";
 
 interface DailyStats {
@@ -224,8 +224,8 @@ export default function ThisWeek() {
   const getTrend = (current: number, previous: number) => {
     if (previous === 0) return { icon: Minus, color: 'text-muted-foreground' };
     const change = ((current - previous) / previous) * 100;
-    if (change > 5) return { icon: TrendingUp, color: 'text-success' };
-    if (change < -5) return { icon: TrendingDown, color: 'text-destructive' };
+    if (change > 5) return { icon: TrendingUp, color: 'text-emerald-600 dark:text-emerald-400' };
+    if (change < -5) return { icon: TrendingDown, color: 'text-red-600 dark:text-red-400' };
     return { icon: Minus, color: 'text-muted-foreground' };
   };
 
@@ -260,12 +260,16 @@ export default function ThisWeek() {
     <div className="py-4 lg:py-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Calendar className="h-6 w-6" />
-            {isCurrentWeek ? 'This Week' : weekOffset === -1 ? 'Last Week' : `${Math.abs(weekOffset)} Weeks Ago`}
-          </h1>
-          <p className="text-muted-foreground">{getWeekRange()}</p>
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-indigo-500/10 flex items-center justify-center shrink-0">
+            <Calendar className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">
+              {isCurrentWeek ? 'This Week' : weekOffset === -1 ? 'Last Week' : `${Math.abs(weekOffset)} Weeks Ago`}
+            </h1>
+            <p className="text-sm text-muted-foreground">{getWeekRange()}</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -297,49 +301,56 @@ export default function ThisWeek() {
 
       {/* Week Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
+        <Card className="relative overflow-hidden border-border/50">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <SewingMachine className="h-5 w-5 text-primary" />
+              <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
+                <SewingMachine className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold font-mono">{totals.sewingOutput.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">Total Sewing Output</p>
+                <p className="text-2xl font-bold font-mono text-blue-600 dark:text-blue-400">{totals.sewingOutput.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground font-medium">Sewing Output</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="relative overflow-hidden border-border/50">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-info/10 flex items-center justify-center">
-                <Package className="h-5 w-5 text-info" />
+              <div className="h-10 w-10 rounded-lg bg-violet-500/10 flex items-center justify-center shrink-0">
+                <Package className="h-5 w-5 text-violet-600 dark:text-violet-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold font-mono">{totals.finishingOutput.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">Finishing Output</p>
+                <p className="text-2xl font-bold font-mono text-violet-600 dark:text-violet-400">{totals.finishingOutput.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground font-medium">Finishing Output</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="relative overflow-hidden border-border/50">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-warning/10 flex items-center justify-center">
-                <Package className="h-5 w-5 text-warning" />
+              <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
+                <Scissors className="h-5 w-5 text-amber-600 dark:text-amber-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold font-mono">{totals.leftoverYards.toLocaleString()} <span className="text-sm font-normal text-muted-foreground">yards</span></p>
-                <p className="text-xs text-muted-foreground">Left Over Fabric</p>
+                <p className="text-2xl font-bold font-mono text-amber-600 dark:text-amber-400">{totals.leftoverYards.toLocaleString()} <span className="text-sm font-normal text-muted-foreground">yards</span></p>
+                <p className="text-xs text-muted-foreground font-medium">Left Over Fabric</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className={totals.totalBlockers > 0 ? 'border-warning/30' : ''}>
+        <Card className={`relative overflow-hidden border-border/50 ${totals.totalBlockers > 0 ? 'border-red-500/30' : ''}`}>
           <CardContent className="p-4">
-            <p className={`text-2xl font-bold ${totals.totalBlockers > 0 ? 'text-warning' : ''}`}>{totals.totalBlockers}</p>
-            <p className="text-xs text-muted-foreground">Total Blockers</p>
+            <div className="flex items-center gap-3">
+              <div className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${totals.totalBlockers > 0 ? 'bg-red-500/10' : 'bg-muted/50'}`}>
+                <AlertTriangle className={`h-5 w-5 ${totals.totalBlockers > 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`} />
+              </div>
+              <div>
+                <p className={`text-2xl font-bold font-mono ${totals.totalBlockers > 0 ? 'text-red-600 dark:text-red-400' : ''}`}>{totals.totalBlockers}</p>
+                <p className="text-xs text-muted-foreground font-medium">Total Blockers</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -347,14 +358,17 @@ export default function ThisWeek() {
       {/* Daily Breakdown */}
       <Tabs defaultValue="sewing">
         <TabsList>
-          <TabsTrigger value="sewing">Sewing Output</TabsTrigger>
-          <TabsTrigger value="finishing">Finishing Output</TabsTrigger>
+          <TabsTrigger value="sewing" className="data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400">Sewing Output</TabsTrigger>
+          <TabsTrigger value="finishing" className="data-[state=active]:text-violet-600 dark:data-[state=active]:text-violet-400">Finishing Output</TabsTrigger>
         </TabsList>
 
         <TabsContent value="sewing" className="mt-4">
-          <Card>
+          <Card className="border-border/50">
             <CardHeader>
-              <CardTitle className="text-base">Daily Sewing Output</CardTitle>
+              <CardTitle className="text-base flex items-center gap-2">
+                <SewingMachine className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                Daily Sewing Output
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="w-full overflow-x-auto">
@@ -366,22 +380,22 @@ export default function ThisWeek() {
                       const outputBarHeight = isFuture ? 0 : Math.max((day.sewingOutput / maxSewing) * 100, day.sewingOutput > 0 ? 15 : 0);
                       const targetBarHeight = isFuture ? 0 : Math.max((day.sewingTarget / maxSewing) * 100, day.sewingTarget > 0 ? 10 : 0);
                       const achievement = day.sewingTarget > 0 ? Math.round((day.sewingOutput / day.sewingTarget) * 100) : 0;
-                      const achievementColor = achievement >= 100 ? 'text-success' : achievement >= 80 ? 'text-warning' : 'text-destructive';
-                      
+                      const achievementColor = achievement >= 100 ? 'text-emerald-600 dark:text-emerald-400' : achievement >= 80 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400';
+
                       return (
-                        <div key={day.date} className={`text-center p-3 rounded-xl transition-all ${isToday ? 'bg-primary/10 ring-2 ring-primary/30' : 'bg-muted/30'}`}>
-                          <p className={`text-sm font-semibold mb-3 ${isToday ? 'text-primary' : 'text-foreground'}`}>
+                        <div key={day.date} className={`text-center p-3 rounded-xl transition-all ${isToday ? 'bg-blue-500/10 ring-2 ring-blue-500/30' : 'bg-muted/30'}`}>
+                          <p className={`text-sm font-semibold mb-3 ${isToday ? 'text-blue-600 dark:text-blue-400' : 'text-foreground'}`}>
                             {day.dayName}
                           </p>
                           <div className="h-28 flex items-end justify-center gap-1 mb-3">
                             {!isFuture && day.sewingTarget > 0 && (
                               <div
-                                className="w-5 rounded-t transition-all bg-muted-foreground/30"
+                                className="w-5 rounded-t transition-all bg-blue-200 dark:bg-blue-900/40"
                                 style={{ height: `${targetBarHeight}%`, minHeight: '8px' }}
                               />
                             )}
                             <div
-                              className={`w-7 rounded-t transition-all ${isFuture ? 'bg-muted h-2' : isToday ? 'bg-primary' : 'bg-primary/70'}`}
+                              className={`w-7 rounded-t transition-all ${isFuture ? 'bg-muted h-2' : isToday ? 'bg-blue-500' : 'bg-blue-500/70'}`}
                               style={{ height: isFuture ? '8px' : `${Math.max(outputBarHeight, 8)}%` }}
                             />
                           </div>
@@ -402,11 +416,11 @@ export default function ThisWeek() {
                   </div>
                   <div className="flex items-center justify-center gap-6 mt-6 pt-4 border-t">
                     <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded bg-muted-foreground/40" />
+                      <div className="w-4 h-4 rounded bg-blue-200 dark:bg-blue-900/40" />
                       <span className="text-sm text-muted-foreground">Target</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded bg-primary/70" />
+                      <div className="w-4 h-4 rounded bg-blue-500/70" />
                       <span className="text-sm text-muted-foreground">Output</span>
                     </div>
                   </div>
@@ -417,9 +431,12 @@ export default function ThisWeek() {
         </TabsContent>
 
         <TabsContent value="finishing" className="mt-4">
-          <Card>
+          <Card className="border-border/50">
             <CardHeader>
-              <CardTitle className="text-base">Daily Finishing Output</CardTitle>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Package className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                Daily Finishing Output
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="w-full overflow-x-auto">
@@ -433,17 +450,17 @@ export default function ThisWeek() {
                       const achievement = day.finishingTarget > 0 ? Math.round((day.finishingOutput / day.finishingTarget) * 100) : 0;
                       
                       return (
-                        <div key={day.date} className={`text-center p-3 rounded-xl transition-all ${isToday ? 'bg-info/10 ring-2 ring-info/30' : 'bg-muted/30'}`}>
-                          <p className={`text-sm font-semibold mb-3 ${isToday ? 'text-info' : 'text-foreground'}`}>
+                        <div key={day.date} className={`text-center p-3 rounded-xl transition-all ${isToday ? 'bg-violet-500/10 ring-2 ring-violet-500/30' : 'bg-muted/30'}`}>
+                          <p className={`text-sm font-semibold mb-3 ${isToday ? 'text-violet-600 dark:text-violet-400' : 'text-foreground'}`}>
                             {day.dayName}
                           </p>
                           <div className="h-28 flex items-end justify-center gap-1 mb-3">
                             <div
-                              className={`w-5 rounded-t transition-all ${isFuture ? 'bg-muted h-2' : 'bg-muted-foreground/30'}`}
+                              className={`w-5 rounded-t transition-all ${isFuture ? 'bg-muted h-2' : 'bg-violet-200 dark:bg-violet-900/40'}`}
                               style={{ height: isFuture ? '8px' : `${Math.max(targetBarHeight, 8)}%` }}
                             />
                             <div
-                              className={`w-7 rounded-t transition-all ${isFuture ? 'bg-muted h-2' : isToday ? 'bg-info' : 'bg-info/70'}`}
+                              className={`w-7 rounded-t transition-all ${isFuture ? 'bg-muted h-2' : isToday ? 'bg-violet-500' : 'bg-violet-500/70'}`}
                               style={{ height: isFuture ? '8px' : `${Math.max(outputBarHeight, 8)}%` }}
                             />
                           </div>
@@ -452,7 +469,7 @@ export default function ThisWeek() {
                             <p className="text-muted-foreground text-[10px]">Output</p>
                           </div>
                           {!isFuture && day.finishingTarget > 0 && (
-                            <p className={`text-xs font-medium mt-1 ${achievement >= 100 ? 'text-success' : achievement >= 80 ? 'text-warning' : 'text-destructive'}`}>
+                            <p className={`text-xs font-medium mt-1 ${achievement >= 100 ? 'text-emerald-600 dark:text-emerald-400' : achievement >= 80 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
                               {achievement}% of target
                             </p>
                           )}
@@ -462,11 +479,11 @@ export default function ThisWeek() {
                   </div>
                   <div className="flex items-center justify-center gap-6 mt-6 pt-4 border-t">
                     <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded bg-muted-foreground/40" />
+                      <div className="w-4 h-4 rounded bg-violet-200 dark:bg-violet-900/40" />
                       <span className="text-sm text-muted-foreground">Target</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded bg-info/70" />
+                      <div className="w-4 h-4 rounded bg-violet-500/70" />
                       <span className="text-sm text-muted-foreground">Output</span>
                     </div>
                   </div>
@@ -478,20 +495,23 @@ export default function ThisWeek() {
       </Tabs>
 
       {/* Daily Details Table */}
-      <Card>
+      <Card className="border-border/50">
         <CardHeader>
-          <CardTitle className="text-base">Daily Breakdown</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            Daily Breakdown
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="w-full overflow-x-auto">
             <table className="w-full text-sm min-w-[500px]">
               <thead>
-                <tr className="border-b">
-                  <th className="text-left py-2 font-medium whitespace-nowrap">Day</th>
-                  <th className="text-right py-2 font-medium whitespace-nowrap">Sewing Output</th>
-                  <th className="text-right py-2 font-medium whitespace-nowrap">Finishing Output</th>
-                  <th className="text-right py-2 font-medium whitespace-nowrap">Updates</th>
-                  <th className="text-right py-2 font-medium whitespace-nowrap">Blockers</th>
+                <tr className="border-b bg-muted/30">
+                  <th className="text-left py-2.5 px-3 font-medium whitespace-nowrap rounded-tl-lg">Day</th>
+                  <th className="text-right py-2.5 px-3 font-medium whitespace-nowrap text-blue-600 dark:text-blue-400">Sewing</th>
+                  <th className="text-right py-2.5 px-3 font-medium whitespace-nowrap text-violet-600 dark:text-violet-400">Finishing</th>
+                  <th className="text-right py-2.5 px-3 font-medium whitespace-nowrap">Updates</th>
+                  <th className="text-right py-2.5 px-3 font-medium whitespace-nowrap rounded-tr-lg">Blockers</th>
                 </tr>
               </thead>
               <tbody>
@@ -499,15 +519,15 @@ export default function ThisWeek() {
                   const isToday = day.date === today;
                   const isFuture = new Date(day.date) > new Date();
                   return (
-                    <tr key={day.date} className={`border-b ${isToday ? 'bg-primary/5' : ''} ${isFuture ? 'text-muted-foreground' : ''}`}>
-                      <td className="py-3 whitespace-nowrap">
+                    <tr key={day.date} className={`border-b last:border-b-0 ${isToday ? 'bg-indigo-500/5' : ''} ${isFuture ? 'text-muted-foreground' : ''}`}>
+                      <td className="py-3 px-3 whitespace-nowrap">
                         <span className="font-medium">{day.dayName}</span>
-                        {isToday && <span className="ml-2 text-xs text-primary">(Today)</span>}
+                        {isToday && <span className="ml-2 text-xs font-medium text-indigo-600 dark:text-indigo-400">(Today)</span>}
                       </td>
-                      <td className="text-right font-mono whitespace-nowrap">{isFuture ? '-' : day.sewingOutput.toLocaleString()}</td>
-                      <td className="text-right font-mono whitespace-nowrap">{isFuture ? '-' : day.finishingOutput.toLocaleString()}</td>
-                      <td className="text-right whitespace-nowrap">{isFuture ? '-' : day.sewingUpdates + day.finishingUpdates}</td>
-                      <td className={`text-right whitespace-nowrap ${day.blockers > 0 ? 'text-warning font-medium' : ''}`}>
+                      <td className="text-right font-mono px-3 whitespace-nowrap">{isFuture ? '-' : day.sewingOutput.toLocaleString()}</td>
+                      <td className="text-right font-mono px-3 whitespace-nowrap">{isFuture ? '-' : day.finishingOutput.toLocaleString()}</td>
+                      <td className="text-right px-3 whitespace-nowrap">{isFuture ? '-' : day.sewingUpdates + day.finishingUpdates}</td>
+                      <td className={`text-right px-3 whitespace-nowrap ${day.blockers > 0 ? 'text-red-600 dark:text-red-400 font-medium' : ''}`}>
                         {isFuture ? '-' : day.blockers}
                       </td>
                     </tr>

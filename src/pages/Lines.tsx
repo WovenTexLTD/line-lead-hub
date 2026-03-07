@@ -47,14 +47,16 @@ export default function Lines() {
     <div className="py-4 lg:py-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <SewingMachine className="h-6 w-6 text-primary" />
-            Line Performance
-          </h1>
-          <p className="text-muted-foreground">
-            Track sewing line output, targets, and PO contribution
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+            <SewingMachine className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          </div>
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold">Line Performance</h1>
+            <p className="text-sm text-muted-foreground">
+              Track sewing line output, targets, and PO contribution
+            </p>
+          </div>
         </div>
         <LineExportButton lines={filteredLines} timeRange={timeRange} dateLabel={dateLabel} />
       </div>

@@ -80,12 +80,22 @@ export function LineCardItem({ line, onClick }: LineCardItemProps) {
     dataState === "output-only" ? "grid-cols-1" :
     "grid-cols-2";
 
+  const accentColor = showMetrics
+    ? line.achievementPct >= 90 ? "from-emerald-500 to-green-500"
+      : line.achievementPct >= 70 ? "from-amber-500 to-orange-500"
+      : "from-red-500 to-rose-500"
+    : dataState === "awaiting-eod" ? "from-blue-500 to-indigo-500"
+    : "from-gray-400 to-gray-500";
+
   return (
     <Card
-      className="cursor-pointer hover:shadow-md hover:border-primary/30 transition-all group"
+      className="cursor-pointer hover:shadow-md hover:border-primary/30 transition-all group relative overflow-hidden"
       onClick={onClick}
     >
-      <CardContent className="py-4 px-5">
+      {/* Left accent bar */}
+      <div className={cn("absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b", accentColor)} />
+
+      <CardContent className="py-4 px-5 pl-5">
         {/* Top row: name, location, state badge */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3 min-w-0">
@@ -156,9 +166,9 @@ export function LineCardItem({ line, onClick }: LineCardItemProps) {
 
         {/* Progress bar — only when EOD is submitted */}
         {showMetrics && (
-          <div className="h-2.5 w-full rounded-full bg-muted overflow-hidden mb-2">
+          <div className="h-2 w-full rounded-full bg-muted/80 overflow-hidden mb-2">
             <div
-              className={cn("h-full rounded-full transition-all duration-700", getBarColor(line.achievementPct))}
+              className={cn("h-full rounded-full transition-all duration-700 ease-out", getBarColor(line.achievementPct))}
               style={{ width: `${Math.min(line.achievementPct, 100)}%` }}
             />
           </div>
