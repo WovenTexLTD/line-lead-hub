@@ -199,8 +199,8 @@ export default function FinishingOverview() {
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-amber-500/10 rounded-full">
-                    <Clock className="h-5 w-5 text-amber-600" />
+                  <div className="p-2 bg-violet-500/10 rounded-full">
+                    <Clock className="h-5 w-5 text-violet-600" />
                   </div>
                   <div>
                     <p className="text-2xl font-bold">{totalSlotsSubmitted} / {totalSlotsPossible}</p>

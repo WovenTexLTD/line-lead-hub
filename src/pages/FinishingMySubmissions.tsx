@@ -256,8 +256,8 @@ export default function FinishingMySubmissions() {
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-full bg-blue-100 dark:bg-blue-900/30">
-                    <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  <div className="p-3 rounded-full bg-violet-100 dark:bg-violet-900/30">
+                    <FileText className="h-5 w-5 text-violet-600 dark:text-violet-400" />
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">This Week</p>
@@ -270,8 +270,8 @@ export default function FinishingMySubmissions() {
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-full bg-amber-100 dark:bg-amber-900/30">
-                    <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                  <div className="p-3 rounded-full bg-violet-100 dark:bg-violet-900/30">
+                    <Clock className="h-5 w-5 text-violet-600 dark:text-violet-400" />
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Total Pcs (Week)</p>
@@ -284,8 +284,8 @@ export default function FinishingMySubmissions() {
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-full bg-green-100 dark:bg-green-900/30">
-                    <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  <div className="p-3 rounded-full bg-violet-100 dark:bg-violet-900/30">
+                    <TrendingUp className="h-5 w-5 text-violet-600 dark:text-violet-400" />
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Avg Per Day</p>

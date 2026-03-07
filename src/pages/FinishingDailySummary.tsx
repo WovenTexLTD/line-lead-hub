@@ -327,8 +327,8 @@ export default function FinishingDailySummary() {
                   {summaryByPO.map(({ key, target, output, work_order }) => (
                     <>
                       {/* Target Row */}
-                      <TableRow key={`${key}-target`} className="bg-blue-50/50 dark:bg-blue-950/20">
-                        <TableCell className="sticky left-0 bg-blue-50/50 dark:bg-blue-950/20 font-medium" rowSpan={3}>
+                      <TableRow key={`${key}-target`} className="bg-violet-50/50 dark:bg-violet-950/20">
+                        <TableCell className="sticky left-0 bg-violet-50/50 dark:bg-violet-950/20 font-medium" rowSpan={3}>
                           {work_order?.po_number || target?.work_order?.po_number || output?.work_order?.po_number || "No PO"}
                         </TableCell>
                         <TableCell>
@@ -344,7 +344,7 @@ export default function FinishingDailySummary() {
                         </TableCell>
                       </TableRow>
                       {/* Output Row */}
-                      <TableRow key={`${key}-output`} className="bg-green-50/50 dark:bg-green-950/20">
+                      <TableRow key={`${key}-output`} className="bg-purple-50/50 dark:bg-purple-950/20">
                         <TableCell>
                           <Badge variant="outline" className="text-xs">Output</Badge>
                         </TableCell>

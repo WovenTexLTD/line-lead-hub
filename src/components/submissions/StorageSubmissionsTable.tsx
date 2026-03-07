@@ -503,7 +503,7 @@ export function StorageSubmissionsTable({
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
-            <Warehouse className="h-4 w-4 text-teal-600" />
+            <Warehouse className="h-4 w-4 text-orange-600" />
             Bin Cards
             <Badge variant="secondary" className="ml-2">{filteredCards.length}</Badge>
           </CardTitle>

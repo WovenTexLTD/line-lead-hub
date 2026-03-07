@@ -195,7 +195,7 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange, on
                 </Badge>
               )}
               {hasActual && (
-                <Badge variant="outline" className="bg-green-500/10 text-green-700 dark:text-green-400 text-xs">
+                <Badge variant="outline" className="bg-violet-500/10 text-violet-700 dark:text-violet-400 text-xs">
                   {t('modals.actual')}
                 </Badge>
               )}

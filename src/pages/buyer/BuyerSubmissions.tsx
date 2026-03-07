@@ -156,8 +156,8 @@ export default function BuyerSubmissions() {
   const deptColors: Record<Department, string> = {
     all: "",
     sewing: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-    cutting: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
-    finishing: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
+    cutting: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
+    finishing: "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400",
   };
 
   // Summary stats
