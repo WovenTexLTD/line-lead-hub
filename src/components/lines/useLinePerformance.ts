@@ -113,7 +113,7 @@ export function useLinePerformance() {
 
       let actualsQuery = supabase
         .from("sewing_actuals")
-        .select("line_id, work_order_id, production_date, good_today, manpower_actual, has_blocker")
+        .select("line_id, work_order_id, production_date, good_today, manpower_actual, has_blocker, ot_hours_actual, ot_manpower_actual")
         .eq("factory_id", factoryId);
 
       if (timeRange === "daily") {
@@ -245,16 +245,18 @@ export function useLinePerformance() {
     });
 
     // Group actuals by line_id + work_order_id
-    const actualsByLine = new Map<string, Map<string, { total: number; manpower: number; blockers: number; dates: Set<string> }>>();
+    const actualsByLine = new Map<string, Map<string, { total: number; manpower: number; blockers: number; otHours: number; otManpower: number; dates: Set<string> }>>();
     rawActuals.forEach((a: any) => {
       if (!actualsByLine.has(a.line_id)) actualsByLine.set(a.line_id, new Map());
       const lineActuals = actualsByLine.get(a.line_id)!;
       if (!lineActuals.has(a.work_order_id)) {
-        lineActuals.set(a.work_order_id, { total: 0, manpower: 0, blockers: 0, dates: new Set() });
+        lineActuals.set(a.work_order_id, { total: 0, manpower: 0, blockers: 0, otHours: 0, otManpower: 0, dates: new Set() });
       }
       const entry = lineActuals.get(a.work_order_id)!;
       entry.total += a.good_today || 0;
       entry.manpower += a.manpower_actual || 0;
+      entry.otHours += a.ot_hours_actual || 0;
+      entry.otManpower += a.ot_manpower_actual || 0;
       if (a.has_blocker) entry.blockers += 1;
       entry.dates.add(a.production_date);
     });
@@ -274,6 +276,8 @@ export function useLinePerformance() {
       let totalTarget = 0;
       let totalOutput = 0;
       let totalManpower = 0;
+      let totalOtHours = 0;
+      let totalOtManpower = 0;
       let totalBlockers = 0;
       let dayCount = 0;
 
@@ -295,6 +299,8 @@ export function useLinePerformance() {
         totalTarget += poTarget;
         totalOutput += poOutput;
         totalManpower += actualData?.manpower || 0;
+        totalOtHours += actualData?.otHours || 0;
+        totalOtManpower += actualData?.otManpower || 0;
         totalBlockers += actualData?.blockers || 0;
 
         const dates = new Set<string>();
@@ -350,6 +356,8 @@ export function useLinePerformance() {
         achievementPct,
         variance: totalOutput - totalTarget,
         avgManpower,
+        totalOtHours,
+        totalOtManpower,
         totalBlockers,
         targetSubmitted,
         eodSubmitted,

@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Target, TrendingUp, Users, AlertTriangle } from "lucide-react";
+import { Target, TrendingUp, Users, AlertTriangle, Clock } from "lucide-react";
 import { SewingSubmissionView } from "@/components/SewingSubmissionView";
 import type { SewingTargetData, SewingActualData } from "@/components/SewingSubmissionView";
 import { LinePOTable } from "./LinePOTable";
@@ -109,7 +109,7 @@ export function LineDrilldownDrawer({
           </DialogHeader>
 
           {/* KPI Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <Card>
               <CardContent className="pt-4 pb-3 px-4">
                 <div className="flex items-center gap-2 mb-1">
@@ -155,6 +155,25 @@ export function LineDrilldownDrawer({
                 <div className="text-2xl font-bold font-mono tabular-nums text-muted-foreground">
                   {line.avgManpower > 0 ? line.avgManpower : "—"}
                 </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-4 pb-3 px-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <p className="text-xs text-muted-foreground">OT Hours</p>
+                </div>
+                <div className="text-2xl font-bold font-mono tabular-nums text-amber-600 dark:text-amber-400">
+                  {line.totalOtHours > 0 ? line.totalOtHours : "—"}
+                </div>
+                {line.totalOtManpower > 0 && (
+                  <div className="flex items-center gap-1 mt-1">
+                    <Users className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">
+                      {line.totalOtManpower} workers
+                    </span>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

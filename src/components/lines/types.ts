@@ -38,6 +38,8 @@ export interface LinePerformanceData {
   achievementPct: number;
   variance: number;
   avgManpower: number;
+  totalOtHours: number;
+  totalOtManpower: number;
   totalBlockers: number;
 
   targetSubmitted: boolean;
