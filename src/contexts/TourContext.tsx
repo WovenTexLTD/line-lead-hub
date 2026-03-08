@@ -1,9 +1,11 @@
-import { createContext, useContext, useCallback, useRef, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useCallback, useRef, useEffect, useState, type ReactNode } from "react";
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
 import { useLocation } from "react-router-dom";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useTour } from "@/hooks/useTour";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { MobileTour } from "@/components/MobileTour";
 
 interface TourContextValue {
   startTour: () => void;
@@ -16,11 +18,14 @@ export function TourProvider({ children }: { children: ReactNode }) {
   const { markCompleted, isCompleted, resetTour } = useTour();
   const { setOpen } = useSidebar();
   const location = useLocation();
+  const isMobile = useIsMobile();
   const driverRef = useRef<ReturnType<typeof driver> | null>(null);
   const hasAutoStarted = useRef(false);
   const tourInProgress = useRef(false);
+  const [mobileTourOpen, setMobileTourOpen] = useState(false);
 
-  const startTour = useCallback(() => {
+  // Desktop tour using driver.js
+  const startDesktopTour = useCallback(() => {
     if (tourInProgress.current) return;
     tourInProgress.current = true;
 
@@ -118,6 +123,28 @@ export function TourProvider({ children }: { children: ReactNode }) {
     driverObj.drive();
   }, [markCompleted, setOpen]);
 
+  // Mobile tour: full-screen card slides
+  const startMobileTour = useCallback(() => {
+    if (tourInProgress.current) return;
+    tourInProgress.current = true;
+    setMobileTourOpen(true);
+  }, []);
+
+  const handleMobileTourComplete = useCallback(() => {
+    setMobileTourOpen(false);
+    tourInProgress.current = false;
+    markCompleted();
+  }, [markCompleted]);
+
+  // Route to the correct tour based on device
+  const startTour = useCallback(() => {
+    if (isMobile) {
+      startMobileTour();
+    } else {
+      startDesktopTour();
+    }
+  }, [isMobile, startMobileTour, startDesktopTour]);
+
   // Auto-start on first dashboard visit (once per session, only if not completed)
   useEffect(() => {
     if (location.pathname !== "/dashboard") return;
@@ -143,6 +170,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
   return (
     <TourContext.Provider value={{ startTour, resetTour }}>
       {children}
+      <MobileTour open={mobileTourOpen} onComplete={handleMobileTourComplete} />
     </TourContext.Provider>
   );
 }

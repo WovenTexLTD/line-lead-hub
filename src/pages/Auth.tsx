@@ -383,7 +383,9 @@ export default function Auth() {
                     <Label htmlFor="new-password">New Password</Label>
                     <Input
                       id="new-password"
+                      name="new-password"
                       type="password"
+                      autoComplete="new-password"
                       placeholder="Enter your password"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
@@ -398,7 +400,9 @@ export default function Auth() {
                     <Label htmlFor="confirm-new-password">Confirm New Password</Label>
                     <Input
                       id="confirm-new-password"
+                      name="confirm-password"
                       type="password"
+                      autoComplete="new-password"
                       placeholder="Confirm your password"
                       value={confirmNewPassword}
                       onChange={(e) => setConfirmNewPassword(e.target.value)}
@@ -451,7 +455,9 @@ export default function Auth() {
                         <Label htmlFor="login-email">Email</Label>
                         <Input
                           id="login-email"
+                          name="email"
                           type="email"
+                          autoComplete="username"
                           placeholder="you@example.com"
                           value={loginEmail}
                           onChange={(e) => setLoginEmail(e.target.value)}
@@ -466,7 +472,9 @@ export default function Auth() {
                         <Label htmlFor="login-password">Password</Label>
                         <Input
                           id="login-password"
+                          name="password"
                           type="password"
+                          autoComplete="current-password"
                           placeholder="Enter your password"
                           value={loginPassword}
                           onChange={(e) => setLoginPassword(e.target.value)}
@@ -512,7 +520,9 @@ export default function Auth() {
                                 <Label htmlFor="forgot-email">Email</Label>
                                 <Input
                                   id="forgot-email"
+                                  name="email"
                                   type="email"
+                                  autoComplete="username"
                                   placeholder="you@example.com"
                                   value={forgotPasswordEmail}
                                   onChange={(e) => setForgotPasswordEmail(e.target.value)}
@@ -551,7 +561,9 @@ export default function Auth() {
                         <Label htmlFor="signup-name">Full Name</Label>
                         <Input
                           id="signup-name"
+                          name="name"
                           type="text"
+                          autoComplete="name"
                           placeholder="John Doe"
                           value={signupName}
                           onChange={(e) => setSignupName(e.target.value)}
@@ -566,7 +578,9 @@ export default function Auth() {
                         <Label htmlFor="signup-email">Email</Label>
                         <Input
                           id="signup-email"
+                          name="email"
                           type="email"
+                          autoComplete="username"
                           placeholder="you@example.com"
                           value={signupEmail}
                           onChange={(e) => setSignupEmail(e.target.value)}
@@ -581,7 +595,9 @@ export default function Auth() {
                         <Label htmlFor="signup-password">Password</Label>
                         <Input
                           id="signup-password"
+                          name="new-password"
                           type="password"
+                          autoComplete="new-password"
                           placeholder="Enter your password"
                           value={signupPassword}
                           onChange={(e) => setSignupPassword(e.target.value)}
@@ -596,7 +612,9 @@ export default function Auth() {
                         <Label htmlFor="signup-confirm">Confirm Password</Label>
                         <Input
                           id="signup-confirm"
+                          name="confirm-password"
                           type="password"
+                          autoComplete="new-password"
                           placeholder="Confirm your password"
                           value={signupConfirmPassword}
                           onChange={(e) => setSignupConfirmPassword(e.target.value)}
