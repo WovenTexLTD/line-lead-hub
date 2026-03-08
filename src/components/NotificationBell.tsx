@@ -70,6 +70,12 @@ export function NotificationBell() {
         return "/morning-targets";
       case "submission_reminder":
         return "/end-of-day";
+      case "target_achieved":
+        return "/insights";
+      case "blocker_resolved":
+        return "/blockers";
+      case "production_notes":
+        return "/today-updates";
       default:
         return null;
     }
