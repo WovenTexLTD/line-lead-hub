@@ -174,12 +174,18 @@ jobs:
           BG_H=500
           BACKGROUND_RENDERED="$STAGE_DIR/dmg-background-rendered.png"
 
+          # Use a font path that exists on macOS runners (Helvetica is not available to ImageMagick)
+          FONT_PATH="/System/Library/Fonts/Supplemental/Arial.ttf"
+          if [ ! -f "$FONT_PATH" ]; then
+            FONT_PATH="/System/Library/Fonts/SFNS.ttf"
+          fi
+
           magick -size ${BG_W}x${BG_H} gradient:'#202124-#0b0c0d' \
             -attenuate 0.12 +noise Gaussian \
             -stroke 'rgba(255,255,255,0.18)' -strokewidth 2 -fill none \
             -draw "roundrectangle 96,236 264,404 18,18" \
             -draw "roundrectangle 396,236 564,404 18,18" \
-            -gravity North -font Helvetica -pointsize 34 \
+            -gravity North -font "$FONT_PATH" -pointsize 34 \
             -fill 'rgba(255,255,255,0.92)' \
             -annotate +0+110 "Drag to Applications →" \
             "$BACKGROUND_RENDERED"
