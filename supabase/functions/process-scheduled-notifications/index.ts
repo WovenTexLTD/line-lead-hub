@@ -270,39 +270,44 @@ async function processDailySummary(
     .eq("factory_id", factoryId)
     .eq("is_active", true);
 
-  // Get today's sewing actuals
+  // Get today's sewing actuals (correct column: good_today)
   const { data: sewingActuals } = await supabase
     .from("sewing_actuals")
-    .select("line_id, output_qty, target_qty")
+    .select("line_id, good_today, has_blocker")
     .eq("factory_id", factoryId)
     .eq("production_date", todayStr);
 
-  // Get today's finishing actuals
+  // Get today's sewing targets for efficiency calculation
+  const { data: sewingTargetRows } = await supabase
+    .from("sewing_targets")
+    .select("line_id, per_hour_target, hours_planned, target_total_planned")
+    .eq("factory_id", factoryId)
+    .eq("production_date", todayStr);
+
+  // Get today's finishing actuals (correct column: day_qc_pass)
   const { data: finishingActuals } = await supabase
     .from("finishing_actuals")
-    .select("line_id, output_qty, target_qty")
+    .select("line_id, day_qc_pass, has_blocker")
     .eq("factory_id", factoryId)
     .eq("production_date", todayStr);
 
-  // Get active blockers for today
-  const { count: activeBlockers } = await supabase
-    .from("sewing_actuals")
-    .select("id", { count: "exact", head: true })
-    .eq("factory_id", factoryId)
-    .eq("production_date", todayStr)
-    .eq("has_blocker", true);
+  // Count active blockers from both tables
+  const activeBlockers =
+    (sewingActuals || []).filter((r: any) => r.has_blocker).length +
+    (finishingActuals || []).filter((r: any) => r.has_blocker).length;
 
-  // Aggregate stats
+  // Aggregate stats using correct column names
   const sewingOutput = (sewingActuals || []).reduce(
-    (sum: number, r: { output_qty: number | null }) => sum + (r.output_qty || 0),
+    (sum: number, r: { good_today: number | null }) => sum + (r.good_today || 0),
     0
   );
-  const sewingTarget = (sewingActuals || []).reduce(
-    (sum: number, r: { target_qty: number | null }) => sum + (r.target_qty || 0),
+  const sewingTarget = (sewingTargetRows || []).reduce(
+    (sum: number, r: { target_total_planned: number | null; per_hour_target: number | null; hours_planned: number | null }) =>
+      sum + (r.target_total_planned ?? (r.per_hour_target || 0) * (r.hours_planned || 8)),
     0
   );
   const finishingOutput = (finishingActuals || []).reduce(
-    (sum: number, r: { output_qty: number | null }) => sum + (r.output_qty || 0),
+    (sum: number, r: { day_qc_pass: number | null }) => sum + (r.day_qc_pass || 0),
     0
   );
 
@@ -373,7 +378,7 @@ async function processDailySummary(
         sewing_target: sewingTarget,
         finishing_output: finishingOutput,
         avg_efficiency: avgEfficiency,
-        active_blockers: activeBlockers || 0,
+        active_blockers: activeBlockers,
         missing_lines: missingLines,
         total_lines: totalLines || 0,
         lines_submitted: submittedLineIds.size,
