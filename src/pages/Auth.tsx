@@ -160,8 +160,8 @@ export default function Auth() {
         toast.error("Account Deactivated", { description: "Your account has been deactivated. Please contact your administrator." });
         signOut().catch(console.error);
       } else if (!profile || profile.factory_id === null) {
-        // User without profile or without factory - redirect to factory setup
-        navigate("/setup/factory", { replace: true });
+        // User without profile or without factory - redirect to subscription
+        navigate("/subscription", { replace: true });
       }
     }
   }, [authLoading, user, profile, navigate, isPasswordResetMode, hasRole, isAdminOrHigher, isForcedPasswordReset, signOut]);
@@ -333,8 +333,8 @@ export default function Auth() {
       }
     } else {
       toast.success("Account created!", { description: "Welcome to ProductionPortal." });
-      // New users go to factory setup (which gives them a 14-day trial)
-      navigate("/setup/factory");
+      // New users go to subscription page (native shows AccountNotActive)
+      navigate("/subscription");
     }
   };
 
