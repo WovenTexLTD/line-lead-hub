@@ -178,7 +178,7 @@ function AppRoutes() {
         <Route path="/work-orders" element={<SubscriptionGate><ProtectedRoute adminOnly><WorkOrdersView /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/insights" element={<SubscriptionGate><ProtectedRoute adminOnly><Insights /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/setup" element={<SubscriptionGate><ProtectedRoute adminOnly><SetupHome /></ProtectedRoute></SubscriptionGate>} />
-        <Route path="/setup/factory" element={<ProtectedRoute adminOnly><FactorySetup /></ProtectedRoute>} />
+        <Route path="/setup/factory" element={<SubscriptionGate><ProtectedRoute adminOnly><FactorySetup /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/setup/work-orders" element={<SubscriptionGate><ProtectedRoute adminOnly><WorkOrders /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/setup/dropdowns" element={<SubscriptionGate><ProtectedRoute adminOnly><DropdownSettings /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/setup/knowledge-base" element={<SubscriptionGate><ProtectedRoute adminOnly><KnowledgeBase /></ProtectedRoute></SubscriptionGate>} />

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/hooks/useSubscription';
 import { invokeEdgeFn } from '@/lib/network-utils';
@@ -17,6 +17,7 @@ export function SubscriptionGate({ children }: SubscriptionGateProps) {
   const { user, profile, loading: authLoading, roles, hasRole, signOut } = useAuth();
   const { hasAccess, needsFactory, needsPayment, loading: subLoading, isTrial, isPastDue, status } = useSubscription();
   const navigate = useNavigate();
+  const location = useLocation();
   const [portalLoading, setPortalLoading] = useState(false);
 
   const handleSignOut = async () => {
@@ -104,6 +105,11 @@ export function SubscriptionGate({ children }: SubscriptionGateProps) {
 
   // User has subscription but needs to create a factory
   if (needsFactory && hasAccess) {
+    // If already on /setup/factory, let them through to the actual page
+    if (location.pathname === '/setup/factory') {
+      return <>{children}</>;
+    }
+
     return (
       <div className="flex min-h-[50vh] items-center justify-center p-4">
         <Card className="max-w-md">
