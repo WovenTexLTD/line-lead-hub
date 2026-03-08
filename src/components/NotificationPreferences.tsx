@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Bell, Mail, AlertTriangle, TrendingDown, Info, Loader2, CheckCircle, FileText, Target, Calendar, Clock, Scissors } from "lucide-react";
+import { Bell, Mail, AlertTriangle, TrendingDown, Info, Loader2, CheckCircle, FileText, Target, Calendar, Clock, Scissors, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 
 interface NotificationPreference {
@@ -46,6 +46,13 @@ const ALL_NOTIFICATION_TYPES: NotificationType[] = [
     label: "Blocker Resolved",
     description: "Get notified when blockers are marked as resolved",
     icon: CheckCircle,
+    roles: ["supervisor", "admin", "owner", "superadmin"], // Management only
+  },
+  {
+    type: "production_notes",
+    label: "Production Notes",
+    description: "Get notified when production notes or remarks are added",
+    icon: MessageSquare,
     roles: ["supervisor", "admin", "owner", "superadmin"], // Management only
   },
   {
