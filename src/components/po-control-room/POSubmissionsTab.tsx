@@ -190,6 +190,8 @@ export function POSubmissionsTab({ submissions }: Props) {
       blocker_impact: r.blocker_impact ?? null,
       blocker_owner: r.blocker_owner ?? null,
       blocker_status: null,
+      estimated_cost_value: r.estimated_cost_value ?? null,
+      estimated_cost_currency: r.estimated_cost_currency ?? null,
     };
   }
 
