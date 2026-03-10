@@ -1,13 +1,19 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { FileBarChart } from "lucide-react";
 
-interface InsightsReportDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}
+export function InsightsReportDialog() {
+  const [open, setOpen] = useState(false);
 
-export function InsightsReportDialog({ open, onOpenChange }: InsightsReportDialogProps) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-1.5">
+          <FileBarChart className="h-4 w-4" />
+          Report
+        </Button>
+      </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Insights Report</DialogTitle>
