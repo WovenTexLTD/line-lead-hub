@@ -30,6 +30,10 @@ interface DailyStats {
   sewingCostNative: number;
   cuttingCostNative: number;
   finishingCostNative: number;
+  // Raw line data for PDF
+  rawSewing: any[];
+  rawCutting: any[];
+  rawFinishing: any[];
 }
 
 export default function ThisWeek() {
@@ -120,6 +124,9 @@ export default function ThisWeek() {
             sewingCostNative: 0,
             cuttingCostNative: 0,
             finishingCostNative: 0,
+            rawSewing: [],
+            rawCutting: [],
+            rawFinishing: [],
           });
           continue;
         }
@@ -127,12 +134,12 @@ export default function ThisWeek() {
         const [sewingRes, finishingRes, sewingTargetsRes, cuttingTargetsRes, cuttingActualsRes] = await Promise.all([
           supabase
             .from('sewing_actuals')
-            .select('line_id, good_today, has_blocker, manpower_actual, hours_actual, ot_manpower_actual, ot_hours_actual, work_orders(cm_per_dozen)')
+            .select('line_id, good_today, has_blocker, manpower_actual, hours_actual, ot_manpower_actual, ot_hours_actual, reject_today, rework_today, actual_per_hour, blocker_description, remarks, lines(name, line_id), work_orders(po_number, buyer, style, cm_per_dozen)')
             .eq('factory_id', profile.factory_id)
             .eq('production_date', dateStr),
           supabase
             .from('finishing_daily_logs')
-            .select('log_type, poly, carton, planned_hours, work_order_id, m_power_actual, actual_hours, ot_manpower_actual, ot_hours_actual, work_orders(cm_per_dozen)')
+            .select('log_type, poly, carton, planned_hours, work_order_id, m_power_actual, actual_hours, ot_manpower_actual, ot_hours_actual, thread_cutting, inside_check, buttoning, iron, get_up, remarks, lines(name, line_id), work_orders(po_number, buyer, style, cm_per_dozen)')
             .eq('factory_id', profile.factory_id)
             .eq('production_date', dateStr),
           supabase
@@ -147,7 +154,7 @@ export default function ThisWeek() {
             .eq('production_date', dateStr),
           supabase
             .from('cutting_actuals')
-            .select('day_cutting, leftover_recorded, leftover_quantity, leftover_unit, man_power, hours_actual, ot_manpower_actual, ot_hours_actual, work_orders(cm_per_dozen)')
+            .select('day_cutting, total_cutting, day_input, balance, leftover_recorded, leftover_quantity, leftover_unit, man_power, hours_actual, ot_manpower_actual, ot_hours_actual, lines!cutting_actuals_line_id_fkey(name, line_id), work_orders(po_number, buyer, style, colour, cm_per_dozen)')
             .eq('factory_id', profile.factory_id)
             .eq('production_date', dateStr),
         ]);
@@ -264,6 +271,9 @@ export default function ThisWeek() {
           sewingCostNative: Math.round(daySewingCost * 100) / 100,
           cuttingCostNative: Math.round(dayCuttingCost * 100) / 100,
           finishingCostNative: Math.round(dayFinishingCost * 100) / 100,
+          rawSewing: sewingData,
+          rawCutting: cuttingActualsData,
+          rawFinishing: finishingOutputLogs,
         });
       }
 
@@ -372,144 +382,357 @@ export default function ThisWeek() {
 
   // ── PDF Export ──
   const handleDownloadPdf = () => {
-    const doc = new jsPDF({ orientation: "landscape" });
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
     const pw = doc.internal.pageSize.getWidth();
     const ph = doc.internal.pageSize.getHeight();
-    const margin = 12;
-    let y = margin;
+    const m = 10;
+    const cw = pw - m * 2;
+    let y = m;
+
     const isBDT = weekFinancials.costCurrency === 'BDT';
-    const fmtUsd = (v: number) => `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    const fmtNum = (v: number) => v.toLocaleString();
+    const rate = costConfigured && headcountCost.value ? headcountCost.value : 0;
+    const nSym = isBDT ? "Tk " : "$";
+    const fN = (v: number | null | undefined) => v != null ? v.toLocaleString() : "-";
+    const fUsd = (v: number) => "$" + v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const fNat = (v: number) => nSym + v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const toUsd = (native: number): number => {
+      if (!isBDT || !bdtToUsd) return native;
+      return Math.round(native * bdtToUsd * 100) / 100;
+    };
+    const lineCost = (mp: number | null, hrs: number | null, otMp: number | null, otHrs: number | null): number => {
+      if (!rate) return 0;
+      let c = 0;
+      if (mp && hrs) c += rate * mp * hrs;
+      if (otMp && otHrs) c += rate * otMp * otHrs;
+      return Math.round(c * 100) / 100;
+    };
+    const numFromName = (name: string) => parseInt(name.replace(/\D/g, "")) || 9999;
+    const fmtDate = (d: string) => { const p = d.split("-"); return `${p[2]}.${p[1]}`; };
 
-    const addPage = () => { doc.addPage(); y = margin; };
-    const checkPage = (need: number) => { if (y + need > ph - margin) addPage(); };
+    // ── Generic bordered table ──
+    type Col = { label: string; w: number; align?: "left" | "right" | "center" };
+    const drawTable = (
+      cols: Col[], rows: string[][], startY: number,
+      opts?: { boldLastRow?: boolean; fs?: number; rh?: number; pgTitle?: string }
+    ): number => {
+      const fs = opts?.fs || 7;
+      const rh = opts?.rh || 6.5;
+      const totalW = cols.reduce((s, c) => s + c.w, 0);
+      let ty = startY;
 
-    // Header
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.text(`${factory?.name || "Factory"} — Weekly Production Report`, margin, y);
-    y += 7;
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Period: ${getWeekRange()} | Generated: ${format(new Date(), "PPpp")}`, margin, y);
-    y += 10;
-
-    // ── Production Summary Table ──
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text("PRODUCTION SUMMARY", margin, y);
-    y += 7;
-
-    const prodHeaders = ["Day", "Sewing Out", "Sewing Tgt", "Finish Out", "Finish Tgt", "Cutting", "Blockers"];
-    const prodRows = weekStats.map(d => [
-      `${d.dayName} ${d.date.slice(5)}`,
-      fmtNum(d.sewingOutput), fmtNum(d.sewingTarget),
-      fmtNum(d.finishingOutput), fmtNum(d.finishingTarget),
-      fmtNum(d.cuttingActual), String(d.blockers),
-    ]);
-    prodRows.push([
-      "TOTAL",
-      fmtNum(totals.sewingOutput), "",
-      fmtNum(totals.finishingOutput), fmtNum(totals.finishingTarget),
-      fmtNum(totals.cuttingActual), String(totals.totalBlockers),
-    ]);
-
-    const drawTable = (headers: string[], rows: string[][], colWidths: number[], boldLast = false) => {
-      const rh = 7;
-      const totalW = colWidths.reduce((a, b) => a + b, 0);
+      const ensurePage = (need: number) => {
+        if (ty + need > ph - 12) {
+          doc.addPage();
+          ty = m;
+          if (opts?.pgTitle) {
+            doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.setTextColor(0);
+            doc.text(opts.pgTitle, m, ty); ty += 6;
+          }
+          // Re-draw header
+          doc.setFillColor(220, 220, 220);
+          doc.rect(m, ty, totalW, rh, 'F');
+          doc.setFont("helvetica", "bold"); doc.setFontSize(fs); doc.setTextColor(0);
+          let hx = m;
+          cols.forEach(c => {
+            doc.rect(hx, ty, c.w, rh);
+            const tx = c.align === "right" ? hx + c.w - 1.5 : hx + 1.5;
+            doc.text(c.label, tx, ty + rh - 1.5, { align: c.align === "right" ? "right" : "left" });
+            hx += c.w;
+          });
+          ty += rh;
+        }
+      };
 
       // Header
       doc.setFillColor(220, 220, 220);
-      doc.rect(margin, y, totalW, rh, 'F');
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(8);
-      let cx = margin;
-      headers.forEach((h, i) => {
-        doc.rect(cx, y, colWidths[i], rh);
-        doc.text(h, cx + 2, y + 5);
-        cx += colWidths[i];
+      doc.rect(m, ty, totalW, rh, 'F');
+      doc.setFont("helvetica", "bold"); doc.setFontSize(fs); doc.setTextColor(0);
+      let hx = m;
+      cols.forEach(c => {
+        doc.rect(hx, ty, c.w, rh);
+        const tx = c.align === "right" ? hx + c.w - 1.5 : hx + 1.5;
+        doc.text(c.label, tx, ty + rh - 1.5, { align: c.align === "right" ? "right" : "left" });
+        hx += c.w;
       });
-      y += rh;
+      ty += rh;
 
       // Rows
-      doc.setFont("helvetica", "normal");
       rows.forEach((row, ri) => {
-        checkPage(rh);
-        if (boldLast && ri === rows.length - 1) {
+        ensurePage(rh);
+        const isLast = ri === rows.length - 1 && opts?.boldLastRow;
+        if (isLast) {
           doc.setFillColor(240, 240, 240);
-          doc.rect(margin, y, totalW, rh, 'F');
+          doc.rect(m, ty, totalW, rh, 'F');
           doc.setFont("helvetica", "bold");
+        } else {
+          doc.setFont("helvetica", "normal");
         }
-        cx = margin;
+        doc.setFontSize(fs); doc.setTextColor(0);
+        let rx = m;
         row.forEach((cell, ci) => {
-          doc.rect(cx, y, colWidths[ci], rh);
-          doc.text(cell, cx + 2, y + 5);
-          cx += colWidths[ci];
+          doc.rect(rx, ty, cols[ci].w, rh);
+          const tx = cols[ci].align === "right" ? rx + cols[ci].w - 1.5 : rx + 1.5;
+          doc.text((cell || "").substring(0, Math.floor(cols[ci].w / 1.8)), tx, ty + rh - 1.5, { align: cols[ci].align === "right" ? "right" : "left" });
+          rx += cols[ci].w;
         });
-        if (boldLast && ri === rows.length - 1) doc.setFont("helvetica", "normal");
-        y += rh;
+        ty += rh;
       });
+      return ty;
     };
 
-    const prodColW = [32, 32, 32, 32, 32, 32, 25];
-    drawTable(prodHeaders, prodRows, prodColW, true);
+    const pageHead = (title: string): number => {
+      y = m;
+      doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(0);
+      doc.text(`${factory?.name || "Factory"} — Weekly Report`, m, y);
+      doc.setFontSize(8); doc.setFont("helvetica", "normal");
+      doc.text(getWeekRange(), pw - m, y, { align: "right" });
+      y += 5;
+      doc.setDrawColor(0); doc.setLineWidth(0.4); doc.line(m, y, pw - m, y);
+      y += 4;
+      doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+      doc.text(title, m, y);
+      y += 6;
+      return y;
+    };
+
+    // ========== PAGE 1: SUMMARY ==========
+    doc.setFont("helvetica", "bold"); doc.setFontSize(14); doc.setTextColor(0);
+    doc.text(`${factory?.name || "Factory"} — WEEKLY PRODUCTION REPORT`, m, y);
+    y += 6;
+    doc.setFontSize(9); doc.setFont("helvetica", "normal");
+    doc.text(`Period: ${getWeekRange()} | Generated: ${format(new Date(), "PPpp")}`, m, y);
     y += 8;
 
-    // ── Financial Summary ──
-    if (weekFinancials.hasData) {
-      checkPage(60);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(12);
-      doc.text("WEEKLY FINANCIALS (USD)", margin, y);
-      y += 7;
+    // Production summary table
+    doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+    doc.text("PRODUCTION SUMMARY", m, y); y += 6;
 
-      const finHeaders = ["Day", "Revenue ($)", "Sewing Cost", "Cutting Cost", "Finishing Cost", "Total Cost ($)", "Profit ($)"];
-      const finColW = [32, 35, 35, 35, 35, 35, 35];
+    const sumCols: Col[] = [
+      { label: "Day", w: 28 },
+      { label: "Sewing Out", w: 28, align: "right" },
+      { label: "Sewing Tgt", w: 28, align: "right" },
+      { label: "Finish Out", w: 28, align: "right" },
+      { label: "Finish Tgt", w: 28, align: "right" },
+      { label: "Cutting", w: 25, align: "right" },
+      { label: "Blockers", w: 22, align: "right" },
+    ];
+    const sumRows = weekStats.map(d => [
+      `${d.dayName} ${fmtDate(d.date)}`,
+      fN(d.sewingOutput), fN(d.sewingTarget),
+      fN(d.finishingOutput), fN(d.finishingTarget),
+      fN(d.cuttingActual), String(d.blockers),
+    ]);
+    sumRows.push(["TOTAL", fN(totals.sewingOutput), "", fN(totals.finishingOutput), fN(totals.finishingTarget), fN(totals.cuttingActual), String(totals.totalBlockers)]);
+    y = drawTable(sumCols, sumRows, y, { boldLastRow: true, pgTitle: "PRODUCTION SUMMARY" });
+    y += 8;
+
+    // Financial summary table
+    if (weekFinancials.hasData) {
+      doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+      doc.text("WEEKLY FINANCIALS (USD)", m, y); y += 6;
+
+      const finCols: Col[] = [
+        { label: "Day", w: 28 },
+        { label: "Revenue ($)", w: 35, align: "right" },
+        { label: "Sewing Cost", w: 35, align: "right" },
+        { label: "Cutting Cost", w: 35, align: "right" },
+        { label: "Finish Cost", w: 35, align: "right" },
+        { label: "Total Cost ($)", w: 35, align: "right" },
+        { label: "Profit ($)", w: 35, align: "right" },
+      ];
       const finRows = weekFinancials.dailyFinancials.map(d => {
-        const isFuture = new Date(d.date) > new Date();
-        if (isFuture) return [`${d.dayName} ${d.date.slice(5)}`, "-", "-", "-", "-", "-", "-"];
-        const toUsd = (v: number) => isBDT && bdtToUsd ? v * bdtToUsd : v;
+        const isFut = new Date(d.date) > new Date();
+        if (isFut) return [`${d.dayName} ${fmtDate(d.date)}`, "-", "-", "-", "-", "-", "-"];
         return [
-          `${d.dayName} ${d.date.slice(5)}`,
-          fmtUsd(d.revenue),
-          fmtUsd(Math.round(toUsd(d.sewingCostNative) * 100) / 100),
-          fmtUsd(Math.round(toUsd(d.cuttingCostNative) * 100) / 100),
-          fmtUsd(Math.round(toUsd(d.finishingCostNative) * 100) / 100),
-          fmtUsd(d.costUsd),
-          `${d.profit >= 0 ? '+' : '-'}${fmtUsd(Math.abs(d.profit))}`,
+          `${d.dayName} ${fmtDate(d.date)}`,
+          fUsd(d.revenue),
+          fUsd(toUsd(d.sewingCostNative)),
+          fUsd(toUsd(d.cuttingCostNative)),
+          fUsd(toUsd(d.finishingCostNative)),
+          fUsd(d.costUsd),
+          `${d.profit >= 0 ? "+" : "-"}${fUsd(Math.abs(d.profit))}`,
         ];
       });
       finRows.push([
-        "TOTAL",
-        fmtUsd(weekFinancials.totalRevenue),
-        fmtUsd(weekFinancials.sewingCostUsd),
-        fmtUsd(weekFinancials.cuttingCostUsd),
-        fmtUsd(weekFinancials.finishingCostUsd),
-        fmtUsd(weekFinancials.totalCostUsd),
-        `${weekFinancials.profit >= 0 ? '+' : '-'}${fmtUsd(Math.abs(weekFinancials.profit))}`,
+        "TOTAL", fUsd(weekFinancials.totalRevenue), fUsd(weekFinancials.sewingCostUsd),
+        fUsd(weekFinancials.cuttingCostUsd), fUsd(weekFinancials.finishingCostUsd),
+        fUsd(weekFinancials.totalCostUsd),
+        `${weekFinancials.profit >= 0 ? "+" : "-"}${fUsd(Math.abs(weekFinancials.profit))}`,
       ]);
-
-      drawTable(finHeaders, finRows, finColW, true);
-      y += 5;
-
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "normal");
-      const summaryLine = `Revenue: ${fmtUsd(weekFinancials.totalRevenue)} | Cost: ${fmtUsd(weekFinancials.totalCostUsd)} | Profit: ${weekFinancials.profit >= 0 ? '+' : '-'}${fmtUsd(Math.abs(weekFinancials.profit))} | Margin: ${weekFinancials.margin}%`;
-      doc.text(summaryLine, margin, y);
-      if (isBDT && bdtToUsd) {
-        y += 5;
-        doc.text(`Cost in BDT: Tk${weekFinancials.totalCostNative.toLocaleString()} | Rate: ${(1 / bdtToUsd).toFixed(1)} BDT/USD`, margin, y);
-      }
+      y = drawTable(finCols, finRows, y, { boldLastRow: true, pgTitle: "WEEKLY FINANCIALS" });
+      y += 3;
+      doc.setFontSize(7); doc.setFont("helvetica", "italic"); doc.setTextColor(90);
+      if (isBDT && bdtToUsd) doc.text(`Cost in BDT: Tk${weekFinancials.totalCostNative.toLocaleString()} | Rate: ${(1 / bdtToUsd).toFixed(1)} BDT/USD | Margin: ${weekFinancials.margin}%`, m, y + 2);
+      else doc.text(`Margin: ${weekFinancials.margin}%`, m, y + 2);
     }
+
+    // ========== SEWING DETAIL ==========
+    const allSewing = weekStats.flatMap(d => d.rawSewing.map((s: any) => ({ ...s, _date: d.date, _dayName: d.dayName })));
+    if (allSewing.length > 0) {
+      doc.addPage();
+      y = pageHead("SEWING — LINE WISE OUTPUT & COST");
+
+      const sewCols: Col[] = [
+        { label: "Day", w: 18 },
+        { label: "Line", w: 22 },
+        { label: "PO / Style", w: 36 },
+        { label: "Output", w: 18, align: "right" },
+        { label: "Reject", w: 14, align: "right" },
+        { label: "Rework", w: 14, align: "right" },
+        { label: "MP", w: 12, align: "right" },
+        { label: "Hrs", w: 12, align: "right" },
+        { label: "OT Hrs", w: 14, align: "right" },
+        { label: "OT MP", w: 14, align: "right" },
+        { label: `Cost (${isBDT ? "BDT" : "USD"})`, w: 24, align: "right" },
+        { label: "Cost ($)", w: 22, align: "right" },
+        { label: "Notes", w: cw - 220 > 0 ? cw - 220 : 20 },
+      ];
+
+      allSewing.sort((a: any, b: any) => {
+        if (a._date !== b._date) return a._date.localeCompare(b._date);
+        return numFromName(a.lines?.name || "") - numFromName(b.lines?.name || "");
+      });
+
+      let sewTotalCostNat = 0, sewTotalCostUsd = 0, sewTotalOutput = 0;
+      const sewRows = allSewing.map((s: any) => {
+        const costNat = lineCost(s.manpower_actual, s.hours_actual, s.ot_manpower_actual, s.ot_hours_actual);
+        const costU = toUsd(costNat);
+        sewTotalCostNat += costNat; sewTotalCostUsd += costU;
+        sewTotalOutput += s.good_today || 0;
+        return [
+          fmtDate(s._date),
+          (s.lines?.name || s.lines?.line_id || "-").substring(0, 12),
+          ((s.work_orders?.po_number || "-") + " / " + (s.work_orders?.style || "-")).substring(0, 20),
+          fN(s.good_today), String(s.reject_today || 0), String(s.rework_today || 0),
+          fN(s.manpower_actual), fN(s.hours_actual), fN(s.ot_hours_actual), fN(s.ot_manpower_actual),
+          rate ? fNat(costNat) : "-", rate ? fUsd(costU) : "-",
+          (s.blocker_description || s.remarks || "-").substring(0, 24),
+        ];
+      });
+      sewRows.push(["", "TOTAL", "", fN(sewTotalOutput), "", "", "", "", "", "", rate ? fNat(sewTotalCostNat) : "-", rate ? fUsd(sewTotalCostUsd) : "-", ""]);
+      y = drawTable(sewCols, sewRows, y, { boldLastRow: true, fs: 6.5, rh: 6, pgTitle: "SEWING — LINE WISE OUTPUT & COST" });
+    }
+
+    // ========== CUTTING DETAIL ==========
+    const allCutting = weekStats.flatMap(d => d.rawCutting.map((c: any) => ({ ...c, _date: d.date, _dayName: d.dayName })));
+    if (allCutting.length > 0) {
+      doc.addPage();
+      y = pageHead("CUTTING — LINE WISE DETAIL & COST");
+
+      const cutCols: Col[] = [
+        { label: "Day", w: 18 },
+        { label: "Line", w: 22 },
+        { label: "PO / Buyer", w: 34 },
+        { label: "Colour", w: 20 },
+        { label: "Day Cut", w: 18, align: "right" },
+        { label: "Day Input", w: 18, align: "right" },
+        { label: "Total Cut", w: 20, align: "right" },
+        { label: "Balance", w: 18, align: "right" },
+        { label: "MP", w: 12, align: "right" },
+        { label: "Hrs", w: 12, align: "right" },
+        { label: "OT Hrs", w: 14, align: "right" },
+        { label: "OT MP", w: 14, align: "right" },
+        { label: `Cost (${isBDT ? "BDT" : "USD"})`, w: 24, align: "right" },
+        { label: "Cost ($)", w: 22, align: "right" },
+      ];
+
+      allCutting.sort((a: any, b: any) => {
+        if (a._date !== b._date) return a._date.localeCompare(b._date);
+        return numFromName(a.lines?.name || "") - numFromName(b.lines?.name || "");
+      });
+
+      let cutTotalCostNat = 0, cutTotalCostUsd = 0, cutTotalDay = 0;
+      const cutRows = allCutting.map((c: any) => {
+        const costNat = lineCost(c.man_power, c.hours_actual, c.ot_manpower_actual, c.ot_hours_actual);
+        const costU = toUsd(costNat);
+        cutTotalCostNat += costNat; cutTotalCostUsd += costU;
+        cutTotalDay += c.day_cutting || 0;
+        return [
+          fmtDate(c._date),
+          (c.lines?.name || c.lines?.line_id || "-").substring(0, 12),
+          ((c.work_orders?.po_number || "-") + " / " + (c.work_orders?.buyer || "-")).substring(0, 19),
+          (c.work_orders?.colour || "-").substring(0, 11),
+          fN(c.day_cutting), fN(c.day_input), fN(c.total_cutting), fN(c.balance),
+          fN(c.man_power), fN(c.hours_actual), fN(c.ot_hours_actual), fN(c.ot_manpower_actual),
+          rate ? fNat(costNat) : "-", rate ? fUsd(costU) : "-",
+        ];
+      });
+      cutRows.push(["", "TOTAL", "", "", fN(cutTotalDay), "", "", "", "", "", "", "", rate ? fNat(cutTotalCostNat) : "-", rate ? fUsd(cutTotalCostUsd) : "-"]);
+      y = drawTable(cutCols, cutRows, y, { boldLastRow: true, fs: 6.5, rh: 6, pgTitle: "CUTTING — LINE WISE DETAIL & COST" });
+    }
+
+    // ========== FINISHING DETAIL ==========
+    const allFinishing = weekStats.flatMap(d => d.rawFinishing.map((f: any) => ({ ...f, _date: d.date, _dayName: d.dayName })));
+    if (allFinishing.length > 0) {
+      doc.addPage();
+      y = pageHead("FINISHING — OUTPUT, COST & REVENUE");
+
+      const finCols: Col[] = [
+        { label: "Day", w: 18 },
+        { label: "PO", w: 28 },
+        { label: "Buyer", w: 22 },
+        { label: "Thread", w: 16, align: "right" },
+        { label: "Check", w: 14, align: "right" },
+        { label: "Button", w: 14, align: "right" },
+        { label: "Iron", w: 14, align: "right" },
+        { label: "Get Up", w: 16, align: "right" },
+        { label: "Poly", w: 16, align: "right" },
+        { label: "Carton", w: 16, align: "right" },
+        { label: "MP", w: 12, align: "right" },
+        { label: "Hrs", w: 12, align: "right" },
+        { label: "Cost ($)", w: 22, align: "right" },
+        { label: "CM/Dz", w: 16, align: "right" },
+        { label: "Revenue ($)", w: cw - 236 > 0 ? cw - 236 : 22, align: "right" },
+      ];
+
+      allFinishing.sort((a: any, b: any) => a._date.localeCompare(b._date));
+
+      let finTotalCostUsd = 0, finTotalRevenue = 0, finTotalPoly = 0;
+      const finRows = allFinishing.map((f: any) => {
+        const costNat = lineCost(f.m_power_actual, f.actual_hours, f.ot_manpower_actual, f.ot_hours_actual);
+        const costU = toUsd(costNat);
+        finTotalCostUsd += costU;
+        const cm = f.work_orders?.cm_per_dozen;
+        const rev = cm && f.poly ? (cm / 12) * f.poly : 0;
+        finTotalRevenue += rev;
+        finTotalPoly += f.poly || 0;
+        return [
+          fmtDate(f._date),
+          (f.work_orders?.po_number || "-").substring(0, 15),
+          (f.work_orders?.buyer || "-").substring(0, 13),
+          fN(f.thread_cutting), fN(f.inside_check), fN(f.buttoning), fN(f.iron), fN(f.get_up),
+          fN(f.poly), fN(f.carton),
+          fN(f.m_power_actual), fN(f.actual_hours),
+          rate ? fUsd(costU) : "-",
+          cm ? "$" + cm.toFixed(2) : "-",
+          rev > 0 ? fUsd(Math.round(rev * 100) / 100) : "-",
+        ];
+      });
+      finRows.push(["", "TOTAL", "", "", "", "", "", "", fN(finTotalPoly), "", "", "", rate ? fUsd(finTotalCostUsd) : "-", "", finTotalRevenue > 0 ? fUsd(Math.round(finTotalRevenue * 100) / 100) : "-"]);
+      y = drawTable(finCols, finRows, y, { boldLastRow: true, fs: 6.5, rh: 6, pgTitle: "FINISHING — OUTPUT, COST & REVENUE" });
+    }
+
+    // ========== SIGN-OFF ==========
+    doc.addPage();
+    y = pageHead("SIGN-OFF");
+    doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(0);
+    const signLabels = ["Production Manager", "Factory Manager", "General Manager"];
+    const signW = (cw - 20) / 3;
+    signLabels.forEach((label, i) => {
+      const sx = m + i * (signW + 10);
+      doc.setDrawColor(0); doc.setLineWidth(0.3);
+      doc.line(sx, y + 20, sx + signW, y + 20);
+      doc.text(label, sx + signW / 2, y + 25, { align: "center" });
+      doc.text("Date: _______________", sx, y + 32);
+    });
 
     // Page footers
     const totalPages = doc.getNumberOfPages();
     for (let p = 1; p <= totalPages; p++) {
       doc.setPage(p);
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "normal");
-      doc.text(`Page ${p} of ${totalPages}`, pw - margin - 25, ph - 5);
-      doc.text(factory?.name || "", margin, ph - 5);
+      doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(120);
+      doc.text(`Page ${p} of ${totalPages}`, pw - m - 20, ph - 5);
+      doc.text(factory?.name || "", m, ph - 5);
     }
 
     const weekLabel = getWeekRange().replace(/\s/g, '_');
