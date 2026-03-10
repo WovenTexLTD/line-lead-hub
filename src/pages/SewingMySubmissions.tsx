@@ -697,8 +697,8 @@ export default function SewingMySubmissions() {
           blocker_impact: null,
           blocker_owner: null,
            blocker_status: null,
-           estimated_cost_value: a.estimated_cost_value ?? null,
-           estimated_cost_currency: a.estimated_cost_currency ?? null,
+           estimated_cost_value: (a as any).estimated_cost_value ?? null,
+           estimated_cost_currency: (a as any).estimated_cost_currency ?? null,
          };
         const mt = targets.find(t =>
           t.line_id === a.line_id && t.work_order_id === a.work_order_id && t.production_date === a.production_date

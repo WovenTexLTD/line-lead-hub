@@ -2238,8 +2238,8 @@ export default function TodayUpdates() {
             blocker_impact: u.blocker_impact,
             blocker_owner: u.blocker_owner,
             blocker_status: u.blocker_status,
-            estimated_cost_value: u.estimated_cost_value ?? null,
-            estimated_cost_currency: u.estimated_cost_currency ?? null,
+            estimated_cost_value: (u as any).estimated_cost_value ?? null,
+            estimated_cost_currency: (u as any).estimated_cost_currency ?? null,
           };
         }
 
