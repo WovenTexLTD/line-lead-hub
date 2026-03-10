@@ -725,6 +725,9 @@ export function ReportExportDialog({ defaultType, date, weekOffset = 0, dailyRep
 
       const { startDate, endDate, label } = getDateRange();
       const factoryId = profile.factory_id;
+      if (!factoryId) {
+        throw new Error("Factory not available for report export");
+      }
 
       // Build date list for the period
       const dates: string[] = [];
