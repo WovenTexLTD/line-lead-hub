@@ -2204,6 +2204,8 @@ export default function TodayUpdates() {
             blocker_impact: a.blocker_impact,
             blocker_owner: a.blocker_owner,
             blocker_status: null,
+            estimated_cost_value: a.estimated_cost_value ?? null,
+            estimated_cost_currency: a.estimated_cost_currency ?? null,
           };
         }
 
