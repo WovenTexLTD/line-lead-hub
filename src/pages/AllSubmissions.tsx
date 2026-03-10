@@ -24,7 +24,7 @@ import { TargetDetailModal } from "@/components/TargetDetailModal";
 import { SewingSubmissionView, SewingTargetData, SewingActualData } from "@/components/SewingSubmissionView";
 import { EditSewingTargetModal } from "@/components/EditSewingTargetModal";
 import { EditSewingActualModal } from "@/components/EditSewingActualModal";
-import { ExportSubmissionsDialog } from "@/components/ExportSubmissionsDialog";
+import { ReportExportDialog } from "@/components/ReportExportDialog";
 import { CuttingSubmissionsTable } from "@/components/submissions/CuttingSubmissionsTable";
 import { FinishingDailySheetsTable } from "@/components/submissions/FinishingDailySheetsTable";
 import { StorageSubmissionsTable } from "@/components/submissions/StorageSubmissionsTable";
@@ -186,7 +186,7 @@ export default function AllSubmissions() {
   const [sewingViewSource, setSewingViewSource] = useState<{ type: 'target' | 'actual'; id: string } | null>(null);
   const [editingSewingTarget, setEditingSewingTarget] = useState<SewingTarget | null>(null);
   const [editingSewingActual, setEditingSewingActual] = useState<SewingActual | null>(null);
-  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+
   const [pageSize, setPageSize] = useState(25);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   useEffect(() => {
@@ -523,16 +523,6 @@ export default function AllSubmissions() {
     setActualModalOpen(true);
   };
 
-  const getExportData = () => ({
-    sewingTargets: filterBySearch(sewingTargets),
-    finishingTargets: filterBySearch(finishingTargets),
-    sewingActuals: filterBySearch(sewingActuals),
-    finishingActuals: filterBySearch(finishingActuals),
-    cuttingTargets,
-    cuttingActuals,
-    storageBinCards,
-    finishingDailyLogs,
-  });
 
   if (loading) {
     return (
@@ -584,14 +574,7 @@ export default function AllSubmissions() {
             <RefreshCw className="h-4 w-4 mr-1" />
             Refresh
           </Button>
-          <Button
-            variant="default"
-            size="sm"
-            onClick={() => setExportDialogOpen(true)}
-          >
-            <Download className="h-4 w-4 mr-1" />
-            Export CSV
-          </Button>
+          <ReportExportDialog />
         </div>
       </div>
 
@@ -1126,13 +1109,6 @@ export default function AllSubmissions() {
         );
       })()}
 
-      {/* Export Dialog */}
-      <ExportSubmissionsDialog
-        open={exportDialogOpen}
-        onOpenChange={setExportDialogOpen}
-        data={getExportData()}
-        dateRange={dateRange}
-      />
 
       {/* Sewing Edit Modals */}
       <EditSewingTargetModal

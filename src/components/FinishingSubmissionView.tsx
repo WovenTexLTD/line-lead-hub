@@ -253,11 +253,11 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange, on
                     })}
                     <FieldDisplay label={t('modals.poly')} value={target.poly} suffix=" /hr" className="text-lg text-success" />
                     {target.planned_hours != null && target.planned_hours > 0 && (
-                      <FieldDisplay label={t('modals.targetTotalPoly')} value={Math.round(target.poly * target.planned_hours)} className="text-lg text-success" />
+                      <FieldDisplay label={t('modals.targetTotalPoly')} value={Math.round(target.poly * ((target.planned_hours || 0) + (target.ot_hours_planned || 0)))} className="text-lg text-success" />
                     )}
                     <FieldDisplay label={t('modals.carton')} value={target.carton} suffix=" /hr" className="text-muted-foreground" />
                     {target.planned_hours != null && target.planned_hours > 0 && (
-                      <FieldDisplay label={t('modals.targetTotalCarton')} value={Math.round(target.carton * target.planned_hours)} className="text-muted-foreground" />
+                      <FieldDisplay label={t('modals.targetTotalCarton')} value={Math.round(target.carton * ((target.planned_hours || 0) + (target.ot_hours_planned || 0)))} className="text-muted-foreground" />
                     )}
                   </div>
                 </div>

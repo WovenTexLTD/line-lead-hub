@@ -10,6 +10,7 @@ import { Loader2, Calendar, TrendingUp, TrendingDown, Minus, Package, ChevronLef
 import { SewingMachine } from "@/components/icons/SewingMachine";
 import { useHeadcountCost } from "@/hooks/useHeadcountCost";
 import { jsPDF } from "jspdf";
+import { ReportExportDialog } from "@/components/ReportExportDialog";
 
 interface DailyStats {
   date: string;
@@ -154,7 +155,7 @@ export default function ThisWeek() {
             .eq('production_date', dateStr),
           supabase
             .from('cutting_actuals')
-            .select('day_cutting, total_cutting, day_input, balance, leftover_recorded, leftover_quantity, leftover_unit, man_power, hours_actual, ot_manpower_actual, ot_hours_actual, lines!cutting_actuals_line_id_fkey(name, line_id), work_orders(po_number, buyer, style, colour, cm_per_dozen)')
+            .select('day_cutting, total_cutting, day_input, balance, leftover_recorded, leftover_quantity, leftover_unit, man_power, hours_actual, ot_manpower_actual, ot_hours_actual, lines!cutting_actuals_line_id_fkey(name, line_id), work_orders(po_number, buyer, style, color, cm_per_dozen)')
             .eq('factory_id', profile.factory_id)
             .eq('production_date', dateStr),
         ]);
@@ -566,151 +567,242 @@ export default function ThisWeek() {
       else doc.text(`Margin: ${weekFinancials.margin}%`, m, y + 2);
     }
 
-    // ========== SEWING DETAIL ==========
+    // ========== SEWING DETAIL (grouped by Line) ==========
     const allSewing = weekStats.flatMap(d => d.rawSewing.map((s: any) => ({ ...s, _date: d.date, _dayName: d.dayName })));
-    if (allSewing.length > 0) {
+    try { if (allSewing.length > 0) {
       doc.addPage();
       y = pageHead("SEWING — LINE WISE OUTPUT & COST");
 
       const sewCols: Col[] = [
         { label: "Day", w: 18 },
-        { label: "Line", w: 22 },
-        { label: "PO / Style", w: 36 },
+        { label: "PO / Style", w: 38 },
         { label: "Output", w: 18, align: "right" },
         { label: "Reject", w: 14, align: "right" },
         { label: "Rework", w: 14, align: "right" },
+        { label: "Eff %", w: 16, align: "right" },
         { label: "MP", w: 12, align: "right" },
         { label: "Hrs", w: 12, align: "right" },
-        { label: "OT Hrs", w: 14, align: "right" },
         { label: "OT MP", w: 14, align: "right" },
-        { label: `Cost (${isBDT ? "BDT" : "USD"})`, w: 24, align: "right" },
-        { label: "Cost ($)", w: 22, align: "right" },
+        { label: "OT Hrs", w: 14, align: "right" },
+        { label: `Cost (${isBDT ? "BDT" : "USD"})`, w: 26, align: "right" },
+        { label: "Cost ($)", w: 24, align: "right" },
         { label: "Notes", w: cw - 220 > 0 ? cw - 220 : 20 },
       ];
 
-      allSewing.sort((a: any, b: any) => {
-        if (a._date !== b._date) return a._date.localeCompare(b._date);
-        return numFromName(a.lines?.name || "") - numFromName(b.lines?.name || "");
+      // Group by line
+      const sewByLine: Record<string, any[]> = {};
+      allSewing.forEach((s: any) => {
+        const ln = s.lines?.name || s.lines?.line_id || "Unknown";
+        if (!sewByLine[ln]) sewByLine[ln] = [];
+        sewByLine[ln].push(s);
+      });
+      const sewLineKeys = Object.keys(sewByLine).sort((a, b) => numFromName(a) - numFromName(b));
+
+      let sewDeptCostNat = 0, sewDeptCostUsd = 0, sewDeptOutput = 0;
+
+      sewLineKeys.forEach(lineName => {
+        const entries = sewByLine[lineName].sort((a: any, b: any) => a._date.localeCompare(b._date));
+
+        // Line header label
+        y += 6;
+        if (y + 20 > ph - 12) { doc.addPage(); y = pageHead("SEWING — LINE WISE OUTPUT & COST"); }
+        doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(30, 80, 180);
+        doc.text(lineName, m, y); y += 3;
+        doc.setTextColor(0);
+
+        let lineCostNat = 0, lineCostUsd = 0, lineOutput = 0, lineReject = 0, lineRework = 0;
+        const rows = entries.map((s: any) => {
+          const costNat = lineCost(s.manpower_actual, s.hours_actual, s.ot_manpower_actual, s.ot_hours_actual);
+          const costU = toUsd(costNat);
+          lineCostNat += costNat; lineCostUsd += costU;
+          lineOutput += s.good_today || 0;
+          lineReject += s.reject_today || 0;
+          lineRework += s.rework_today || 0;
+          const target = s.actual_per_hour; // target pieces per hour
+          const eff = target && s.manpower_actual && s.hours_actual
+            ? Math.round(((s.good_today || 0) / (target * s.hours_actual)) * 100)
+            : null;
+          return [
+            fmtDate(s._date),
+            ((s.work_orders?.po_number || "-") + " / " + (s.work_orders?.style || "-")).substring(0, 22),
+            fN(s.good_today), String(s.reject_today || 0), String(s.rework_today || 0),
+            eff != null ? eff + "%" : "-",
+            fN(s.manpower_actual), fN(s.hours_actual), fN(s.ot_manpower_actual), fN(s.ot_hours_actual),
+            rate ? fNat(costNat) : "-", rate ? fUsd(costU) : "-",
+            (s.blocker_description || s.remarks || "-").substring(0, 24),
+          ];
+        });
+        rows.push([`${lineName} Total`, "", fN(lineOutput), String(lineReject), String(lineRework), "", "", "", "", "", rate ? fNat(lineCostNat) : "-", rate ? fUsd(lineCostUsd) : "-", ""]);
+        y = drawTable(sewCols, rows, y, { boldLastRow: true, fs: 6.5, rh: 6, pgTitle: "SEWING — LINE WISE OUTPUT & COST" });
+        y += 4;
+
+        sewDeptCostNat += lineCostNat; sewDeptCostUsd += lineCostUsd; sewDeptOutput += lineOutput;
       });
 
-      let sewTotalCostNat = 0, sewTotalCostUsd = 0, sewTotalOutput = 0;
-      const sewRows = allSewing.map((s: any) => {
-        const costNat = lineCost(s.manpower_actual, s.hours_actual, s.ot_manpower_actual, s.ot_hours_actual);
-        const costU = toUsd(costNat);
-        sewTotalCostNat += costNat; sewTotalCostUsd += costU;
-        sewTotalOutput += s.good_today || 0;
-        return [
-          fmtDate(s._date),
-          (s.lines?.name || s.lines?.line_id || "-").substring(0, 12),
-          ((s.work_orders?.po_number || "-") + " / " + (s.work_orders?.style || "-")).substring(0, 20),
-          fN(s.good_today), String(s.reject_today || 0), String(s.rework_today || 0),
-          fN(s.manpower_actual), fN(s.hours_actual), fN(s.ot_hours_actual), fN(s.ot_manpower_actual),
-          rate ? fNat(costNat) : "-", rate ? fUsd(costU) : "-",
-          (s.blocker_description || s.remarks || "-").substring(0, 24),
-        ];
-      });
-      sewRows.push(["", "TOTAL", "", fN(sewTotalOutput), "", "", "", "", "", "", rate ? fNat(sewTotalCostNat) : "-", rate ? fUsd(sewTotalCostUsd) : "-", ""]);
-      y = drawTable(sewCols, sewRows, y, { boldLastRow: true, fs: 6.5, rh: 6, pgTitle: "SEWING — LINE WISE OUTPUT & COST" });
-    }
+      // Department total
+      if (y + 12 > ph - 12) { doc.addPage(); y = pageHead("SEWING — LINE WISE OUTPUT & COST"); }
+      doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(0);
+      doc.text(`SEWING DEPARTMENT TOTAL — Output: ${fN(sewDeptOutput)} | Cost: ${rate ? fNat(sewDeptCostNat) : "-"} (${rate ? fUsd(sewDeptCostUsd) : "-"})`, m, y);
+      y += 2;
+      doc.setDrawColor(0); doc.setLineWidth(0.5); doc.line(m, y, pw - m, y);
+    } } catch (e) { console.error("PDF sewing section error:", e); }
 
-    // ========== CUTTING DETAIL ==========
+    // ========== CUTTING DETAIL (grouped by PO) ==========
     const allCutting = weekStats.flatMap(d => d.rawCutting.map((c: any) => ({ ...c, _date: d.date, _dayName: d.dayName })));
-    if (allCutting.length > 0) {
+    try { if (allCutting.length > 0) {
       doc.addPage();
-      y = pageHead("CUTTING — LINE WISE DETAIL & COST");
+      y = pageHead("CUTTING — PO WISE DETAIL & COST");
 
       const cutCols: Col[] = [
         { label: "Day", w: 18 },
         { label: "Line", w: 22 },
-        { label: "PO / Buyer", w: 34 },
-        { label: "Colour", w: 20 },
-        { label: "Day Cut", w: 18, align: "right" },
-        { label: "Day Input", w: 18, align: "right" },
-        { label: "Total Cut", w: 20, align: "right" },
-        { label: "Balance", w: 18, align: "right" },
+        { label: "Colour", w: 22 },
+        { label: "Day Cut", w: 20, align: "right" },
+        { label: "Day Input", w: 20, align: "right" },
+        { label: "Total Cut", w: 22, align: "right" },
+        { label: "Balance", w: 20, align: "right" },
         { label: "MP", w: 12, align: "right" },
         { label: "Hrs", w: 12, align: "right" },
-        { label: "OT Hrs", w: 14, align: "right" },
         { label: "OT MP", w: 14, align: "right" },
-        { label: `Cost (${isBDT ? "BDT" : "USD"})`, w: 24, align: "right" },
-        { label: "Cost ($)", w: 22, align: "right" },
+        { label: "OT Hrs", w: 14, align: "right" },
+        { label: `Cost (${isBDT ? "BDT" : "USD"})`, w: 26, align: "right" },
+        { label: "Cost ($)", w: 24, align: "right" },
       ];
 
-      allCutting.sort((a: any, b: any) => {
-        if (a._date !== b._date) return a._date.localeCompare(b._date);
-        return numFromName(a.lines?.name || "") - numFromName(b.lines?.name || "");
+      // Group by PO
+      const cutByPo: Record<string, { buyer: string; entries: any[] }> = {};
+      allCutting.forEach((c: any) => {
+        const po = c.work_orders?.po_number || "Unknown PO";
+        if (!cutByPo[po]) cutByPo[po] = { buyer: c.work_orders?.buyer || "-", entries: [] };
+        cutByPo[po].entries.push(c);
+      });
+      const cutPoKeys = Object.keys(cutByPo).sort();
+
+      let cutDeptCostNat = 0, cutDeptCostUsd = 0, cutDeptDayCut = 0;
+
+      cutPoKeys.forEach(po => {
+        const { buyer, entries } = cutByPo[po];
+        entries.sort((a: any, b: any) => {
+          if (a._date !== b._date) return a._date.localeCompare(b._date);
+          return numFromName(a.lines?.name || "") - numFromName(b.lines?.name || "");
+        });
+
+        // PO header label
+        y += 6;
+        if (y + 20 > ph - 12) { doc.addPage(); y = pageHead("CUTTING — PO WISE DETAIL & COST"); }
+        doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(30, 80, 180);
+        doc.text(`PO: ${po} — Buyer: ${buyer}`, m, y); y += 3;
+        doc.setTextColor(0);
+
+        let poCostNat = 0, poCostUsd = 0, poDayCut = 0;
+        const rows = entries.map((c: any) => {
+          const costNat = lineCost(c.man_power, c.hours_actual, c.ot_manpower_actual, c.ot_hours_actual);
+          const costU = toUsd(costNat);
+          poCostNat += costNat; poCostUsd += costU;
+          poDayCut += c.day_cutting || 0;
+          return [
+            fmtDate(c._date),
+            (c.lines?.name || c.lines?.line_id || "-").substring(0, 12),
+            (c.work_orders?.color || "-").substring(0, 13),
+            fN(c.day_cutting), fN(c.day_input), fN(c.total_cutting), fN(c.balance),
+            fN(c.man_power), fN(c.hours_actual), fN(c.ot_manpower_actual), fN(c.ot_hours_actual),
+            rate ? fNat(costNat) : "-", rate ? fUsd(costU) : "-",
+          ];
+        });
+        rows.push([`${po} Total`, "", "", fN(poDayCut), "", "", "", "", "", "", "", rate ? fNat(poCostNat) : "-", rate ? fUsd(poCostUsd) : "-"]);
+        y = drawTable(cutCols, rows, y, { boldLastRow: true, fs: 6.5, rh: 6, pgTitle: "CUTTING — PO WISE DETAIL & COST" });
+        y += 4;
+
+        cutDeptCostNat += poCostNat; cutDeptCostUsd += poCostUsd; cutDeptDayCut += poDayCut;
       });
 
-      let cutTotalCostNat = 0, cutTotalCostUsd = 0, cutTotalDay = 0;
-      const cutRows = allCutting.map((c: any) => {
-        const costNat = lineCost(c.man_power, c.hours_actual, c.ot_manpower_actual, c.ot_hours_actual);
-        const costU = toUsd(costNat);
-        cutTotalCostNat += costNat; cutTotalCostUsd += costU;
-        cutTotalDay += c.day_cutting || 0;
-        return [
-          fmtDate(c._date),
-          (c.lines?.name || c.lines?.line_id || "-").substring(0, 12),
-          ((c.work_orders?.po_number || "-") + " / " + (c.work_orders?.buyer || "-")).substring(0, 19),
-          (c.work_orders?.colour || "-").substring(0, 11),
-          fN(c.day_cutting), fN(c.day_input), fN(c.total_cutting), fN(c.balance),
-          fN(c.man_power), fN(c.hours_actual), fN(c.ot_hours_actual), fN(c.ot_manpower_actual),
-          rate ? fNat(costNat) : "-", rate ? fUsd(costU) : "-",
-        ];
-      });
-      cutRows.push(["", "TOTAL", "", "", fN(cutTotalDay), "", "", "", "", "", "", "", rate ? fNat(cutTotalCostNat) : "-", rate ? fUsd(cutTotalCostUsd) : "-"]);
-      y = drawTable(cutCols, cutRows, y, { boldLastRow: true, fs: 6.5, rh: 6, pgTitle: "CUTTING — LINE WISE DETAIL & COST" });
-    }
+      // Department total
+      if (y + 12 > ph - 12) { doc.addPage(); y = pageHead("CUTTING — PO WISE DETAIL & COST"); }
+      doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(0);
+      doc.text(`CUTTING DEPARTMENT TOTAL — Day Cut: ${fN(cutDeptDayCut)} | Cost: ${rate ? fNat(cutDeptCostNat) : "-"} (${rate ? fUsd(cutDeptCostUsd) : "-"})`, m, y);
+      y += 2;
+      doc.setDrawColor(0); doc.setLineWidth(0.5); doc.line(m, y, pw - m, y);
+    } } catch (e) { console.error("PDF cutting section error:", e); }
 
-    // ========== FINISHING DETAIL ==========
+    // ========== FINISHING DETAIL (grouped by PO) ==========
     const allFinishing = weekStats.flatMap(d => d.rawFinishing.map((f: any) => ({ ...f, _date: d.date, _dayName: d.dayName })));
-    if (allFinishing.length > 0) {
+    try { if (allFinishing.length > 0) {
       doc.addPage();
-      y = pageHead("FINISHING — OUTPUT, COST & REVENUE");
+      y = pageHead("FINISHING — PO WISE OUTPUT, COST & REVENUE");
 
       const finCols: Col[] = [
         { label: "Day", w: 18 },
-        { label: "PO", w: 28 },
-        { label: "Buyer", w: 22 },
         { label: "Thread", w: 16, align: "right" },
         { label: "Check", w: 14, align: "right" },
-        { label: "Button", w: 14, align: "right" },
+        { label: "Button", w: 16, align: "right" },
         { label: "Iron", w: 14, align: "right" },
         { label: "Get Up", w: 16, align: "right" },
         { label: "Poly", w: 16, align: "right" },
         { label: "Carton", w: 16, align: "right" },
         { label: "MP", w: 12, align: "right" },
         { label: "Hrs", w: 12, align: "right" },
-        { label: "Cost ($)", w: 22, align: "right" },
+        { label: "OT MP", w: 14, align: "right" },
+        { label: "OT Hrs", w: 14, align: "right" },
+        { label: "Cost ($)", w: 24, align: "right" },
         { label: "CM/Dz", w: 16, align: "right" },
-        { label: "Revenue ($)", w: cw - 236 > 0 ? cw - 236 : 22, align: "right" },
+        { label: "Revenue ($)", w: cw - 218 > 0 ? cw - 218 : 22, align: "right" },
       ];
 
-      allFinishing.sort((a: any, b: any) => a._date.localeCompare(b._date));
-
-      let finTotalCostUsd = 0, finTotalRevenue = 0, finTotalPoly = 0;
-      const finRows = allFinishing.map((f: any) => {
-        const costNat = lineCost(f.m_power_actual, f.actual_hours, f.ot_manpower_actual, f.ot_hours_actual);
-        const costU = toUsd(costNat);
-        finTotalCostUsd += costU;
-        const cm = f.work_orders?.cm_per_dozen;
-        const rev = cm && f.poly ? (cm / 12) * f.poly : 0;
-        finTotalRevenue += rev;
-        finTotalPoly += f.poly || 0;
-        return [
-          fmtDate(f._date),
-          (f.work_orders?.po_number || "-").substring(0, 15),
-          (f.work_orders?.buyer || "-").substring(0, 13),
-          fN(f.thread_cutting), fN(f.inside_check), fN(f.buttoning), fN(f.iron), fN(f.get_up),
-          fN(f.poly), fN(f.carton),
-          fN(f.m_power_actual), fN(f.actual_hours),
-          rate ? fUsd(costU) : "-",
-          cm ? "$" + cm.toFixed(2) : "-",
-          rev > 0 ? fUsd(Math.round(rev * 100) / 100) : "-",
-        ];
+      // Group by PO
+      const finByPo: Record<string, { buyer: string; cmDz: number | null; entries: any[] }> = {};
+      allFinishing.forEach((f: any) => {
+        const po = f.work_orders?.po_number || "Unknown PO";
+        if (!finByPo[po]) finByPo[po] = { buyer: f.work_orders?.buyer || "-", cmDz: f.work_orders?.cm_per_dozen || null, entries: [] };
+        finByPo[po].entries.push(f);
       });
-      finRows.push(["", "TOTAL", "", "", "", "", "", "", fN(finTotalPoly), "", "", "", rate ? fUsd(finTotalCostUsd) : "-", "", finTotalRevenue > 0 ? fUsd(Math.round(finTotalRevenue * 100) / 100) : "-"]);
-      y = drawTable(finCols, finRows, y, { boldLastRow: true, fs: 6.5, rh: 6, pgTitle: "FINISHING — OUTPUT, COST & REVENUE" });
-    }
+      const finPoKeys = Object.keys(finByPo).sort();
+
+      let finDeptCostUsd = 0, finDeptRevenue = 0, finDeptPoly = 0;
+
+      finPoKeys.forEach(po => {
+        const { buyer, cmDz, entries } = finByPo[po];
+        entries.sort((a: any, b: any) => a._date.localeCompare(b._date));
+
+        // PO header label
+        y += 6;
+        if (y + 20 > ph - 12) { doc.addPage(); y = pageHead("FINISHING — PO WISE OUTPUT, COST & REVENUE"); }
+        doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(30, 80, 180);
+        doc.text(`PO: ${po} — Buyer: ${buyer}${cmDz ? ` — CM/Dz: $${cmDz.toFixed(2)}` : ""}`, m, y); y += 3;
+        doc.setTextColor(0);
+
+        let poCostUsd = 0, poRevenue = 0, poPoly = 0;
+        const rows = entries.map((f: any) => {
+          const costNat = lineCost(f.m_power_actual, f.actual_hours, f.ot_manpower_actual, f.ot_hours_actual);
+          const costU = toUsd(costNat);
+          poCostUsd += costU;
+          const cm = f.work_orders?.cm_per_dozen;
+          const rev = cm && f.poly ? (cm / 12) * f.poly : 0;
+          poRevenue += rev;
+          poPoly += f.poly || 0;
+          return [
+            fmtDate(f._date),
+            fN(f.thread_cutting), fN(f.inside_check), fN(f.buttoning), fN(f.iron), fN(f.get_up),
+            fN(f.poly), fN(f.carton),
+            fN(f.m_power_actual), fN(f.actual_hours), fN(f.ot_manpower_actual), fN(f.ot_hours_actual),
+            rate ? fUsd(costU) : "-",
+            cm ? "$" + cm.toFixed(2) : "-",
+            rev > 0 ? fUsd(Math.round(rev * 100) / 100) : "-",
+          ];
+        });
+        rows.push([`${po} Total`, "", "", "", "", "", fN(poPoly), "", "", "", "", "", rate ? fUsd(poCostUsd) : "-", "", poRevenue > 0 ? fUsd(Math.round(poRevenue * 100) / 100) : "-"]);
+        y = drawTable(finCols, rows, y, { boldLastRow: true, fs: 6.5, rh: 6, pgTitle: "FINISHING — PO WISE OUTPUT, COST & REVENUE" });
+        y += 4;
+
+        finDeptCostUsd += poCostUsd; finDeptRevenue += poRevenue; finDeptPoly += poPoly;
+      });
+
+      // Department total
+      if (y + 12 > ph - 12) { doc.addPage(); y = pageHead("FINISHING — PO WISE OUTPUT, COST & REVENUE"); }
+      doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(0);
+      doc.text(`FINISHING DEPARTMENT TOTAL — Poly: ${fN(finDeptPoly)} | Cost: ${rate ? fUsd(finDeptCostUsd) : "-"} | Revenue: ${finDeptRevenue > 0 ? fUsd(Math.round(finDeptRevenue * 100) / 100) : "-"} | Profit: ${finDeptRevenue > 0 && rate ? fUsd(Math.round((finDeptRevenue - finDeptCostUsd) * 100) / 100) : "-"}`, m, y);
+      y += 2;
+      doc.setDrawColor(0); doc.setLineWidth(0.5); doc.line(m, y, pw - m, y);
+    } } catch (e) { console.error("PDF finishing section error:", e); }
 
     // ========== SIGN-OFF ==========
     doc.addPage();
@@ -755,10 +847,7 @@ export default function ThisWeek() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleDownloadPdf} disabled={loading || weekStats.length === 0}>
-            <FileDown className="h-4 w-4 mr-1.5" />
-            PDF
-          </Button>
+          <ReportExportDialog defaultType="weekly" weekOffset={weekOffset} />
           <Button
             variant="outline"
             size="icon"

@@ -16,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, Package, Search, Download, RefreshCw, Scissors, Warehouse, CalendarDays, Layers, ChevronDown, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
+import { Loader2, Package, Search, RefreshCw, Scissors, Warehouse, CalendarDays, Layers, ChevronDown, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
 import { SewingMachine } from "@/components/icons/SewingMachine";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -26,10 +26,10 @@ import { formatTimeInTimezone, getTodayInTimezone, toISODate } from "@/lib/date-
 import { subDays, format } from "date-fns";
 import { StorageBinCardDetailModal } from "@/components/StorageBinCardDetailModal";
 import { FinishingSubmissionView, FinishingTargetData, FinishingActualData } from "@/components/FinishingSubmissionView";
-import { ExportSubmissionsDialog } from "@/components/ExportSubmissionsDialog";
 import { useHeadcountCost } from "@/hooks/useHeadcountCost";
 import { DollarSign, TrendingUp as TrendingUpIcon, TrendingDown } from "lucide-react";
 import { DailyReportButton, DailyReportData, DailyReportSewingLine, DailyReportCuttingLine, DailyReportFinishingLine, DailyReportNote } from "@/components/DailyProductionReport";
+import { ReportExportDialog } from "@/components/ReportExportDialog";
 
 interface SewingUpdate {
   id: string;
@@ -290,7 +290,7 @@ export default function TodayUpdates() {
       transactions: any[];
     }[];
   } | null>(null);
-  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+
   const [selectedFinishingLog, setSelectedFinishingLog] = useState<FinishingDailyLog | null>(null);
   const [finishingLogModalOpen, setFinishingLogModalOpen] = useState(false);
   const [financialsExpanded, setFinancialsExpanded] = useState(false);
@@ -1114,11 +1114,7 @@ export default function TodayUpdates() {
             <RefreshCw className="h-4 w-4 mr-1" />
             Refresh
           </Button>
-          <DailyReportButton data={dailyReportData} loading={loading} />
-          <Button variant="outline" size="sm" onClick={() => setExportDialogOpen(true)}>
-            <Download className="h-4 w-4 mr-1" />
-            Export
-          </Button>
+          <ReportExportDialog defaultType="daily" date={selectedDateStr} dailyReportData={dailyReportData} />
         </div>
       </div>
 
@@ -2477,69 +2473,6 @@ export default function TodayUpdates() {
         );
       })()}
 
-      {/* Export Dialog */}
-      <ExportSubmissionsDialog
-        open={exportDialogOpen}
-        onOpenChange={setExportDialogOpen}
-        data={{
-          sewingTargets: sewingTargets,
-          finishingTargets: [],
-          sewingActuals: [
-            ...sewingUpdates.map(u => ({
-              ...u,
-              good_today: u.output_qty,
-              reject_today: u.reject_qty,
-              rework_today: u.rework_qty,
-              cumulative_good_total: u.output_qty,
-              manpower_actual: u.manpower,
-              ot_hours_actual: u.ot_hours,
-              actual_stage_progress: u.stage_progress,
-              remarks: u.notes,
-            })),
-            ...sewingActuals.map(a => ({
-              ...a,
-              lines: a.lines,
-              work_orders: a.work_orders,
-            })),
-          ],
-          finishingActuals: finishingDailyLogs
-            .filter(log => log.log_type === 'OUTPUT')
-            .map(log => ({
-              ...log,
-              day_poly: log.poly || 0,
-              day_carton: log.carton || 0,
-              total_poly: log.poly || 0,
-              total_carton: log.carton || 0,
-            })),
-          cuttingTargets: cuttingTargets,
-          cuttingActuals: cuttingActuals,
-          storageBinCards: (storageTransactions || []).map(t => ({
-            id: t.storage_bin_cards?.id,
-            created_at: t.created_at,
-            buyer: t.storage_bin_cards?.buyer,
-            style: t.storage_bin_cards?.style,
-            work_orders: t.storage_bin_cards?.work_orders,
-            totalReceived: t.receive_qty,
-            totalIssued: t.issue_qty,
-            balance: t.balance_qty,
-          })),
-          finishingDailyLogs: finishingDailyLogs || [],
-        }}
-        dateRange="1"
-        financials={financials.hasData ? {
-          totalRevenue: financials.totalRevenue,
-          totalCostUsd: financials.totalCostUsd,
-          totalCostNative: financials.totalCostNative,
-          costCurrency: financials.costCurrency,
-          profit: financials.profit,
-          margin: financials.margin,
-          sewingCostUsd: financials.sewingCostUsd,
-          cuttingCostUsd: financials.cuttingCostUsd,
-          finishingCostUsd: financials.finishingCostUsd,
-          bdtToUsdRate: bdtToUsd,
-          revenueByPo: financials.revenueByPo,
-        } : null}
-      />
     </div>
   );
 }
