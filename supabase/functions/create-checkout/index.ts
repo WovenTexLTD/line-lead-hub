@@ -114,7 +114,7 @@ serve(async (req) => {
       logStep("Existing customer found", { customerId });
     }
 
-    const origin = req.headers.get("origin") || "https://production-portal.lovable.app";
+    const origin = req.headers.get("origin") || "https://productionportal.cloud";
     
     // If starting trial, create checkout with trial period
     if (startTrial) {

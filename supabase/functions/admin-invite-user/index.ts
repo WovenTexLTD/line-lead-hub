@@ -307,7 +307,7 @@ Deno.serve(async (req) => {
     }
 
     // Send password reset email so user can set their password
-    const origin = req.headers.get("origin") || "https://lovable.dev";
+    const origin = req.headers.get("origin") || "https://productionportal.cloud";
     const { error: resetError } = await adminClient.auth.admin.generateLink({
       type: "recovery",
       email,
