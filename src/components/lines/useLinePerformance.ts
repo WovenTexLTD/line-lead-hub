@@ -218,20 +218,20 @@ export function useLinePerformance() {
 
   // Compute line performance data
   const lines = useMemo((): LinePerformanceData[] => {
-    // Build a set of (line_id, date) pairs that have actuals submitted
-    // so we can exclude target-only dates from achievement/variance stats
-    const datesWithActuals = new Map<string, Set<string>>();
+    // Build a set of work_order_ids that have actuals submitted per line
+    // so we can exclude target-only POs from achievement/variance stats
+    const woIdsWithActuals = new Map<string, Set<string>>();
     rawActuals.forEach((a: any) => {
-      if (!datesWithActuals.has(a.line_id)) datesWithActuals.set(a.line_id, new Set());
-      datesWithActuals.get(a.line_id)!.add(a.production_date);
+      if (!woIdsWithActuals.has(a.line_id)) woIdsWithActuals.set(a.line_id, new Set());
+      woIdsWithActuals.get(a.line_id)!.add(a.work_order_id);
     });
 
-    // Group targets by line_id + work_order_id, only for dates with actuals
+    // Group targets by line_id + work_order_id, only for POs that have actuals
     const targetsByLine = new Map<string, Map<string, { total: number; manpower: number; dates: Set<string> }>>();
     rawTargets.forEach((t: any) => {
-      // Skip target-only dates (no actuals submitted for this line on this date)
-      const lineDates = datesWithActuals.get(t.line_id);
-      if (!lineDates || !lineDates.has(t.production_date)) return;
+      // Skip target-only POs (no actuals submitted for this line + work order)
+      const lineWoActuals = woIdsWithActuals.get(t.line_id);
+      if (!lineWoActuals || !lineWoActuals.has(t.work_order_id)) return;
 
       if (!targetsByLine.has(t.line_id)) targetsByLine.set(t.line_id, new Map());
       const lineTargets = targetsByLine.get(t.line_id)!;
