@@ -342,11 +342,7 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange, on
                     )}
                     <FieldDisplay
                       label={t('modals.poly')}
-                      value={
-                        actual.actual_hours && actual.actual_hours > 0 && actual.ot_hours_actual && actual.ot_hours_actual > 0
-                          ? Math.round((actual.poly / actual.actual_hours) * (actual.actual_hours + actual.ot_hours_actual))
-                          : actual.poly
-                      }
+                      value={actual.poly}
                       className="text-lg text-success"
                     />
                     {actual.actual_hours != null && actual.actual_hours > 0 && (
@@ -354,11 +350,7 @@ export function FinishingSubmissionView({ target, actual, open, onOpenChange, on
                     )}
                     <FieldDisplay
                       label={t('modals.carton')}
-                      value={
-                        actual.actual_hours && actual.actual_hours > 0 && actual.ot_hours_actual && actual.ot_hours_actual > 0
-                          ? Math.round((actual.carton / actual.actual_hours) * (actual.actual_hours + actual.ot_hours_actual))
-                          : actual.carton
-                      }
+                      value={actual.carton}
                       className="text-muted-foreground"
                     />
                   </div>
