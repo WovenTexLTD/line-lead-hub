@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { getTodayInTimezone } from "@/lib/date-utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,8 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Loader2, Calendar, TrendingUp, TrendingDown, Minus, Package, ChevronLeft, ChevronRight, Scissors, AlertTriangle } from "lucide-react";
+import { Loader2, Calendar, TrendingUp, TrendingDown, Minus, Package, ChevronLeft, ChevronRight, Scissors, AlertTriangle, DollarSign } from "lucide-react";
 import { SewingMachine } from "@/components/icons/SewingMachine";
+import { ReportExportDialog } from "@/components/ReportExportDialog";
+import { useHeadcountCost } from "@/hooks/useHeadcountCost";
+import { calcSewingFinancials, SewingFinancials } from "@/lib/sewing-financials";
 
 interface DailyStats {
   date: string;
@@ -30,6 +34,7 @@ export default function ThisWeek() {
   const [loading, setLoading] = useState(true);
   const [weekOffset, setWeekOffset] = useState(0); // 0 = current week, -1 = last week, etc.
   const [weekStats, setWeekStats] = useState<DailyStats[]>([]);
+  const [weekSewingActuals, setWeekSewingActuals] = useState<any[]>([]);
   const [totals, setTotals] = useState({
     sewingOutput: 0,
     finishingTarget: 0,
@@ -40,6 +45,23 @@ export default function ThisWeek() {
     totalBlockers: 0,
     leftoverYards: 0,
   });
+  const { headcountCost, isConfigured: costConfigured } = useHeadcountCost();
+  const [bdtToUsd, setBdtToUsd] = useState<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchRate() {
+      try {
+        const res = await fetch('https://open.er-api.com/v6/latest/USD');
+        const json = await res.json();
+        if (!cancelled && json?.rates?.BDT) setBdtToUsd(1 / json.rates.BDT);
+      } catch {
+        if (!cancelled) setBdtToUsd(1 / 121);
+      }
+    }
+    fetchRate();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (profile?.factory_id) {
@@ -56,10 +78,24 @@ export default function ThisWeek() {
       const today = new Date(todayStr + "T00:00:00");
       const currentWeekStart = new Date(today);
       currentWeekStart.setDate(today.getDate() - today.getDay()); // Start of current week (Sunday)
-      
+
       // Apply week offset
       const weekStart = new Date(currentWeekStart);
       weekStart.setDate(currentWeekStart.getDate() + (weekOffset * 7));
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      const weekStartStr = format(weekStart, "yyyy-MM-dd");
+      const weekEndStr = format(weekEnd, "yyyy-MM-dd");
+
+      // Fetch all sewing actuals for the week (with CM) in one query for financials
+      const { data: weekSewingData } = await supabase
+        .from('sewing_actuals')
+        .select('good_today, manpower_actual, hours_actual, ot_manpower_actual, ot_hours_actual, work_orders(po_number, buyer, style, cm_per_dozen)')
+        .eq('factory_id', profile.factory_id)
+        .gte('production_date', weekStartStr)
+        .lte('production_date', weekEndStr);
+      setWeekSewingActuals(weekSewingData || []);
+
       const days: DailyStats[] = [];
       let totalSewing = 0;
       let totalFinishingTarget = 0;
@@ -272,6 +308,7 @@ export default function ThisWeek() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <ReportExportDialog defaultType="weekly" weekOffset={weekOffset} />
           <Button
             variant="outline"
             size="icon"
@@ -354,6 +391,97 @@ export default function ThisWeek() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Weekly Financial Summary */}
+      {(() => {
+        if (weekSewingActuals.length === 0) return null;
+        const fin: SewingFinancials = calcSewingFinancials(
+          weekSewingActuals,
+          headcountCost.value ?? 0,
+          headcountCost.currency,
+          bdtToUsd,
+        );
+        return (
+          <Card className="relative overflow-hidden border-border/50">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-600" />
+            <CardHeader className="pt-5 pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-8 w-8 rounded-lg bg-blue-100 dark:bg-blue-950/50 flex items-center justify-center shrink-0">
+                    <DollarSign className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <CardTitle className="text-base">Weekly Sewing Financials</CardTitle>
+                </div>
+                <Link to="/finances" className="text-xs text-blue-600 dark:text-blue-400 hover:underline shrink-0">
+                  Full Report →
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-4">
+              {!fin.hasData && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 rounded-lg px-3 py-2">
+                  CM rates not yet set on work orders — output value cannot be calculated.
+                </p>
+              )}
+              {/* Metric tiles */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/20 p-3 border border-emerald-100 dark:border-emerald-900/30">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground/60 mb-1">Output Value</p>
+                  <p className="text-xl font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
+                    {fin.totalValue > 0 ? `$${fin.totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'}
+                  </p>
+                </div>
+                <div className="rounded-xl bg-muted/40 p-3 border border-border/50">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground/60 mb-1">Operating Cost</p>
+                  <p className="text-xl font-bold tabular-nums">
+                    {fin.totalCostUsd > 0 ? `$${fin.totalCostUsd.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : <span className="text-muted-foreground/50 text-sm font-normal">Not configured</span>}
+                  </p>
+                </div>
+                <div className={`rounded-xl p-3 border ${fin.profit > 0 ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/30' : fin.profit < 0 ? 'bg-rose-50 dark:bg-rose-950/20 border-rose-100 dark:border-rose-900/30' : 'bg-muted/40 border-border/50'}`}>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground/60 mb-1">Margin</p>
+                  <p className={`text-xl font-bold tabular-nums ${fin.profit > 0 ? 'text-emerald-700 dark:text-emerald-400' : fin.profit < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-muted-foreground/50'}`}>
+                    {fin.hasData ? <>{fin.profit >= 0 ? '+' : '−'}${Math.abs(fin.profit).toLocaleString(undefined, { maximumFractionDigits: 0 })}{fin.margin !== 0 && <span className="text-xs font-medium ml-1.5 opacity-70">{fin.margin}%</span>}</> : '—'}
+                  </p>
+                </div>
+              </div>
+
+              {/* PO breakdown table */}
+              {fin.valueByPo.length > 0 && (
+                <div className="rounded-xl border overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b bg-muted/20">
+                        <th className="text-left py-2.5 px-3 font-bold uppercase tracking-[0.1em] text-muted-foreground/60">Work Order</th>
+                        <th className="text-right py-2.5 px-3 font-bold uppercase tracking-[0.1em] text-muted-foreground/60">Output</th>
+                        <th className="text-right py-2.5 px-3 font-bold uppercase tracking-[0.1em] text-muted-foreground/60 hidden sm:table-cell">Prod CM/pc</th>
+                        <th className="text-right py-2.5 px-3 font-bold uppercase tracking-[0.1em] text-muted-foreground/60">Value</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {fin.valueByPo.map(row => (
+                        <tr key={row.po} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                          <td className="py-2.5 px-3">
+                            <p className="font-semibold">{row.po}</p>
+                            {row.buyer && <p className="text-muted-foreground text-[11px]">{row.buyer}</p>}
+                          </td>
+                          <td className="py-2.5 px-3 text-right tabular-nums text-muted-foreground">{row.output.toLocaleString()} pcs</td>
+                          <td className="py-2.5 px-3 text-right tabular-nums text-muted-foreground hidden sm:table-cell">${row.productionCmPc.toFixed(3)}</td>
+                          <td className="py-2.5 px-3 text-right tabular-nums font-semibold text-emerald-700 dark:text-emerald-400">
+                            ${row.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <p className="text-[10px] text-muted-foreground/50">
+                Sewing dept · Production CM = 70% of entered CM · Costs in USD
+              </p>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Daily Breakdown */}
       <Tabs defaultValue="sewing">

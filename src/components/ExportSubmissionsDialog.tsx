@@ -113,42 +113,28 @@ export function ExportSubmissionsDialog({
       rows.push([`Departments Included: ${deptParts.join(", ")}`]);
       rows.push([]);
 
-      // ── DAILY FINANCIALS ──
+      // ── SEWING FINANCIALS ──
       if (financials && (financials.totalRevenue > 0 || financials.totalCostUsd > 0)) {
-        rows.push(["═══ DAILY FINANCIALS (USD) ═══"]);
+        rows.push(["═══ SEWING FINANCIALS (USD) ═══"]);
+        rows.push(["Note: Sewing dept only. Production CM = 70% of entered CM/dozen."]);
         rows.push([]);
         rows.push(["Metric", "Amount (USD)"]);
-        rows.push(["Revenue", `$${financials.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`]);
-        rows.push(["Cost", `$${financials.totalCostUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`]);
-        rows.push(["Profit", `${financials.profit >= 0 ? '+' : '-'}$${Math.abs(financials.profit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`]);
-        rows.push(["Margin", `${financials.margin}%`]);
+        rows.push(["Output Value", `$${financials.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`]);
+        rows.push(["Operating Cost", `$${financials.totalCostUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`]);
+        rows.push(["Operating Margin", `${financials.profit >= 0 ? '+' : '-'}$${Math.abs(financials.profit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`]);
+        rows.push(["Margin %", `${financials.margin}%`]);
         rows.push([]);
 
         if (financials.costCurrency === 'BDT' && financials.bdtToUsdRate) {
-          rows.push(["Cost in BDT", `৳${financials.totalCostNative.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`]);
+          rows.push(["Operating Cost in BDT", `৳${financials.totalCostNative.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`]);
           rows.push(["Exchange Rate", `${(1 / financials.bdtToUsdRate).toFixed(2)} BDT/USD`]);
           rows.push([]);
         }
 
-        // Cost breakdown
-        if (financials.totalCostUsd > 0) {
-          rows.push(["COST BREAKDOWN", "Amount (USD)", "% of Total"]);
-          const depts = [
-            { label: 'Sewing', value: financials.sewingCostUsd },
-            { label: 'Cutting', value: financials.cuttingCostUsd },
-            { label: 'Finishing', value: financials.finishingCostUsd },
-          ].filter(d => d.value > 0);
-          depts.forEach(d => {
-            const pct = financials.totalCostUsd > 0 ? ((d.value / financials.totalCostUsd) * 100).toFixed(1) : '0';
-            rows.push([d.label, `$${d.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, `${pct}%`]);
-          });
-          rows.push([]);
-        }
-
-        // Revenue by PO
+        // Output value by PO
         if (financials.revenueByPo.length > 0) {
-          rows.push(["REVENUE BY PO", "", "", "", ""]);
-          rows.push(["PO Number", "Buyer", "Output (pcs)", "CM/Dozen", "Revenue (USD)"]);
+          rows.push(["OUTPUT VALUE BY WORK ORDER", "", "", "", ""]);
+          rows.push(["PO Number", "Buyer", "Sewing Output (pcs)", "CM/Dozen (entered)", "Output Value (USD)"]);
           financials.revenueByPo.forEach(r => {
             rows.push([
               r.po, r.buyer, r.output.toLocaleString(),

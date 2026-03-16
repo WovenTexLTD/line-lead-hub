@@ -29,7 +29,8 @@ import { FinishingSubmissionView, FinishingTargetData, FinishingActualData } fro
 import { ExportSubmissionsDialog } from "@/components/ExportSubmissionsDialog";
 import { useHeadcountCost } from "@/hooks/useHeadcountCost";
 import { DollarSign, TrendingUp as TrendingUpIcon, TrendingDown } from "lucide-react";
-import { DailyReportButton, DailyReportData, DailyReportSewingLine, DailyReportCuttingLine, DailyReportFinishingLine } from "@/components/DailyProductionReport";
+import { DailyReportButton, DailyReportData, DailyReportSewingLine, DailyReportCuttingLine, DailyReportFinishingLine, DailyReportNote } from "@/components/DailyProductionReport";
+import { ReportExportDialog } from "@/components/ReportExportDialog";
 
 interface SewingUpdate {
   id: string;
@@ -290,9 +291,9 @@ export default function TodayUpdates() {
     }[];
   } | null>(null);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [productionNotes, setProductionNotes] = useState<DailyReportNote[]>([]);
   const [selectedFinishingLog, setSelectedFinishingLog] = useState<FinishingDailyLog | null>(null);
   const [finishingLogModalOpen, setFinishingLogModalOpen] = useState(false);
-  const [financialsExpanded, setFinancialsExpanded] = useState(false);
   const [expandedStorageGroups, setExpandedStorageGroups] = useState<Set<string>>(new Set());
 
   // Date picker state
@@ -668,89 +669,70 @@ export default function TodayUpdates() {
   const totalCutting = cuttingActuals.reduce((sum, c) => sum + (c.day_cutting || 0), 0);
   const totalStorageReceived = storageTransactions.reduce((sum, s) => sum + (s.receive_qty || 0), 0);
 
-  // ── Financial calculations ──
+  // ── Sewing-only financial calculations ──
   const financials = useMemo(() => {
     const rate = costConfigured && headcountCost.value ? headcountCost.value : 0;
     const costCurrency = headcountCost.currency;
 
-    // Revenue: only finishing poly output × (cm_per_dozen / 12)
-    const revenueByPo: { po: string; buyer: string; style: string; output: number; cmDz: number; revenue: number }[] = [];
-    let totalRevenue = 0;
+    // Sewing value: output × (cm_per_dozen × 0.70) / 12
+    const valueByPo: { po: string; buyer: string; style: string; output: number; cmDz: number; productionCmDz: number; value: number }[] = [];
+    const valueByPoMap = new Map<string, typeof valueByPo[0]>();
+    let totalValue = 0;
 
-    const finishingOutputLogs = finishingDailyLogs.filter(l => l.log_type === 'OUTPUT');
-    finishingOutputLogs.forEach((log) => {
-      const cm = log.work_orders?.cm_per_dozen;
-      const output = log.poly || 0;
+    sewingActuals.forEach((s) => {
+      const cm = s.work_orders?.cm_per_dozen;
+      const output = s.good_today || 0;
       if (cm && output) {
-        const rev = (cm / 12) * output;
-        totalRevenue += rev;
-        revenueByPo.push({
-          po: log.work_orders?.po_number || 'Unknown',
-          buyer: log.work_orders?.buyer || '',
-          style: log.work_orders?.style || '',
-          output,
-          cmDz: cm,
-          revenue: rev,
-        });
+        const productionCmDz = cm * 0.70;
+        const value = (productionCmDz / 12) * output;
+        totalValue += value;
+        const po = s.work_orders?.po_number || 'Unknown';
+        const existing = valueByPoMap.get(po);
+        if (existing) {
+          existing.output += output;
+          existing.value += value;
+        } else {
+          valueByPoMap.set(po, {
+            po,
+            buyer: s.work_orders?.buyer || '',
+            style: s.work_orders?.style || '',
+            output,
+            cmDz: cm,
+            productionCmDz,
+            value,
+          });
+        }
       }
     });
 
-    // Cost by department
-    let sewingCost = 0;
-    let cuttingCost = 0;
-    let finishingCost = 0;
-
+    // Sewing cost only
+    let sewingCostNative = 0;
     if (rate > 0) {
-      // Sewing
       sewingActuals.forEach((s) => {
-        if (s.manpower_actual && s.hours_actual) sewingCost += rate * s.manpower_actual * s.hours_actual;
-        if (s.ot_manpower_actual && s.ot_hours_actual) sewingCost += rate * s.ot_manpower_actual * s.ot_hours_actual;
-      });
-
-      // Cutting
-      cuttingActuals.forEach((c) => {
-        if (c.man_power && c.hours_actual) cuttingCost += rate * c.man_power * c.hours_actual;
-        if (c.ot_manpower_actual && c.ot_hours_actual) cuttingCost += rate * c.ot_manpower_actual * c.ot_hours_actual;
-      });
-
-      // Finishing
-      finishingOutputLogs.forEach((log) => {
-        if (log.m_power_actual && log.actual_hours) finishingCost += rate * log.m_power_actual * log.actual_hours;
-        if (log.ot_manpower_actual && log.ot_hours_actual) finishingCost += rate * log.ot_manpower_actual * log.ot_hours_actual;
+        if (s.manpower_actual && s.hours_actual) sewingCostNative += rate * s.manpower_actual * s.hours_actual;
+        if (s.ot_manpower_actual && s.ot_hours_actual) sewingCostNative += rate * s.ot_manpower_actual * s.ot_hours_actual;
       });
     }
 
-    const totalCostNative = sewingCost + cuttingCost + finishingCost;
-
-    // Convert cost to USD
-    let totalCostUsd = totalCostNative;
-    let sewingCostUsd = sewingCost;
-    let cuttingCostUsd = cuttingCost;
-    let finishingCostUsd = finishingCost;
+    let totalCostUsd = sewingCostNative;
     if (costCurrency === 'BDT' && bdtToUsd) {
-      totalCostUsd = totalCostNative * bdtToUsd;
-      sewingCostUsd = sewingCost * bdtToUsd;
-      cuttingCostUsd = cuttingCost * bdtToUsd;
-      finishingCostUsd = finishingCost * bdtToUsd;
+      totalCostUsd = sewingCostNative * bdtToUsd;
     }
 
-    const profit = totalRevenue - totalCostUsd;
-    const margin = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0;
+    const profit = totalValue - totalCostUsd;
+    const margin = totalValue > 0 ? (profit / totalValue) * 100 : 0;
 
     return {
-      revenueByPo,
-      totalRevenue: Math.round(totalRevenue * 100) / 100,
-      totalCostNative: Math.round(totalCostNative * 100) / 100,
+      valueByPo: Array.from(valueByPoMap.values()),
+      totalValue: Math.round(totalValue * 100) / 100,
+      totalCostNative: Math.round(sewingCostNative * 100) / 100,
       totalCostUsd: Math.round(totalCostUsd * 100) / 100,
-      sewingCostUsd: Math.round(sewingCostUsd * 100) / 100,
-      cuttingCostUsd: Math.round(cuttingCostUsd * 100) / 100,
-      finishingCostUsd: Math.round(finishingCostUsd * 100) / 100,
       profit: Math.round(profit * 100) / 100,
       margin: Math.round(margin * 10) / 10,
       costCurrency,
-      hasData: totalRevenue > 0 || totalCostNative > 0,
+      hasData: totalValue > 0 || sewingCostNative > 0,
     };
-  }, [finishingDailyLogs, sewingActuals, cuttingActuals, costConfigured, headcountCost.value, headcountCost.currency, bdtToUsd]);
+  }, [sewingActuals, costConfigured, headcountCost.value, headcountCost.currency, bdtToUsd]);
 
   // ── Daily Production Report PDF data ──
   const dailyReportData = useMemo((): DailyReportData => {
@@ -834,21 +816,25 @@ export default function TodayUpdates() {
       headcountCostRate: headcountCost.value ?? null,
       headcountCostCurrency: headcountCost.currency,
       financials: financials.hasData ? {
-        totalRevenue: financials.totalRevenue,
+        totalRevenue: financials.totalValue,
         totalCostUsd: financials.totalCostUsd,
         totalCostNative: financials.totalCostNative,
         costCurrency: financials.costCurrency,
         profit: financials.profit,
         margin: financials.margin,
-        sewingCostUsd: financials.sewingCostUsd,
-        cuttingCostUsd: financials.cuttingCostUsd,
-        finishingCostUsd: financials.finishingCostUsd,
+        sewingCostUsd: financials.totalCostUsd,
+        cuttingCostUsd: 0,
+        finishingCostUsd: 0,
         bdtToUsdRate: bdtToUsd,
-        revenueByPo: financials.revenueByPo,
+        revenueByPo: financials.valueByPo.map(r => ({
+          po: r.po, buyer: r.buyer, style: r.style,
+          output: r.output, cmDz: r.cmDz, revenue: r.value,
+        })),
       } : null,
       generatedBy: profile?.full_name || null,
+      notes: productionNotes,
     };
-  }, [sewingActuals, sewingTargets, cuttingActuals, finishingDailyLogs, factory?.name, selectedDateStr, financials, bdtToUsd, profile?.full_name, headcountCost.value, headcountCost.currency]);
+  }, [sewingActuals, sewingTargets, cuttingActuals, finishingDailyLogs, factory?.name, selectedDateStr, financials, bdtToUsd, profile?.full_name, headcountCost.value, headcountCost.currency, productionNotes]);
 
   const handleSewingClick = (update: SewingUpdate) => {
     setSewingViewKey(null);
@@ -1065,11 +1051,7 @@ export default function TodayUpdates() {
             <RefreshCw className="h-4 w-4 mr-1" />
             Refresh
           </Button>
-          <DailyReportButton data={dailyReportData} loading={loading} />
-          <Button variant="outline" size="sm" onClick={() => setExportDialogOpen(true)}>
-            <Download className="h-4 w-4 mr-1" />
-            Export
-          </Button>
+          <ReportExportDialog defaultType="daily" date={selectedDateStr} dailyReportData={dailyReportData} />
         </div>
       </div>
 
@@ -1146,140 +1128,43 @@ export default function TodayUpdates() {
 
       {/* Financial Summary */}
       {financials.hasData && (
-        <div className="space-y-2">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="h-7 w-7 rounded-lg bg-blue-500/10 flex items-center justify-center">
+        <Card className="border-border/50">
+          <CardContent className="p-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 shrink-0">
                 <DollarSign className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                <span className="text-xs font-medium text-muted-foreground">Today's Financials</span>
               </div>
-              <span className="text-sm font-semibold">Daily Financials</span>
-              <span className="text-[10px] text-muted-foreground">(USD)</span>
+              <div className="flex items-center gap-4 flex-1 justify-center">
+                <div className="text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Output Value</p>
+                  <p className="text-sm font-bold font-mono text-emerald-700 dark:text-emerald-400">
+                    ${financials.totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  </p>
+                </div>
+                <div className="text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Operating Cost</p>
+                  <p className="text-sm font-bold font-mono text-red-600 dark:text-red-400">
+                    ${financials.totalCostUsd.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  </p>
+                </div>
+                <div className="text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Operating Margin</p>
+                  <p className={`text-sm font-bold font-mono ${financials.profit >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {financials.profit >= 0 ? '+' : '-'}${Math.abs(financials.profit).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    {financials.margin !== 0 && <span className="text-[10px] font-normal ml-1 text-muted-foreground">{financials.margin}%</span>}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate('/finances')}
+                className="text-xs text-blue-600 dark:text-blue-400 hover:underline shrink-0"
+              >
+                Details →
+              </button>
             </div>
-            {financials.costCurrency === 'BDT' && bdtToUsd && (
-              <span className="text-[10px] text-muted-foreground">
-                Rate: {(1 / bdtToUsd).toFixed(1)} BDT/USD
-              </span>
-            )}
-          </div>
-
-          {/* Revenue / Cost / Profit cards */}
-          <div className="grid grid-cols-3 gap-3">
-            <Card className="relative overflow-hidden border-emerald-500/20">
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-emerald-500/0" />
-              <CardContent className="p-4 relative">
-                <p className="text-[10px] md:text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Revenue</p>
-                <p className="font-mono text-xl md:text-2xl font-bold text-emerald-700 dark:text-emerald-400 tracking-tight">
-                  ${financials.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Finishing output</p>
-              </CardContent>
-            </Card>
-
-            <Card className="relative overflow-hidden border-red-500/20">
-              <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-red-500/0" />
-              <CardContent className="p-4 relative">
-                <p className="text-[10px] md:text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Cost</p>
-                <p className="font-mono text-xl md:text-2xl font-bold text-red-600 dark:text-red-400 tracking-tight">
-                  ${financials.totalCostUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">
-                  {financials.costCurrency === 'BDT' && bdtToUsd
-                    ? `৳${financials.totalCostNative.toLocaleString()}`
-                    : 'All departments'}
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className={`relative overflow-hidden ${financials.profit >= 0 ? 'border-emerald-500/20' : 'border-red-500/20'}`}>
-              <div className={`absolute inset-0 bg-gradient-to-br ${financials.profit >= 0 ? 'from-emerald-500/5 to-emerald-500/0' : 'from-red-500/5 to-red-500/0'}`} />
-              <CardContent className="p-4 relative">
-                <p className="text-[10px] md:text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Profit</p>
-                <p className={`font-mono text-xl md:text-2xl font-bold tracking-tight ${financials.profit >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                  {financials.profit >= 0 ? '+' : '-'}${Math.abs(financials.profit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">
-                  {financials.margin !== 0 ? `${financials.margin}% margin` : '—'}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Expandable details */}
-          <button
-            onClick={() => setFinancialsExpanded(!financialsExpanded)}
-            className="w-full flex items-center justify-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 py-1.5 transition-colors"
-          >
-            <span>{financialsExpanded ? 'Hide details' : 'View breakdown'}</span>
-            <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${financialsExpanded ? 'rotate-180' : ''}`} />
-          </button>
-
-          {financialsExpanded && (
-            <Card className="border-blue-500/20">
-              <CardContent className="p-4 space-y-4">
-                {/* Cost breakdown by department */}
-                {financials.totalCostUsd > 0 && (
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-2.5 uppercase tracking-wider">Cost Breakdown</p>
-                    <div className="space-y-2">
-                      {[
-                        { label: 'Sewing', value: financials.sewingCostUsd, color: 'bg-blue-500' },
-                        { label: 'Cutting', value: financials.cuttingCostUsd, color: 'bg-emerald-500' },
-                        { label: 'Finishing', value: financials.finishingCostUsd, color: 'bg-violet-500' },
-                      ].filter(d => d.value > 0).map((dept) => (
-                        <div key={dept.label} className="flex items-center gap-3">
-                          <span className="text-xs text-muted-foreground w-16">{dept.label}</span>
-                          <div className="flex-1 h-2.5 rounded-full bg-muted overflow-hidden">
-                            <div
-                              className={`h-full rounded-full ${dept.color}`}
-                              style={{ width: `${Math.min((dept.value / financials.totalCostUsd) * 100, 100)}%` }}
-                            />
-                          </div>
-                          <span className="font-mono text-xs font-medium w-20 text-right">
-                            ${dept.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Revenue by PO */}
-                {financials.revenueByPo.length > 0 && (
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-2.5 uppercase tracking-wider">Revenue by PO</p>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="border-b text-muted-foreground">
-                            <th className="text-left py-1.5 font-medium">PO</th>
-                            <th className="text-left py-1.5 font-medium">Buyer</th>
-                            <th className="text-right py-1.5 font-medium">Output</th>
-                            <th className="text-right py-1.5 font-medium">CM/Dz</th>
-                            <th className="text-right py-1.5 font-medium">Revenue</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {financials.revenueByPo.map((row, i) => (
-                            <tr key={i} className="border-b border-muted/50">
-                              <td className="py-1.5 font-mono">{row.po}</td>
-                              <td className="py-1.5">{row.buyer}</td>
-                              <td className="py-1.5 text-right font-mono">{row.output.toLocaleString()}</td>
-                              <td className="py-1.5 text-right font-mono">${row.cmDz.toFixed(2)}</td>
-                              <td className="py-1.5 text-right font-mono font-medium text-emerald-700 dark:text-emerald-400">
-                                ${row.revenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Search */}

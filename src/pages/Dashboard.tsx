@@ -319,49 +319,32 @@ export default function Dashboard() {
     return () => { cancelled = true; };
   }, []);
 
-  // Total daily cost across all departments (in native currency)
+  // Sewing-only daily cost (native currency)
   const totalDayCost = useMemo(() => {
     if (!costConfigured || !headcountCost.value) return null;
     const rate = headcountCost.value;
     let total = 0;
-
     sewingEndOfDay.forEach((s) => {
       if (s.manpower && s.hours_actual) total += rate * s.manpower * s.hours_actual;
       if (s.ot_manpower && s.ot_hours) total += rate * s.ot_manpower * s.ot_hours;
     });
-
-    cuttingSubmissions.forEach((c) => {
-      if (c.man_power && c.hours_actual) total += rate * c.man_power * c.hours_actual;
-      if (c.ot_manpower_actual && c.ot_hours_actual) total += rate * c.ot_manpower_actual * c.ot_hours_actual;
-    });
-
-    finishingDailyLogs
-      .filter((log: any) => log.log_type === 'OUTPUT')
-      .forEach((log: any) => {
-        if (log.m_power_actual && log.actual_hours) total += rate * log.m_power_actual * log.actual_hours;
-        if (log.ot_manpower_actual && log.ot_hours_actual) total += rate * log.ot_manpower_actual * log.ot_hours_actual;
-      });
-
     return Math.round(total * 100) / 100;
-  }, [costConfigured, headcountCost.value, sewingEndOfDay, cuttingSubmissions, finishingDailyLogs]);
+  }, [costConfigured, headcountCost.value, sewingEndOfDay]);
 
-  // Daily revenue from CM (always USD): sum of (cm_per_dozen / 12 × output)
+  // Sewing value (USD): output × (cm_per_dozen × 0.70) / 12
   const dayRevenue = useMemo(() => {
     let total = 0;
     let hasCm = false;
-
-    // Only finished goods (finishing poly output) count as revenue
-    finishingEndOfDay.forEach((f) => {
-      if (f.cm_per_dozen && f.output) {
-        total += (f.cm_per_dozen / 12) * f.output;
+    sewingEndOfDay.forEach((s) => {
+      if (s.cm_per_dozen && s.output) {
+        total += (s.cm_per_dozen * 0.70 / 12) * s.output;
         hasCm = true;
       }
     });
-
     return hasCm ? Math.round(total * 100) / 100 : null;
-  }, [finishingEndOfDay]);
+  }, [sewingEndOfDay]);
 
-  // Daily profit = revenue (USD) - cost (converted to USD)
+  // Sewing profit = sewing value (USD) − sewing cost (USD)
   const dayProfit = useMemo(() => {
     if (dayRevenue == null || totalDayCost == null) return null;
     const costCurrency = headcountCost.currency;
@@ -1163,7 +1146,7 @@ export default function Dashboard() {
                   <div className="rounded-b-xl border border-t-0 bg-blue-50/80 dark:bg-blue-950/20 px-3 py-2 space-y-1">
                     {dayRevenue != null && (
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] md:text-xs text-muted-foreground">Revenue</span>
+                        <span className="text-[10px] md:text-xs text-muted-foreground">Sewing Value</span>
                         <span className="font-mono text-xs md:text-sm font-semibold text-emerald-700 dark:text-emerald-400">
                           ${dayRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
@@ -1171,9 +1154,7 @@ export default function Dashboard() {
                     )}
                     {costConfigured && totalDayCost != null && (
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] md:text-xs text-muted-foreground">
-                          Cost{headcountCost.currency === 'BDT' && bdtToUsd ? '' : ''}
-                        </span>
+                        <span className="text-[10px] md:text-xs text-muted-foreground">Sewing Cost</span>
                         <span className="font-mono text-xs md:text-sm font-semibold text-red-600 dark:text-red-400">
                           {headcountCost.currency === 'BDT' && bdtToUsd
                             ? `$${(totalDayCost * bdtToUsd).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -1186,7 +1167,7 @@ export default function Dashboard() {
                       <>
                         <div className="border-t border-blue-200 dark:border-blue-800 my-0.5" />
                         <div className="flex items-center justify-between">
-                          <span className="text-[10px] md:text-xs font-semibold text-foreground">Profit</span>
+                          <span className="text-[10px] md:text-xs font-semibold text-foreground">Sewing Profit</span>
                           <span className={`font-mono text-xs md:text-sm font-bold ${dayProfit >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
                             {dayProfit >= 0 ? '+' : '-'}${Math.abs(dayProfit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
