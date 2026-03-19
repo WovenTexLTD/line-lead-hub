@@ -23,7 +23,6 @@ export default function Lines() {
     units,
     floors,
     factorySummary,
-    refetch,
     dateRange,
   } = useLinePerformance();
 
@@ -77,7 +76,7 @@ export default function Lines() {
         onFiltersChange={setFilters}
         units={units}
         floors={floors}
-        onRefresh={refetch}
+
       />
 
       {/* Summary KPIs */}

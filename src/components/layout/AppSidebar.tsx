@@ -377,11 +377,13 @@ export function AppSidebar() {
       <Sidebar
         className={cn(
         "border-r border-white/[0.06] transition-all duration-300",
-        isFinanceTheme
-          ? "[&_[data-sidebar=sidebar]]:!bg-[linear-gradient(180deg,#2d1754_0%,#3b2068_35%,#4a2a7a_65%,#56328a_100%)]"
-          : "[&_[data-sidebar=sidebar]]:!bg-[linear-gradient(180deg,#080e1f_0%,#0c1633_35%,#111e4a_65%,#152457_100%)]",
         collapsed ? "w-16" : "w-64"
       )}
+      style={{
+        "--sidebar-gradient": isFinanceTheme
+          ? "linear-gradient(180deg,#2d1754 0%,#3b2068 35%,#4a2a7a 65%,#56328a 100%)"
+          : "linear-gradient(180deg,#080e1f 0%,#0c1633 35%,#111e4a 65%,#152457 100%)",
+      } as React.CSSProperties}
       collapsible="icon"
     >
       <SidebarHeader className="border-b border-white/[0.08] p-4">
