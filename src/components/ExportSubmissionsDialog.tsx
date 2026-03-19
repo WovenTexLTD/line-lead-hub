@@ -92,7 +92,7 @@ export function ExportSubmissionsDialog({
 
   const canExport = (includeSewing || includeFinishing || includeCutting || includeStorage) && getExportCounts() > 0;
 
-  const handleExport = async () => {
+  const handleExport = () => {
     setExporting(true);
     try {
       const rows: string[][] = [];

@@ -853,8 +853,6 @@ export default function TodayUpdates() {
         profit: financials.profit,
         margin: financials.margin,
         sewingCostUsd: financials.totalCostUsd,
-        cuttingCostUsd: 0,
-        finishingCostUsd: 0,
         bdtToUsdRate: bdtToUsd,
         revenueByPo: financials.revenueByPo,
       } : null,
