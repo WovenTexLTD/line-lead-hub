@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Receipt, Search, Archive, Loader2, SlidersHorizontal } from "lucide-react";
+import { Receipt, Search, Loader2, SlidersHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -111,18 +111,10 @@ export default function WorkOrdersView() {
             <p className="text-sm text-muted-foreground">Track health, pipeline, and production progress</p>
           </div>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => setShowExtrasOverview(true)}
-          className="gap-2"
-        >
-          <Archive className="h-4 w-4" />
-          View All Leftovers
-        </Button>
       </div>
 
       {/* KPI Cards */}
-      <POControlRoomKPIs kpis={kpis} />
+      <POControlRoomKPIs kpis={kpis} onViewLeftovers={() => setShowExtrasOverview(true)} />
 
       {/* Search + Filters */}
       <div className="flex gap-2 items-center">
