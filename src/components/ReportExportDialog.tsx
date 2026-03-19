@@ -537,7 +537,7 @@ export function ReportExportDialog({ defaultType, date, weekOffset = 0, dailyRep
         if (!byLine[ln]) byLine[ln] = [];
         byLine[ln].push(s);
       });
-      const lineKeys = Object.keys(byLine).sort((a, b) => cmpLines(a, b));
+      const lineKeys = Object.keys(byLine).sort((a, b) => cmpLines2(a, b));
       let deptOutput = 0, deptReject = 0, deptRework = 0, deptCostN = 0, deptCostU = 0;
 
       lineKeys.forEach(lineName => {
