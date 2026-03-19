@@ -1,9 +1,10 @@
-import { Receipt, Hash, Package, TrendingUp } from "lucide-react";
+import { Receipt, Hash, Package, TrendingUp, Archive } from "lucide-react";
 import { SewingMachine } from "@/components/icons/SewingMachine";
 import type { POKPIs } from "./types";
 
 interface Props {
   kpis: POKPIs;
+  onViewLeftovers?: () => void;
 }
 
 const cards = [
@@ -69,9 +70,9 @@ const cards = [
   },
 ] as const;
 
-export function POControlRoomKPIs({ kpis }: Props) {
+export function POControlRoomKPIs({ kpis, onViewLeftovers }: Props) {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
       {cards.map((card) => {
         const Icon = card.icon;
         const value = kpis[card.key as keyof POKPIs] as number;
@@ -97,6 +98,29 @@ export function POControlRoomKPIs({ kpis }: Props) {
           </div>
         );
       })}
+
+      {/* View All Leftovers card */}
+      {onViewLeftovers && (
+        <button
+          onClick={onViewLeftovers}
+          className="relative overflow-hidden rounded-xl border border-emerald-200/60 dark:border-emerald-800/40 bg-gradient-to-br from-emerald-50 via-white to-green-50/50 dark:from-emerald-950/40 dark:via-card dark:to-green-950/20 p-4 md:p-5 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 group text-left cursor-pointer"
+        >
+          <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-bl from-emerald-500 to-green-600 opacity-[0.06] rounded-bl-full pointer-events-none" />
+          <div className="relative flex items-start justify-between">
+            <div className="space-y-1">
+              <p className="text-[10px] md:text-xs font-semibold uppercase tracking-wider text-emerald-600/70 dark:text-emerald-400/70">
+                Leftovers
+              </p>
+              <p className="font-mono text-sm md:text-base font-bold tracking-tight text-emerald-900 dark:text-emerald-100">
+                View All
+              </p>
+            </div>
+            <div className="rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 p-2.5 shadow-lg shadow-emerald-500/20 group-hover:shadow-xl transition-shadow">
+              <Archive className="h-5 w-5 text-white" />
+            </div>
+          </div>
+        </button>
+      )}
     </div>
   );
 }
