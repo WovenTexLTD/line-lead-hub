@@ -116,7 +116,7 @@ export function LineDrilldownDrawer({
           </DialogHeader>
 
           {/* KPI Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-2">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-2 [&>:last-child:nth-child(odd)]:col-start-1 [&>:last-child:nth-child(odd)]:col-end-3 [&>:last-child:nth-child(odd)]:mx-auto [&>:last-child:nth-child(odd)]:max-w-[calc(50%-0.375rem)]">
             <Card className="border-blue-200/60 dark:border-blue-800/40 bg-gradient-to-br from-blue-50 via-white to-blue-50/50 dark:from-blue-950/40 dark:via-card dark:to-blue-950/20">
               <CardContent className="p-4 pb-5">
                 <div className="flex items-center gap-2 mb-3">

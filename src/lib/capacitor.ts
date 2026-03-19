@@ -294,7 +294,7 @@ async function savePushToken(token: string) {
     const user = data?.user;
 
     if (user) {
-      await supabase.from('push_tokens').upsert(
+      await (supabase as any).from('push_tokens').upsert(
         {
           user_id: user.id,
           token,
