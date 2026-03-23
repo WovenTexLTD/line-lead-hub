@@ -18,6 +18,7 @@ export const ROLES = {
   FINISHING: 'finishing',
   BUYER: 'buyer',
   SUPERADMIN: 'superadmin',
+  GATE_OFFICER: 'gate_officer',
 } as const;
 
 export type AppRole = typeof ROLES[keyof typeof ROLES];
@@ -36,6 +37,7 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   finishing: 'Finishing',
   buyer: 'Buyer / Client',
   superadmin: 'Super Admin',
+  gate_officer: 'Gate Officer',
 };
 
 // Blocker impact levels
