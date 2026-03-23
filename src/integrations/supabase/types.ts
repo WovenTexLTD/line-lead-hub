@@ -1055,6 +1055,27 @@ export type Database = {
             referencedRelation: "work_orders"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_dispatch_reviewed_by"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_dispatch_submitted_by"
+            columns: ["submitted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_dispatch_work_order"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
         ]
       }
       document_ingestion_queue: {
