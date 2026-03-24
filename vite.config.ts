@@ -15,7 +15,7 @@ function versionPlugin(): Plugin {
       return { define: { "import.meta.env.VITE_BUILD_ID": JSON.stringify(buildId) } };
     },
     // Write version.json alongside other assets after the bundle closes
-    closeBundle() {
+    writeBundle() {
       writeFileSync(
         path.resolve(__dirname, "dist", "version.json"),
         JSON.stringify({ buildId, builtAt: new Date().toISOString() }),

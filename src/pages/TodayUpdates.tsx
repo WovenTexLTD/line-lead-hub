@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { effectivePoly, effectiveCarton } from "@/lib/finishing-utils";
 import { useMidnightRefresh } from "@/hooks/useMidnightRefresh";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, Package, Search, Download, RefreshCw, Scissors, Warehouse, CalendarDays, Layers, ChevronDown, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
+import { Loader2, Package, Search, RefreshCw, Scissors, Warehouse, CalendarDays, Layers, ChevronDown, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
 import { SewingMachine } from "@/components/icons/SewingMachine";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -26,10 +27,10 @@ import { formatTimeInTimezone, getTodayInTimezone, toISODate } from "@/lib/date-
 import { subDays, format } from "date-fns";
 import { StorageBinCardDetailModal } from "@/components/StorageBinCardDetailModal";
 import { FinishingSubmissionView, FinishingTargetData, FinishingActualData } from "@/components/FinishingSubmissionView";
-import { ExportSubmissionsDialog } from "@/components/ExportSubmissionsDialog";
 import { useHeadcountCost } from "@/hooks/useHeadcountCost";
 import { DollarSign, TrendingUp as TrendingUpIcon, TrendingDown } from "lucide-react";
 import { DailyReportButton, DailyReportData, DailyReportSewingLine, DailyReportCuttingLine, DailyReportFinishingLine, DailyReportNote } from "@/components/DailyProductionReport";
+import { ReportExportDialog } from "@/components/ReportExportDialog";
 
 interface SewingUpdate {
   id: string;
@@ -290,7 +291,7 @@ export default function TodayUpdates() {
       transactions: any[];
     }[];
   } | null>(null);
-  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+
   const [selectedFinishingLog, setSelectedFinishingLog] = useState<FinishingDailyLog | null>(null);
   const [finishingLogModalOpen, setFinishingLogModalOpen] = useState(false);
   const [financialsExpanded, setFinancialsExpanded] = useState(false);
@@ -679,10 +680,10 @@ export default function TodayUpdates() {
   const totalOutput = sewingUpdates.reduce((sum, u) => sum + (u.output_qty || 0), 0)
     + sewingActuals.reduce((sum, a) => sum + (a.good_today || 0), 0);
   
-  // Total Finishing Output = Total Poly (primary finishing metric)
+  // Total Finishing Output = Total Poly (OT-adjusted)
   const totalFinishingOutput = finishingDailyLogs
     .filter(log => log.log_type === 'OUTPUT')
-    .reduce((sum, log) => sum + (log.poly || 0), 0);
+    .reduce((sum, log) => sum + effectivePoly(log.poly, log.actual_hours, log.ot_hours_actual), 0);
 
   const totalCutting = cuttingActuals.reduce((sum, c) => sum + (c.day_cutting || 0), 0);
   const totalStorageReceived = storageTransactions.reduce((sum, s) => sum + (s.receive_qty || 0), 0);
@@ -692,21 +693,20 @@ export default function TodayUpdates() {
     const rate = costConfigured && headcountCost.value ? headcountCost.value : 0;
     const costCurrency = headcountCost.currency;
 
-    // Revenue: only finishing poly output × (cm_per_dozen / 12)
+    // Revenue: sewing output × (cm_per_dozen / 12)
     const revenueByPo: { po: string; buyer: string; style: string; output: number; cmDz: number; revenue: number }[] = [];
     let totalRevenue = 0;
 
-    const finishingOutputLogs = finishingDailyLogs.filter(l => l.log_type === 'OUTPUT');
-    finishingOutputLogs.forEach((log) => {
-      const cm = log.work_orders?.cm_per_dozen;
-      const output = log.poly || 0;
+    sewingActuals.forEach((s) => {
+      const cm = s.work_orders?.cm_per_dozen;
+      const output = s.good_today || 0;
       if (cm && output) {
         const rev = (cm / 12) * output;
         totalRevenue += rev;
         revenueByPo.push({
-          po: log.work_orders?.po_number || 'Unknown',
-          buyer: log.work_orders?.buyer || '',
-          style: log.work_orders?.style || '',
+          po: s.work_orders?.po_number || 'Unknown',
+          buyer: s.work_orders?.buyer || '',
+          style: s.work_orders?.style || '',
           output,
           cmDz: cm,
           revenue: rev,
@@ -714,35 +714,54 @@ export default function TodayUpdates() {
       }
     });
 
-    // Cost by department
+    // Cost by department and by PO
     let sewingCost = 0;
     let cuttingCost = 0;
     let finishingCost = 0;
+    const costByPoMap: Record<string, { po: string; buyer: string; style: string; sewingCost: number; cuttingCost: number; finishingCost: number }> = {};
+
+    const addPoCost = (po: string, buyer: string, style: string, dept: 'sewingCost' | 'cuttingCost' | 'finishingCost', amount: number) => {
+      if (!costByPoMap[po]) costByPoMap[po] = { po, buyer, style, sewingCost: 0, cuttingCost: 0, finishingCost: 0 };
+      costByPoMap[po][dept] += amount;
+    };
 
     if (rate > 0) {
       // Sewing (only POs with CM price)
       sewingActuals.forEach((s) => {
         if (!s.work_orders?.cm_per_dozen) return;
-        if (s.manpower_actual && s.hours_actual) sewingCost += rate * s.manpower_actual * s.hours_actual;
-        if (s.ot_manpower_actual && s.ot_hours_actual) sewingCost += rate * s.ot_manpower_actual * s.ot_hours_actual;
+        let lineCost = 0;
+        if (s.manpower_actual && s.hours_actual) lineCost += rate * s.manpower_actual * s.hours_actual;
+        if (s.ot_manpower_actual && s.ot_hours_actual) lineCost += rate * s.ot_manpower_actual * s.ot_hours_actual;
+        sewingCost += lineCost;
+        if (lineCost > 0) addPoCost(s.work_orders?.po_number || 'Unknown', s.work_orders?.buyer || '', s.work_orders?.style || '', 'sewingCost', lineCost);
       });
 
       // Cutting (only POs with CM price)
       cuttingActuals.forEach((c) => {
         if (!c.work_orders?.cm_per_dozen) return;
-        if (c.man_power && c.hours_actual) cuttingCost += rate * c.man_power * c.hours_actual;
-        if (c.ot_manpower_actual && c.ot_hours_actual) cuttingCost += rate * c.ot_manpower_actual * c.ot_hours_actual;
+        let lineCost = 0;
+        if (c.man_power && c.hours_actual) lineCost += rate * c.man_power * c.hours_actual;
+        if (c.ot_manpower_actual && c.ot_hours_actual) lineCost += rate * c.ot_manpower_actual * c.ot_hours_actual;
+        cuttingCost += lineCost;
+        if (lineCost > 0) addPoCost(c.work_orders?.po_number || 'Unknown', c.work_orders?.buyer || '', c.work_orders?.style || '', 'cuttingCost', lineCost);
       });
 
       // Finishing (only POs with CM price)
-      finishingOutputLogs.forEach((log) => {
+      finishingDailyLogs.filter(l => l.log_type === 'OUTPUT').forEach((log) => {
         if (!log.work_orders?.cm_per_dozen) return;
-        if (log.m_power_actual && log.actual_hours) finishingCost += rate * log.m_power_actual * log.actual_hours;
-        if (log.ot_manpower_actual && log.ot_hours_actual) finishingCost += rate * log.ot_manpower_actual * log.ot_hours_actual;
+        let lineCost = 0;
+        if (log.m_power_actual && log.actual_hours) lineCost += rate * log.m_power_actual * log.actual_hours;
+        if (log.ot_manpower_actual && log.ot_hours_actual) lineCost += rate * log.ot_manpower_actual * log.ot_hours_actual;
+        finishingCost += lineCost;
+        if (lineCost > 0) addPoCost(log.work_orders?.po_number || 'Unknown', log.work_orders?.buyer || '', log.work_orders?.style || '', 'finishingCost', lineCost);
       });
     }
 
     const totalCostNative = sewingCost + cuttingCost + finishingCost;
+    const costByPo = Object.values(costByPoMap).map(p => ({
+      ...p,
+      totalCost: p.sewingCost + p.cuttingCost + p.finishingCost,
+    })).sort((a, b) => b.totalCost - a.totalCost);
 
     // Convert cost to USD
     let totalCostUsd = totalCostNative;
@@ -759,8 +778,15 @@ export default function TodayUpdates() {
     const profit = totalRevenue - totalCostUsd;
     const margin = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0;
 
+    // Convert costByPo to USD
+    const costByPoUsd = costByPo.map(p => {
+      const toUsd = (v: number) => costCurrency === 'BDT' && bdtToUsd ? Math.round(v * bdtToUsd * 100) / 100 : Math.round(v * 100) / 100;
+      return { po: p.po, buyer: p.buyer, style: p.style, sewingCost: toUsd(p.sewingCost), cuttingCost: toUsd(p.cuttingCost), finishingCost: toUsd(p.finishingCost), totalCost: toUsd(p.totalCost) };
+    });
+
     return {
       revenueByPo,
+      costByPo: costByPoUsd,
       totalRevenue: Math.round(totalRevenue * 100) / 100,
       totalCostNative: Math.round(totalCostNative * 100) / 100,
       totalCostUsd: Math.round(totalCostUsd * 100) / 100,
@@ -1088,11 +1114,7 @@ export default function TodayUpdates() {
             <RefreshCw className="h-4 w-4 mr-1" />
             Refresh
           </Button>
-          <DailyReportButton data={dailyReportData} loading={loading} />
-          <Button variant="outline" size="sm" onClick={() => setExportDialogOpen(true)}>
-            <Download className="h-4 w-4 mr-1" />
-            Export
-          </Button>
+          <ReportExportDialog defaultType="daily" date={selectedDateStr} dailyReportData={dailyReportData} />
         </div>
       </div>
 
@@ -1263,6 +1285,41 @@ export default function TodayUpdates() {
                           </span>
                         </div>
                       ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Cost by PO */}
+                {financials.costByPo.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-2.5 uppercase tracking-wider">Cost by PO</p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="border-b text-muted-foreground">
+                            <th className="text-left py-1.5 font-medium">PO</th>
+                            <th className="text-left py-1.5 font-medium">Buyer</th>
+                            <th className="text-right py-1.5 font-medium">Sewing</th>
+                            <th className="text-right py-1.5 font-medium">Cutting</th>
+                            <th className="text-right py-1.5 font-medium">Finishing</th>
+                            <th className="text-right py-1.5 font-medium">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {financials.costByPo.map((row, i) => (
+                            <tr key={i} className="border-b border-muted/50">
+                              <td className="py-1.5 font-mono">{row.po}</td>
+                              <td className="py-1.5">{row.buyer}</td>
+                              <td className="py-1.5 text-right font-mono">{row.sewingCost > 0 ? `$${row.sewingCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}</td>
+                              <td className="py-1.5 text-right font-mono">{row.cuttingCost > 0 ? `$${row.cuttingCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}</td>
+                              <td className="py-1.5 text-right font-mono">{row.finishingCost > 0 ? `$${row.finishingCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}</td>
+                              <td className="py-1.5 text-right font-mono font-medium text-red-600 dark:text-red-400">
+                                ${row.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 )}
@@ -1492,8 +1549,8 @@ export default function TodayUpdates() {
                     </TableHeader>
                     <TableBody>
                       {mergedFinishingData.map((item, idx) => {
-                        const outputPoly = item.output?.poly || 0;
-                        const outputCarton = item.output?.carton || 0;
+                        const outputPoly = item.output ? effectivePoly(item.output.poly, item.output.actual_hours, item.output.ot_hours_actual) : 0;
+                        const outputCarton = item.output ? effectiveCarton(item.output.carton, item.output.actual_hours, item.output.ot_hours_actual) : 0;
                         const targetPoly = item.target?.poly || 0;
                         const targetCarton = item.target?.carton || 0;
                         const hasOutput = outputPoly > 0 || outputCarton > 0;
@@ -1877,9 +1934,9 @@ export default function TodayUpdates() {
                     </TableHeader>
                     <TableBody>
                       {mergedFinishingData.map((row) => {
-                        const outputPoly = row.output?.poly || 0;
+                        const outputPoly = row.output ? effectivePoly(row.output.poly, row.output.actual_hours, row.output.ot_hours_actual) : 0;
                         const targetPoly = row.target?.poly || 0;
-                        const outputCarton = row.output?.carton || 0;
+                        const outputCarton = row.output ? effectiveCarton(row.output.carton, row.output.actual_hours, row.output.ot_hours_actual) : 0;
                         const targetCarton = row.target?.carton || 0;
                         // Performance % uses poly as primary metric
                         const finTabHours = (row.target?.planned_hours ?? 0) + (row.target?.ot_hours_planned ?? 0);
@@ -2147,6 +2204,8 @@ export default function TodayUpdates() {
             blocker_impact: a.blocker_impact,
             blocker_owner: a.blocker_owner,
             blocker_status: null,
+            estimated_cost_value: (a as any).estimated_cost_value ?? null,
+            estimated_cost_currency: (a as any).estimated_cost_currency ?? null,
           };
         }
 
@@ -2179,6 +2238,8 @@ export default function TodayUpdates() {
             blocker_impact: u.blocker_impact,
             blocker_owner: u.blocker_owner,
             blocker_status: u.blocker_status,
+            estimated_cost_value: (u as any).estimated_cost_value ?? null,
+            estimated_cost_currency: (u as any).estimated_cost_currency ?? null,
           };
         }
 
@@ -2416,69 +2477,6 @@ export default function TodayUpdates() {
         );
       })()}
 
-      {/* Export Dialog */}
-      <ExportSubmissionsDialog
-        open={exportDialogOpen}
-        onOpenChange={setExportDialogOpen}
-        data={{
-          sewingTargets: sewingTargets,
-          finishingTargets: [],
-          sewingActuals: [
-            ...sewingUpdates.map(u => ({
-              ...u,
-              good_today: u.output_qty,
-              reject_today: u.reject_qty,
-              rework_today: u.rework_qty,
-              cumulative_good_total: u.output_qty,
-              manpower_actual: u.manpower,
-              ot_hours_actual: u.ot_hours,
-              actual_stage_progress: u.stage_progress,
-              remarks: u.notes,
-            })),
-            ...sewingActuals.map(a => ({
-              ...a,
-              lines: a.lines,
-              work_orders: a.work_orders,
-            })),
-          ],
-          finishingActuals: finishingDailyLogs
-            .filter(log => log.log_type === 'OUTPUT')
-            .map(log => ({
-              ...log,
-              day_poly: log.poly || 0,
-              day_carton: log.carton || 0,
-              total_poly: log.poly || 0,
-              total_carton: log.carton || 0,
-            })),
-          cuttingTargets: cuttingTargets,
-          cuttingActuals: cuttingActuals,
-          storageBinCards: (storageTransactions || []).map(t => ({
-            id: t.storage_bin_cards?.id,
-            created_at: t.created_at,
-            buyer: t.storage_bin_cards?.buyer,
-            style: t.storage_bin_cards?.style,
-            work_orders: t.storage_bin_cards?.work_orders,
-            totalReceived: t.receive_qty,
-            totalIssued: t.issue_qty,
-            balance: t.balance_qty,
-          })),
-          finishingDailyLogs: finishingDailyLogs || [],
-        }}
-        dateRange="1"
-        financials={financials.hasData ? {
-          totalRevenue: financials.totalRevenue,
-          totalCostUsd: financials.totalCostUsd,
-          totalCostNative: financials.totalCostNative,
-          costCurrency: financials.costCurrency,
-          profit: financials.profit,
-          margin: financials.margin,
-          sewingCostUsd: financials.sewingCostUsd,
-          cuttingCostUsd: financials.cuttingCostUsd,
-          finishingCostUsd: financials.finishingCostUsd,
-          bdtToUsdRate: bdtToUsd,
-          revenueByPo: financials.revenueByPo,
-        } : null}
-      />
     </div>
   );
 }

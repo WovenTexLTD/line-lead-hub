@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { getTodayInTimezone } from "@/lib/date-utils";
+import { effectivePoly } from "@/lib/finishing-utils";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -9,7 +10,8 @@ import { Progress } from "@/components/ui/progress";
 import {
   Loader2, TrendingUp, TrendingDown, Target, Users, AlertTriangle,
   Package, BarChart3, Calendar, ArrowUp, ArrowDown,
-  Minus, Zap, Clock, CheckCircle2, XCircle, ChevronRight, Box, Archive
+  Minus, Zap, Clock, CheckCircle2, XCircle, ChevronRight, Box, Archive,
+  DollarSign, Wallet, PiggyBank, Percent
 } from "lucide-react";
 import { SewingMachine } from "@/components/icons/SewingMachine";
 import {
@@ -18,11 +20,13 @@ import {
 } from "recharts";
 import { PeriodComparison } from "@/components/insights/PeriodComparison";
 import { LineDrillDown } from "@/components/insights/LineDrillDown";
-import { ExportInsights } from "@/components/insights/ExportInsights";
+import { ReportExportDialog } from "@/components/ReportExportDialog";
+import { InsightsReportDialog } from "@/components/insights/InsightsReportDialog";
 
 import { LineEfficiencyTargets } from "@/components/insights/LineEfficiencyTargets";
 
 import { InteractiveChart } from "@/components/ui/interactive-chart";
+import { useHeadcountCost } from "@/hooks/useHeadcountCost";
 
 interface DailyData {
   date: string;
@@ -93,6 +97,26 @@ interface PreviousPeriodData {
   daysWithData: number;
 }
 
+interface FinancialData {
+  totalRevenue: number;
+  totalCost: number;
+  profit: number;
+  margin: number;
+  sewingCost: number;
+  cuttingCost: number;
+  finishingCost: number;
+  revenueByPo: { po: string; buyer: string; revenue: number; output: number; cmDz: number }[];
+  profitByPo: { po: string; buyer: string; revenue: number; cost: number; profit: number; margin: number }[];
+  dailyFinancials: { date: string; displayDate: string; revenue: number; cost: number; profit: number }[];
+  costPerPiece: number;
+  revenuePerPiece: number;
+  prevRevenue: number;
+  prevCost: number;
+  prevProfit: number;
+  prevMargin: number;
+  hasData: boolean;
+}
+
 export default function Insights() {
   const { profile, factory } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -129,6 +153,36 @@ export default function Insights() {
     previousPeriodOutput: 0,
   });
 
+  // Financial state
+  const { headcountCost, isConfigured: costConfigured, getCurrencySymbol } = useHeadcountCost();
+  const [bdtToUsd, setBdtToUsd] = useState<number | null>(null);
+  const [financialData, setFinancialData] = useState<FinancialData>({
+    totalRevenue: 0, totalCost: 0, profit: 0, margin: 0,
+    sewingCost: 0, cuttingCost: 0, finishingCost: 0,
+    revenueByPo: [], profitByPo: [], dailyFinancials: [],
+    costPerPiece: 0, revenuePerPiece: 0,
+    prevRevenue: 0, prevCost: 0, prevProfit: 0, prevMargin: 0,
+    hasData: false,
+  });
+
+  // Fetch BDT→USD exchange rate
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchRate() {
+      try {
+        const res = await fetch('https://open.er-api.com/v6/latest/USD');
+        const json = await res.json();
+        if (!cancelled && json?.rates?.BDT) {
+          setBdtToUsd(1 / json.rates.BDT);
+        }
+      } catch {
+        if (!cancelled) setBdtToUsd(1 / 121);
+      }
+    }
+    fetchRate();
+    return () => { cancelled = true; };
+  }, []);
+
   // Line drill-down state
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
   const [selectedLineName, setSelectedLineName] = useState<string | null>(null);
@@ -160,7 +214,7 @@ export default function Insights() {
     if (profile?.factory_id) {
       fetchInsights();
     }
-  }, [profile?.factory_id, period]);
+  }, [profile?.factory_id, period, bdtToUsd, headcountCost.value]);
 
   async function fetchInsights() {
     if (!profile?.factory_id) return;
@@ -182,10 +236,10 @@ export default function Insights() {
       prevStartDate.setDate(prevStartDate.getDate() - days);
       const prevStartDateStr = prevStartDate.toISOString().split('T')[0];
 
-      // Fetch sewing actuals (end-of-day output, manpower, blockers)
+      // Fetch sewing actuals (end-of-day output, manpower, blockers, hours for cost)
       const { data: sewingActualsData } = await supabase
         .from('sewing_actuals')
-        .select('*, lines(name, line_id), work_orders(po_number, buyer, style, order_qty), blocker_types:blocker_type_id(name)')
+        .select('*, lines(name, line_id), work_orders(po_number, buyer, style, order_qty, cm_per_dozen), blocker_types:blocker_type_id(name)')
         .eq('factory_id', profile.factory_id)
         .gte('production_date', startDateStr)
         .lte('production_date', today)
@@ -217,7 +271,7 @@ export default function Insights() {
       // Fetch finishing data from finishing_daily_logs (poly + carton = output)
       const { data: finishingDailyLogs } = await supabase
         .from('finishing_daily_logs')
-        .select('*, lines(name, line_id), work_orders(po_number, buyer, style, order_qty)')
+        .select('*, lines(name, line_id), work_orders(po_number, buyer, style, order_qty, cm_per_dozen)')
         .eq('factory_id', profile.factory_id)
         .eq('log_type', 'OUTPUT')
         .gte('production_date', startDateStr)
@@ -242,6 +296,30 @@ export default function Insights() {
         .eq('log_type', 'OUTPUT')
         .gte('production_date', prevStartDateStr)
         .lte('production_date', startDateStr);
+
+      // Fetch cutting actuals for cost calculation
+      const { data: cuttingActualsData } = await supabase
+        .from('cutting_actuals')
+        .select('*, work_orders(po_number, buyer, style, cm_per_dozen)')
+        .eq('factory_id', profile.factory_id)
+        .gte('production_date', startDateStr)
+        .lte('production_date', today);
+
+      // Previous period financial data
+      const { data: prevFinishingOutputLogs } = await supabase
+        .from('finishing_daily_logs')
+        .select('poly, production_date, m_power_actual, actual_hours, ot_manpower_actual, ot_hours_actual, work_orders(cm_per_dozen, po_number)')
+        .eq('factory_id', profile.factory_id)
+        .eq('log_type', 'OUTPUT')
+        .gte('production_date', prevStartDateStr)
+        .lt('production_date', startDateStr);
+
+      const { data: prevCuttingActuals } = await supabase
+        .from('cutting_actuals')
+        .select('man_power, hours_actual, ot_manpower_actual, ot_hours_actual, work_orders(cm_per_dozen)')
+        .eq('factory_id', profile.factory_id)
+        .gte('production_date', prevStartDateStr)
+        .lt('production_date', startDateStr);
 
       // Fetch work orders for progress tracking
       const { data: workOrders } = await supabase
@@ -304,8 +382,10 @@ export default function Insights() {
       // Finishing daily logs (OUTPUT) → poly is primary output
       finishingDailyLogs?.forEach(u => {
         const existing = getOrCreateDaily(u.production_date);
-        existing.finishingQcPass += (u.poly || 0) + (u.carton || 0);
-        existing.finishingPolyOutput += (u.poly || 0);
+        const adjPoly = effectivePoly(u.poly, u.actual_hours, u.ot_hours_actual);
+        const adjCarton = effectivePoly(u.carton, u.actual_hours, u.ot_hours_actual);
+        existing.finishingQcPass += adjPoly + adjCarton;
+        existing.finishingPolyOutput += adjPoly;
         dailyMap.set(u.production_date, existing);
       });
 
@@ -426,12 +506,12 @@ export default function Insights() {
       // Calculate summary
       const totalSewingOutput = sewingActualsData?.reduce((sum, u) => sum + (u.good_today || 0), 0) || 0;
       const totalSewingTarget = pairedSewingTargets.reduce((sum, t) => sum + ((t.per_hour_target || 0) * 8), 0) || 0;
-      const totalFinishingQcPass = finishingDailyLogs?.reduce((sum, u) => sum + (u.poly || 0) + (u.carton || 0), 0) || 0;
+      const totalFinishingQcPass = finishingDailyLogs?.reduce((sum, u) => sum + effectivePoly(u.poly, u.actual_hours, u.ot_hours_actual) + effectivePoly(u.carton, u.actual_hours, u.ot_hours_actual), 0) || 0;
       const totalManpower = sewingActualsData?.reduce((sum, u) => sum + (u.manpower_actual || 0), 0) || 0;
 
       const prevTotalOutput = prevSewingActuals?.reduce((sum, u) => sum + (u.good_today || 0), 0) || 0;
       const prevTotalTarget = prevSewingTargets?.reduce((sum, t) => sum + ((t.per_hour_target || 0) * 8), 0) || 0;
-      const prevTotalQcPass = prevFinishingDailyLogs?.reduce((sum, u) => sum + (u.poly || 0) + (u.carton || 0), 0) || 0;
+      const prevTotalQcPass = prevFinishingDailyLogs?.reduce((sum, u) => sum + effectivePoly((u as any).poly, (u as any).actual_hours, (u as any).ot_hours_actual) + effectivePoly((u as any).carton, (u as any).actual_hours, (u as any).ot_hours_actual), 0) || 0;
       const prevEfficiency = prevTotalTarget > 0 ? (prevTotalOutput / prevTotalTarget) * 100 : 0;
       const prevTotalBlockers = prevSewingActuals?.filter(u => u.has_blocker).length || 0;
       const prevTotalManpower = prevSewingActuals?.reduce((sum, u) => sum + (u.manpower_actual || 0), 0) || 0;
@@ -480,6 +560,185 @@ export default function Insights() {
         previousPeriodOutput: prevTotalOutput,
       });
 
+      // ── Financial calculations ──
+      const rate = costConfigured && headcountCost.value ? headcountCost.value : 0;
+      const costCurrency = headcountCost.currency;
+      const toUsd = (v: number) => costCurrency === 'BDT' && bdtToUsd ? v * bdtToUsd : v;
+
+      // Revenue: sewing output × (cm_per_dozen / 12) — already in USD
+      const revenueByPoMap: Record<string, { po: string; buyer: string; revenue: number; output: number; cmDz: number }> = {};
+      let totalRevenue = 0;
+      sewingActualsData?.forEach(u => {
+        const cm = (u as any).work_orders?.cm_per_dozen;
+        const output = u.good_today || 0;
+        if (cm && output) {
+          const rev = (cm / 12) * output;
+          totalRevenue += rev;
+          const po = (u as any).work_orders?.po_number || 'Unknown';
+          if (!revenueByPoMap[po]) revenueByPoMap[po] = { po, buyer: (u as any).work_orders?.buyer || '', revenue: 0, output: 0, cmDz: cm };
+          revenueByPoMap[po].revenue += rev;
+          revenueByPoMap[po].output += output;
+        }
+      });
+
+      // Cost by department (native currency, then convert to USD)
+      let sewCost = 0, cutCost = 0, finCost = 0;
+      const costByPoMap: Record<string, { sewing: number; cutting: number; finishing: number }> = {};
+      const addPoCost = (po: string, dept: 'sewing' | 'cutting' | 'finishing', amount: number) => {
+        if (!costByPoMap[po]) costByPoMap[po] = { sewing: 0, cutting: 0, finishing: 0 };
+        costByPoMap[po][dept] += amount;
+      };
+
+      if (rate > 0) {
+        sewingActualsData?.forEach(s => {
+          if (!(s as any).work_orders?.cm_per_dozen) return;
+          let c = 0;
+          if (s.manpower_actual && s.hours_actual) c += rate * s.manpower_actual * s.hours_actual;
+          if (s.ot_manpower_actual && s.ot_hours_actual) c += rate * s.ot_manpower_actual * s.ot_hours_actual;
+          sewCost += c;
+          if (c > 0) addPoCost((s as any).work_orders?.po_number || 'Unknown', 'sewing', c);
+        });
+
+        cuttingActualsData?.forEach(c => {
+          if (!(c as any).work_orders?.cm_per_dozen) return;
+          let cost = 0;
+          if (c.man_power && c.hours_actual) cost += rate * c.man_power * c.hours_actual;
+          if (c.ot_manpower_actual && c.ot_hours_actual) cost += rate * c.ot_manpower_actual * c.ot_hours_actual;
+          cutCost += cost;
+          if (cost > 0) addPoCost((c as any).work_orders?.po_number || 'Unknown', 'cutting', cost);
+        });
+
+        finishingDailyLogs?.forEach(log => {
+          if (!(log as any).work_orders?.cm_per_dozen) return;
+          let c = 0;
+          if (log.m_power_actual && log.actual_hours) c += rate * log.m_power_actual * log.actual_hours;
+          if (log.ot_manpower_actual && log.ot_hours_actual) c += rate * log.ot_manpower_actual * log.ot_hours_actual;
+          finCost += c;
+          if (c > 0) addPoCost((log as any).work_orders?.po_number || 'Unknown', 'finishing', c);
+        });
+      }
+
+      const totalCostUsd = toUsd(sewCost + cutCost + finCost);
+      const sewingCostUsd = toUsd(sewCost);
+      const cuttingCostUsd = toUsd(cutCost);
+      const finishingCostUsd = toUsd(finCost);
+      const profit = totalRevenue - totalCostUsd;
+      const margin = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0;
+
+      // Revenue by PO
+      const revenueByPo = Object.values(revenueByPoMap).sort((a, b) => b.revenue - a.revenue);
+
+      // Profit by PO (merge revenue + cost)
+      const allPos = new Set([...Object.keys(revenueByPoMap), ...Object.keys(costByPoMap)]);
+      const profitByPo = Array.from(allPos).map(po => {
+        const rev = revenueByPoMap[po]?.revenue || 0;
+        const costNative = costByPoMap[po] ? (costByPoMap[po].sewing + costByPoMap[po].cutting + costByPoMap[po].finishing) : 0;
+        const costUsd = toUsd(costNative);
+        const poProfit = rev - costUsd;
+        return {
+          po,
+          buyer: revenueByPoMap[po]?.buyer || '',
+          revenue: Math.round(rev * 100) / 100,
+          cost: Math.round(costUsd * 100) / 100,
+          profit: Math.round(poProfit * 100) / 100,
+          margin: rev > 0 ? Math.round((poProfit / rev) * 1000) / 10 : 0,
+        };
+      }).filter(p => p.revenue > 0 || p.cost > 0).sort((a, b) => b.profit - a.profit);
+
+      // Daily financials (revenue + cost per day)
+      const dailyRevMap: Record<string, number> = {};
+      const dailyCostMap: Record<string, number> = {};
+      finishingDailyLogs?.forEach(log => {
+        const cm = (log as any).work_orders?.cm_per_dozen;
+        const output = log.poly || 0;
+        if (cm && output) {
+          dailyRevMap[log.production_date] = (dailyRevMap[log.production_date] || 0) + (cm / 12) * output;
+        }
+      });
+      if (rate > 0) {
+        sewingActualsData?.forEach(s => {
+          if (!(s as any).work_orders?.cm_per_dozen) return;
+          let c = 0;
+          if (s.manpower_actual && s.hours_actual) c += rate * s.manpower_actual * s.hours_actual;
+          if (s.ot_manpower_actual && s.ot_hours_actual) c += rate * s.ot_manpower_actual * s.ot_hours_actual;
+          dailyCostMap[s.production_date] = (dailyCostMap[s.production_date] || 0) + c;
+        });
+        cuttingActualsData?.forEach(c => {
+          if (!(c as any).work_orders?.cm_per_dozen) return;
+          let cost = 0;
+          if (c.man_power && c.hours_actual) cost += rate * c.man_power * c.hours_actual;
+          if (c.ot_manpower_actual && c.ot_hours_actual) cost += rate * c.ot_manpower_actual * c.ot_hours_actual;
+          dailyCostMap[c.production_date] = (dailyCostMap[c.production_date] || 0) + cost;
+        });
+        finishingDailyLogs?.forEach(log => {
+          if (!(log as any).work_orders?.cm_per_dozen) return;
+          let c = 0;
+          if (log.m_power_actual && log.actual_hours) c += rate * log.m_power_actual * log.actual_hours;
+          if (log.ot_manpower_actual && log.ot_hours_actual) c += rate * log.ot_manpower_actual * log.ot_hours_actual;
+          dailyCostMap[log.production_date] = (dailyCostMap[log.production_date] || 0) + c;
+        });
+      }
+
+      const allDates = new Set([...Object.keys(dailyRevMap), ...Object.keys(dailyCostMap)]);
+      const dailyFinancials = Array.from(allDates).sort().map(date => {
+        const rev = dailyRevMap[date] || 0;
+        const costNative = dailyCostMap[date] || 0;
+        const costUsdDay = toUsd(costNative);
+        return {
+          date,
+          displayDate: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          revenue: Math.round(rev * 100) / 100,
+          cost: Math.round(costUsdDay * 100) / 100,
+          profit: Math.round((rev - costUsdDay) * 100) / 100,
+        };
+      });
+
+      // Previous period financials
+      let prevRevenue = 0;
+      prevFinishingOutputLogs?.forEach(log => {
+        const cm = (log as any).work_orders?.cm_per_dozen;
+        const output = (log as any).poly || 0;
+        if (cm && output) prevRevenue += (cm / 12) * output;
+      });
+      let prevCostNative = 0;
+      if (rate > 0) {
+        prevSewingActuals?.forEach(s => {
+          if (s.manpower_actual && (s as any).hours_actual) prevCostNative += rate * s.manpower_actual * (s as any).hours_actual;
+        });
+        prevCuttingActuals?.forEach(c => {
+          if ((c as any).man_power && (c as any).hours_actual) prevCostNative += rate * (c as any).man_power * (c as any).hours_actual;
+        });
+        prevFinishingOutputLogs?.forEach(log => {
+          if ((log as any).m_power_actual && (log as any).actual_hours) prevCostNative += rate * (log as any).m_power_actual * (log as any).actual_hours;
+        });
+      }
+      const prevCostUsd = toUsd(prevCostNative);
+      const prevProfit = prevRevenue - prevCostUsd;
+      const prevMargin = prevRevenue > 0 ? (prevProfit / prevRevenue) * 100 : 0;
+
+      // Cost & revenue per piece
+      const totalFinishingPoly = finishingDailyLogs?.reduce((sum, u) => sum + effectivePoly(u.poly, u.actual_hours, u.ot_hours_actual), 0) || 0;
+
+      setFinancialData({
+        totalRevenue: Math.round(totalRevenue * 100) / 100,
+        totalCost: Math.round(totalCostUsd * 100) / 100,
+        profit: Math.round(profit * 100) / 100,
+        margin: Math.round(margin * 10) / 10,
+        sewingCost: Math.round(sewingCostUsd * 100) / 100,
+        cuttingCost: Math.round(cuttingCostUsd * 100) / 100,
+        finishingCost: Math.round(finishingCostUsd * 100) / 100,
+        revenueByPo,
+        profitByPo,
+        dailyFinancials,
+        costPerPiece: totalFinishingPoly > 0 ? Math.round((totalCostUsd / totalFinishingPoly) * 100) / 100 : 0,
+        revenuePerPiece: totalFinishingPoly > 0 ? Math.round((totalRevenue / totalFinishingPoly) * 100) / 100 : 0,
+        prevRevenue: Math.round(prevRevenue * 100) / 100,
+        prevCost: Math.round(prevCostUsd * 100) / 100,
+        prevProfit: Math.round(prevProfit * 100) / 100,
+        prevMargin: Math.round(prevMargin * 10) / 10,
+        hasData: totalRevenue > 0 || (sewCost + cutCost + finCost) > 0,
+      });
+
     } catch (error) {
       console.error('Error fetching insights:', error);
     } finally {
@@ -499,6 +758,7 @@ export default function Insights() {
 
   // State for active pie segment hover
   const [activePieIndex, setActivePieIndex] = useState<number | undefined>(undefined);
+  const [activeCostPieIndex, setActiveCostPieIndex] = useState<number | undefined>(undefined);
 
   // 3D-like active shape renderer for pie chart
   const renderActiveShape = (props: any) => {
@@ -569,6 +829,26 @@ export default function Insights() {
     );
   };
 
+  const renderCostActiveShape = (props: any) => {
+    const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, percent, value } = props;
+    return (
+      <g>
+        <Sector cx={cx} cy={cy} innerRadius={innerRadius - 4} outerRadius={outerRadius + 12} startAngle={startAngle} endAngle={endAngle} fill={fill} opacity={0.2} style={{ filter: 'blur(8px)' }} />
+        <Sector cx={cx} cy={cy} innerRadius={innerRadius - 2} outerRadius={outerRadius + 8} startAngle={startAngle} endAngle={endAngle} fill={fill} stroke="hsl(var(--card))" strokeWidth={3} style={{ filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.25))', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }} />
+        <Sector cx={cx} cy={cy} innerRadius={innerRadius - 2} outerRadius={innerRadius + 2} startAngle={startAngle} endAngle={endAngle} fill="rgba(255,255,255,0.3)" />
+        <text x={cx} y={cy - 14} textAnchor="middle" fill="hsl(var(--foreground))" fontSize={11} fontWeight={600}>
+          {payload.name}
+        </text>
+        <text x={cx} y={cy + 4} textAnchor="middle" fill="hsl(var(--foreground))" fontSize={13} fontWeight={700}>
+          ${value.toLocaleString()}
+        </text>
+        <text x={cx} y={cy + 18} textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize={11} fontWeight={600}>
+          {`${(percent * 100).toFixed(0)}%`}
+        </text>
+      </g>
+    );
+  };
+
   const TrendIcon = ({ trend }: { trend: 'up' | 'down' | 'stable' }) => {
     if (trend === 'up') return <ArrowUp className="h-4 w-4 text-success" />;
     if (trend === 'down') return <ArrowDown className="h-4 w-4 text-destructive" />;
@@ -627,55 +907,8 @@ export default function Insights() {
               <SelectItem value="30">Last 30 days</SelectItem>
             </SelectContent>
           </Select>
-          <ExportInsights
-            loading={loading}
-            onChangePeriod={(days) => setPeriod(String(days) as '7' | '14' | '21' | '30')}
-            data={{
-              summary: {
-                totalSewingOutput: summary.totalSewingOutput,
-                totalFinishingQcPass: summary.totalFinishingQcPass,
-                avgEfficiency: summary.avgEfficiency,
-                totalBlockers: summary.totalBlockers,
-                openBlockers: summary.openBlockers,
-                resolvedBlockers: summary.resolvedBlockers,
-                avgManpower: summary.avgManpower,
-                daysWithData: summary.daysWithData,
-                topPerformingLine: summary.topPerformingLine,
-                worstPerformingLine: summary.worstPerformingLine,
-              },
-              linePerformance: linePerformance.map(l => ({
-                lineName: l.lineName,
-                totalOutput: l.totalOutput,
-                totalTarget: l.totalTarget,
-                efficiency: l.efficiency,
-                avgManpower: l.avgManpower,
-                blockers: l.blockers,
-              })),
-              dailyData: dailyData.map(d => ({
-                date: d.date,
-                sewingOutput: d.sewingOutput,
-                sewingTarget: d.sewingTarget,
-                finishingQcPass: d.finishingQcPass,
-                efficiency: d.efficiency,
-                blockers: d.blockers,
-              })),
-              blockerBreakdown: blockerBreakdown.map(b => ({
-                type: b.type,
-                count: b.count,
-              })),
-              workOrderProgress: workOrderProgress.map(wo => ({
-                poNumber: wo.poNumber,
-                buyer: wo.buyer,
-                style: wo.style,
-                orderQty: wo.orderQty,
-                totalOutput: wo.totalOutput,
-                progress: wo.progress,
-              })),
-              periodDays: parseInt(period),
-              exportDate: new Date().toISOString().split('T')[0],
-              factoryName: factory?.name || 'Unknown',
-            }}
-          />
+          <InsightsReportDialog />
+          <ReportExportDialog />
         </div>
       </div>
 
@@ -1386,6 +1619,515 @@ export default function Insights() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ── Financial Insights Section ── */}
+      {financialData.hasData && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <DollarSign className="h-5 w-5 text-emerald-600" />
+            Financial Insights
+          </h2>
+
+          {/* Financial KPI Cards */}
+          <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+            <Card className="relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-500/5 rounded-bl-full" />
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" />
+                  Total Revenue
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-end gap-2">
+                  <p className="text-2xl md:text-3xl font-bold font-mono text-emerald-600">
+                    ${financialData.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  </p>
+                  {financialData.prevRevenue > 0 && (
+                    financialData.totalRevenue > financialData.prevRevenue
+                      ? <ArrowUp className="h-4 w-4 text-success" />
+                      : financialData.totalRevenue < financialData.prevRevenue
+                      ? <ArrowDown className="h-4 w-4 text-destructive" />
+                      : <Minus className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  ${financialData.revenuePerPiece.toFixed(2)} per piece
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-orange-500/5 rounded-bl-full" />
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <Wallet className="h-4 w-4" />
+                  Total Cost
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl md:text-3xl font-bold font-mono text-orange-600">
+                  ${financialData.totalCost.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  ${financialData.costPerPiece.toFixed(2)} per piece
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-blue-500/5 rounded-bl-full" />
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <PiggyBank className="h-4 w-4" />
+                  Profit
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-end gap-2">
+                  <p className={`text-2xl md:text-3xl font-bold font-mono ${financialData.profit >= 0 ? 'text-success' : 'text-destructive'}`}>
+                    {financialData.profit < 0 ? '-' : ''}${Math.abs(financialData.profit).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  </p>
+                  {financialData.prevProfit !== 0 && (
+                    financialData.profit > financialData.prevProfit
+                      ? <ArrowUp className="h-4 w-4 text-success" />
+                      : financialData.profit < financialData.prevProfit
+                      ? <ArrowDown className="h-4 w-4 text-destructive" />
+                      : <Minus className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  vs ${financialData.prevProfit.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} prev period
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-violet-500/5 rounded-bl-full" />
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <Percent className="h-4 w-4" />
+                  Profit Margin
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className={`text-2xl md:text-3xl font-bold ${financialData.margin >= 20 ? 'text-success' : financialData.margin >= 0 ? 'text-warning' : 'text-destructive'}`}>
+                  {financialData.margin.toFixed(1)}%
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  vs {financialData.prevMargin.toFixed(1)}% prev period
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Revenue vs Cost Trend */}
+          <Card className="w-full overflow-hidden">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <DollarSign className="h-5 w-5 text-emerald-600" />
+                Revenue vs Cost Trend
+              </CardTitle>
+              <CardDescription>Daily revenue, cost, and profit over time (USD)</CardDescription>
+            </CardHeader>
+            <CardContent className="p-2 sm:p-6">
+              {financialData.dailyFinancials.length > 0 ? (
+                <div className="w-full overflow-hidden">
+                  <ResponsiveContainer width="100%" height={300}>
+                    <AreaChart data={financialData.dailyFinancials}>
+                      <defs>
+                        <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                        </linearGradient>
+                        <linearGradient id="colorCostArea" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#f97316" stopOpacity={0.2}/>
+                          <stop offset="95%" stopColor="#f97316" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis dataKey="displayDate" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
+                      <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} width={55} tickFormatter={(v) => `$${v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}`} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px'
+                        }}
+                        formatter={(value: number, name: string) => [`$${value.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, name]}
+                      />
+                      <Legend wrapperStyle={{ paddingTop: '8px' }} />
+                      <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#10b981" fillOpacity={1} fill="url(#colorRevenue)" strokeWidth={2} />
+                      <Area type="monotone" dataKey="cost" name="Cost" stroke="#f97316" fillOpacity={1} fill="url(#colorCostArea)" strokeWidth={2} />
+                      <Line type="monotone" dataKey="profit" name="Profit" stroke="#6366f1" strokeWidth={2} dot={false} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                  No financial data available for this period
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Cost Breakdown by Department */}
+            <Card className="w-full overflow-hidden">
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Wallet className="h-5 w-5 text-orange-600" />
+                  Cost by Department
+                </CardTitle>
+                <CardDescription>Labor cost distribution (USD)</CardDescription>
+              </CardHeader>
+              <CardContent className="p-4 sm:p-6">
+                {(() => {
+                  const COST_COLORS = ['#1e40af', '#d97706', '#7c3aed'];
+                  const costPieData = [
+                    { name: 'Sewing', value: financialData.sewingCost },
+                    { name: 'Cutting', value: financialData.cuttingCost },
+                    { name: 'Finishing', value: financialData.finishingCost },
+                  ].filter(d => d.value > 0);
+                  return costPieData.length > 0 ? (
+                    <div className="w-full flex flex-col items-center">
+                      <div className="relative">
+                        <div
+                          className="absolute inset-0 rounded-full opacity-30 blur-3xl pointer-events-none"
+                          style={{
+                            background: `radial-gradient(circle, ${COST_COLORS[0]}40 0%, transparent 70%)`,
+                            transform: 'scale(0.8)'
+                          }}
+                        />
+                        <ResponsiveContainer width={300} height={260}>
+                          <PieChart>
+                            <defs>
+                              {COST_COLORS.map((color, idx) => (
+                                <linearGradient key={idx} id={`costGradient3d${idx}`} x1="0" y1="0" x2="0.5" y2="1">
+                                  <stop offset="0%" stopColor={color} stopOpacity={1} />
+                                  <stop offset="50%" stopColor={color} stopOpacity={0.9} />
+                                  <stop offset="100%" stopColor={color} stopOpacity={0.7} />
+                                </linearGradient>
+                              ))}
+                              <filter id="costPie3dShadow" x="-50%" y="-50%" width="200%" height="200%">
+                                <feDropShadow dx="0" dy="4" stdDeviation="6" floodColor="#000" floodOpacity="0.25" />
+                              </filter>
+                            </defs>
+                            <Pie
+                              data={costPieData}
+                              dataKey="value"
+                              nameKey="name"
+                              cx="50%"
+                              cy="50%"
+                              outerRadius={90}
+                              innerRadius={55}
+                              paddingAngle={4}
+                              cornerRadius={6}
+                              activeIndex={activeCostPieIndex}
+                              activeShape={renderCostActiveShape}
+                              onMouseEnter={(_, index) => setActiveCostPieIndex(index)}
+                              onMouseLeave={() => setActiveCostPieIndex(undefined)}
+                              stroke="hsl(var(--card))"
+                              strokeWidth={2}
+                              style={{ filter: 'url(#costPie3dShadow)', cursor: 'pointer' }}
+                            >
+                              {costPieData.map((_, idx) => (
+                                <Cell
+                                  key={idx}
+                                  fill={`url(#costGradient3d${idx % COST_COLORS.length})`}
+                                  style={{
+                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                    transformOrigin: 'center'
+                                  }}
+                                />
+                              ))}
+                            </Pie>
+                            <Tooltip
+                              contentStyle={{
+                                backgroundColor: 'hsl(var(--card))',
+                                border: '1px solid hsl(var(--border))',
+                                borderRadius: '12px',
+                                boxShadow: '0 20px 40px -10px rgb(0 0 0 / 0.25)',
+                                padding: '14px 18px',
+                                backdropFilter: 'blur(8px)'
+                              }}
+                              itemStyle={{ color: 'hsl(var(--foreground))', fontWeight: 600 }}
+                              formatter={(value: number) => [`$${value.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, '']}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="flex flex-wrap justify-center gap-3 mt-4">
+                        {costPieData.map((d, idx) => (
+                          <div
+                            key={d.name}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-all duration-300 cursor-pointer
+                              ${activeCostPieIndex === idx
+                                ? 'bg-primary/10 scale-105 shadow-md'
+                                : 'bg-muted/50 hover:bg-muted'
+                              }`}
+                            onMouseEnter={() => setActiveCostPieIndex(idx)}
+                            onMouseLeave={() => setActiveCostPieIndex(undefined)}
+                          >
+                            <div
+                              className={`w-3 h-3 rounded-full transition-transform duration-300 ${activeCostPieIndex === idx ? 'scale-125' : ''}`}
+                              style={{
+                                backgroundColor: COST_COLORS[idx % COST_COLORS.length],
+                                boxShadow: activeCostPieIndex === idx
+                                  ? `0 0 12px ${COST_COLORS[idx % COST_COLORS.length]}80`
+                                  : 'none'
+                              }}
+                            />
+                            <span className={`text-sm transition-colors duration-300 ${activeCostPieIndex === idx ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                              {d.name}
+                            </span>
+                            <span className="text-sm font-bold text-foreground">
+                              ${d.value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="h-[260px] flex items-center justify-center text-muted-foreground">
+                      No cost data — configure headcount cost in Settings
+                    </div>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+
+            {/* Revenue by PO */}
+            <Card className="w-full overflow-hidden">
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-emerald-600" />
+                  Revenue by PO
+                </CardTitle>
+                <CardDescription>Top POs by revenue (USD)</CardDescription>
+              </CardHeader>
+              <CardContent className="p-2 sm:p-6">
+                {financialData.revenueByPo.length > 0 ? (
+                  <div className="w-full overflow-hidden">
+                    <ResponsiveContainer width="100%" height={Math.max(200, financialData.revenueByPo.slice(0, 8).length * 36)}>
+                      <BarChart data={financialData.revenueByPo.slice(0, 8)} layout="vertical">
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis type="number" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} tickFormatter={(v) => `$${v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}`} />
+                        <YAxis dataKey="po" type="category" width={80} className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 9 }} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--card))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px'
+                          }}
+                          formatter={(value: number) => [`$${value.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 'Revenue']}
+                        />
+                        <Bar dataKey="revenue" name="Revenue" fill="#10b981" radius={[0, 4, 4, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="h-[200px] flex items-center justify-center text-muted-foreground">
+                    No revenue data available
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Profitability by PO Table */}
+          {financialData.profitByPo.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <PiggyBank className="h-5 w-5 text-blue-600" />
+                  Profitability by PO
+                </CardTitle>
+                <CardDescription>Revenue, cost, profit, and margin per purchase order (USD)</CardDescription>
+              </CardHeader>
+              <CardContent className="px-4 md:px-6">
+                <div className="w-full overflow-x-auto">
+                  <table className="w-full text-xs md:text-sm min-w-[500px]">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-2 md:py-3 px-2 font-medium">PO</th>
+                        <th className="text-left py-2 md:py-3 px-2 font-medium hidden sm:table-cell">Buyer</th>
+                        <th className="text-right py-2 md:py-3 px-2 font-medium">Revenue</th>
+                        <th className="text-right py-2 md:py-3 px-2 font-medium">Cost</th>
+                        <th className="text-right py-2 md:py-3 px-2 font-medium">Profit</th>
+                        <th className="text-right py-2 md:py-3 px-2 font-medium">Margin</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {financialData.profitByPo.map(po => (
+                        <tr key={po.po} className="border-b last:border-0 hover:bg-muted/50 transition-colors">
+                          <td className="py-2 md:py-3 px-2 font-medium">{po.po}</td>
+                          <td className="py-2 md:py-3 px-2 text-muted-foreground hidden sm:table-cell">{po.buyer}</td>
+                          <td className="py-2 md:py-3 px-2 text-right font-mono text-emerald-600">${po.revenue.toLocaleString()}</td>
+                          <td className="py-2 md:py-3 px-2 text-right font-mono text-orange-600">${po.cost.toLocaleString()}</td>
+                          <td className={`py-2 md:py-3 px-2 text-right font-mono font-bold ${po.profit >= 0 ? 'text-success' : 'text-destructive'}`}>
+                            {po.profit < 0 ? '-' : ''}${Math.abs(po.profit).toLocaleString()}
+                          </td>
+                          <td className="py-2 md:py-3 px-2 text-right">
+                            <Badge variant={po.margin >= 20 ? 'default' : po.margin >= 0 ? 'secondary' : 'destructive'} className="text-[10px] md:text-xs">
+                              {po.margin.toFixed(1)}%
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="border-t-2 font-bold">
+                        <td className="py-2 md:py-3 px-2" colSpan={2}>Total</td>
+                        <td className="py-2 md:py-3 px-2 text-right font-mono text-emerald-600">${financialData.totalRevenue.toLocaleString()}</td>
+                        <td className="py-2 md:py-3 px-2 text-right font-mono text-orange-600">${financialData.totalCost.toLocaleString()}</td>
+                        <td className={`py-2 md:py-3 px-2 text-right font-mono ${financialData.profit >= 0 ? 'text-success' : 'text-destructive'}`}>
+                          {financialData.profit < 0 ? '-' : ''}${Math.abs(financialData.profit).toLocaleString()}
+                        </td>
+                        <td className="py-2 md:py-3 px-2 text-right">
+                          <Badge variant={financialData.margin >= 20 ? 'default' : financialData.margin >= 0 ? 'secondary' : 'destructive'}>
+                            {financialData.margin.toFixed(1)}%
+                          </Badge>
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Financial Key Takeaways */}
+          <Card className="bg-gradient-to-br from-emerald-500/5 via-transparent to-violet-500/5">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Zap className="h-5 w-5 text-emerald-600" />
+                Financial Takeaways
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+              {/* Best performing PO */}
+              {financialData.profitByPo.length > 0 && financialData.profitByPo[0].profit > 0 && (
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-success/10">
+                  <div className="h-8 w-8 rounded-full bg-success/20 flex items-center justify-center shrink-0">
+                    <TrendingUp className="h-4 w-4 text-success" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-success">Most Profitable PO</p>
+                    <p className="text-sm text-muted-foreground">
+                      {financialData.profitByPo[0].po} — ${financialData.profitByPo[0].profit.toLocaleString()} profit ({financialData.profitByPo[0].margin.toFixed(1)}% margin)
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Lowest margin PO */}
+              {financialData.profitByPo.length > 1 && (() => {
+                const worst = [...financialData.profitByPo].sort((a, b) => a.margin - b.margin)[0];
+                return worst.margin < 15 ? (
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-warning/10">
+                    <div className="h-8 w-8 rounded-full bg-warning/20 flex items-center justify-center shrink-0">
+                      <AlertTriangle className="h-4 w-4 text-warning" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-warning">Low Margin Alert</p>
+                      <p className="text-sm text-muted-foreground">
+                        {worst.po} has only {worst.margin.toFixed(1)}% margin — review costs
+                      </p>
+                    </div>
+                  </div>
+                ) : null;
+              })()}
+
+              {/* Margin trend vs previous period */}
+              {financialData.prevMargin > 0 && (
+                <div className={`flex items-start gap-3 p-3 rounded-lg ${financialData.margin > financialData.prevMargin ? 'bg-success/10' : financialData.margin < financialData.prevMargin ? 'bg-destructive/10' : 'bg-muted'}`}>
+                  <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${financialData.margin > financialData.prevMargin ? 'bg-success/20' : financialData.margin < financialData.prevMargin ? 'bg-destructive/20' : 'bg-muted-foreground/20'}`}>
+                    {financialData.margin > financialData.prevMargin
+                      ? <ArrowUp className="h-4 w-4 text-success" />
+                      : financialData.margin < financialData.prevMargin
+                      ? <ArrowDown className="h-4 w-4 text-destructive" />
+                      : <Minus className="h-4 w-4 text-muted-foreground" />}
+                  </div>
+                  <div>
+                    <p className={`font-medium ${financialData.margin > financialData.prevMargin ? 'text-success' : financialData.margin < financialData.prevMargin ? 'text-destructive' : 'text-muted-foreground'}`}>
+                      Margin {financialData.margin > financialData.prevMargin ? 'Improving' : financialData.margin < financialData.prevMargin ? 'Declining' : 'Stable'}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {financialData.margin.toFixed(1)}% vs {financialData.prevMargin.toFixed(1)}% previous period
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Cost per piece insight */}
+              {financialData.costPerPiece > 0 && financialData.revenuePerPiece > 0 && (
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-500/10">
+                  <div className="h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
+                    <DollarSign className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-blue-600">Unit Economics</p>
+                    <p className="text-sm text-muted-foreground">
+                      Revenue ${financialData.revenuePerPiece.toFixed(2)}/pc vs Cost ${financialData.costPerPiece.toFixed(2)}/pc
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Biggest cost driver */}
+              {financialData.totalCost > 0 && (() => {
+                const depts = [
+                  { name: 'Sewing', cost: financialData.sewingCost },
+                  { name: 'Cutting', cost: financialData.cuttingCost },
+                  { name: 'Finishing', cost: financialData.finishingCost },
+                ].sort((a, b) => b.cost - a.cost);
+                const top = depts[0];
+                const pct = Math.round((top.cost / financialData.totalCost) * 100);
+                return (
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-orange-500/10">
+                    <div className="h-8 w-8 rounded-full bg-orange-500/20 flex items-center justify-center shrink-0">
+                      <Wallet className="h-4 w-4 text-orange-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-orange-600">Biggest Cost Driver</p>
+                      <p className="text-sm text-muted-foreground">
+                        {top.name} accounts for {pct}% of total cost (${top.cost.toLocaleString(undefined, { maximumFractionDigits: 0 })})
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Revenue trend */}
+              {financialData.prevRevenue > 0 && (
+                <div className={`flex items-start gap-3 p-3 rounded-lg ${financialData.totalRevenue > financialData.prevRevenue ? 'bg-success/10' : 'bg-warning/10'}`}>
+                  <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${financialData.totalRevenue > financialData.prevRevenue ? 'bg-success/20' : 'bg-warning/20'}`}>
+                    {financialData.totalRevenue > financialData.prevRevenue
+                      ? <ArrowUp className="h-4 w-4 text-success" />
+                      : <ArrowDown className="h-4 w-4 text-warning" />}
+                  </div>
+                  <div>
+                    <p className={`font-medium ${financialData.totalRevenue > financialData.prevRevenue ? 'text-success' : 'text-warning'}`}>
+                      Revenue {financialData.totalRevenue > financialData.prevRevenue ? 'Up' : 'Down'}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      ${financialData.totalRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })} vs ${financialData.prevRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })} prev period
+                      ({financialData.prevRevenue > 0 ? `${financialData.totalRevenue > financialData.prevRevenue ? '+' : ''}${Math.round(((financialData.totalRevenue - financialData.prevRevenue) / financialData.prevRevenue) * 100)}%` : ''})
+                    </p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {headcountCost.currency === 'BDT' && bdtToUsd && (
+            <p className="text-xs text-muted-foreground text-center">
+              All values in USD. Exchange rate: {(1 / bdtToUsd).toFixed(1)} BDT/USD
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Performance Summary */}
       <Card className="bg-gradient-to-br from-primary/5 via-transparent to-info/5">

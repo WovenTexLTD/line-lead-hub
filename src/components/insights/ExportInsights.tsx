@@ -10,6 +10,24 @@ import { Download, Table, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import { jsPDF } from "jspdf";
 
+export interface ExportFinancialData {
+  totalRevenue: number;
+  totalCost: number;
+  profit: number;
+  margin: number;
+  sewingCost: number;
+  cuttingCost: number;
+  finishingCost: number;
+  revenuePerPiece: number;
+  costPerPiece: number;
+  profitByPo: Array<{ po: string; buyer: string; revenue: number; cost: number; profit: number; margin: number }>;
+  dailyFinancials: Array<{ date: string; displayDate: string; revenue: number; cost: number; profit: number }>;
+  prevRevenue: number;
+  prevProfit: number;
+  prevMargin: number;
+  hasData: boolean;
+}
+
 export interface ExportData {
   summary: {
     totalSewingOutput: number;
@@ -51,7 +69,10 @@ export interface ExportData {
     totalOutput: number;
     progress: number;
   }>;
+  financials?: ExportFinancialData;
   periodDays: number;
+  startDate: string;
+  endDate: string;
   exportDate: string;
   factoryName: string;
 }
@@ -66,9 +87,30 @@ const esc = (cell: string) => `"${String(cell ?? "").replace(/"/g, '""')}"`;
 
 type RGB = [number, number, number];
 
+// Load white PP logo for PDF cover
+function loadWhiteLogo(): Promise<string | null> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 200;
+      canvas.height = 200;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { resolve(null); return; }
+      ctx.drawImage(img, 0, 0, 200, 200);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.onerror = () => resolve(null);
+    // White PP logo on transparent - strip the blue background rect from the SVG
+    const svgRaw = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 375 375"><defs><clipPath id="a"><path d="M160.4 154.2H269v132.8H160.4z"/></clipPath><clipPath id="b"><path d="M106.1 87.7h108.8v132.7H106.1z"/></clipPath></defs><g clip-path="url(#a)"><path fill="#fff" d="M160.4 287.3v-83.9h34.1v12.7h30c2.7 0 5.3-1 7.3-3 1.9-1.9 3-4.5 3-7.2l-.1-7.4c0-5.6-4.6-10.2-10.2-10.2h-28.3l-23.4-34.1h51.7c24.4 0 44.2 19.8 44.3 44.2v7.4c0 11.8-4.6 23-13 31.4-8.4 8.4-19.5 13-31.4 13h-30v37z"/></g><g clip-path="url(#b)"><path fill="#fff" d="M106.1 220.7v-83.8h34.1v12.7h30c2.8 0 5.4-1.1 7.3-3 1.9-1.9 3-4.4 3-7.2v-7.4c0-5.6-4.6-10.2-10.2-10.2h-28.3l-23.4-34.1h51.7c24.4 0 44.2 19.9 44.3 44.2v7.4c0 11.8-4.6 23-13 31.4-8.4 8.4-19.5 13-31.3 13h-30.1v37z"/></g></svg>`;
+    img.src = "data:image/svg+xml;base64," + btoa(svgRaw);
+  });
+}
+
 // ─── PDF GENERATION ───────────────────────────────────────────────────
 
-export function downloadInsightsPdf(d: ExportData) {
+export async function downloadInsightsPdf(d: ExportData) {
   const doc = new jsPDF();
   const pw = doc.internal.pageSize.getWidth();
   const ph = doc.internal.pageSize.getHeight();
@@ -93,8 +135,8 @@ export function downloadInsightsPdf(d: ExportData) {
   const redLight: RGB = [254, 226, 226];
   const white: RGB = [255, 255, 255];
 
-  const startDate = format(subDays(new Date(), d.periodDays), "MMM d, yyyy");
-  const endDate = format(new Date(), "MMM d, yyyy");
+  const startDate = d.startDate ? format(new Date(d.startDate + "T00:00:00"), "MMM d, yyyy") : format(subDays(new Date(), d.periodDays), "MMM d, yyyy");
+  const endDate = d.endDate ? format(new Date(d.endDate + "T00:00:00"), "MMM d, yyyy") : format(new Date(), "MMM d, yyyy");
 
   // ── Computed insights ──
   const avgPerDay =
@@ -275,6 +317,9 @@ export function downloadInsightsPdf(d: ExportData) {
       day: "numeric",
     });
 
+  // Load white logo
+  const logoDataUrl = await loadWhiteLogo();
+
   // ========== PAGE 1: COVER PAGE ==========
   // Full blue background
   doc.setFillColor(...blue);
@@ -286,6 +331,20 @@ export function downloadInsightsPdf(d: ExportData) {
   for (let i = 0; i < 8; i++) {
     doc.circle(pw * 0.8 + i * 15, 40 + i * 20, 60 + i * 10, "F");
   }
+  doc.setGState(new (doc as any).GState({ opacity: 1 }));
+
+  // Production Portal logo + branding
+  if (logoDataUrl) {
+    const logoSize = 22;
+    doc.setGState(new (doc as any).GState({ opacity: 0.85 }));
+    doc.addImage(logoDataUrl, "PNG", pw / 2 - logoSize / 2, 18, logoSize, logoSize);
+    doc.setGState(new (doc as any).GState({ opacity: 1 }));
+  }
+  doc.setTextColor(255, 255, 255);
+  doc.setGState(new (doc as any).GState({ opacity: 0.6 }));
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  doc.text("PRODUCTION PORTAL", pw / 2, logoDataUrl ? 46 : 30, { align: "center" });
   doc.setGState(new (doc as any).GState({ opacity: 1 }));
 
   // Title
@@ -366,9 +425,13 @@ export function downloadInsightsPdf(d: ExportData) {
     doc.text(`  -  ${h}`, m + 8, hlY + 19 + i * 7);
   });
 
-  // Generated timestamp
+  // Generated timestamp + branding
   doc.setFontSize(7);
-  doc.text(`Generated: ${format(new Date(), "PPpp")}`, pw / 2, ph - 20, { align: "center" });
+  doc.text(`Generated: ${format(new Date(), "PPpp")}`, pw / 2, ph - 26, { align: "center" });
+  doc.setGState(new (doc as any).GState({ opacity: 0.4 }));
+  doc.setFontSize(6);
+  doc.text("Powered by Production Portal", pw / 2, ph - 18, { align: "center" });
+  doc.setGState(new (doc as any).GState({ opacity: 1 }));
   pageNum++;
 
   // ========== PAGE 2: EXECUTIVE SUMMARY ==========
@@ -798,8 +861,156 @@ export function downloadInsightsPdf(d: ExportData) {
     });
   }
 
+  // ========== PAGE 6: FINANCIAL INSIGHTS ==========
+  if (d.financials?.hasData) {
+    const fin = d.financials;
+    doc.addPage();
+    y = drawPageHeader("Financial Insights", "Revenue, cost, and profitability analysis (USD)");
+
+    // 4 KPI cards
+    const fkw = (cw - 15) / 4;
+    const fkh = 40;
+    const finKpis = [
+      { label: "Total Revenue", value: `$${fin.totalRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, sub: `$${fin.revenuePerPiece.toFixed(2)}/piece`, accent: green },
+      { label: "Total Cost", value: `$${fin.totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, sub: `$${fin.costPerPiece.toFixed(2)}/piece`, accent: amber },
+      { label: "Profit", value: `${fin.profit < 0 ? '-' : ''}$${Math.abs(fin.profit).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, sub: `vs $${fin.prevProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })} prev`, accent: fin.profit >= 0 ? green : red },
+      { label: "Profit Margin", value: `${fin.margin.toFixed(1)}%`, sub: `vs ${fin.prevMargin.toFixed(1)}% prev`, accent: fin.margin >= 20 ? green : fin.margin >= 0 ? amber : red },
+    ];
+    finKpis.forEach((k, i) => {
+      drawKpiCard(m + i * (fkw + 5), y, fkw, fkh, k.label, k.value, k.sub, k.accent);
+    });
+    y += fkh + 12;
+
+    // Cost breakdown section
+    if (fin.sewingCost > 0 || fin.cuttingCost > 0 || fin.finishingCost > 0) {
+      y = drawSectionTitle("Cost Breakdown by Department", y);
+      const totalCost = fin.sewingCost + fin.cuttingCost + fin.finishingCost;
+      const depts = [
+        { name: "Sewing", cost: fin.sewingCost, color: blue },
+        { name: "Cutting", cost: fin.cuttingCost, color: amber },
+        { name: "Finishing", cost: fin.finishingCost, color: [124, 58, 237] as RGB },
+      ].filter(dept => dept.cost > 0);
+
+      depts.forEach(dept => {
+        if (y > ph - 30) return;
+        const pct = totalCost > 0 ? Math.round((dept.cost / totalCost) * 100) : 0;
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(...slate700);
+        doc.text(dept.name, m, y + 3);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(...slate500);
+        doc.text(`$${dept.cost.toLocaleString(undefined, { maximumFractionDigits: 0 })} (${pct}%)`, m + 35, y + 3);
+        drawProgressBar(m + 85, y, cw - 85, 4, pct, dept.color, slate200);
+        y += 10;
+      });
+      y += 6;
+    }
+
+    // Revenue vs Cost trend chart
+    if (fin.dailyFinancials.length > 0) {
+      y = drawSectionTitle("Daily Revenue vs Cost", y);
+      const chartH = 60;
+      const days = fin.dailyFinancials;
+      const maxVal = Math.max(...days.map(dd => Math.max(dd.revenue, dd.cost)), 1);
+      const barSpacing = cw / days.length;
+      const barW = Math.min(barSpacing * 0.3, 10);
+
+      // Grid lines
+      doc.setDrawColor(...slate200);
+      doc.setLineWidth(0.15);
+      for (let i = 0; i <= 4; i++) {
+        const gy = y + chartH - (i / 4) * chartH;
+        doc.line(m, gy, m + cw, gy);
+        doc.setFontSize(5.5);
+        doc.setTextColor(...slate500);
+        const val = Math.round((maxVal * i) / 4);
+        doc.text(`$${val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}`, m - 2, gy + 1, { align: "right" });
+      }
+
+      days.forEach((dd, idx) => {
+        const cx = m + idx * barSpacing + barSpacing / 2;
+        // Revenue bar (green)
+        const revH = (dd.revenue / maxVal) * chartH;
+        if (revH > 0) {
+          doc.setFillColor(...green);
+          doc.rect(cx - barW - 1, y + chartH - revH, barW, revH, "F");
+        }
+        // Cost bar (orange)
+        const costH = (dd.cost / maxVal) * chartH;
+        if (costH > 0) {
+          doc.setFillColor(...amber);
+          doc.rect(cx + 1, y + chartH - costH, barW, costH, "F");
+        }
+        // Date label
+        doc.setFontSize(5);
+        doc.setTextColor(...slate500);
+        doc.text(dd.displayDate, cx, y + chartH + 5, { align: "center" });
+      });
+
+      // Legend
+      const legY = y + chartH + 10;
+      doc.setFillColor(...green);
+      doc.rect(m, legY, 6, 3, "F");
+      doc.setFontSize(6);
+      doc.setTextColor(...slate500);
+      doc.text("Revenue", m + 8, legY + 3);
+      doc.setFillColor(...amber);
+      doc.rect(m + 35, legY, 6, 3, "F");
+      doc.text("Cost", m + 43, legY + 3);
+      y = legY + 12;
+    }
+
+    // Profitability by PO table
+    if (fin.profitByPo.length > 0 && y < ph - 60) {
+      y = drawSectionTitle("Profitability by PO", y);
+
+      // Table header
+      const fCols = [0, 45, 90, 125, 155];
+      const fHeaders = ["PO / BUYER", "REVENUE", "COST", "PROFIT", "MARGIN"];
+      doc.setFillColor(...slate900);
+      doc.roundedRect(m, y, cw, 10, 2, 2, "F");
+      doc.rect(m, y + 5, cw, 5, "F");
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(255, 255, 255);
+      fHeaders.forEach((h, i) => doc.text(h, m + fCols[i] + 4, y + 7));
+      y += 13;
+
+      doc.setFont("helvetica", "normal");
+      fin.profitByPo.slice(0, 10).forEach((po, idx) => {
+        if (y > ph - 28) return;
+        if (idx % 2 === 0) {
+          doc.setFillColor(...slate50);
+          doc.rect(m, y - 4.5, cw, 10, "F");
+        }
+        doc.setFontSize(7);
+        doc.setTextColor(...slate900);
+        doc.setFont("helvetica", "bold");
+        const poLabel = po.po.length > 15 ? po.po.substring(0, 13) + "..." : po.po;
+        doc.text(poLabel, m + fCols[0] + 4, y - 1);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(...slate500);
+        doc.setFontSize(6);
+        doc.text(po.buyer.substring(0, 15), m + fCols[0] + 4, y + 4);
+        doc.setFontSize(7);
+        doc.setTextColor(...slate700);
+        doc.text(`$${po.revenue.toLocaleString()}`, m + fCols[1] + 4, y);
+        doc.text(`$${po.cost.toLocaleString()}`, m + fCols[2] + 4, y);
+        const profitColor: RGB = po.profit >= 0 ? green : red;
+        doc.setTextColor(...profitColor);
+        doc.setFont("helvetica", "bold");
+        doc.text(`${po.profit < 0 ? '-' : ''}$${Math.abs(po.profit).toLocaleString()}`, m + fCols[3] + 4, y);
+        const mColor: RGB = po.margin >= 20 ? green : po.margin >= 0 ? amber : red;
+        const mBg: RGB = po.margin >= 20 ? greenLight : po.margin >= 0 ? amberLight : redLight;
+        drawStatusBadge(m + fCols[4] + 4, y, `${po.margin.toFixed(1)}%`, mColor, mBg);
+        y += 10;
+      });
+    }
+  }
+
   // Save
-  const fileDate = format(new Date(), "yyyy-MM-dd");
+  const fileDate = d.endDate || format(new Date(), "yyyy-MM-dd");
   doc.save(`insights-report-${d.periodDays}days-${fileDate}.pdf`);
 }
 
@@ -897,7 +1108,7 @@ export function downloadInsightsCsv(d: ExportData) {
   const blob = new Blob([BOM + csvContent], { type: "text/csv;charset=utf-8;" });
   const link = document.createElement("a");
   const url = URL.createObjectURL(blob);
-  const fileDate = format(new Date(), "yyyy-MM-dd");
+  const fileDate = d.endDate || format(new Date(), "yyyy-MM-dd");
   link.href = url;
   link.download = `insights-report-${d.periodDays}days-${fileDate}.csv`;
   link.click();
@@ -907,9 +1118,9 @@ export function downloadInsightsCsv(d: ExportData) {
 // ─── COMPONENT ────────────────────────────────────────────────────────
 
 export function ExportInsights({ data }: ExportInsightsProps) {
-  const exportPdf = () => {
+  const exportPdf = async () => {
     try {
-      downloadInsightsPdf(data);
+      await downloadInsightsPdf(data);
       toast.success(`${data.periodDays}-day PDF report exported`);
     } catch (error) {
       console.error("PDF export error:", error);
