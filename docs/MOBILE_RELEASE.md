@@ -169,7 +169,7 @@ For consistency, you may want to match the version in:
 Add these to your Supabase project's **Authentication → URL Configuration → Redirect URLs**:
 
 ```
-https://phbehenczyryrlxmgjju.supabase.co/auth/v1/callback
+https://varolnwetchstlfholbl.supabase.co/auth/v1/callback
 productionportal://callback
 capacitor://localhost
 http://localhost

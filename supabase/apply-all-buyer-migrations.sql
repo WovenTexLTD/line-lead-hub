@@ -1,7 +1,7 @@
 -- =============================================================================
 -- ALL BUYER MIGRATIONS — Combined for manual application
 -- =============================================================================
--- Run this in the Supabase SQL Editor for project: phbehenczyryrlxmgjju
+-- Run this in the Supabase SQL Editor for project: varolnwetchstlfholbl
 -- This combines migrations 20260221120000 through 20260222120004.
 -- Safe to re-run (uses IF NOT EXISTS / OR REPLACE where possible).
 -- =============================================================================

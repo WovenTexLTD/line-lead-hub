@@ -242,7 +242,7 @@ serve(async (req) => {
       isDowngrade
     });
 
-    const requestOrigin = req.headers.get("origin") || "https://production-portal.lovable.app";
+    const requestOrigin = req.headers.get("origin") || "https://productionportal.cloud";
 
     // ============================================================
     // UPGRADE FLOW: Redirect to Stripe Checkout for user confirmation

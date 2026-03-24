@@ -43,7 +43,7 @@ serve(async (req) => {
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
 
-    const requestOrigin = req.headers.get("origin") || "https://production-portal.lovable.app";
+    const requestOrigin = req.headers.get("origin") || "https://productionportal.cloud";
 
     // If no Stripe customer exists, redirect to subscription page instead of creating checkout
     // This ensures users go through the proper subscription flow

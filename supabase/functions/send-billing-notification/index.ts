@@ -52,7 +52,7 @@ serve(async (req) => {
 
     let subject = '';
     let htmlContent = '';
-    const portalUrl = 'https://production-portal.lovable.app';
+    const portalUrl = 'https://productionportal.cloud';
 
     switch (type) {
       case 'trial_expiring':
