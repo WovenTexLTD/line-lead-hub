@@ -165,7 +165,7 @@ await test('Every user_role has a valid user_id in profiles', async () => {
 });
 
 await test('All user_roles have a valid role value', async () => {
-  const validRoles = ['admin', 'owner', 'line_lead', 'floor_manager', 'unit_manager', 'viewer', 'buyer', 'worker', 'cutting', 'storage', 'sewing'];
+  const validRoles = ['admin', 'owner', 'line_lead', 'floor_manager', 'unit_manager', 'viewer', 'buyer', 'worker', 'cutting', 'storage', 'sewing', 'gate_officer'];
   const roles = await restQuery('user_roles', '?select=id,role');
   const invalid = roles.filter(r => !validRoles.includes(r.role));
   if (invalid.length > 0) throw new Error(`${invalid.length} roles with invalid role: ${invalid.map(r => r.role).join(', ')}`);
