@@ -1234,10 +1234,12 @@ export type Database = {
       }
       factory_accounts: {
         Row: {
+          bdt_to_usd_rate: number | null
           created_at: string | null
           cutoff_time: string | null
           enabled_modules: string[] | null
           evening_actual_cutoff: string | null
+          finance_enabled: boolean | null
           headcount_cost_currency: string | null
           headcount_cost_value: number | null
           id: string
@@ -1264,10 +1266,12 @@ export type Database = {
           use_dynamic_forms: boolean | null
         }
         Insert: {
+          bdt_to_usd_rate?: number | null
           created_at?: string | null
           cutoff_time?: string | null
           enabled_modules?: string[] | null
           evening_actual_cutoff?: string | null
+          finance_enabled?: boolean | null
           headcount_cost_currency?: string | null
           headcount_cost_value?: number | null
           id?: string
@@ -1294,10 +1298,12 @@ export type Database = {
           use_dynamic_forms?: boolean | null
         }
         Update: {
+          bdt_to_usd_rate?: number | null
           created_at?: string | null
           cutoff_time?: string | null
           enabled_modules?: string[] | null
           evening_actual_cutoff?: string | null
+          finance_enabled?: boolean | null
           headcount_cost_currency?: string | null
           headcount_cost_value?: number | null
           id?: string
@@ -1324,6 +1330,86 @@ export type Database = {
           use_dynamic_forms?: boolean | null
         }
         Relationships: []
+      }
+      factory_finance_settings: {
+        Row: {
+          bank_account_name: string | null
+          bank_account_no: string | null
+          bank_branch: string | null
+          bank_name: string | null
+          bank_routing_no: string | null
+          bank_swift: string | null
+          bin_number: string | null
+          created_at: string
+          factory_id: string
+          id: string
+          invoice_prefix: string
+          seller_address: string | null
+          seller_city: string | null
+          seller_country: string | null
+          seller_email: string | null
+          seller_name: string | null
+          seller_phone: string | null
+          signature_url: string | null
+          stamp_url: string | null
+          tin_number: string | null
+          updated_at: string
+        }
+        Insert: {
+          bank_account_name?: string | null
+          bank_account_no?: string | null
+          bank_branch?: string | null
+          bank_name?: string | null
+          bank_routing_no?: string | null
+          bank_swift?: string | null
+          bin_number?: string | null
+          created_at?: string
+          factory_id: string
+          id?: string
+          invoice_prefix?: string
+          seller_address?: string | null
+          seller_city?: string | null
+          seller_country?: string | null
+          seller_email?: string | null
+          seller_name?: string | null
+          seller_phone?: string | null
+          signature_url?: string | null
+          stamp_url?: string | null
+          tin_number?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bank_account_name?: string | null
+          bank_account_no?: string | null
+          bank_branch?: string | null
+          bank_name?: string | null
+          bank_routing_no?: string | null
+          bank_swift?: string | null
+          bin_number?: string | null
+          created_at?: string
+          factory_id?: string
+          id?: string
+          invoice_prefix?: string
+          seller_address?: string | null
+          seller_city?: string | null
+          seller_country?: string | null
+          seller_email?: string | null
+          seller_name?: string | null
+          seller_phone?: string | null
+          signature_url?: string | null
+          stamp_url?: string | null
+          tin_number?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "factory_finance_settings_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: true
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       finishing_actuals: {
         Row: {
@@ -2153,35 +2239,88 @@ export type Database = {
           },
         ]
       }
+      invoice_charges: {
+        Row: {
+          amount: number
+          id: string
+          invoice_id: string
+          is_deduct: boolean
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          amount?: number
+          id?: string
+          invoice_id: string
+          is_deduct?: boolean
+          label: string
+          sort_order?: number
+        }
+        Update: {
+          amount?: number
+          id?: string
+          invoice_id?: string
+          is_deduct?: boolean
+          label?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_charges_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_line_items: {
         Row: {
+          color: string | null
           created_at: string
           description: string
+          discount_pct: number | null
+          hs_code: string | null
           id: string
           invoice_id: string
           quantity: number
+          size_range: string | null
           sort_order: number
+          style_name: string | null
           style_number: string | null
+          unit: string | null
           unit_price: number
         }
         Insert: {
+          color?: string | null
           created_at?: string
           description: string
+          discount_pct?: number | null
+          hs_code?: string | null
           id?: string
           invoice_id: string
           quantity?: number
+          size_range?: string | null
           sort_order?: number
+          style_name?: string | null
           style_number?: string | null
+          unit?: string | null
           unit_price?: number
         }
         Update: {
+          color?: string | null
           created_at?: string
           description?: string
+          discount_pct?: number | null
+          hs_code?: string | null
           id?: string
           invoice_id?: string
           quantity?: number
+          size_range?: string | null
           sort_order?: number
+          style_name?: string | null
           style_number?: string | null
+          unit?: string | null
           unit_price?: number
         }
         Relationships: [
@@ -2194,53 +2333,163 @@ export type Database = {
           },
         ]
       }
+      invoice_tax_lines: {
+        Row: {
+          amount: number
+          id: string
+          invoice_id: string
+          label: string
+          rate_pct: number
+          sort_order: number
+        }
+        Insert: {
+          amount?: number
+          id?: string
+          invoice_id: string
+          label: string
+          rate_pct?: number
+          sort_order?: number
+        }
+        Update: {
+          amount?: number
+          id?: string
+          invoice_id?: string
+          label?: string
+          rate_pct?: number
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_tax_lines_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
+          bank_details: Json | null
+          bl_date: string | null
+          bl_number: string | null
+          buyer_address: string | null
+          buyer_contact: string | null
           buyer_name: string
+          contract_number: string | null
+          country_of_dest: string | null
+          country_of_origin: string | null
           created_at: string
           created_by: string | null
           currency: string
+          discount_pct: number | null
           due_date: string | null
           exchange_rate: number
           factory_id: string
           id: string
+          incoterms: string | null
+          internal_notes: string | null
           invoice_number: string
+          invoice_type: string
           issue_date: string
+          lc_date: string | null
+          lc_number: string | null
           notes: string | null
+          packing_type: string | null
+          payment_terms: string | null
+          port_of_discharge: string | null
+          port_of_loading: string | null
+          remarks: string | null
+          show_bank_details: boolean
           status: string
+          total_cartons: number | null
+          total_cbm: number | null
+          total_gross_weight: number | null
+          total_net_weight: number | null
           updated_at: string
+          vessel_name: string | null
           work_order_id: string | null
         }
         Insert: {
+          bank_details?: Json | null
+          bl_date?: string | null
+          bl_number?: string | null
+          buyer_address?: string | null
+          buyer_contact?: string | null
           buyer_name: string
+          contract_number?: string | null
+          country_of_dest?: string | null
+          country_of_origin?: string | null
           created_at?: string
           created_by?: string | null
           currency?: string
+          discount_pct?: number | null
           due_date?: string | null
           exchange_rate?: number
           factory_id: string
           id?: string
+          incoterms?: string | null
+          internal_notes?: string | null
           invoice_number: string
+          invoice_type?: string
           issue_date?: string
+          lc_date?: string | null
+          lc_number?: string | null
           notes?: string | null
+          packing_type?: string | null
+          payment_terms?: string | null
+          port_of_discharge?: string | null
+          port_of_loading?: string | null
+          remarks?: string | null
+          show_bank_details?: boolean
           status?: string
+          total_cartons?: number | null
+          total_cbm?: number | null
+          total_gross_weight?: number | null
+          total_net_weight?: number | null
           updated_at?: string
+          vessel_name?: string | null
           work_order_id?: string | null
         }
         Update: {
+          bank_details?: Json | null
+          bl_date?: string | null
+          bl_number?: string | null
+          buyer_address?: string | null
+          buyer_contact?: string | null
           buyer_name?: string
+          contract_number?: string | null
+          country_of_dest?: string | null
+          country_of_origin?: string | null
           created_at?: string
           created_by?: string | null
           currency?: string
+          discount_pct?: number | null
           due_date?: string | null
           exchange_rate?: number
           factory_id?: string
           id?: string
+          incoterms?: string | null
+          internal_notes?: string | null
           invoice_number?: string
+          invoice_type?: string
           issue_date?: string
+          lc_date?: string | null
+          lc_number?: string | null
           notes?: string | null
+          packing_type?: string | null
+          payment_terms?: string | null
+          port_of_discharge?: string | null
+          port_of_loading?: string | null
+          remarks?: string | null
+          show_bank_details?: boolean
           status?: string
+          total_cartons?: number | null
+          total_cbm?: number | null
+          total_gross_weight?: number | null
+          total_net_weight?: number | null
           updated_at?: string
+          vessel_name?: string | null
           work_order_id?: string | null
         }
         Relationships: [
