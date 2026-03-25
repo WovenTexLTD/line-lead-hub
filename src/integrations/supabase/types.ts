@@ -1333,72 +1333,60 @@ export type Database = {
       }
       factory_finance_settings: {
         Row: {
-          bank_account_name: string | null
-          bank_account_no: string | null
+          bank_account: string | null
           bank_branch: string | null
           bank_name: string | null
-          bank_routing_no: string | null
+          bank_routing: string | null
           bank_swift: string | null
-          bin_number: string | null
+          bin: string | null
           created_at: string
           factory_id: string
           id: string
           invoice_prefix: string
           seller_address: string | null
-          seller_city: string | null
-          seller_country: string | null
-          seller_email: string | null
-          seller_name: string | null
-          seller_phone: string | null
+          seller_contact: string | null
           signature_url: string | null
           stamp_url: string | null
-          tin_number: string | null
+          tin: string | null
+          trade_licence: string | null
           updated_at: string
         }
         Insert: {
-          bank_account_name?: string | null
-          bank_account_no?: string | null
+          bank_account?: string | null
           bank_branch?: string | null
           bank_name?: string | null
-          bank_routing_no?: string | null
+          bank_routing?: string | null
           bank_swift?: string | null
-          bin_number?: string | null
+          bin?: string | null
           created_at?: string
           factory_id: string
           id?: string
           invoice_prefix?: string
           seller_address?: string | null
-          seller_city?: string | null
-          seller_country?: string | null
-          seller_email?: string | null
-          seller_name?: string | null
-          seller_phone?: string | null
+          seller_contact?: string | null
           signature_url?: string | null
           stamp_url?: string | null
-          tin_number?: string | null
+          tin?: string | null
+          trade_licence?: string | null
           updated_at?: string
         }
         Update: {
-          bank_account_name?: string | null
-          bank_account_no?: string | null
+          bank_account?: string | null
           bank_branch?: string | null
           bank_name?: string | null
-          bank_routing_no?: string | null
+          bank_routing?: string | null
           bank_swift?: string | null
-          bin_number?: string | null
+          bin?: string | null
           created_at?: string
           factory_id?: string
           id?: string
           invoice_prefix?: string
           seller_address?: string | null
-          seller_city?: string | null
-          seller_country?: string | null
-          seller_email?: string | null
-          seller_name?: string | null
-          seller_phone?: string | null
+          seller_contact?: string | null
           signature_url?: string | null
           stamp_url?: string | null
-          tin_number?: string | null
+          tin?: string | null
+          trade_licence?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -2242,26 +2230,29 @@ export type Database = {
       invoice_charges: {
         Row: {
           amount: number
+          charge_type: string
+          created_at: string
+          description: string
           id: string
           invoice_id: string
-          is_deduct: boolean
-          label: string
           sort_order: number
         }
         Insert: {
           amount?: number
+          charge_type?: string
+          created_at?: string
+          description: string
           id?: string
           invoice_id: string
-          is_deduct?: boolean
-          label: string
           sort_order?: number
         }
         Update: {
           amount?: number
+          charge_type?: string
+          created_at?: string
+          description?: string
           id?: string
           invoice_id?: string
-          is_deduct?: boolean
-          label?: string
           sort_order?: number
         }
         Relationships: [
@@ -2280,6 +2271,8 @@ export type Database = {
           created_at: string
           description: string
           discount_pct: number | null
+          discount_type: string | null
+          discount_value: number | null
           hs_code: string | null
           id: string
           invoice_id: string
@@ -2296,6 +2289,8 @@ export type Database = {
           created_at?: string
           description: string
           discount_pct?: number | null
+          discount_type?: string | null
+          discount_value?: number | null
           hs_code?: string | null
           id?: string
           invoice_id: string
@@ -2312,6 +2307,8 @@ export type Database = {
           created_at?: string
           description?: string
           discount_pct?: number | null
+          discount_type?: string | null
+          discount_value?: number | null
           hs_code?: string | null
           id?: string
           invoice_id?: string
@@ -2336,26 +2333,29 @@ export type Database = {
       invoice_tax_lines: {
         Row: {
           amount: number
+          created_at: string
+          description: string
           id: string
           invoice_id: string
-          label: string
-          rate_pct: number
+          rate: number | null
           sort_order: number
         }
         Insert: {
           amount?: number
+          created_at?: string
+          description?: string
           id?: string
           invoice_id: string
-          label: string
-          rate_pct?: number
+          rate?: number | null
           sort_order?: number
         }
         Update: {
           amount?: number
+          created_at?: string
+          description?: string
           id?: string
           invoice_id?: string
-          label?: string
-          rate_pct?: number
+          rate?: number | null
           sort_order?: number
         }
         Relationships: [
@@ -2370,24 +2370,32 @@ export type Database = {
       }
       invoices: {
         Row: {
+          attachment_refs: Json | null
           bank_details: Json | null
           bl_date: string | null
           bl_number: string | null
           buyer_address: string | null
           buyer_contact: string | null
           buyer_name: string
+          container_number: string | null
           contract_number: string | null
+          contract_ref: string | null
+          copy_marking: string
           country_of_dest: string | null
           country_of_origin: string | null
           created_at: string
           created_by: string | null
           currency: string
+          custom_fields: Json | null
           discount_pct: number | null
+          discount_type: string | null
+          discount_value: number | null
           due_date: string | null
           exchange_rate: number
           factory_id: string
           id: string
           incoterms: string | null
+          internal_memo: string | null
           internal_notes: string | null
           invoice_number: string
           invoice_type: string
@@ -2396,10 +2404,14 @@ export type Database = {
           lc_number: string | null
           notes: string | null
           packing_type: string | null
+          paper_size: string
           payment_terms: string | null
+          payment_terms_text: string | null
+          po_numbers: string[] | null
           port_of_discharge: string | null
           port_of_loading: string | null
           remarks: string | null
+          ship_to_address: string | null
           show_bank_details: boolean
           status: string
           total_cartons: number | null
@@ -2411,24 +2423,32 @@ export type Database = {
           work_order_id: string | null
         }
         Insert: {
+          attachment_refs?: Json | null
           bank_details?: Json | null
           bl_date?: string | null
           bl_number?: string | null
           buyer_address?: string | null
           buyer_contact?: string | null
           buyer_name: string
+          container_number?: string | null
           contract_number?: string | null
+          contract_ref?: string | null
+          copy_marking?: string
           country_of_dest?: string | null
           country_of_origin?: string | null
           created_at?: string
           created_by?: string | null
           currency?: string
+          custom_fields?: Json | null
           discount_pct?: number | null
+          discount_type?: string | null
+          discount_value?: number | null
           due_date?: string | null
           exchange_rate?: number
           factory_id: string
           id?: string
           incoterms?: string | null
+          internal_memo?: string | null
           internal_notes?: string | null
           invoice_number: string
           invoice_type?: string
@@ -2437,10 +2457,14 @@ export type Database = {
           lc_number?: string | null
           notes?: string | null
           packing_type?: string | null
+          paper_size?: string
           payment_terms?: string | null
+          payment_terms_text?: string | null
+          po_numbers?: string[] | null
           port_of_discharge?: string | null
           port_of_loading?: string | null
           remarks?: string | null
+          ship_to_address?: string | null
           show_bank_details?: boolean
           status?: string
           total_cartons?: number | null
@@ -2452,24 +2476,32 @@ export type Database = {
           work_order_id?: string | null
         }
         Update: {
+          attachment_refs?: Json | null
           bank_details?: Json | null
           bl_date?: string | null
           bl_number?: string | null
           buyer_address?: string | null
           buyer_contact?: string | null
           buyer_name?: string
+          container_number?: string | null
           contract_number?: string | null
+          contract_ref?: string | null
+          copy_marking?: string
           country_of_dest?: string | null
           country_of_origin?: string | null
           created_at?: string
           created_by?: string | null
           currency?: string
+          custom_fields?: Json | null
           discount_pct?: number | null
+          discount_type?: string | null
+          discount_value?: number | null
           due_date?: string | null
           exchange_rate?: number
           factory_id?: string
           id?: string
           incoterms?: string | null
+          internal_memo?: string | null
           internal_notes?: string | null
           invoice_number?: string
           invoice_type?: string
@@ -2478,10 +2510,14 @@ export type Database = {
           lc_number?: string | null
           notes?: string | null
           packing_type?: string | null
+          paper_size?: string
           payment_terms?: string | null
+          payment_terms_text?: string | null
+          po_numbers?: string[] | null
           port_of_discharge?: string | null
           port_of_loading?: string | null
           remarks?: string | null
+          ship_to_address?: string | null
           show_bank_details?: boolean
           status?: string
           total_cartons?: number | null
