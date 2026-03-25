@@ -52,7 +52,7 @@ export function useBuyerMemberships() {
       }
 
       // Fetch PO counts per factory
-      const factoryIds = membershipData.map(m => m.factory_id);
+      const factoryIds = membershipData.map(m => m.factory_id).filter((id): id is string => id != null);
       const { data: poCountData } = await supabase
         .from("buyer_po_access")
         .select("factory_id")
