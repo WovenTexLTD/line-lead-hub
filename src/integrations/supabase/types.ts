@@ -4144,6 +4144,7 @@ export type Database = {
           created_at: string | null
           description: string | null
           factory_id: string
+          hs_code: string | null
           id: string
           is_active: boolean | null
           item: string | null
@@ -4152,9 +4153,11 @@ export type Database = {
           package_qty: number | null
           planned_ex_factory: string | null
           po_number: string
+          selling_price: number | null
           smv: number | null
           status: string | null
           style: string
+          style_number: string | null
           supplier_name: string | null
           target_per_day: number | null
           target_per_hour: number | null
@@ -4170,6 +4173,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           factory_id: string
+          hs_code?: string | null
           id?: string
           is_active?: boolean | null
           item?: string | null
@@ -4178,9 +4182,11 @@ export type Database = {
           package_qty?: number | null
           planned_ex_factory?: string | null
           po_number: string
+          selling_price?: number | null
           smv?: number | null
           status?: string | null
           style: string
+          style_number?: string | null
           supplier_name?: string | null
           target_per_day?: number | null
           target_per_hour?: number | null
@@ -4196,6 +4202,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           factory_id?: string
+          hs_code?: string | null
           id?: string
           is_active?: boolean | null
           item?: string | null
@@ -4204,9 +4211,11 @@ export type Database = {
           package_qty?: number | null
           planned_ex_factory?: string | null
           po_number?: string
+          selling_price?: number | null
           smv?: number | null
           status?: string | null
           style?: string
+          style_number?: string | null
           supplier_name?: string | null
           target_per_day?: number | null
           target_per_hour?: number | null
