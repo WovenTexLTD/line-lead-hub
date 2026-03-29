@@ -2351,8 +2351,8 @@ CREATE POLICY "Admins can manage finance settings" ON public.factory_finance_set
   WITH CHECK (factory_id = get_user_factory_id(auth.uid()) AND is_admin_or_higher(auth.uid()));
 
 -- ── factory_bank_accounts ─────────────────────────────────────────────────────
-CREATE POLICY "Factory members can view bank accounts" ON public.factory_bank_accounts FOR SELECT TO authenticated
-  USING (factory_id = get_user_factory_id(auth.uid()));
+CREATE POLICY "Admins can view bank accounts" ON public.factory_bank_accounts FOR SELECT TO authenticated
+  USING (factory_id = get_user_factory_id(auth.uid()) AND is_admin_or_higher(auth.uid()));
 CREATE POLICY "Admins can manage bank accounts" ON public.factory_bank_accounts FOR ALL TO authenticated
   USING (factory_id = get_user_factory_id(auth.uid()) AND is_admin_or_higher(auth.uid()))
   WITH CHECK (factory_id = get_user_factory_id(auth.uid()) AND is_admin_or_higher(auth.uid()));
