@@ -374,10 +374,10 @@ export default function Dashboard() {
   }, [authLoading, profile?.factory_id, canViewDashboard, navigate, hasRole]);
 
   useEffect(() => {
-    if (profile?.factory_id && canViewDashboard) {
+    if (profile?.factory_id && canViewDashboard && factory) {
       fetchDashboardData();
     }
-  }, [profile?.factory_id, canViewDashboard]);
+  }, [profile?.factory_id, canViewDashboard, factory]);
 
   // Auto-refresh at midnight (factory timezone) and on tab refocus
   useMidnightRefresh(useCallback(() => {

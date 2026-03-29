@@ -429,7 +429,7 @@ export function ReportExportDialog({ defaultType, date, weekOffset = 0, dailyRep
 
   async function generatePeriodCsv(
     sewingData: any[], cuttingData: any[], finishingData: any[], storageData: any[],
-    label: string, xRate: number | null, dates: string[],
+    label: string, xRate: number | null, dates: string[], sewingTargets: any[] = [],
   ) {
     const factoryName = factory?.name || "Factory";
     const typeLabel = reportType === "weekly" ? "WEEKLY" : "MONTHLY";
@@ -526,6 +526,16 @@ export function ReportExportDialog({ defaultType, date, weekOffset = 0, dailyRep
       }
     }
 
+    // Build target lookup: key = "lineId|woId|date" → target per hour
+    const tgtLookup = new Map<string, number>();
+    sewingTargets.forEach((t: any) => {
+      const key = `${t.line_id}|${t.work_order_id}|${t.production_date}`;
+      const resolved = t.target_total_planned != null
+        ? t.target_total_planned
+        : (t.per_hour_target || 0) * (t.hours_planned || 8);
+      tgtLookup.set(key, resolved);
+    });
+
     // ── Sewing — grouped by Line ──
     if (departments.sewing && sewingData.length > 0) {
       R.push(["SEWING — LINE WISE OUTPUT & COST"]);
@@ -543,26 +553,31 @@ export function ReportExportDialog({ defaultType, date, weekOffset = 0, dailyRep
       lineKeys.forEach(lineName => {
         const entries = byLine[lineName].sort((a: any, b: any) => (a.production_date || "").localeCompare(b.production_date || ""));
         R.push([`>>> ${lineName}`]);
-        R.push(["Day", "PO / Style", "Output", "Reject", "Rework", "Eff %", "MP", "Hrs", "OT MP", "OT Hrs", `Cost (${costCur})`, "Cost ($)", "Notes"]);
+        R.push(["Day", "PO / Style", "Output", "Reject", "Rework", "Eff %", "Avg/Day", "MP", "Hrs", "OT MP", "OT Hrs", `Cost (${costCur})`, "Cost ($)", "Notes"]);
         let lineOut = 0, lineRej = 0, lineRew = 0, lineCN = 0, lineCU = 0;
+        const lineDays = new Set<string>();
         entries.forEach((s: any) => {
           const cn = lc(s.manpower_actual, s.hours_actual, s.ot_manpower_actual, s.ot_hours_actual);
           const cu = toUsd(cn);
           lineOut += s.good_today || 0; lineRej += s.reject_today || 0; lineRew += s.rework_today || 0;
           lineCN += cn; lineCU += cu;
-          const eff = s.actual_per_hour && s.manpower_actual && s.hours_actual
-            ? Math.round(((s.good_today || 0) / (s.actual_per_hour * s.hours_actual)) * 100) : null;
+          if (s.good_today > 0) lineDays.add(s.production_date);
+          const tgtKey = `${s.line_id}|${s.work_order_id}|${s.production_date}`;
+          const dayTarget = tgtLookup.get(tgtKey) || 0;
+          const eff = dayTarget > 0 ? Math.round(((s.good_today || 0) / dayTarget) * 100) : null;
           R.push([
             fmtDate(s.production_date),
             (s.work_orders?.po_number || "-") + " / " + (s.work_orders?.style || "-"),
             s.good_today || 0, s.reject_today || 0, s.rework_today || 0,
-            eff != null ? eff + "%" : "",
+            eff != null ? eff + "%" : "", "",
             s.manpower_actual, s.hours_actual, s.ot_manpower_actual, s.ot_hours_actual,
             hcRate ? cn : "", hcRate ? cu : "",
             s.blocker_description || s.remarks || "",
           ]);
         });
-        R.push([`${lineName} Total`, "", lineOut, lineRej, lineRew, "", "", "", "", "", hcRate ? lineCN : "", hcRate ? lineCU : "", ""]);
+        const lineAvg = lineDays.size > 0 ? Math.round(lineOut / lineDays.size) : 0;
+        R.push([`${lineName} Total`, "", lineOut, lineRej, lineRew, "", "", "", "", "", "", hcRate ? lineCN : "", hcRate ? lineCU : "", ""]);
+        if (lineAvg > 0) R.push([`  Avg Output/Day: ${fN(lineAvg)} pcs (${lineDays.size} working days)`]);
         R.push([]);
         deptOutput += lineOut; deptReject += lineRej; deptRework += lineRew; deptCostN += lineCN; deptCostU += lineCU;
       });
@@ -745,11 +760,19 @@ export function ReportExportDialog({ defaultType, date, weekOffset = 0, dailyRep
       }
 
       // Parallel data fetch per department
-      const [sewingRes, cuttingRes, finishingRes, storageRes] = await Promise.all([
+      const [sewingRes, sewingTgtRes, cuttingRes, finishingRes, storageRes] = await Promise.all([
         departments.sewing
           ? supabase
               .from("sewing_actuals")
               .select("*, lines(name, line_id), work_orders(po_number, buyer, style, cm_per_dozen)")
+              .eq("factory_id", factoryId)
+              .gte("production_date", startDate)
+              .lte("production_date", endDate)
+          : Promise.resolve({ data: [] }),
+        departments.sewing
+          ? supabase
+              .from("sewing_targets")
+              .select("line_id, work_order_id, production_date, per_hour_target, target_total_planned, hours_planned")
               .eq("factory_id", factoryId)
               .gte("production_date", startDate)
               .lte("production_date", endDate)
@@ -782,12 +805,13 @@ export function ReportExportDialog({ defaultType, date, weekOffset = 0, dailyRep
       ]);
 
       const sewData = (sewingRes as any).data || [];
+      const sewTgtData = (sewingTgtRes as any).data || [];
       const cutData = (cuttingRes as any).data || [];
       const finData = (finishingRes as any).data || [];
       const stoData = (storageRes as any).data || [];
 
       if (exportFormat === "csv") {
-        generatePeriodCsv(sewData, cutData, finData, stoData, label, rate, dates);
+        generatePeriodCsv(sewData, cutData, finData, stoData, label, rate, dates, sewTgtData);
       } else {
         generateProductionReportPdf({
           factoryName: factory?.name || "Factory",
@@ -798,6 +822,7 @@ export function ReportExportDialog({ defaultType, date, weekOffset = 0, dailyRep
           dates,
           departments,
           sewing: sewData,
+          sewingTargets: sewTgtData,
           cutting: cutData,
           finishing: finData,
           storage: stoData,

@@ -24,6 +24,7 @@ import { CuttingSubmissionView } from "@/components/CuttingSubmissionView";
 import { SewingSubmissionView, SewingTargetData, SewingActualData } from "@/components/SewingSubmissionView";
 import { formatTimeInTimezone, getTodayInTimezone, toISODate } from "@/lib/date-utils";
 import { subDays, format } from "date-fns";
+import { fromZonedTime } from "date-fns-tz";
 import { StorageBinCardDetailModal } from "@/components/StorageBinCardDetailModal";
 import { FinishingSubmissionView, FinishingTargetData, FinishingActualData } from "@/components/FinishingSubmissionView";
 import { useHeadcountCost } from "@/hooks/useHeadcountCost";
@@ -314,7 +315,7 @@ export default function TodayUpdates() {
     }
   }, [factory?.timezone]);
 
-  const selectedDateStr = toISODate(selectedDate, timezone);
+  const selectedDateStr = format(selectedDate, "yyyy-MM-dd");
   const isToday = selectedDateStr === todayStr;
 
   // Auto-refresh at midnight (factory timezone) and on tab refocus
@@ -323,10 +324,10 @@ export default function TodayUpdates() {
   }, []));
 
   useEffect(() => {
-    if (profile?.factory_id) {
+    if (profile?.factory_id && factory) {
       fetchTodayUpdates();
     }
-  }, [profile?.factory_id, selectedDateStr]);
+  }, [profile?.factory_id, selectedDateStr, factory]);
 
   async function fetchTodayUpdates() {
     if (!profile?.factory_id) return;
@@ -381,8 +382,8 @@ export default function TodayUpdates() {
           .from('production_notes')
           .select('*, lines(line_id, name), work_orders(po_number, buyer, style)')
           .eq('factory_id', profile.factory_id)
-          .gte('created_at', `${today}T00:00:00`)
-          .lte('created_at', `${today}T23:59:59`)
+          .gte('created_at', fromZonedTime(new Date(`${today}T00:00:00`), timezone).toISOString())
+          .lte('created_at', fromZonedTime(new Date(`${today}T23:59:59`), timezone).toISOString())
           .order('created_at', { ascending: false }),
       ]);
 

@@ -49,6 +49,8 @@ interface LinePerformance {
   totalOutput: number;
   totalTarget: number;
   efficiency: number;
+  avgDailyOutput: number;
+  workingDays: number;
   avgManpower: number;
   submissions: number;
   blockers: number;
@@ -419,7 +421,7 @@ export default function Insights() {
       setDailyData(dailyDataArray);
 
       // Process line performance
-      const lineMap = new Map<string, LinePerformance>();
+      const lineMap = new Map<string, LinePerformance & { _dates: Set<string> }>();
 
       // From sewing actuals: output, manpower, blockers
       sewingActualsData?.forEach(u => {
@@ -431,14 +433,18 @@ export default function Insights() {
           totalOutput: 0,
           totalTarget: 0,
           efficiency: 0,
+          avgDailyOutput: 0,
+          workingDays: 0,
           avgManpower: 0,
           submissions: 0,
           blockers: 0,
+          _dates: new Set<string>(),
         };
         existing.totalOutput += u.good_today || 0;
         existing.avgManpower += u.manpower_actual || 0;
         existing.submissions += 1;
         if (u.has_blocker) existing.blockers += 1;
+        if (u.good_today > 0 && u.production_date) existing._dates.add(u.production_date);
         lineMap.set(lineId, existing);
       });
 
@@ -452,19 +458,32 @@ export default function Insights() {
           totalOutput: 0,
           totalTarget: 0,
           efficiency: 0,
+          avgDailyOutput: 0,
+          workingDays: 0,
           avgManpower: 0,
           submissions: 0,
           blockers: 0,
+          _dates: new Set<string>(),
         };
         existing.totalTarget += (t.per_hour_target || 0) * 8;
         lineMap.set(lineId, existing);
       });
 
-      const linePerformanceArray = Array.from(lineMap.values()).map(l => ({
-        ...l,
-        efficiency: l.totalTarget > 0 ? Math.round((l.totalOutput / l.totalTarget) * 100) : 0,
-        avgManpower: l.submissions > 0 ? Math.round(l.avgManpower / l.submissions) : 0,
-      })).sort((a, b) => compareLineNames(a.lineName, b.lineName));
+      const linePerformanceArray = Array.from(lineMap.values()).map(l => {
+        const days = l._dates.size;
+        return {
+          lineName: l.lineName,
+          lineId: l.lineId,
+          totalOutput: l.totalOutput,
+          totalTarget: l.totalTarget,
+          efficiency: l.totalTarget > 0 ? Math.round((l.totalOutput / l.totalTarget) * 100) : 0,
+          avgDailyOutput: days > 0 ? Math.round(l.totalOutput / days) : 0,
+          workingDays: days,
+          avgManpower: l.submissions > 0 ? Math.round(l.avgManpower / l.submissions) : 0,
+          submissions: l.submissions,
+          blockers: l.blockers,
+        };
+      }).sort((a, b) => compareLineNames(a.lineName, b.lineName));
 
       setLinePerformance(linePerformanceArray);
 
@@ -1368,56 +1387,91 @@ export default function Insights() {
           </Card>
         </div>
 
-        {/* Line Stats Table */}
+        {/* Line Stats Cards */}
         <Card className="shadow-sm hover:shadow-md transition-shadow duration-300">
           <CardHeader>
             <CardTitle className="text-base">Detailed Line Statistics</CardTitle>
-            <CardDescription>Click on a row for daily breakdown</CardDescription>
+            <CardDescription>Click on a line for daily breakdown</CardDescription>
           </CardHeader>
           <CardContent className="px-4 md:px-6">
-            <div className="w-full overflow-x-auto">
-              <table className="w-full text-xs md:text-sm min-w-[500px]">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-2 md:py-3 px-2 font-medium">Line</th>
-                    <th className="text-right py-2 md:py-3 px-2 font-medium">Output</th>
-                    <th className="text-right py-2 md:py-3 px-2 font-medium hidden sm:table-cell">Target</th>
-                    <th className="text-right py-2 md:py-3 px-2 font-medium">Eff.</th>
-                    <th className="text-right py-2 md:py-3 px-2 font-medium hidden md:table-cell">MP</th>
-                    <th className="text-right py-2 md:py-3 px-2 font-medium hidden sm:table-cell">Blockers</th>
-                    <th className="text-right py-2 md:py-3 px-2 font-medium w-8"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {linePerformance.map(line => (
-                    <tr 
-                      key={line.lineId} 
-                      className="border-b last:border-0 hover:bg-muted/50 cursor-pointer transition-colors"
-                      onClick={() => handleLineDrillDown(line.lineId, line.lineName)}
-                    >
-                      <td className="py-2 md:py-3 px-2 font-medium">{line.lineName}</td>
-                      <td className="py-2 md:py-3 px-2 text-right font-mono">{line.totalOutput.toLocaleString()}</td>
-                      <td className="py-2 md:py-3 px-2 text-right font-mono text-muted-foreground hidden sm:table-cell">{line.totalTarget.toLocaleString()}</td>
-                      <td className="py-2 md:py-3 px-2 text-right">
-                        <Badge variant={line.efficiency >= 90 ? 'default' : line.efficiency >= 70 ? 'secondary' : 'destructive'} className="text-[10px] md:text-xs">
-                          {line.efficiency}%
-                        </Badge>
-                      </td>
-                      <td className="py-2 md:py-3 px-2 text-right hidden md:table-cell">{line.avgManpower}</td>
-                      <td className="py-2 md:py-3 px-2 text-right hidden sm:table-cell">
-                        {line.blockers > 0 ? (
-                          <Badge variant="destructive" className="text-[10px] md:text-xs">{line.blockers}</Badge>
-                        ) : (
-                          <span className="text-success">0</span>
-                        )}
-                      </td>
-                      <td className="py-2 md:py-3 px-2 text-right">
-                        <ChevronRight className="h-4 w-4 text-muted-foreground inline" />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="space-y-3">
+              {linePerformance.map(line => {
+                const effColor = line.efficiency >= 90
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : line.efficiency >= 70
+                    ? "text-amber-600 dark:text-amber-400"
+                    : "text-red-600 dark:text-red-400";
+                const barColor = line.efficiency >= 90
+                  ? "bg-emerald-500"
+                  : line.efficiency >= 70
+                    ? "bg-amber-500"
+                    : "bg-red-500";
+                const borderColor = line.efficiency >= 90 ? '#10b981' : line.efficiency >= 70 ? '#f59e0b' : '#ef4444';
+
+                return (
+                  <div
+                    key={line.lineId}
+                    className="group rounded-lg border bg-card hover:shadow-md hover:border-primary/30 cursor-pointer transition-all duration-200 overflow-hidden border-l-[3px]"
+                    style={{ borderLeftColor: borderColor }}
+                    onClick={() => handleLineDrillDown(line.lineId, line.lineName)}
+                  >
+                    <div className="px-4 py-3">
+                      {/* Top: Line name + efficiency badge + chevron */}
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-semibold text-sm">{line.lineName}</span>
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant={line.efficiency >= 90 ? 'default' : line.efficiency >= 70 ? 'secondary' : 'destructive'}
+                            className="text-xs"
+                          >
+                            {line.efficiency}%
+                          </Badge>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                      </div>
+
+                      {/* Progress bar */}
+                      <div className="h-1.5 w-full rounded-full bg-muted/80 overflow-hidden mb-3">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+                          style={{ width: `${Math.min(line.efficiency, 100)}%` }}
+                        />
+                      </div>
+
+                      {/* Stats grid */}
+                      <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+                        <div>
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Output</p>
+                          <p className="text-sm font-bold font-mono text-emerald-600 dark:text-emerald-400">{line.totalOutput.toLocaleString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Target</p>
+                          <p className="text-sm font-bold font-mono text-blue-600 dark:text-blue-400">{line.totalTarget.toLocaleString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Avg/Day</p>
+                          <p className="text-sm font-bold font-mono">
+                            {line.avgDailyOutput > 0 ? line.avgDailyOutput.toLocaleString() : "—"}
+                          </p>
+                        </div>
+                        <div className="hidden sm:block">
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Manpower</p>
+                          <p className="text-sm font-bold font-mono">{line.avgManpower}</p>
+                        </div>
+                        <div className="hidden sm:block">
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Blockers</p>
+                          <p className={`text-sm font-bold font-mono ${line.blockers > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                            {line.blockers}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              {linePerformance.length === 0 && (
+                <div className="text-center py-8 text-sm text-muted-foreground">No line data available</div>
+              )}
             </div>
           </CardContent>
         </Card>

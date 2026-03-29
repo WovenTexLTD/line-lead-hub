@@ -21,6 +21,8 @@ export interface POBreakdown {
   target: number;
   output: number;
   achievementPct: number;
+  avgDailyOutput: number;
+  activeDays: number;
   targetContributionPct: number;
   outputContributionPct: number;
 }
@@ -41,6 +43,8 @@ export interface LinePerformanceData {
   totalOtHours: number;
   totalOtManpower: number;
   totalBlockers: number;
+  avgDailyOutput: number;
+  avgDailyOutputDays: number;
 
   targetSubmitted: boolean;
   eodSubmitted: boolean;

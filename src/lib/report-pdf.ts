@@ -17,6 +17,7 @@ export interface ReportPdfInput {
   dates: string[]; // list of YYYY-MM-DD dates with data
   departments: Record<Department, boolean>;
   sewing: any[];
+  sewingTargets?: any[];
   cutting: any[];
   finishing: any[];
   storage: any[];
@@ -39,9 +40,19 @@ export function generateProductionReportPdf(input: ReportPdfInput) {
 
   const {
     factoryName, reportType, periodLabel, departments,
-    sewing, cutting, finishing, storage,
+    sewing, sewingTargets = [], cutting, finishing, storage,
     headcountCostRate: rate, headcountCostCurrency, bdtToUsdRate,
   } = input;
+
+  // Build target lookup: key = "lineId|woId|date" → resolved target
+  const tgtLookup = new Map<string, number>();
+  sewingTargets.forEach((t: any) => {
+    const key = `${t.line_id}|${t.work_order_id}|${t.production_date}`;
+    const resolved = t.target_total_planned != null
+      ? t.target_total_planned
+      : (t.per_hour_target || 0) * (t.hours_planned || 8);
+    tgtLookup.set(key, resolved);
+  });
 
   const isBDT = headcountCostCurrency === "BDT";
   const nSym = isBDT ? "Tk " : "$";
@@ -303,6 +314,7 @@ export function generateProductionReportPdf(input: ReportPdfInput) {
         y = groupHeader(lineName, "SEWING — LINE WISE OUTPUT & COST");
 
         let lineCostNat = 0, lineCostUsd2 = 0, lineOutput = 0, lineReject = 0, lineRework = 0;
+        const lineDays = new Set<string>();
         const rows = entries.map((s: any) => {
           const costNat = lineCost(s.manpower_actual, s.hours_actual, s.ot_manpower_actual, s.ot_hours_actual);
           const costU = toUsd(costNat);
@@ -310,9 +322,11 @@ export function generateProductionReportPdf(input: ReportPdfInput) {
           lineOutput += s.good_today || 0;
           lineReject += s.reject_today || 0;
           lineRework += s.rework_today || 0;
-          const target = s.actual_per_hour;
-          const eff = target && s.manpower_actual && s.hours_actual
-            ? Math.round(((s.good_today || 0) / (target * s.hours_actual)) * 100) : null;
+          if (s.good_today > 0) lineDays.add(s.production_date);
+          const tgtKey = `${s.line_id}|${s.work_order_id}|${s.production_date}`;
+          const dayTarget = tgtLookup.get(tgtKey) || 0;
+          const eff = dayTarget > 0
+            ? Math.round(((s.good_today || 0) / dayTarget) * 100) : null;
           return [
             ...(!isDaily ? [fmtDate(s.production_date)] : []),
             ((s.work_orders?.po_number || "-") + " / " + (s.work_orders?.style || "-")).substring(0, 22),
@@ -323,14 +337,23 @@ export function generateProductionReportPdf(input: ReportPdfInput) {
             (s.blocker_description || s.remarks || "-").substring(0, 24),
           ];
         });
+        const lineAvg = lineDays.size > 0 ? Math.round(lineOutput / lineDays.size) : 0;
         rows.push([
-          ...(!isDaily ? [`${lineName} Total`] : [`${lineName} Total`]),
+          ...(!isDaily ? [`${lineName} Tot`] : [`${lineName} Tot`]),
           ...(isDaily ? [] : [""]),
           fN(lineOutput), String(lineReject), String(lineRework), "",
           "", "", "", "",
           rate ? fNat(lineCostNat) : "-", rate ? fUsd(lineCostUsd2) : "-", "",
         ]);
         y = drawTable(sewCols, rows, y, { boldLastRow: true, fs: 6.5, rh: 6, pgTitle: "SEWING — LINE WISE OUTPUT & COST" });
+        // Print avg output below the table
+        if (lineAvg > 0) {
+          doc.setFontSize(7);
+          doc.setFont("helvetica", "italic");
+          doc.setTextColor(100, 116, 139);
+          doc.text(`Avg Output/Day: ${fN(lineAvg)} pcs (${lineDays.size} working days)`, m + 4, y + 3);
+          y += 6;
+        }
         y += 2;
 
         sewDeptCostNat += lineCostNat; sewDeptCostUsd += lineCostUsd2; sewDeptOutput += lineOutput;

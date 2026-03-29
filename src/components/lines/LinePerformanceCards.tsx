@@ -1,10 +1,11 @@
 import { Card } from "@/components/ui/card";
 import { LineCardItem } from "./LineCardItem";
-import type { LinePerformanceData } from "./types";
+import type { LinePerformanceData, TimeRange } from "./types";
 
 interface LinePerformanceCardsProps {
   lines: LinePerformanceData[];
   loading: boolean;
+  timeRange: TimeRange;
   onLineClick: (lineId: string) => void;
 }
 
@@ -40,7 +41,7 @@ function CardSkeleton() {
   );
 }
 
-export function LinePerformanceCards({ lines, loading, onLineClick }: LinePerformanceCardsProps) {
+export function LinePerformanceCards({ lines, loading, timeRange, onLineClick }: LinePerformanceCardsProps) {
   if (loading) {
     return (
       <div className="space-y-3">
@@ -67,6 +68,7 @@ export function LinePerformanceCards({ lines, loading, onLineClick }: LinePerfor
         <LineCardItem
           key={line.id}
           line={line}
+          timeRange={timeRange}
           onClick={() => onLineClick(line.id)}
         />
       ))}

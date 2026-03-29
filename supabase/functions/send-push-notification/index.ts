@@ -31,7 +31,7 @@
  *   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
  */
 
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "jsr:@supabase/supabase-js@2";
 
 // ── Auth: Method A — service account JWT ──────────────────────────────────────
 

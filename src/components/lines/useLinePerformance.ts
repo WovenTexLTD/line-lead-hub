@@ -61,6 +61,7 @@ export function useLinePerformance() {
   const [rawTargets, setRawTargets] = useState<any[]>([]);
   const [rawActuals, setRawActuals] = useState<any[]>([]);
   const [rawAssignments, setRawAssignments] = useState<any[]>([]);
+  const [rawAvgActuals, setRawAvgActuals] = useState<any[]>([]); // 30-day actuals for daily avg
   const [userLineIds, setUserLineIds] = useState<Set<string>>(new Set());
 
   // Re-sync selectedDate when factory timezone loads (only if user hasn't manually picked)
@@ -136,6 +137,19 @@ export function useLinePerformance() {
         .select("line_id, work_orders(id, po_number, buyer, style, item, is_active)")
         .eq("factory_id", factoryId);
 
+      // In daily mode, fetch 30-day actuals separately for average output calculation
+      const todayStr = getTodayInTimezone(timezone);
+      const avg30Start = format(subDays(new Date(todayStr), 29), "yyyy-MM-dd");
+      const avgActualsQuery = timeRange === "daily"
+        ? supabase
+            .from("sewing_actuals")
+            .select("line_id, production_date, good_today")
+            .eq("factory_id", factoryId)
+            .gte("production_date", avg30Start)
+            .lte("production_date", todayStr)
+            .limit(5000)
+        : null;
+
       const queries = [
         Promise.resolve(linesQuery),
         Promise.resolve(targetsQuery),
@@ -158,10 +172,14 @@ export function useLinePerformance() {
       const results = await Promise.all(queries);
       const [linesRes, targetsRes, actualsRes, assignmentsRes] = results;
 
+      // Fetch 30-day avg actuals in parallel (non-blocking)
+      const avgRes = avgActualsQuery ? await avgActualsQuery : null;
+
       setRawLines(linesRes.data || []);
       setRawTargets(targetsRes.data || []);
       setRawActuals(actualsRes.data || []);
       setRawAssignments(assignmentsRes.data || []);
+      setRawAvgActuals(avgRes?.data || []);
 
       if (results[4]) {
         const ids = new Set<string>((results[4].data || []).map((r: any) => r.line_id));
@@ -217,6 +235,28 @@ export function useLinePerformance() {
     return Array.from(seen.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
   }, [rawLines]);
 
+  // Compute 30-day average output per line (daily mode uses rawAvgActuals; range modes use rawActuals)
+  const avgOutputByLine = useMemo(() => {
+    const source = timeRange === "daily" ? rawAvgActuals : rawActuals;
+    // Group by line_id → { totalOutput, uniqueDays }
+    const map = new Map<string, { total: number; days: Set<string> }>();
+    source.forEach((a: any) => {
+      if (!map.has(a.line_id)) map.set(a.line_id, { total: 0, days: new Set() });
+      const entry = map.get(a.line_id)!;
+      entry.total += a.good_today || 0;
+      entry.days.add(a.production_date);
+    });
+    // Convert to avg + day count
+    const result = new Map<string, { avg: number; days: number }>();
+    map.forEach((val, lineId) => {
+      result.set(lineId, {
+        avg: val.days.size > 0 ? Math.round(val.total / val.days.size) : 0,
+        days: val.days.size,
+      });
+    });
+    return result;
+  }, [rawAvgActuals, rawActuals, timeRange]);
+
   // Compute line performance data
   const lines = useMemo((): LinePerformanceData[] => {
     // Build a set of work_order_ids that have actuals submitted per line
@@ -246,12 +286,12 @@ export function useLinePerformance() {
     });
 
     // Group actuals by line_id + work_order_id
-    const actualsByLine = new Map<string, Map<string, { total: number; manpower: number; blockers: number; otHours: number; otManpower: number; dates: Set<string> }>>();
+    const actualsByLine = new Map<string, Map<string, { total: number; manpower: number; blockers: number; otHours: number; otManpower: number; dates: Set<string>; outputDates: Set<string> }>>();
     rawActuals.forEach((a: any) => {
       if (!actualsByLine.has(a.line_id)) actualsByLine.set(a.line_id, new Map());
       const lineActuals = actualsByLine.get(a.line_id)!;
       if (!lineActuals.has(a.work_order_id)) {
-        lineActuals.set(a.work_order_id, { total: 0, manpower: 0, blockers: 0, otHours: 0, otManpower: 0, dates: new Set() });
+        lineActuals.set(a.work_order_id, { total: 0, manpower: 0, blockers: 0, otHours: 0, otManpower: 0, dates: new Set(), outputDates: new Set() });
       }
       const entry = lineActuals.get(a.work_order_id)!;
       entry.total += a.good_today || 0;
@@ -260,6 +300,7 @@ export function useLinePerformance() {
       entry.otManpower += a.ot_manpower_actual || 0;
       if (a.has_blocker) entry.blockers += 1;
       entry.dates.add(a.production_date);
+      if (a.good_today > 0) entry.outputDates.add(a.production_date);
     });
 
     // Also track all target dates (including target-only) for dataState detection
@@ -296,6 +337,7 @@ export function useLinePerformance() {
 
         const poTarget = targetData?.total || 0;
         const poOutput = actualData?.total || 0;
+        const poOutputDays = actualData?.outputDates?.size || 0;
 
         totalTarget += poTarget;
         totalOutput += poOutput;
@@ -319,6 +361,8 @@ export function useLinePerformance() {
           target: poTarget,
           output: poOutput,
           achievementPct: poTarget > 0 ? Math.round((poOutput / poTarget) * 100) : 0,
+          avgDailyOutput: poOutputDays > 0 ? Math.round(poOutput / poOutputDays) : 0,
+          activeDays: poOutputDays,
           targetContributionPct: 0, // computed after totals
           outputContributionPct: 0,
         });
@@ -360,6 +404,8 @@ export function useLinePerformance() {
         totalOtHours,
         totalOtManpower,
         totalBlockers,
+        avgDailyOutput: avgOutputByLine.get(line.id)?.avg || 0,
+        avgDailyOutputDays: avgOutputByLine.get(line.id)?.days || 0,
         targetSubmitted,
         eodSubmitted,
         dataState,
@@ -372,7 +418,7 @@ export function useLinePerformance() {
     // Sort by line number
     result.sort((a, b) => compareLineNames(a.lineId, b.lineId));
     return result;
-  }, [rawLines, rawTargets, rawActuals, woMap]);
+  }, [rawLines, rawTargets, rawActuals, woMap, avgOutputByLine]);
 
   // Build trend data per line (only for range modes)
   const trendData = useMemo((): Map<string, LineTrendData> => {

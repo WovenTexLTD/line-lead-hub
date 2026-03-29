@@ -1,6 +1,6 @@
 // Shared security utilities for edge functions
-import { createClient } from "npm:@supabase/supabase-js@2";
-import { z } from "npm:zod@3";
+import { createClient } from "jsr:@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 // Allowed origins for CORS
 const ALLOWED_ORIGINS = [
@@ -13,6 +13,7 @@ const ALLOWED_ORIGINS = [
   "tauri://localhost",      // Tauri desktop (macOS/Linux)
   "https://tauri.localhost", // Tauri desktop (Windows)
   "http://localhost:5173",  // Vite dev server
+  "http://localhost:8080",  // Vite dev server (alt port)
   "http://localhost:8100",  // Ionic dev server
 ];
 

@@ -24,6 +24,7 @@ import type { PODateEntry } from "./useLineSubmissions";
 interface LinePOTableProps {
   poBreakdown: POBreakdown[];
   lineTotal: { target: number; output: number };
+  lineAvgDailyOutput: number;
   timeRange: TimeRange;
   submissionsLoading: boolean;
   getDateEntries: (workOrderId: string) => PODateEntry[];
@@ -60,7 +61,7 @@ function DateEntryList({
 }) {
   return (
     <TableRow>
-      <TableCell colSpan={7} className="p-0">
+      <TableCell colSpan={8} className="p-0">
         <div className="ml-6 mr-4 border-l-2 border-muted pl-4 py-2 space-y-1">
           {entries.map((entry) => (
             <button
@@ -108,6 +109,7 @@ function DateEntryList({
 export function LinePOTable({
   poBreakdown,
   lineTotal,
+  lineAvgDailyOutput,
   timeRange,
   submissionsLoading,
   getDateEntries,
@@ -160,6 +162,7 @@ export function LinePOTable({
               <TableHead className="text-right">Target</TableHead>
               <TableHead className="text-right">Output</TableHead>
               <TableHead className="text-right">Achievement</TableHead>
+              <TableHead className="text-right hidden sm:table-cell">Avg/Day</TableHead>
               <TableHead className="w-[140px]">Share</TableHead>
             </TableRow>
           </TableHeader>
@@ -204,6 +207,9 @@ export function LinePOTable({
                   ? `${Math.round((lineTotal.output / lineTotal.target) * 100)}%`
                   : "—"
                 }
+              </TableCell>
+              <TableCell className="text-right font-mono text-foreground hidden sm:table-cell">
+                {lineAvgDailyOutput > 0 ? lineAvgDailyOutput.toLocaleString() : "—"}
               </TableCell>
               <TableCell />
             </TableRow>
@@ -288,6 +294,9 @@ function PORow({
             : "text-muted-foreground"
         )}>
           {po.target > 0 ? `${po.achievementPct}%` : "—"}
+        </TableCell>
+        <TableCell className="text-right font-mono text-muted-foreground hidden sm:table-cell">
+          {po.avgDailyOutput > 0 ? po.avgDailyOutput.toLocaleString() : "—"}
         </TableCell>
         <TableCell>
           <ContributionBar

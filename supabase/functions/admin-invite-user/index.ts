@@ -1,5 +1,34 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getCorsHeaders } from "../_shared/security.ts";
+import { createClient } from "jsr:@supabase/supabase-js@2";
+
+// Inline CORS headers to avoid loading _shared/security.ts (which imports zod)
+const ALLOWED_ORIGINS = [
+  "https://productionportal.cloud",
+  "https://www.productionportal.cloud",
+  "https://woventex.co",
+  "https://www.woventex.co",
+  "capacitor://localhost",
+  "http://localhost",
+  "tauri://localhost",
+  "https://tauri.localhost",
+  "http://localhost:5173",
+  "http://localhost:8080",
+  "http://localhost:8100",
+];
+function getCorsHeaders(origin: string | null): Record<string, string> {
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    return {
+      "Access-Control-Allow-Origin": origin,
+      "Access-Control-Allow-Credentials": "true",
+      "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    };
+  }
+  return {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  };
+}
 
 interface InviteRequest {
   email: string;
@@ -41,7 +70,7 @@ Deno.serve(async (req) => {
 
     const token = authHeader.replace("Bearer ", "");
     const { data: { user: callerUser }, error: authError } = await adminClient.auth.getUser(token);
-    
+
     if (authError || !callerUser) {
       return new Response(JSON.stringify({ error: "Invalid token" }), {
         status: 401,

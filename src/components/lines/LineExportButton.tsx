@@ -88,7 +88,7 @@ async function exportCsv(lines: LinePerformanceData[], timeRange: TimeRange, dat
     "Line", "Unit", "Floor", "Status",
     "PO Number", "Buyer", "Style", "Item",
     "Target (pcs)", "Output (pcs)", "Achievement %", "Variance",
-    "Avg Manpower", "Blockers",
+    "Avg Output/Day", "Avg Manpower", "Blockers",
     "Target Submitted", "EOD Submitted",
   ];
 
@@ -111,6 +111,7 @@ async function exportCsv(lines: LinePerformanceData[], timeRange: TimeRange, dat
         line.totalTarget.toLocaleString(), line.totalOutput.toLocaleString(),
         line.totalTarget > 0 ? `${line.achievementPct}%` : "N/A",
         String(line.variance),
+        line.avgDailyOutput > 0 ? line.avgDailyOutput.toLocaleString() : "",
         String(line.avgManpower), String(line.totalBlockers),
         line.targetSubmitted ? "Yes" : "No", line.eodSubmitted ? "Yes" : "No",
       ]);
@@ -125,6 +126,7 @@ async function exportCsv(lines: LinePerformanceData[], timeRange: TimeRange, dat
           po.target.toLocaleString(), po.output.toLocaleString(),
           po.target > 0 ? `${po.achievementPct}%` : "N/A",
           String(po.output - po.target),
+          po.avgDailyOutput > 0 ? po.avgDailyOutput.toLocaleString() : "",
           idx === 0 ? String(line.avgManpower) : "",
           idx === 0 ? String(line.totalBlockers) : "",
           idx === 0 ? (line.targetSubmitted ? "Yes" : "No") : "",
@@ -449,8 +451,8 @@ async function exportPdf(lines: LinePerformanceData[], timeRange: TimeRange, dat
     y += 10;
 
     // Table header
-    const cols = [0, 15, 55, 88, 118, 145];
-    const colHeaders = ["#", "LINE", "OUTPUT", "TARGET", "ACHV %", "BLOCKERS"];
+    const cols = [0, 13, 48, 78, 105, 130, 155];
+    const colHeaders = ["#", "LINE", "OUTPUT", "TARGET", "ACHV %", "AVG/DAY", "BLOCKERS"];
     doc.setFillColor(...slate900);
     doc.roundedRect(m, y, cw, 10, 2, 2, "F");
     doc.rect(m, y + 5, cw, 5, "F");
@@ -510,9 +512,13 @@ async function exportPdf(lines: LinePerformanceData[], timeRange: TimeRange, dat
       const effBg: RGB = line.achievementPct >= 85 ? greenLight : line.achievementPct >= 60 ? amberLight : redLight;
       drawStatusBadge(m + cols[4] + 4, y, line.achievementPct + "%", effColor, effBg);
 
+      doc.setTextColor(...slate700);
+      doc.setFont("helvetica", "normal");
+      doc.text(line.avgDailyOutput > 0 ? line.avgDailyOutput.toLocaleString() : "—", m + cols[5] + 4, y);
+
       doc.setTextColor(...(line.totalBlockers > 0 ? red : slate500));
       doc.setFont("helvetica", line.totalBlockers > 0 ? "bold" : "normal");
-      doc.text(String(line.totalBlockers), m + cols[5] + 4, y);
+      doc.text(String(line.totalBlockers), m + cols[6] + 4, y);
 
       y += 10;
     });
@@ -543,7 +549,8 @@ async function exportPdf(lines: LinePerformanceData[], timeRange: TimeRange, dat
       doc.setTextColor(...slate500);
       doc.setFontSize(7.5);
       doc.text(
-        `Output: ${line.totalOutput.toLocaleString()} / Target: ${line.totalTarget.toLocaleString()}`,
+        `Output: ${line.totalOutput.toLocaleString()} / Target: ${line.totalTarget.toLocaleString()}` +
+        (line.avgDailyOutput > 0 ? `  |  Avg/Day: ${line.avgDailyOutput.toLocaleString()}` : ""),
         m + 60, y + 8,
       );
       // Achievement badge
@@ -564,14 +571,18 @@ async function exportPdf(lines: LinePerformanceData[], timeRange: TimeRange, dat
         doc.text(po.poNumber, m + 6, y);
         doc.text(po.buyer.substring(0, 12), m + 38, y);
         doc.text(po.style.substring(0, 12), m + 68, y);
-        doc.text(po.output.toLocaleString(), m + 100, y);
-        doc.text(po.target.toLocaleString(), m + 125, y);
+        doc.text(po.output.toLocaleString(), m + 95, y);
+        doc.text(po.target.toLocaleString(), m + 118, y);
 
         const poPct = po.achievementPct;
         const poColor: RGB = poPct >= 85 ? green : poPct >= 60 ? amber : red;
         doc.setTextColor(...poColor);
         doc.setFont("helvetica", "bold");
-        doc.text(po.target > 0 ? poPct + "%" : "N/A", m + 150, y);
+        doc.text(po.target > 0 ? poPct + "%" : "N/A", m + 140, y);
+
+        doc.setTextColor(...slate500);
+        doc.setFont("helvetica", "normal");
+        doc.text(po.avgDailyOutput > 0 ? po.avgDailyOutput.toLocaleString() : "—", m + 158, y);
 
         y += 8;
       });

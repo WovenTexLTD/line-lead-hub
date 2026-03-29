@@ -89,6 +89,7 @@ export default function Lines() {
       <LinePerformanceCards
         lines={filteredLines}
         loading={loading}
+        timeRange={timeRange}
         onLineClick={(id) => setDrawerLineId(id)}
       />
 

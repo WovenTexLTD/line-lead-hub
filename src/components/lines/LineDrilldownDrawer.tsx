@@ -251,6 +251,7 @@ export function LineDrilldownDrawer({
               <LinePOTable
                 poBreakdown={line.poBreakdown}
                 lineTotal={{ target: line.totalTarget, output: line.totalOutput }}
+                lineAvgDailyOutput={line.avgDailyOutput}
                 timeRange={timeRange}
                 submissionsLoading={submissionsLoading}
                 getDateEntries={getDateEntries}

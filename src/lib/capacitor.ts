@@ -173,6 +173,10 @@ export async function initializeCapacitor() {
         } catch (error) {
           console.warn('Failed to sync on app active:', error);
         }
+
+        // Trigger visibility-based refresh so useMidnightRefresh and other
+        // listeners detect a potential date change.
+        document.dispatchEvent(new Event('visibilitychange'));
       }
     });
 

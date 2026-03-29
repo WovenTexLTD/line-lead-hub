@@ -4,8 +4,11 @@ import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, ChevronRight, TrendingDown, TrendingUp } from "lucide-react";
 import type { LinePerformanceData, DataState } from "./types";
 
+import type { TimeRange } from "./types";
+
 interface LineCardItemProps {
   line: LinePerformanceData;
+  timeRange: TimeRange;
   onClick: () => void;
 }
 
@@ -41,7 +44,7 @@ function getStateBadge(dataState: DataState, achievementPct: number): { label: s
   }
 }
 
-export function LineCardItem({ line, onClick }: LineCardItemProps) {
+export function LineCardItem({ line, timeRange, onClick }: LineCardItemProps) {
   const { dataState } = line;
 
   // No target and no output — minimal card
@@ -175,6 +178,9 @@ export function LineCardItem({ line, onClick }: LineCardItemProps) {
 
         {/* Bottom row: secondary info */}
         <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
+          {line.avgDailyOutput > 0 && (
+            <span>Avg: <strong className="text-foreground">{line.avgDailyOutput.toLocaleString()}</strong>/day <span className="text-muted-foreground">({timeRange === "daily" ? "30" : timeRange}d)</span></span>
+          )}
           {line.poBreakdown.length > 0 && (
             <span>{line.poBreakdown.length} PO{line.poBreakdown.length !== 1 ? "s" : ""}</span>
           )}
