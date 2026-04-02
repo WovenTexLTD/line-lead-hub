@@ -3,16 +3,15 @@
  *
  * Business rules:
  *  - Only sewing department output and manpower are used.
- *  - CM is entered per dozen. Only 70% of CM is the production share
- *    (30% goes to commercial costs such as LC, transport, etc.).
- *  - production_cm_per_piece = (cm_per_dozen × 0.70) / 12
+ *  - CM is entered per dozen. 100% of CM is used for calculations.
+ *  - production_cm_per_piece = cm_per_dozen / 12
  *  - sewing_value = sewing_output × production_cm_per_piece
  *  - sewing_cost  = rate × Σ(manpower × hours + ot_manpower × ot_hours)  [sewing only]
  *  - sewing_profit = sewing_value − sewing_cost_usd
  */
 
-/** The share of CM allocated to production (70%). */
-export const PRODUCTION_CM_SHARE = 0.70;
+/** The share of CM allocated to production (100%). */
+export const PRODUCTION_CM_SHARE = 1.0;
 
 /** Returns the production CM per piece from a CM/dozen value. */
 export function productionCmPerPiece(cmPerDozen: number): number {
@@ -60,7 +59,7 @@ export interface SewingValueRow {
   output: number;
   /** CM as entered (per dozen, full amount). */
   cmDz: number;
-  /** 70% production share of CM/dozen. */
+  /** Production CM/dozen. */
   productionCmDz: number;
   /** production_cm_per_piece = productionCmDz / 12. */
   productionCmPc: number;

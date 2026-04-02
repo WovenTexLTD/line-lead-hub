@@ -230,7 +230,7 @@ export function generateProductionReportPdf(input: ReportPdfInput) {
     y += 6;
   }
 
-  // Financial summary — sewing only, 70% production CM share
+  // Financial summary — sewing only
   if (rate > 0) {
     let totalOutputValue = 0, totalSewCostNat = 0;
 
@@ -238,7 +238,7 @@ export function generateProductionReportPdf(input: ReportPdfInput) {
       sewing.forEach((s: any) => {
         const cm = s.work_orders?.cm_per_dozen;
         const output = s.good_today || 0;
-        if (cm && output) totalOutputValue += (cm * 0.70 / 12) * output;
+        if (cm && output) totalOutputValue += (cm / 12) * output;
         totalSewCostNat += lineCost(s.manpower_actual, s.hours_actual, s.ot_manpower_actual, s.ot_hours_actual);
       });
     }
@@ -266,7 +266,7 @@ export function generateProductionReportPdf(input: ReportPdfInput) {
       y = drawTable(finCols, finRows, y);
       y += 2;
       doc.setFontSize(7); doc.setFont("helvetica", "italic"); doc.setTextColor(90);
-      const note = `Production CM = 70% of entered CM/dozen (sewing dept only)`;
+      const note = `CM/dozen as entered (sewing dept only)`;
       if (isBDT && bdtToUsdRate) doc.text(`${note} | Cost in BDT: Tk${Math.round(totalSewCostNat).toLocaleString()} | Rate: ${(1 / bdtToUsdRate).toFixed(1)} BDT/USD`, m, y + 2);
       else doc.text(note, m, y + 2);
       y += 6;

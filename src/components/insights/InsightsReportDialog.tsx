@@ -207,14 +207,14 @@ export function InsightsReportDialog() {
       const costCurrency = headcountCost.currency;
       const toUsd = (v: number) => costCurrency === "BDT" && bdtToUsd ? v * bdtToUsd : v;
 
-      // Revenue: sewing output × (cm_per_dozen × 0.70 / 12) — production share is 70% of CM
+      // Revenue: sewing output × (cm_per_dozen / 12)
       let totalRevenue = 0;
       const revenueByPoMap: Record<string, { po: string; buyer: string; revenue: number; output: number }> = {};
       sewingActuals?.forEach(u => {
         const cm = (u as any).work_orders?.cm_per_dozen;
         const output = u.good_today || 0;
         if (cm && output) {
-          const rev = (cm * 0.70 / 12) * output;
+          const rev = (cm / 12) * output;
           totalRevenue += rev;
           const po = (u as any).work_orders?.po_number || "Unknown";
           if (!revenueByPoMap[po]) revenueByPoMap[po] = { po, buyer: (u as any).work_orders?.buyer || "", revenue: 0, output: 0 };
@@ -262,7 +262,7 @@ export function InsightsReportDialog() {
       sewingActuals?.forEach(u => {
         const cm = (u as any).work_orders?.cm_per_dozen;
         const output = u.good_today || 0;
-        if (cm && output) dailyRevMap[u.production_date] = (dailyRevMap[u.production_date] || 0) + (cm * 0.70 / 12) * output;
+        if (cm && output) dailyRevMap[u.production_date] = (dailyRevMap[u.production_date] || 0) + (cm / 12) * output;
       });
       if (rate > 0) {
         sewingActuals?.forEach(s => {
@@ -287,7 +287,7 @@ export function InsightsReportDialog() {
       prevSewing?.forEach(s => {
         const cm = (s as any).work_orders?.cm_per_dozen;
         const output = s.good_today || 0;
-        if (cm && output) prevRevenue += (cm * 0.70 / 12) * output;
+        if (cm && output) prevRevenue += (cm / 12) * output;
         if (rate > 0) {
           if (s.manpower_actual && s.hours_actual) prevCostNative += rate * s.manpower_actual * s.hours_actual;
           if (s.ot_manpower_actual && s.ot_hours_actual) prevCostNative += rate * s.ot_manpower_actual * s.ot_hours_actual;

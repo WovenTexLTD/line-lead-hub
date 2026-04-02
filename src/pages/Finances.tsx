@@ -369,7 +369,7 @@ export default function Finances() {
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(100);
-    doc.text(`${factoryName}  |  ${label}  |  Production CM = 70% of entered CM/dozen`, m, y + 13);
+    doc.text(`${factoryName}  |  ${label}  |  CM/dozen as entered`, m, y + 13);
     doc.text(`Generated: ${format(new Date(), "PPpp")}`, pw - m, y + 13, { align: "right" });
     doc.setTextColor(0);
     y += 20;
@@ -630,7 +630,7 @@ export default function Finances() {
     lines.push(row("Factory", factoryName));
     lines.push(row("Period", label));
     lines.push(row("Generated", format(new Date(), "PPpp")));
-    lines.push(row("Note", "Production CM = 70% of entered CM/dozen (sewing dept only). All figures in USD."));
+    lines.push(row("Note", "CM/dozen as entered (sewing dept only). All figures in USD."));
     lines.push(blank());
 
     // ── Summary ──
@@ -802,7 +802,7 @@ export default function Finances() {
               )}
             </div>
             <p className="text-xs text-muted-foreground/70 mt-0.5 tracking-wide">
-              Sewing dept · Production CM = 70% of entered CM · All figures in USD
+              Sewing dept · CM/dozen as entered · All figures in USD
             </p>
           </div>
         </div>
@@ -1015,12 +1015,11 @@ export default function Finances() {
                 <div className="rounded-xl border border-dashed bg-muted/20 p-5 text-xs space-y-2 text-muted-foreground">
                   <p className="font-semibold text-foreground text-sm flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> How output value is calculated</p>
                   <div className="grid sm:grid-cols-2 gap-x-8 gap-y-1.5 mt-2">
-                    <p><span className="text-foreground font-medium">Production CM/dz</span> = CM entered × 70%</p>
-                    <p><span className="text-foreground font-medium">Production CM/pc</span> = Production CM/dz ÷ 12</p>
-                    <p><span className="text-foreground font-medium">Output Value</span> = Output (pcs) × Production CM/pc</p>
+                    <p><span className="text-foreground font-medium">CM/pc</span> = CM entered per dozen ÷ 12</p>
+                    <p><span className="text-foreground font-medium">Output Value</span> = Output (pcs) × CM/pc</p>
                     <p><span className="text-foreground font-medium">Operating Cost</span> = Rate × Σ (manpower × hours)</p>
+                    <p><span className="text-foreground font-medium">Operating Margin</span> = Output Value − Operating Cost</p>
                   </div>
-                  <p className="text-muted-foreground/60 text-[11px] pt-1">The 30% excluded from CM covers commercial costs (LC, transport, agent fees) outside this operational view.</p>
                 </div>
               </motion.div>
             )}
@@ -1361,9 +1360,8 @@ export default function Finances() {
                                           <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/50 mb-3">CM Breakdown</p>
                                           <div className="space-y-2.5">
                                             {[
-                                              ["Entered CM/dz", row.cmDz > 0 ? `$${row.cmDz.toFixed(2)}` : "—"],
-                                              ["Production CM/dz (70%)", row.prodCmDz > 0 ? `$${row.prodCmDz.toFixed(2)}` : "—"],
-                                              ["Production CM/pc", row.prodCmPc > 0 ? `$${row.prodCmPc.toFixed(4)}` : "—"],
+                                              ["CM/dz", row.cmDz > 0 ? `$${row.cmDz.toFixed(2)}` : "—"],
+                                              ["CM/pc", row.prodCmPc > 0 ? `$${row.prodCmPc.toFixed(4)}` : "—"],
                                             ].map(([lbl, val]) => (
                                               <div key={lbl} className="flex items-center justify-between text-xs gap-4">
                                                 <span className="text-muted-foreground">{lbl}</span>

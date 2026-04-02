@@ -331,13 +331,13 @@ export default function Dashboard() {
     return Math.round(total * 100) / 100;
   }, [costConfigured, headcountCost.value, sewingEndOfDay]);
 
-  // Sewing value (USD): output × (cm_per_dozen × 0.70) / 12
+  // Sewing value (USD): output × cm_per_dozen / 12
   const dayRevenue = useMemo(() => {
     let total = 0;
     let hasCm = false;
     sewingEndOfDay.forEach((s) => {
       if (s.cm_per_dozen && s.output) {
-        total += (s.cm_per_dozen * 0.70 / 12) * s.output;
+        total += (s.cm_per_dozen / 12) * s.output;
         hasCm = true;
       }
     });

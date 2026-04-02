@@ -1289,7 +1289,7 @@ export default function TodayUpdates() {
                             <th className="text-left py-1.5 font-medium">PO</th>
                             <th className="text-left py-1.5 font-medium">Buyer</th>
                             <th className="text-right py-1.5 font-medium">Output</th>
-                            <th className="text-right py-1.5 font-medium">CM/Dz (70%)</th>
+                            <th className="text-right py-1.5 font-medium">CM/Dz</th>
                             <th className="text-right py-1.5 font-medium">Output Value</th>
                           </tr>
                         </thead>

@@ -116,7 +116,7 @@ export function ExportSubmissionsDialog({
       // ── SEWING FINANCIALS ──
       if (financials && (financials.totalRevenue > 0 || financials.totalCostUsd > 0)) {
         rows.push(["═══ SEWING FINANCIALS (USD) ═══"]);
-        rows.push(["Note: Sewing dept only. Production CM = 70% of entered CM/dozen."]);
+        rows.push(["Note: Sewing dept only. CM/dozen as entered."]);
         rows.push([]);
         rows.push(["Metric", "Amount (USD)"]);
         rows.push(["Output Value", `$${financials.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`]);
