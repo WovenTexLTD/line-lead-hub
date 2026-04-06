@@ -32,8 +32,8 @@ export const PLAN_TIERS: Record<PlanTier, PlanTierConfig> = {
     id: 'starter',
     name: 'Starter',
     description: 'Perfect for small factories',
-    priceMonthly: 39999, // $399.99
-    priceYearly: Math.round(39999 * 12 * (1 - YEARLY_DISCOUNT)), // ~$4,079.90/yr
+    priceMonthly: 25000, // $250.00
+    priceYearly: 250000, // $2,500.00/yr
     maxActiveLines: 30,
     features: [
       'Up to 30 active production lines',
@@ -44,16 +44,16 @@ export const PLAN_TIERS: Record<PlanTier, PlanTierConfig> = {
       'Unlimited users',
       'Email support',
     ],
-    stripePriceIdMonthly: 'price_1SnFcPHWgEvVObNzV8DUHzpe',
-    stripePriceIdYearly: 'price_1SnGNvHWgEvVObNzzSlIyDmj',
+    stripePriceIdMonthly: 'price_1TJJGkHWgEvVObNzWlMuWVRz',
+    stripePriceIdYearly: 'price_1TJJKKHWgEvVObNzwQO8y7VD',
     stripeProductId: 'prod_Tkl8Q1w6HfSqER',
   },
   growth: {
     id: 'growth',
     name: 'Growth',
     description: 'For growing operations',
-    priceMonthly: 54999, // $549.99
-    priceYearly: Math.round(54999 * 12 * (1 - YEARLY_DISCOUNT)), // ~$5,609.90/yr
+    priceMonthly: 35000, // $350.00
+    priceYearly: 350000, // $3,500.00/yr
     maxActiveLines: 60,
     popular: true,
     features: [
@@ -62,16 +62,16 @@ export const PLAN_TIERS: Record<PlanTier, PlanTierConfig> = {
       'Priority email support',
       'Monthly insights reports',
     ],
-    stripePriceIdMonthly: 'price_1SnFcNHWgEvVObNzag27TfQY',
-    stripePriceIdYearly: 'price_1SnGPGHWgEvVObNz1cEK82X6',
+    stripePriceIdMonthly: 'price_1TJJJ3HWgEvVObNztN79PFyH',
+    stripePriceIdYearly: 'price_1TJJKpHWgEvVObNzFNr9WSGl',
     stripeProductId: 'prod_Tkl8hBoNi8dZZL',
   },
   scale: {
     id: 'scale',
     name: 'Scale',
     description: 'For large factories',
-    priceMonthly: 62999, // $629.99
-    priceYearly: Math.round(62999 * 12 * (1 - YEARLY_DISCOUNT)), // ~$6,425.90/yr
+    priceMonthly: 50000, // $500.00
+    priceYearly: 500000, // $5,000.00/yr
     maxActiveLines: 100,
     features: [
       'Up to 100 active production lines',
@@ -79,8 +79,8 @@ export const PLAN_TIERS: Record<PlanTier, PlanTierConfig> = {
       'Phone support',
       'Dedicated success manager',
     ],
-    stripePriceIdMonthly: 'price_1SnFcIHWgEvVObNz2u1IfoEw',
-    stripePriceIdYearly: 'price_1SnGQQHWgEvVObNz6Gf4ff6Y',
+    stripePriceIdMonthly: 'price_1TJJJiHWgEvVObNznED473wv',
+    stripePriceIdYearly: 'price_1TJJLEHWgEvVObNzk1fsjf07',
     stripeProductId: 'prod_Tkl8LGqEjZVnRG',
   },
   enterprise: {
@@ -106,11 +106,18 @@ export const PLAN_TIERS: Record<PlanTier, PlanTierConfig> = {
 
 // Price ID to tier mapping for webhook/check-subscription use
 export const STRIPE_PRICE_TO_TIER: Record<string, { tier: PlanTier; interval: BillingInterval }> = {
-  // Monthly
+  // Monthly (current)
+  'price_1TJJGkHWgEvVObNzWlMuWVRz': { tier: 'starter', interval: 'month' },
+  'price_1TJJJ3HWgEvVObNztN79PFyH': { tier: 'growth', interval: 'month' },
+  'price_1TJJJiHWgEvVObNznED473wv': { tier: 'scale', interval: 'month' },
+  // Yearly (current)
+  'price_1TJJKKHWgEvVObNzwQO8y7VD': { tier: 'starter', interval: 'year' },
+  'price_1TJJKpHWgEvVObNzFNr9WSGl': { tier: 'growth', interval: 'year' },
+  'price_1TJJLEHWgEvVObNzk1fsjf07': { tier: 'scale', interval: 'year' },
+  // Legacy prices (keep so existing subscribers are still recognised)
   'price_1SnFcPHWgEvVObNzV8DUHzpe': { tier: 'starter', interval: 'month' },
   'price_1SnFcNHWgEvVObNzag27TfQY': { tier: 'growth', interval: 'month' },
   'price_1SnFcIHWgEvVObNz2u1IfoEw': { tier: 'scale', interval: 'month' },
-  // Yearly
   'price_1SnGNvHWgEvVObNzzSlIyDmj': { tier: 'starter', interval: 'year' },
   'price_1SnGPGHWgEvVObNz1cEK82X6': { tier: 'growth', interval: 'year' },
   'price_1SnGQQHWgEvVObNz6Gf4ff6Y': { tier: 'scale', interval: 'year' },
