@@ -160,6 +160,31 @@ export function generateProductionReportPdf(input: ReportPdfInput) {
     return y;
   };
 
+  // Start a new section with a gap. Only adds a new page if not enough room
+  // for the title + at least ~30mm of content.
+  const sectionStart = (title: string): number => {
+    const gap = 12; // ~4 lines of gap
+    const minRoom = 40; // need at least 40mm for title + some content
+    if (y + gap + minRoom > ph - 12) {
+      doc.addPage();
+      y = m;
+    } else {
+      y += gap;
+    }
+    // Draw page header line
+    doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(0);
+    doc.text(`${factoryName} — ${typeLabel} Report`, m, y);
+    doc.setFontSize(8); doc.setFont("helvetica", "normal");
+    doc.text(periodLabel, pw - m, y, { align: "right" });
+    y += 5;
+    doc.setDrawColor(0); doc.setLineWidth(0.4); doc.line(m, y, pw - m, y);
+    y += 4;
+    doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+    doc.text(title, m, y);
+    y += 6;
+    return y;
+  };
+
   const groupHeader = (label: string, sectionTitle: string): number => {
     y += 6;
     if (y + 20 > ph - 12) { doc.addPage(); y = pageHead(sectionTitle); }
@@ -274,12 +299,149 @@ export function generateProductionReportPdf(input: ReportPdfInput) {
   }
 
   // ══════════════════════════════════════════
+  // PO SUMMARY (cross-department)
+  // ══════════════════════════════════════════
+  try {
+    // Aggregate data by PO across sewing, cutting, and finishing
+    const poSummaryMap = new Map<string, {
+      po: string; buyer: string; style: string; orderQty: number;
+      sewOutput: number; sewDays: Set<string>; sewCostNat: number;
+      cmDz: number;
+      cutDayCut: number; cutDayInput: number;
+      finPoly: number;
+    }>();
+
+    const getOrCreatePo = (po: string, buyer: string, style: string, orderQty: number, cmDz: number) => {
+      if (!poSummaryMap.has(po)) {
+        poSummaryMap.set(po, {
+          po, buyer, style, orderQty,
+          sewOutput: 0, sewDays: new Set(), sewCostNat: 0,
+          cmDz,
+          cutDayCut: 0, cutDayInput: 0,
+          finPoly: 0,
+        });
+      }
+      return poSummaryMap.get(po)!;
+    };
+
+    // Sewing
+    if (departments.sewing) {
+      sewing.forEach((s: any) => {
+        const po = s.work_orders?.po_number;
+        if (!po) return;
+        const entry = getOrCreatePo(po, s.work_orders?.buyer || "", s.work_orders?.style || "", s.work_orders?.order_qty || 0, s.work_orders?.cm_per_dozen || 0);
+        entry.sewOutput += s.good_today || 0;
+        if (s.good_today > 0) entry.sewDays.add(s.production_date);
+        entry.sewCostNat += lineCost(s.manpower_actual, s.hours_actual, s.ot_manpower_actual, s.ot_hours_actual);
+        if (s.work_orders?.order_qty && s.work_orders.order_qty > entry.orderQty) entry.orderQty = s.work_orders.order_qty;
+        if (s.work_orders?.cm_per_dozen && s.work_orders.cm_per_dozen > entry.cmDz) entry.cmDz = s.work_orders.cm_per_dozen;
+      });
+    }
+
+    // Cutting
+    if (departments.cutting) {
+      cutting.forEach((c: any) => {
+        const po = c.work_orders?.po_number;
+        if (!po) return;
+        const entry = getOrCreatePo(po, c.work_orders?.buyer || "", c.work_orders?.style || "", c.work_orders?.order_qty || 0, 0);
+        entry.cutDayCut += c.day_cutting || 0;
+        entry.cutDayInput += c.day_input || 0;
+      });
+    }
+
+    // Finishing
+    if (departments.finishing) {
+      finishing.forEach((f: any) => {
+        const po = f.work_orders?.po_number;
+        if (!po) return;
+        const entry = getOrCreatePo(po, f.work_orders?.buyer || "", f.work_orders?.style || "", 0, 0);
+        entry.finPoly += effectivePoly(f.poly, f.actual_hours, f.ot_hours_actual);
+      });
+    }
+
+    if (poSummaryMap.size > 0) {
+      y = sectionStart("PO SUMMARY");
+
+      const poCols: Col[] = [
+        { label: "PO Number", w: 30 },
+        { label: "Buyer", w: 28 },
+        { label: "Style", w: 26 },
+        { label: "Order Qty", w: 22, align: "right" },
+        { label: "Sewing Out", w: 22, align: "right" },
+        { label: "Avg/Day", w: 18, align: "right" },
+        { label: "Cut Input", w: 22, align: "right" },
+        { label: "Poly (Pack)", w: 22, align: "right" },
+        ...(rate > 0 ? [
+          { label: "CM/Dz", w: 18, align: "right" as const },
+          { label: "Output Val", w: 22, align: "right" as const },
+          { label: "Oper. Cost", w: 22, align: "right" as const },
+          { label: "Margin", w: 22, align: "right" as const },
+        ] : []),
+      ];
+
+      const poEntries = Array.from(poSummaryMap.values()).sort((a, b) => b.sewOutput - a.sewOutput);
+
+      let totOrderQty = 0, totSewOut = 0, totCutInput = 0, totFinPoly = 0;
+      let totOutputVal = 0, totSewCost = 0;
+
+      const poRows = poEntries.map(e => {
+        const avgDay = e.sewDays.size > 0 ? Math.round(e.sewOutput / e.sewDays.size) : 0;
+        const outputVal = e.cmDz > 0 && e.sewOutput > 0 ? (e.cmDz / 12) * e.sewOutput : 0;
+        const sewCostUsd = toUsd(e.sewCostNat);
+        const margin = outputVal - sewCostUsd;
+
+        totOrderQty += e.orderQty;
+        totSewOut += e.sewOutput;
+        totCutInput += e.cutDayInput;
+        totFinPoly += e.finPoly;
+        totOutputVal += outputVal;
+        totSewCost += sewCostUsd;
+
+        return [
+          e.po.substring(0, 18),
+          e.buyer.substring(0, 16),
+          e.style.substring(0, 14),
+          fN(e.orderQty || null),
+          fN(e.sewOutput || null),
+          fN(avgDay || null),
+          fN(e.cutDayInput || null),
+          fN(e.finPoly || null),
+          ...(rate > 0 ? [
+            e.cmDz > 0 ? `$${e.cmDz.toFixed(2)}` : "-",
+            outputVal > 0 ? fUsd(outputVal) : "-",
+            sewCostUsd > 0 ? fUsd(sewCostUsd) : "-",
+            outputVal > 0 ? `${margin >= 0 ? "+" : ""}${fUsd(margin)}` : "-",
+          ] : []),
+        ];
+      });
+
+      const totMargin = totOutputVal - totSewCost;
+      poRows.push([
+        "TOTAL", "", "",
+        fN(totOrderQty || null),
+        fN(totSewOut || null),
+        "",
+        fN(totCutInput || null),
+        fN(totFinPoly || null),
+        ...(rate > 0 ? [
+          "",
+          totOutputVal > 0 ? fUsd(totOutputVal) : "-",
+          totSewCost > 0 ? fUsd(totSewCost) : "-",
+          totOutputVal > 0 ? `${totMargin >= 0 ? "+" : ""}${fUsd(totMargin)}` : "-",
+        ] : []),
+      ]);
+
+      y = drawTable(poCols, poRows, y, { boldLastRow: true, fs: 6.5, rh: 6, pgTitle: "PO SUMMARY" });
+      y += 4;
+    }
+  } catch (e) { console.error("PDF PO summary section error:", e); }
+
+  // ══════════════════════════════════════════
   // SEWING DETAIL (grouped by Line)
   // ══════════════════════════════════════════
   if (departments.sewing && sewing.length > 0) {
     try {
-      doc.addPage();
-      y = pageHead("SEWING — LINE WISE OUTPUT & COST");
+      y = sectionStart("SEWING — LINE OUTPUT & COST");
 
       const sewCols: Col[] = [
         ...(!isDaily ? [{ label: "Day", w: 18 }] : []),
@@ -311,7 +473,7 @@ export function generateProductionReportPdf(input: ReportPdfInput) {
       sewLineKeys.forEach(lineName => {
         const entries = sewByLine[lineName].sort((a: any, b: any) => (a.production_date || "").localeCompare(b.production_date || ""));
 
-        y = groupHeader(lineName, "SEWING — LINE WISE OUTPUT & COST");
+        y = groupHeader(lineName, "SEWING — LINE OUTPUT & COST");
 
         let lineCostNat = 0, lineCostUsd2 = 0, lineOutput = 0, lineReject = 0, lineRework = 0;
         const lineDays = new Set<string>();
@@ -345,7 +507,7 @@ export function generateProductionReportPdf(input: ReportPdfInput) {
           "", "", "", "",
           rate ? fNat(lineCostNat) : "-", rate ? fUsd(lineCostUsd2) : "-", "",
         ]);
-        y = drawTable(sewCols, rows, y, { boldLastRow: true, fs: 6.5, rh: 6, pgTitle: "SEWING — LINE WISE OUTPUT & COST" });
+        y = drawTable(sewCols, rows, y, { boldLastRow: true, fs: 6.5, rh: 6, pgTitle: "SEWING — LINE OUTPUT & COST" });
         // Print avg output below the table
         if (lineAvg > 0) {
           doc.setFontSize(7);
@@ -368,8 +530,7 @@ export function generateProductionReportPdf(input: ReportPdfInput) {
   // ══════════════════════════════════════════
   if (departments.cutting && cutting.length > 0) {
     try {
-      doc.addPage();
-      y = pageHead("CUTTING — PO WISE DETAIL");
+      y = sectionStart("CUTTING — PO DETAIL");
 
       const cutCols: Col[] = [
         ...(!isDaily ? [{ label: "Day", w: 18 }] : []),
@@ -402,7 +563,7 @@ export function generateProductionReportPdf(input: ReportPdfInput) {
           return cmpLines(a.lines?.name || "", b.lines?.name || "");
         });
 
-        y = groupHeader(`PO: ${po} — Buyer: ${buyer}`, "CUTTING — PO WISE DETAIL");
+        y = groupHeader(`PO: ${po} — Buyer: ${buyer}`, "CUTTING — PO DETAIL");
 
         let poDayCut = 0;
         const rows = entries.map((c: any) => {
@@ -419,7 +580,7 @@ export function generateProductionReportPdf(input: ReportPdfInput) {
           `${po} Total`, ...(isDaily ? [] : [""]),
           "", "", fN(poDayCut), "", "", "", "", "", "",
         ].slice(0, cutCols.length));
-        y = drawTable(cutCols, rows, y, { boldLastRow: true, fs: 6.5, rh: 6, pgTitle: "CUTTING — PO WISE DETAIL" });
+        y = drawTable(cutCols, rows, y, { boldLastRow: true, fs: 6.5, rh: 6, pgTitle: "CUTTING — PO DETAIL" });
         y += 2;
 
         cutDeptDayCut += poDayCut;
@@ -434,8 +595,7 @@ export function generateProductionReportPdf(input: ReportPdfInput) {
   // ══════════════════════════════════════════
   if (departments.finishing && finishing.length > 0) {
     try {
-      doc.addPage();
-      y = pageHead("FINISHING — PO WISE OUTPUT DETAIL");
+      y = sectionStart("FINISHING — PO OUTPUT DETAIL");
 
       const finCols: Col[] = [
         ...(!isDaily ? [{ label: "Day", w: 18 }] : []),
@@ -466,7 +626,7 @@ export function generateProductionReportPdf(input: ReportPdfInput) {
         const { buyer, entries } = finByPo[po];
         entries.sort((a: any, b: any) => (a.production_date || "").localeCompare(b.production_date || ""));
 
-        y = groupHeader(`PO: ${po} — Buyer: ${buyer}`, "FINISHING — PO WISE OUTPUT DETAIL");
+        y = groupHeader(`PO: ${po} — Buyer: ${buyer}`, "FINISHING — PO OUTPUT DETAIL");
 
         let poPoly = 0;
         const rows = entries.map((f: any) => {
@@ -485,7 +645,7 @@ export function generateProductionReportPdf(input: ReportPdfInput) {
         const polyIdx = isDaily ? 5 : 6;
         totalRow[polyIdx] = fN(poPoly);
         rows.push(totalRow);
-        y = drawTable(finCols, rows, y, { boldLastRow: true, fs: 6.5, rh: 6, pgTitle: "FINISHING — PO WISE OUTPUT DETAIL" });
+        y = drawTable(finCols, rows, y, { boldLastRow: true, fs: 6.5, rh: 6, pgTitle: "FINISHING — PO OUTPUT DETAIL" });
         y += 2;
 
         finDeptPoly += poPoly;
@@ -500,8 +660,7 @@ export function generateProductionReportPdf(input: ReportPdfInput) {
   // ══════════════════════════════════════════
   if (departments.storage && storage.length > 0) {
     try {
-      doc.addPage();
-      y = pageHead("STORAGE — BIN CARD TRANSACTIONS");
+      y = sectionStart("STORAGE — BIN CARD TRANSACTIONS");
 
       const stoCols: Col[] = [
         ...(!isDaily ? [{ label: "Day", w: 18 }] : []),

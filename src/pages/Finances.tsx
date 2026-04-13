@@ -474,7 +474,8 @@ export default function Finances() {
         if (i === 0) { doc.text("TOTAL", cx + 1, y + 5); }
         else if (typeof totals[i] === "number") {
           const v = totals[i] as number;
-          const txt = i <= 1 ? v.toLocaleString() : (aligns[i] === "right" ? `${sign(v)}${fmtUsd(v)}` : `${v.toFixed(0)}`);
+          const isPlainNumber = i <= 1 || headers[i].toLowerCase().includes("output (pcs)");
+          const txt = isPlainNumber ? v.toLocaleString() : (aligns[i] === "right" ? `${sign(v)}${fmtUsd(v)}` : `${v.toFixed(0)}`);
           if (aligns[i] === "right") doc.text(txt, cx + tw - 2, y + 5, { align: "right" });
           else doc.text(txt, cx + 1, y + 5);
         }

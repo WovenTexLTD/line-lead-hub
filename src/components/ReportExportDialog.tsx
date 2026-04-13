@@ -100,16 +100,16 @@ export function ReportExportDialog({ defaultType, date, weekOffset = 0, dailyRep
     const isBDT = headcountCost.currency === "BDT";
     const [sewActRes, sewTgtRes, cutRes, finRes] = await Promise.all([
       supabase.from("sewing_actuals")
-        .select("*, lines(name, line_id), work_orders(po_number, buyer, style, cm_per_dozen)")
+        .select("*, lines(name, line_id), work_orders(po_number, buyer, style, cm_per_dozen, order_qty)")
         .eq("factory_id", factoryId).eq("production_date", dateStr),
       supabase.from("sewing_targets")
         .select("*, lines(name, line_id), work_orders(po_number, buyer, style)")
         .eq("factory_id", factoryId).eq("production_date", dateStr),
       supabase.from("cutting_actuals")
-        .select("*, lines!cutting_actuals_line_id_fkey(name, line_id), work_orders(po_number, buyer, style, color, cm_per_dozen)")
+        .select("*, lines!cutting_actuals_line_id_fkey(name, line_id), work_orders(po_number, buyer, style, color, cm_per_dozen, order_qty)")
         .eq("factory_id", factoryId).eq("production_date", dateStr),
       supabase.from("finishing_daily_logs")
-        .select("*, lines(name, line_id), work_orders(po_number, buyer, style, cm_per_dozen)")
+        .select("*, lines(name, line_id), work_orders(po_number, buyer, style, cm_per_dozen, order_qty)")
         .eq("factory_id", factoryId).eq("production_date", dateStr),
     ]);
 
@@ -764,7 +764,7 @@ export function ReportExportDialog({ defaultType, date, weekOffset = 0, dailyRep
         departments.sewing
           ? supabase
               .from("sewing_actuals")
-              .select("*, lines(name, line_id), work_orders(po_number, buyer, style, cm_per_dozen)")
+              .select("*, lines(name, line_id), work_orders(po_number, buyer, style, cm_per_dozen, order_qty)")
               .eq("factory_id", factoryId)
               .gte("production_date", startDate)
               .lte("production_date", endDate)
@@ -780,7 +780,7 @@ export function ReportExportDialog({ defaultType, date, weekOffset = 0, dailyRep
         departments.cutting
           ? supabase
               .from("cutting_actuals")
-              .select("*, lines!cutting_actuals_line_id_fkey(name, line_id), work_orders(po_number, buyer, style, color, cm_per_dozen)")
+              .select("*, lines!cutting_actuals_line_id_fkey(name, line_id), work_orders(po_number, buyer, style, color, cm_per_dozen, order_qty)")
               .eq("factory_id", factoryId)
               .gte("production_date", startDate)
               .lte("production_date", endDate)
@@ -788,7 +788,7 @@ export function ReportExportDialog({ defaultType, date, weekOffset = 0, dailyRep
         departments.finishing
           ? supabase
               .from("finishing_daily_logs")
-              .select("*, lines(name, line_id), work_orders(po_number, buyer, style, cm_per_dozen)")
+              .select("*, lines(name, line_id), work_orders(po_number, buyer, style, cm_per_dozen, order_qty)")
               .eq("factory_id", factoryId)
               .eq("log_type", "OUTPUT")
               .gte("production_date", startDate)
