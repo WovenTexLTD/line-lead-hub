@@ -20,7 +20,7 @@ import { useVersionCheck } from "@/hooks/useVersionCheck";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
-import Hub from "./pages/Hub";
+const Hub = lazy(() => import("./pages/Hub"));
 
 // Lazy-loaded: split into separate chunks per route
 const Dashboard = lazy(() => import("./pages/Dashboard"));
