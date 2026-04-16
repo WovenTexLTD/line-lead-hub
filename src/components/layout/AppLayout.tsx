@@ -3,7 +3,7 @@ import { Outlet, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { useAuth } from "@/contexts/AuthContext";
-import { Loader2, RefreshCw, AlertTriangle, Home } from "lucide-react";
+import { Loader2, RefreshCw, AlertTriangle, Home, LayoutGrid } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { Button } from "@/components/ui/button";
 import { TrialExpirationBanner } from "@/components/TrialExpirationBanner";
@@ -44,8 +44,9 @@ function PageErrorFallback() {
 }
 
 export function AppLayout() {
-  const { user, loading, factory, profile } = useAuth();
+  const { user, loading, factory, profile, isAdminOrHigher } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Switch status bar to light color for the authenticated app
   useEffect(() => {
@@ -97,6 +98,16 @@ export function AppLayout() {
               <div className="flex-1" />
 
               <NetworkStatusIndicator />
+              {isAdminOrHigher() && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate("/hub")}
+                  title="Back to portals"
+                >
+                  <LayoutGrid className="h-5 w-5" />
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="icon"

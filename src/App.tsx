@@ -20,6 +20,7 @@ import { useVersionCheck } from "@/hooks/useVersionCheck";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
+import Hub from "./pages/Hub";
 
 // Lazy-loaded: split into separate chunks per route
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -157,6 +158,7 @@ function AppRoutes() {
     <Suspense fallback={<LoadingScreen />}>
     <Routes>
       <Route path="/" element={<Index />} />
+      <Route path="/hub" element={<Hub />} />
       <Route path="/auth" element={<Auth />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/subscription" element={isNative ? <AccountNotActive /> : <Subscription />} />

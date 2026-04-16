@@ -44,9 +44,9 @@ export default function Index() {
       return <Navigate to="/storage" replace />;
     }
 
-    // Admins and owners always go to dashboard
+    // Admins and owners go to portal hub
     if (isAdminOrHigher()) {
-      return <Navigate to="/dashboard" replace />;
+      return <Navigate to="/hub" replace />;
     }
 
     // Standalone sewing role
