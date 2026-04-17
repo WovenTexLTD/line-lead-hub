@@ -7,6 +7,7 @@ import { ThemeProvider } from "next-themes";
 import { AuthProvider, AuthContext } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { BuyerLayout } from "@/components/layout/BuyerLayout";
+import { AnalyticsLayout } from "@/components/layout/AnalyticsLayout";
 import { SubscriptionGate } from "@/components/SubscriptionGate";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AccountNotActive } from "@/components/AccountNotActive";
@@ -79,6 +80,13 @@ const BuyerTodayUpdates = lazy(() => import("./pages/buyer/BuyerTodayUpdates"));
 const BuyerSubmissions = lazy(() => import("./pages/buyer/BuyerSubmissions"));
 const BuyerPODetails = lazy(() => import("./pages/buyer/BuyerPODetails"));
 const BuyerWorkspaceSelector = lazy(() => import("./pages/buyer/BuyerWorkspaceSelector"));
+const AnalyticsOverview = lazy(() => import("./pages/analytics/AnalyticsOverview"));
+const AnalyticsEfficiency = lazy(() => import("./pages/analytics/AnalyticsEfficiency"));
+const AnalyticsQuality = lazy(() => import("./pages/analytics/AnalyticsQuality"));
+const AnalyticsOrders = lazy(() => import("./pages/analytics/AnalyticsOrders"));
+const AnalyticsPipeline = lazy(() => import("./pages/analytics/AnalyticsPipeline"));
+const AnalyticsCost = lazy(() => import("./pages/analytics/AnalyticsCost"));
+const AnalyticsBlockers = lazy(() => import("./pages/analytics/AnalyticsBlockers"));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -233,6 +241,17 @@ function AppRoutes() {
         <Route path="/buyer/po/:poId" element={<SubscriptionGate><ProtectedRoute allowedRoles={['buyer']}><BuyerPODetails /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/buyer/submissions" element={<SubscriptionGate><ProtectedRoute allowedRoles={['buyer']}><BuyerSubmissions /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/buyer/preferences" element={<SubscriptionGate><Preferences /></SubscriptionGate>} />
+      </Route>
+
+      {/* Analytics portal routes */}
+      <Route element={<AnalyticsLayout />}>
+        <Route path="/analytics" element={<SubscriptionGate><ProtectedRoute adminOnly><AnalyticsOverview /></ProtectedRoute></SubscriptionGate>} />
+        <Route path="/analytics/efficiency" element={<SubscriptionGate><ProtectedRoute adminOnly><AnalyticsEfficiency /></ProtectedRoute></SubscriptionGate>} />
+        <Route path="/analytics/quality" element={<SubscriptionGate><ProtectedRoute adminOnly><AnalyticsQuality /></ProtectedRoute></SubscriptionGate>} />
+        <Route path="/analytics/orders" element={<SubscriptionGate><ProtectedRoute adminOnly><AnalyticsOrders /></ProtectedRoute></SubscriptionGate>} />
+        <Route path="/analytics/pipeline" element={<SubscriptionGate><ProtectedRoute adminOnly><AnalyticsPipeline /></ProtectedRoute></SubscriptionGate>} />
+        <Route path="/analytics/cost" element={<SubscriptionGate><ProtectedRoute adminOnly><AnalyticsCost /></ProtectedRoute></SubscriptionGate>} />
+        <Route path="/analytics/blockers" element={<SubscriptionGate><ProtectedRoute adminOnly><AnalyticsBlockers /></ProtectedRoute></SubscriptionGate>} />
       </Route>
 
       <Route path="*" element={<NotFound />} />

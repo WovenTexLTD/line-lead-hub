@@ -49,8 +49,8 @@ const portals: Portal[] = [
     icon: <BarChart3 size={22} />,
     color: "#8b5cf6",
     gradient: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)",
-    route: null,
-    available: false,
+    route: "/analytics",
+    available: true,
   },
 ];
 
