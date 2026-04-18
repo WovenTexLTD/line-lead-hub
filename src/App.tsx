@@ -73,6 +73,7 @@ const PendingApprovals = lazy(() => import("./pages/PendingApprovals"));
 const DispatchReview = lazy(() => import("./pages/DispatchReview"));
 const AllDispatches = lazy(() => import("./pages/AllDispatches"));
 const GatePassView = lazy(() => import("./pages/GatePassView"));
+const Schedule = lazy(() => import("./pages/Schedule"));
 const BuyerDashboard = lazy(() => import("./pages/buyer/BuyerDashboard"));
 const BuyerTodayUpdates = lazy(() => import("./pages/buyer/BuyerTodayUpdates"));
 const BuyerSubmissions = lazy(() => import("./pages/buyer/BuyerSubmissions"));
@@ -186,6 +187,7 @@ function AppRoutes() {
         <Route path="/work-orders" element={<SubscriptionGate><ProtectedRoute adminOnly><WorkOrdersView /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/insights" element={<SubscriptionGate><ProtectedRoute adminOnly><Insights /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/finances" element={<SubscriptionGate><ProtectedRoute adminOnly><Finances /></ProtectedRoute></SubscriptionGate>} />
+        <Route path="/schedule" element={<SubscriptionGate><ProtectedRoute adminOnly><Schedule /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/setup" element={<SubscriptionGate><ProtectedRoute adminOnly><SetupHome /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/setup/factory" element={<SubscriptionGate><ProtectedRoute adminOnly><FactorySetup /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/setup/work-orders" element={<SubscriptionGate><ProtectedRoute adminOnly><WorkOrders /></ProtectedRoute></SubscriptionGate>} />
