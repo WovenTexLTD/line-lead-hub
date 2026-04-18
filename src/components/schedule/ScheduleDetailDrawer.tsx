@@ -29,17 +29,17 @@ const statusLabels: Record<string, string> = {
 };
 
 export function ScheduleDetailDrawer({ schedule, open, onOpenChange, onEdit, onDelete }: Props) {
-  if (!schedule) return null;
-
-  const wo = schedule.workOrder;
-  const start = parseISO(schedule.start_date);
-  const end = parseISO(schedule.end_date);
+  const wo = schedule?.workOrder;
+  const start = schedule ? parseISO(schedule.start_date) : new Date();
+  const end = schedule ? parseISO(schedule.end_date) : new Date();
   const duration = differenceInDays(end, start) + 1;
-  const isAtRisk = wo.planned_ex_factory && parseISO(schedule.end_date) > parseISO(wo.planned_ex_factory);
+  const isAtRisk = wo?.planned_ex_factory && schedule && parseISO(schedule.end_date) > parseISO(wo.planned_ex_factory);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="sm:max-w-[400px] overflow-y-auto">
+        {schedule && wo && (
+        <>
         <SheetHeader className="pb-4 border-b border-slate-100">
           <div className="flex items-center justify-between">
             <SheetTitle className="text-lg">{wo.po_number}</SheetTitle>
@@ -100,6 +100,8 @@ export function ScheduleDetailDrawer({ schedule, open, onOpenChange, onEdit, onD
             </AlertDialogContent>
           </AlertDialog>
         </div>
+        </>
+        )}
       </SheetContent>
     </Sheet>
   );

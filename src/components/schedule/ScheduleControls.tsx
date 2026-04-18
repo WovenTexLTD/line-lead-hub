@@ -111,6 +111,7 @@ export function ScheduleControls({
           variant={riskOnly ? "default" : "outline"}
           size="sm"
           className="h-7 px-3 text-xs"
+          aria-pressed={riskOnly}
           onClick={() => onRiskOnlyChange(!riskOnly)}
         >
           Risks Only

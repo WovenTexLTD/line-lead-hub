@@ -64,6 +64,7 @@ export interface UnscheduledPO extends WorkOrder {
 }
 
 export interface ScheduleFormData {
+  id?: string;
   work_order_id: string;
   line_id: string;
   start_date: string;
@@ -155,7 +156,7 @@ export function useProductionSchedule({ visibleRange, filters }: UseProductionSc
 
   // ── Derived State ────────────────────────────────────────────────────
 
-  const today = startOfDay(new Date());
+  const today = useMemo(() => startOfDay(new Date()), []);
 
   const schedulesWithDetails: ScheduleWithDetails[] = useMemo(() => {
     if (!schedulesQuery.data || !workOrdersQuery.data || !linesQuery.data) return [];

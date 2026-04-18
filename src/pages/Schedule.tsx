@@ -1,8 +1,7 @@
 import { useState, useCallback } from "react";
 import { CalendarRange } from "lucide-react";
 import { Loader2 } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-import { useProductionSchedule, type ScheduleWithDetails, type UnscheduledPO, type WorkOrder } from "@/hooks/useProductionSchedule";
+import { useProductionSchedule, type ScheduleWithDetails, type ScheduleFormData, type UnscheduledPO, type WorkOrder } from "@/hooks/useProductionSchedule";
 import { useTimelineState } from "@/hooks/useTimelineState";
 import { ScheduleKPIStrip } from "@/components/schedule/ScheduleKPIStrip";
 import { ScheduleControls } from "@/components/schedule/ScheduleControls";
@@ -12,7 +11,6 @@ import { ScheduleModal } from "@/components/schedule/ScheduleModal";
 import { ScheduleDetailDrawer } from "@/components/schedule/ScheduleDetailDrawer";
 
 export default function Schedule() {
-  const { profile } = useAuth();
   const timeline = useTimelineState();
 
   // Filters
@@ -60,9 +58,9 @@ export default function Schedule() {
     setModalOpen(true);
   }, []);
 
-  const handleModalSubmit = useCallback((data: any) => {
+  const handleModalSubmit = useCallback((data: ScheduleFormData) => {
     if (data.id) {
-      updateSchedule.mutate(data, { onSuccess: () => setModalOpen(false) });
+      updateSchedule.mutate(data as ScheduleFormData & { id: string }, { onSuccess: () => setModalOpen(false) });
     } else {
       createSchedule.mutate(data, { onSuccess: () => setModalOpen(false) });
     }

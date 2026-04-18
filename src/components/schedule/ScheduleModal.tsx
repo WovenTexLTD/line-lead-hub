@@ -108,7 +108,7 @@ export function ScheduleModal({ open, onOpenChange, workOrder, editSchedule, lin
       target_qty: targetQty ? parseInt(targetQty) : null,
       daily_target: dailyTarget ? parseInt(dailyTarget) : null,
       notes: notes || null,
-    } as any);
+    });
   }
 
   if (!wo) return null;
