@@ -5,8 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertTriangle } from "lucide-react";
-import { format, parseISO, addDays, differenceInDays } from "date-fns";
+import { AlertTriangle, Package, CalendarClock } from "lucide-react";
+import { format, parseISO, addDays } from "date-fns";
 import type { FactoryLine, WorkOrder, ScheduleWithDetails, ScheduleFormData } from "@/hooks/useProductionSchedule";
 
 interface Props {
@@ -31,7 +31,6 @@ export function ScheduleModal({ open, onOpenChange, workOrder, editSchedule, lin
   const [dailyTarget, setDailyTarget] = useState("");
   const [notes, setNotes] = useState("");
 
-  // Reset form when modal opens
   useEffect(() => {
     if (!open) return;
     if (editSchedule) {
@@ -51,7 +50,6 @@ export function ScheduleModal({ open, onOpenChange, workOrder, editSchedule, lin
     }
   }, [open, editSchedule, wo]);
 
-  // Auto-derive end date
   useEffect(() => {
     if (!startDate || isEdit) return;
     const qty = parseInt(targetQty) || 0;
@@ -62,7 +60,6 @@ export function ScheduleModal({ open, onOpenChange, workOrder, editSchedule, lin
     }
   }, [startDate, targetQty, dailyTarget, isEdit]);
 
-  // Auto-fill daily target from selected line
   useEffect(() => {
     if (isEdit || !lineId) return;
     const line = lines.find((l) => l.id === lineId);
@@ -71,22 +68,16 @@ export function ScheduleModal({ open, onOpenChange, workOrder, editSchedule, lin
     }
   }, [lineId, lines, isEdit, dailyTarget]);
 
-  // Overlap warning
   const overlapWarning = useMemo(() => {
     if (!lineId || !startDate || !endDate) return null;
     const overlapping = existingSchedules.filter(
-      (s) =>
-        s.line_id === lineId &&
-        s.id !== editSchedule?.id &&
-        s.start_date <= endDate &&
-        s.end_date >= startDate
+      (s) => s.line_id === lineId && s.id !== editSchedule?.id && s.start_date <= endDate && s.end_date >= startDate
     );
     if (overlapping.length === 0) return null;
     const first = overlapping[0];
     return `${first.line.line_id} has ${first.workOrder.po_number} scheduled ${first.start_date} – ${first.end_date}`;
   }, [lineId, startDate, endDate, existingSchedules, editSchedule]);
 
-  // Ex-factory warning
   const exFactoryWarning = useMemo(() => {
     if (!endDate || !wo?.planned_ex_factory) return null;
     if (endDate > wo.planned_ex_factory) {
@@ -115,27 +106,42 @@ export function ScheduleModal({ open, onOpenChange, workOrder, editSchedule, lin
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px]">
-        <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit Schedule" : "Schedule PO"}</DialogTitle>
+      <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden">
+        <DialogHeader className="px-6 pt-6 pb-0">
+          <DialogTitle className="text-base font-bold">{isEdit ? "Edit Schedule" : "Schedule PO"}</DialogTitle>
         </DialogHeader>
 
-        {/* PO Info strip */}
-        <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-3 space-y-0.5">
-          <p className="text-sm font-semibold text-slate-800">{wo.po_number}</p>
-          <p className="text-xs text-slate-500">{wo.buyer} – {wo.style} {wo.color ? `(${wo.color})` : ""}</p>
-          <p className="text-xs text-slate-400">{wo.order_qty?.toLocaleString()} pcs
-            {wo.planned_ex_factory && ` · Ex-factory: ${format(parseISO(wo.planned_ex_factory), "d MMM yyyy")}`}
-          </p>
+        {/* PO Information block — elevated, structured */}
+        <div className="mx-6 mt-4 rounded-lg border border-slate-200 bg-gradient-to-br from-slate-50 to-white overflow-hidden">
+          <div className="px-4 py-3">
+            <div className="flex items-start justify-between">
+              <div className="min-w-0">
+                <p className="text-[15px] font-bold text-slate-900 tracking-tight">{wo.po_number}</p>
+                <p className="text-[12px] text-slate-500 mt-0.5">{wo.buyer} · {wo.style} {wo.color ? `· ${wo.color}` : ""}</p>
+              </div>
+              <div className="h-9 w-9 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                <Package className="h-4 w-4 text-blue-500" />
+              </div>
+            </div>
+            <div className="flex items-center gap-4 mt-2.5 pt-2.5 border-t border-slate-100">
+              <span className="text-[11px] font-semibold text-slate-600 tabular-nums">{wo.order_qty?.toLocaleString()} pcs</span>
+              {wo.planned_ex_factory && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500">
+                  <CalendarClock className="h-3 w-3" />
+                  Ex-factory: {format(parseISO(wo.planned_ex_factory), "d MMM yyyy")}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Form */}
-        <div className="space-y-4 mt-2">
+        {/* Form fields */}
+        <div className="px-6 pb-2 pt-4 space-y-4">
           <div className="space-y-1.5">
-            <Label className="text-xs">Line</Label>
+            <Label className="text-[11px] font-semibold text-slate-600 uppercase tracking-wide">Line</Label>
             <Select value={lineId} onValueChange={setLineId}>
               <SelectTrigger className="h-9">
-                <SelectValue placeholder="Select a line" />
+                <SelectValue placeholder="Select a production line" />
               </SelectTrigger>
               <SelectContent>
                 {lines.map((l) => (
@@ -147,49 +153,49 @@ export function ScheduleModal({ open, onOpenChange, workOrder, editSchedule, lin
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs">Start Date</Label>
+              <Label className="text-[11px] font-semibold text-slate-600 uppercase tracking-wide">Start Date</Label>
               <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="h-9" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">End Date</Label>
+              <Label className="text-[11px] font-semibold text-slate-600 uppercase tracking-wide">End Date</Label>
               <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="h-9" />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs">Target Quantity</Label>
+              <Label className="text-[11px] font-semibold text-slate-600 uppercase tracking-wide">Target Qty</Label>
               <Input type="number" value={targetQty} onChange={(e) => setTargetQty(e.target.value)} placeholder="e.g. 5000" className="h-9" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Daily Target</Label>
+              <Label className="text-[11px] font-semibold text-slate-600 uppercase tracking-wide">Daily Target</Label>
               <Input type="number" value={dailyTarget} onChange={(e) => setDailyTarget(e.target.value)} placeholder="e.g. 300" className="h-9" />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs">Notes</Label>
+            <Label className="text-[11px] font-semibold text-slate-600 uppercase tracking-wide">Notes</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional scheduling notes..." rows={2} className="text-sm resize-none" />
           </div>
 
-          {/* Warnings */}
+          {/* Warnings — refined, not harsh */}
           {overlapWarning && (
-            <div className="flex items-start gap-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-700">
-              <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-              <span>{overlapWarning}</span>
+            <div className="flex items-start gap-2.5 p-3 rounded-lg bg-amber-50/60 border border-amber-200/60">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-500" />
+              <span className="text-[11px] text-amber-700/80 leading-relaxed">{overlapWarning}</span>
             </div>
           )}
           {exFactoryWarning && (
-            <div className="flex items-start gap-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-700">
-              <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-              <span>{exFactoryWarning}</span>
+            <div className="flex items-start gap-2.5 p-3 rounded-lg bg-amber-50/60 border border-amber-200/60">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-500" />
+              <span className="text-[11px] text-amber-700/80 leading-relaxed">{exFactoryWarning}</span>
             </div>
           )}
         </div>
 
-        <DialogFooter className="mt-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={!canSubmit || isPending}>
+        <DialogFooter className="px-6 py-4 bg-slate-50/50 border-t border-slate-100">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="h-9">Cancel</Button>
+          <Button onClick={handleSubmit} disabled={!canSubmit || isPending} className="h-9 px-5 font-semibold">
             {isPending ? "Saving..." : isEdit ? "Update Schedule" : "Schedule PO"}
           </Button>
         </DialogFooter>

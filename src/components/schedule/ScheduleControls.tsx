@@ -35,56 +35,60 @@ export function ScheduleControls({
     : format(visibleRange.start, "MMMM yyyy");
 
   return (
-    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-      <div className="flex items-center gap-2">
-        <div className="flex items-center rounded-lg border border-slate-200 bg-white p-0.5">
-          <Button
-            variant={viewMode === "week" ? "default" : "ghost"}
-            size="sm"
-            className="h-7 px-3 text-xs rounded-md"
+    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm">
+      {/* Left: View toggle + Navigation — tightly grouped */}
+      <div className="flex items-center gap-1.5">
+        <div className="inline-flex rounded-md border border-slate-200 bg-slate-50 p-[3px]">
+          <button
+            className={`px-3 py-1 text-[11px] font-semibold rounded-[5px] transition-all duration-150
+              ${viewMode === "week" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}
+            `}
             onClick={() => onViewModeChange("week")}
           >
             Week
-          </Button>
-          <Button
-            variant={viewMode === "month" ? "default" : "ghost"}
-            size="sm"
-            className="h-7 px-3 text-xs rounded-md"
+          </button>
+          <button
+            className={`px-3 py-1 text-[11px] font-semibold rounded-[5px] transition-all duration-150
+              ${viewMode === "month" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}
+            `}
             onClick={() => onViewModeChange("month")}
           >
             Month
-          </Button>
+          </button>
         </div>
 
-        <div className="flex items-center gap-1">
-          <Button variant="outline" size="icon" className="h-7 w-7" onClick={onNavigateBack}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="text-sm font-medium text-slate-700 min-w-[160px] text-center">{rangeLabel}</span>
-          <Button variant="outline" size="icon" className="h-7 w-7" onClick={onNavigateForward}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
+        <div className="w-px h-5 bg-slate-200 mx-1" />
 
-        <Button variant="outline" size="sm" className="h-7 px-3 text-xs" onClick={onJumpToToday}>
+        <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500" onClick={onNavigateBack}>
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <span className="text-[13px] font-semibold text-slate-700 min-w-[150px] text-center tabular-nums">{rangeLabel}</span>
+        <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500" onClick={onNavigateForward}>
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+
+        <div className="w-px h-5 bg-slate-200 mx-1" />
+
+        <Button variant="ghost" size="sm" className="h-7 px-2.5 text-[11px] font-medium text-slate-600 hover:text-slate-900" onClick={onJumpToToday}>
           <CalendarDays className="h-3.5 w-3.5 mr-1" />
           Today
         </Button>
       </div>
 
-      <div className="flex items-center gap-2 flex-wrap">
+      {/* Right: Filters — compact, unified */}
+      <div className="flex items-center gap-1.5">
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
           <Input
             placeholder="Search PO..."
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="h-7 w-[140px] pl-8 text-xs"
+            className="h-7 w-[130px] pl-8 text-[11px] border-slate-200 focus-visible:ring-blue-500/20"
           />
         </div>
 
         <Select value={selectedLine} onValueChange={onLineChange}>
-          <SelectTrigger className="h-7 w-[120px] text-xs">
+          <SelectTrigger className="h-7 w-[110px] text-[11px] border-slate-200">
             <SelectValue placeholder="All Lines" />
           </SelectTrigger>
           <SelectContent>
@@ -96,7 +100,7 @@ export function ScheduleControls({
         </Select>
 
         <Select value={selectedBuyer} onValueChange={onBuyerChange}>
-          <SelectTrigger className="h-7 w-[120px] text-xs">
+          <SelectTrigger className="h-7 w-[110px] text-[11px] border-slate-200">
             <SelectValue placeholder="All Buyers" />
           </SelectTrigger>
           <SelectContent>
@@ -107,15 +111,18 @@ export function ScheduleControls({
           </SelectContent>
         </Select>
 
-        <Button
-          variant={riskOnly ? "default" : "outline"}
-          size="sm"
-          className="h-7 px-3 text-xs"
+        <button
+          className={`h-7 px-3 text-[11px] font-semibold rounded-md border transition-all duration-150
+            ${riskOnly
+              ? "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+              : "bg-white text-slate-500 border-slate-200 hover:text-slate-700 hover:border-slate-300"
+            }
+          `}
           aria-pressed={riskOnly}
           onClick={() => onRiskOnlyChange(!riskOnly)}
         >
           Risks Only
-        </Button>
+        </button>
       </div>
     </div>
   );
