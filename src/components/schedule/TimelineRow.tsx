@@ -1,21 +1,20 @@
 import { useMemo } from "react";
 import { eachDayOfInterval, isToday, isWeekend, differenceInDays, parseISO } from "date-fns";
-import { ScheduleBar } from "./ScheduleBar";
+import { ScheduleBarSegment } from "./ScheduleBarSegment";
+import { computeSegments } from "./lane-layout";
 import type { ViewMode } from "@/hooks/useTimelineState";
 import type { FactoryLine, ScheduleWithDetails } from "@/hooks/useProductionSchedule";
 import type { RowSize } from "@/pages/Schedule";
 
-const ROW_HEIGHTS: Record<RowSize, number> = {
-  compact: 48,
-  default: 68,
-  expanded: 96,
+// Base lane height per row size
+const LANE_HEIGHTS: Record<RowSize, number> = {
+  compact: 30,
+  default: 40,
+  expanded: 48,
 };
 
-const BAR_CONFIG: Record<RowSize, { top: number; height: number }> = {
-  compact: { top: 6, height: 36 },
-  default: { top: 12, height: 44 },
-  expanded: { top: 14, height: 52 },
-};
+const LANE_GAP = 3; // px between stacked lanes
+const ROW_PADDING = 6; // px top/bottom padding inside the row
 
 interface Props {
   line: FactoryLine;
@@ -32,8 +31,26 @@ export function TimelineRow({ line, schedules, visibleRange, viewMode, dayWidth,
   const days = eachDayOfInterval(visibleRange);
   const isEmpty = schedules.length === 0;
   const activeSchedules = schedules.filter((s) => s.status !== "completed");
-  const rowHeight = ROW_HEIGHTS[rowSize];
-  const barConfig = BAR_CONFIG[rowSize];
+
+  // Compute segmented lane layout
+  const segments = useMemo(
+    () => computeSegments(schedules, visibleRange.start, visibleRange.end),
+    [schedules, visibleRange.start, visibleRange.end]
+  );
+
+  // Max concurrent lanes determines row height
+  const maxLanes = useMemo(() => {
+    let max = 0;
+    for (const seg of segments) {
+      if (seg.totalLanes > max) max = seg.totalLanes;
+    }
+    return Math.max(max, 1);
+  }, [segments]);
+
+  const baseLaneHeight = LANE_HEIGHTS[rowSize];
+  // When there's only 1 lane, use generous height. When stacked, compress lanes.
+  const laneHeight = maxLanes === 1 ? baseLaneHeight : Math.max(Math.floor(baseLaneHeight * 0.75), 24);
+  const rowHeight = ROW_PADDING * 2 + maxLanes * laneHeight + (maxLanes - 1) * LANE_GAP;
 
   // Detect risk state for the row
   const hasRisk = useMemo(() =>
@@ -72,6 +89,9 @@ export function TimelineRow({ line, schedules, visibleRange, viewMode, dayWidth,
         </div>
         {hasRisk && (
           <div className="w-2 h-2 rounded-full bg-red-400 shrink-0 animate-pulse" title="Ex-factory risk" />
+        )}
+        {maxLanes > 1 && (
+          <span className="text-[9px] font-semibold text-slate-400 bg-slate-100 rounded px-1 py-0.5">{maxLanes}</span>
         )}
       </div>
 
@@ -114,17 +134,16 @@ export function TimelineRow({ line, schedules, visibleRange, viewMode, dayWidth,
           </div>
         )}
 
-        {/* Schedule bars */}
-        {schedules.map((s) => (
-          <ScheduleBar
-            key={s.id}
-            schedule={s}
-            visibleStart={visibleRange.start}
-            visibleEnd={visibleRange.end}
+        {/* Schedule bar segments */}
+        {segments.map((seg, i) => (
+          <ScheduleBarSegment
+            key={`${seg.scheduleId}-${seg.startDay}`}
+            segment={seg}
             dayWidth={dayWidth}
-            barTop={barConfig.top}
-            barHeight={barConfig.height}
-            onClick={() => onBarClick(s)}
+            rowPadding={ROW_PADDING}
+            laneHeight={laneHeight}
+            laneGap={LANE_GAP}
+            onClick={() => onBarClick(seg.schedule)}
           />
         ))}
       </div>
