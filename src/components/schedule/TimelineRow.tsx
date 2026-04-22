@@ -6,15 +6,19 @@ import type { ViewMode } from "@/hooks/useTimelineState";
 import type { FactoryLine, ScheduleWithDetails } from "@/hooks/useProductionSchedule";
 import type { RowSize } from "@/pages/Schedule";
 
-// Base lane height per row size
 const LANE_HEIGHTS: Record<RowSize, number> = {
-  compact: 30,
-  default: 40,
+  compact: 28,
+  default: 38,
   expanded: 48,
 };
 
-const LANE_GAP = 3; // px between stacked lanes
-const ROW_PADDING = 6; // px top/bottom padding inside the row
+const LANE_GAP = 2;
+const ROW_PADDING = 5;
+const MIN_ROW_HEIGHT: Record<RowSize, number> = {
+  compact: 42,
+  default: 56,
+  expanded: 72,
+};
 
 interface Props {
   line: FactoryLine;
@@ -32,13 +36,11 @@ export function TimelineRow({ line, schedules, visibleRange, viewMode, dayWidth,
   const isEmpty = schedules.length === 0;
   const activeSchedules = schedules.filter((s) => s.status !== "completed");
 
-  // Compute segmented lane layout
   const segments = useMemo(
     () => computeSegments(schedules, visibleRange.start, visibleRange.end),
     [schedules, visibleRange.start, visibleRange.end]
   );
 
-  // Max concurrent lanes determines row height
   const maxLanes = useMemo(() => {
     let max = 0;
     for (const seg of segments) {
@@ -48,11 +50,10 @@ export function TimelineRow({ line, schedules, visibleRange, viewMode, dayWidth,
   }, [segments]);
 
   const baseLaneHeight = LANE_HEIGHTS[rowSize];
-  // When there's only 1 lane, use generous height. When stacked, compress lanes.
-  const laneHeight = maxLanes === 1 ? baseLaneHeight : Math.max(Math.floor(baseLaneHeight * 0.75), 24);
-  const rowHeight = ROW_PADDING * 2 + maxLanes * laneHeight + (maxLanes - 1) * LANE_GAP;
+  const laneHeight = maxLanes === 1 ? baseLaneHeight : Math.max(Math.floor(baseLaneHeight * 0.7), 22);
+  const computedHeight = ROW_PADDING * 2 + maxLanes * laneHeight + Math.max(0, maxLanes - 1) * LANE_GAP;
+  const rowHeight = Math.max(computedHeight, MIN_ROW_HEIGHT[rowSize]);
 
-  // Detect risk state for the row
   const hasRisk = useMemo(() =>
     activeSchedules.some((s) => {
       if (!s.workOrder.planned_ex_factory) return false;
@@ -60,56 +61,48 @@ export function TimelineRow({ line, schedules, visibleRange, viewMode, dayWidth,
     }),
   [activeSchedules]);
 
-  // Today column index for marker
   const todayIndex = useMemo(() => {
-    const todayOffset = differenceInDays(new Date(), visibleRange.start);
-    return todayOffset >= 0 && todayOffset < days.length ? todayOffset : -1;
+    const offset = differenceInDays(new Date(), visibleRange.start);
+    return offset >= 0 && offset < days.length ? offset : -1;
   }, [visibleRange.start, days.length]);
 
   return (
     <div
-      className={`flex group/row transition-colors duration-100
-        ${isEven ? "bg-white" : "bg-slate-25"}
-        ${hasRisk ? "bg-red-50/20" : ""}
-        ${isEmpty ? "" : "hover:bg-blue-50/20"}
+      className={`flex group/row transition-colors duration-75
+        ${isEven ? "bg-white" : "bg-slate-50/30"}
+        hover:bg-blue-50/[0.06]
       `}
       style={{ height: rowHeight }}
     >
-      {/* Fixed line label column */}
-      <div className={`w-[176px] shrink-0 border-r-2 border-slate-200 px-5 flex items-center gap-3
-        ${isEmpty ? "bg-slate-50/60" : "bg-slate-50/80"}
+      {/* Line label */}
+      <div className={`w-[176px] shrink-0 border-r border-slate-200 px-4 flex items-center gap-2.5 bg-slate-50/50
+        ${!isEmpty ? "border-l-[3px] border-l-blue-400/60" : "border-l-[3px] border-l-transparent"}
       `}>
         <div className="flex flex-col min-w-0">
-          <span className={`text-[13px] font-bold tracking-tight ${isEmpty ? "text-slate-400" : "text-slate-800"}`}>
+          <span className={`text-[12px] font-bold tracking-tight ${isEmpty ? "text-slate-350" : "text-slate-700"}`}>
             {line.line_id}
           </span>
           {line.name && rowSize !== "compact" && (
-            <span className="text-[10px] text-slate-400 truncate leading-tight">{line.name}</span>
+            <span className="text-[10px] text-slate-400 truncate leading-tight mt-0.5">{line.name}</span>
           )}
         </div>
         {hasRisk && (
-          <div className="w-2 h-2 rounded-full bg-red-400 shrink-0 animate-pulse" title="Ex-factory risk" />
-        )}
-        {maxLanes > 1 && (
-          <span className="text-[9px] font-semibold text-slate-400 bg-slate-100 rounded px-1 py-0.5">{maxLanes}</span>
+          <div className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" title="Ex-factory risk" />
         )}
       </div>
 
-      {/* Grid area */}
-      <div className="relative flex-1 border-b border-slate-100">
-        {/* Day column grid */}
+      {/* Grid + bars */}
+      <div className="relative flex-1 border-b border-slate-100/80">
         <div className="flex h-full">
           {days.map((day, i) => {
             const weekend = isWeekend(day);
             const isMonday = day.getDay() === 1;
-            const todayCol = i === todayIndex;
             return (
               <div
                 key={day.toISOString()}
                 className={`h-full
-                  ${isMonday && i > 0 ? "border-l border-slate-200/80" : "border-l border-slate-100/70"}
-                  ${weekend ? "bg-slate-50/60" : ""}
-                  ${todayCol ? "bg-blue-50/50" : ""}
+                  ${isMonday && i > 0 ? "border-l border-slate-200/60" : "border-l border-slate-100/50"}
+                  ${weekend ? "bg-slate-50/50" : ""}
                 `}
                 style={{ width: dayWidth, minWidth: dayWidth }}
               />
@@ -117,25 +110,23 @@ export function TimelineRow({ line, schedules, visibleRange, viewMode, dayWidth,
           })}
         </div>
 
-        {/* Idle line indicator */}
         {isEmpty && (
-          <div className="absolute inset-0 flex items-center pointer-events-none px-4">
-            <div className="w-full border-t border-dashed border-slate-200/50" />
+          <div className="absolute inset-0 flex items-center pointer-events-none px-6">
+            <div className="w-full border-t border-dashed border-slate-150" />
           </div>
         )}
 
-        {/* Today vertical marker */}
         {todayIndex >= 0 && (
           <div
-            className="absolute top-0 bottom-0 w-[2px] bg-blue-500/60 pointer-events-none z-10"
-            style={{ left: todayIndex * dayWidth + dayWidth / 2 }}
+            className="absolute top-0 bottom-0 pointer-events-none z-10"
+            style={{ left: todayIndex * dayWidth + dayWidth / 2 - 0.75 }}
           >
-            <div className="absolute inset-0 w-[6px] -ml-[2px] bg-blue-400/10 blur-[2px]" />
+            <div className="w-[1.5px] h-full bg-blue-500/50" />
+            <div className="absolute -top-[3px] left-1/2 -translate-x-1/2 w-[7px] h-[7px] rounded-full bg-blue-500 border-2 border-white" />
           </div>
         )}
 
-        {/* Schedule bar segments */}
-        {segments.map((seg, i) => (
+        {segments.map((seg) => (
           <ScheduleBarSegment
             key={`${seg.scheduleId}-${seg.startDay}`}
             segment={seg}
