@@ -61,23 +61,20 @@ export function DeadlineStrip({ deadlines, visibleRange, viewMode, dayWidth }: P
 
   if (cards.length === 0) return null;
 
-  const cardH = isMonth ? 16 : 20;
+  const tagH = isMonth ? 14 : 18;
   const gap = 2;
   const pad = 4;
-  const stripH = pad * 2 + maxStack * cardH + Math.max(0, maxStack - 1) * gap;
+  const stripH = pad * 2 + maxStack * tagH + Math.max(0, maxStack - 1) * gap;
 
   return (
     <div className="flex border-b border-slate-100">
       {/* Label */}
-      <div className="w-[168px] shrink-0 border-r border-slate-200 px-4 flex items-center bg-red-50/30">
-        <div className="flex items-center gap-1.5">
-          <div className="w-1.5 h-1.5 rounded-full bg-red-400" />
-          <span className="text-[9px] font-bold uppercase tracking-[0.1em] text-red-400/80">Deadlines</span>
-        </div>
+      <div className="w-[168px] shrink-0 border-r border-slate-200 px-4 flex items-center">
+        <span className="text-[9px] font-semibold uppercase tracking-[0.1em] text-slate-400">Ex-Factory</span>
       </div>
 
-      {/* Cards area */}
-      <div className="relative flex-1 bg-red-50/[0.08]" style={{ height: stripH }}>
+      {/* Tags area */}
+      <div className="relative flex-1" style={{ height: stripH }}>
         {/* Grid alignment */}
         <div className="flex h-full absolute inset-0">
           {days.map((day, i) => (
@@ -85,32 +82,35 @@ export function DeadlineStrip({ deadlines, visibleRange, viewMode, dayWidth }: P
               key={day.toISOString()}
               className={`h-full
                 ${day.getDay() === 1 && i > 0 ? "border-l border-slate-200/40" : i > 0 ? "border-l border-slate-100/40" : ""}
-                ${isWeekend(day) ? "bg-slate-50/20" : ""}
+                ${isWeekend(day) ? "bg-slate-50/30" : ""}
               `}
               style={{ width: dayWidth, minWidth: dayWidth }}
             />
           ))}
         </div>
 
-        {/* Deadline cards */}
+        {/* Deadline tags — small, pill-shaped, muted */}
         {cards.map((card) => {
           const dayCards = cardsByDay.get(card.dayOffset) ?? [];
           const stackIdx = dayCards.indexOf(card);
-          const top = pad + stackIdx * (cardH + gap);
+          const top = pad + stackIdx * (tagH + gap);
+
           return (
             <Tooltip key={card.id}>
               <TooltipTrigger asChild>
                 <div
-                  className={`absolute rounded border flex items-center whitespace-nowrap px-1.5 cursor-default transition-all duration-100
+                  className={`absolute flex items-center whitespace-nowrap px-1.5 cursor-default transition-all duration-100 rounded-full
                     ${card.isPast
-                      ? "border-red-300/80 bg-red-100/90 hover:bg-red-200/80"
-                      : "border-red-200/60 bg-red-50/90 hover:bg-red-100/70"
+                      ? "bg-red-500 text-white hover:bg-red-600"
+                      : card.isUrgent
+                        ? "bg-amber-100 text-amber-700 hover:bg-amber-200"
+                        : "bg-slate-100 text-slate-500 hover:bg-slate-200"
                     }
-                    hover:z-20 hover:shadow-sm
+                    hover:z-20
                   `}
-                  style={{ top, left: card.dayOffset * dayWidth + 2, height: cardH }}
+                  style={{ top, left: card.dayOffset * dayWidth + 3, height: tagH }}
                 >
-                  <span className={`${isMonth ? "text-[7px]" : "text-[9px]"} font-semibold ${card.isPast ? "text-red-700" : "text-red-500/80"}`}>
+                  <span className={`${isMonth ? "text-[6px]" : "text-[9px]"} font-semibold leading-none`}>
                     {card.po_number}
                   </span>
                 </div>
