@@ -34,24 +34,14 @@ export function UnscheduledSidebar({ unscheduledPOs, onSchedule }: Props) {
           onClick={() => setExpanded(true)}
           className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-gradient-to-r from-white to-slate-50/80 shadow-sm hover:shadow-md hover:border-slate-300 transition-all duration-150"
         >
-          <div className="flex items-center gap-2.5">
-            <div className="h-7 w-7 rounded-lg bg-amber-100 flex items-center justify-center">
-              <Package className="h-3.5 w-3.5 text-amber-600" />
-            </div>
-            <div className="text-left">
-              <span className="text-[12px] font-bold text-slate-700 block leading-none">Unscheduled Orders</span>
-              <span className="text-[10px] text-slate-400 mt-0.5 block">
-                {unscheduledPOs.length} PO{unscheduledPOs.length !== 1 ? "s" : ""} waiting
-                {atRiskCount > 0 && <span className="text-red-500 font-semibold ml-1">· {atRiskCount} at risk</span>}
-              </span>
-            </div>
-          </div>
           <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="text-[10px] font-bold px-2 h-5 bg-slate-100 text-slate-600">
+            <Package className="h-4 w-4 text-amber-500" />
+            <span className="text-[12px] font-semibold text-slate-700">Unscheduled</span>
+            <Badge variant="secondary" className="text-[10px] font-bold px-1.5 h-5 bg-slate-100 text-slate-600">
               {unscheduledPOs.length}
             </Badge>
-            <ChevronDown className="h-4 w-4 text-slate-400" />
           </div>
+          <ChevronDown className="h-4 w-4 text-slate-400" />
         </button>
       )}
 
