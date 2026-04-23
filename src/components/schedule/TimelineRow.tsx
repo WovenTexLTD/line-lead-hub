@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { eachDayOfInterval, isToday, isWeekend, differenceInDays, parseISO } from "date-fns";
 import { ScheduleBarSegment } from "./ScheduleBarSegment";
-import { computeSegments } from "./lane-layout";
+import { computeLayout } from "./lane-layout";
 import type { ViewMode } from "@/hooks/useTimelineState";
 import type { FactoryLine, ScheduleWithDetails } from "@/hooks/useProductionSchedule";
 import type { RowSize } from "@/pages/Schedule";
@@ -26,16 +26,16 @@ export function TimelineRow({ line, schedules, visibleRange, viewMode, dayWidth,
   const days = eachDayOfInterval(visibleRange);
   const isEmpty = schedules.length === 0;
 
-  const segments = useMemo(
-    () => computeSegments(schedules, visibleRange.start, visibleRange.end),
+  const bars = useMemo(
+    () => computeLayout(schedules, visibleRange.start, visibleRange.end),
     [schedules, visibleRange.start, visibleRange.end]
   );
 
   const maxLanes = useMemo(() => {
     let m = 0;
-    for (const s of segments) if (s.totalLanes > m) m = s.totalLanes;
+    for (const b of bars) if (b.totalLanes > m) m = b.totalLanes;
     return Math.max(m, 1);
-  }, [segments]);
+  }, [bars]);
 
   const laneH = maxLanes === 1 ? LANE_HEIGHTS[rowSize] : Math.max(Math.floor(LANE_HEIGHTS[rowSize] * 0.72), 22);
   const rowH = Math.max(ROW_PADDING * 2 + maxLanes * laneH + Math.max(0, maxLanes - 1) * LANE_GAP, MIN_ROW[rowSize]);
@@ -57,7 +57,7 @@ export function TimelineRow({ line, schedules, visibleRange, viewMode, dayWidth,
       `}
       style={{ height: rowH }}
     >
-      {/* Line label column */}
+      {/* Line label */}
       <div className={`w-[168px] shrink-0 border-r border-slate-200 px-4 flex items-center gap-2 bg-slate-50/40
         ${!isEmpty ? "border-l-[3px] border-l-blue-500/50" : "border-l-[3px] border-l-transparent"}
       `}>
@@ -69,39 +69,31 @@ export function TimelineRow({ line, schedules, visibleRange, viewMode, dayWidth,
             <span className="text-[10px] text-slate-400 truncate leading-tight mt-0.5">{line.name}</span>
           )}
         </div>
-        {hasRisk && (
-          <div className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
-        )}
+        {hasRisk && <div className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />}
       </div>
 
       {/* Grid + bars */}
       <div className="relative flex-1 border-b border-slate-100">
-        {/* Column grid */}
         <div className="flex h-full">
-          {days.map((day, i) => {
-            const isMonday = day.getDay() === 1;
-            return (
-              <div
-                key={day.toISOString()}
-                className={`h-full
-                  ${isMonday && i > 0 ? "border-l border-slate-200/50" : i > 0 ? "border-l border-slate-100/60" : ""}
-                  ${isWeekend(day) ? "bg-slate-50/40" : ""}
-                  ${isToday(day) ? "bg-blue-50/30" : ""}
-                `}
-                style={{ width: dayWidth, minWidth: dayWidth }}
-              />
-            );
-          })}
+          {days.map((day, i) => (
+            <div
+              key={day.toISOString()}
+              className={`h-full
+                ${day.getDay() === 1 && i > 0 ? "border-l border-slate-200/50" : i > 0 ? "border-l border-slate-100/60" : ""}
+                ${isWeekend(day) ? "bg-slate-50/40" : ""}
+                ${isToday(day) ? "bg-blue-50/30" : ""}
+              `}
+              style={{ width: dayWidth, minWidth: dayWidth }}
+            />
+          ))}
         </div>
 
-        {/* Empty row dashed line */}
         {isEmpty && (
           <div className="absolute inset-0 flex items-center pointer-events-none px-6">
             <div className="w-full border-t border-dashed border-slate-100" />
           </div>
         )}
 
-        {/* Today vertical marker */}
         {todayIdx >= 0 && (
           <div
             className="absolute top-0 bottom-0 w-[1.5px] bg-blue-500/40 pointer-events-none z-10"
@@ -109,16 +101,15 @@ export function TimelineRow({ line, schedules, visibleRange, viewMode, dayWidth,
           />
         )}
 
-        {/* Schedule bar segments */}
-        {segments.map(seg => (
+        {bars.map(bar => (
           <ScheduleBarSegment
-            key={`${seg.scheduleId}-${seg.startDay}`}
-            segment={seg}
+            key={bar.schedule.id}
+            bar={bar}
             dayWidth={dayWidth}
             rowPadding={ROW_PADDING}
             laneHeight={laneH}
             laneGap={LANE_GAP}
-            onClick={() => onBarClick(seg.schedule)}
+            onClick={() => onBarClick(bar.schedule)}
           />
         ))}
       </div>

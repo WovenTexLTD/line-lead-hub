@@ -1,10 +1,10 @@
 import { parseISO, differenceInDays, isAfter, format } from "date-fns";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { ScheduleWithDetails } from "@/hooks/useProductionSchedule";
-import type { BarSegment } from "./lane-layout";
+import type { BarLayout } from "./lane-layout";
 
 interface Props {
-  segment: BarSegment;
+  bar: BarLayout;
   dayWidth: number;
   rowPadding: number;
   laneHeight: number;
@@ -29,8 +29,8 @@ function getBarStyle(schedule: ScheduleWithDetails): { bg: string; text: string 
   return { bg: "bg-gradient-to-r from-blue-500 to-blue-600", text: "text-white" };
 }
 
-export function ScheduleBarSegment({ segment, dayWidth, rowPadding, laneHeight, laneGap, onClick }: Props) {
-  const { schedule, startDay, endDay, lane, isFirstSegment, isLastSegment } = segment;
+export function ScheduleBarSegment({ bar, dayWidth, rowPadding, laneHeight, laneGap, onClick }: Props) {
+  const { schedule, startDay, endDay, lane, startsBeforeView, endsAfterView } = bar;
   const isCompleted = schedule.status === "completed";
   const isDelayed = schedule.status === "delayed";
   const style = getBarStyle(schedule);
@@ -40,9 +40,9 @@ export function ScheduleBarSegment({ segment, dayWidth, rowPadding, laneHeight, 
   const width = (endDay - startDay + 1) * dayWidth - 4;
   const top = rowPadding + lane * (laneHeight + laneGap);
 
-  // Rounding
-  const single = isFirstSegment && isLastSegment;
-  const r = single ? "rounded-md" : isFirstSegment ? "rounded-l-md" : isLastSegment ? "rounded-r-md" : "";
+  // Rounding — clip edges when bar extends beyond view
+  const rLeft = startsBeforeView ? "" : "rounded-l-md";
+  const rRight = endsAfterView ? "" : "rounded-r-md";
 
   // Text
   const showPO = width > 48;
@@ -59,7 +59,7 @@ export function ScheduleBarSegment({ segment, dayWidth, rowPadding, laneHeight, 
       <TooltipTrigger asChild>
         <button
           className={`absolute cursor-pointer overflow-hidden
-            ${style.bg} ${style.text} ${r}
+            ${style.bg} ${style.text} ${rLeft} ${rRight}
             ${isCompleted ? "opacity-40" : "shadow-sm hover:shadow-md"}
             ${isDelayed ? "ring-1 ring-red-400/40 ring-offset-1" : ""}
             transition-all duration-150 hover:z-20 hover:brightness-105
