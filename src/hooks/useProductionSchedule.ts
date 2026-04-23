@@ -82,8 +82,8 @@ export interface ScheduleFormData {
 export interface ScheduleKPIs {
   scheduledCount: number;
   unscheduledCount: number;
-  linesInUse: number;
-  idleLines: number;
+  nextDeadlineDays: number | null;
+  startingThisWeek: number;
   exFactoryRisks: number;
 }
 
@@ -228,28 +228,40 @@ export function useProductionSchedule({ visibleRange, filters }: UseProductionSc
 
   // KPIs
   const kpis: ScheduleKPIs = useMemo(() => {
-    const lines = linesQuery.data ?? [];
-    const linesWithSchedule = new Set(
-      visibleSchedules
-        .filter((s) => s.status !== "completed")
-        .map((s) => s.line_id)
-    );
-    const activeLineCount = lines.length;
-
     const riskyCount = schedulesWithDetails.filter((s) => {
       if (s.status === "completed") return false;
       if (!s.workOrder.planned_ex_factory) return false;
       return parseISO(s.end_date) > parseISO(s.workOrder.planned_ex_factory);
     }).length;
 
+    // Next upcoming ex-factory deadline (days from now)
+    let nextDeadlineDays: number | null = null;
+    const allWOs = workOrdersQuery.data ?? [];
+    for (const wo of allWOs) {
+      if (!wo.planned_ex_factory) continue;
+      const days = differenceInDays(parseISO(wo.planned_ex_factory), today);
+      if (days >= 0 && (nextDeadlineDays === null || days < nextDeadlineDays)) {
+        nextDeadlineDays = days;
+      }
+    }
+
+    // POs with schedules starting within the next 7 days
+    const in7Days = new Date(today);
+    in7Days.setDate(in7Days.getDate() + 7);
+    const startingThisWeek = schedulesWithDetails.filter((s) => {
+      if (s.status === "completed") return false;
+      const start = parseISO(s.start_date);
+      return start >= today && start <= in7Days;
+    }).length;
+
     return {
       scheduledCount: scheduledWoIds.size,
       unscheduledCount: unscheduledPOs.length,
-      linesInUse: linesWithSchedule.size,
-      idleLines: activeLineCount - linesWithSchedule.size,
+      nextDeadlineDays,
+      startingThisWeek,
       exFactoryRisks: riskyCount,
     };
-  }, [visibleSchedules, linesQuery.data, scheduledWoIds, unscheduledPOs, schedulesWithDetails]);
+  }, [workOrdersQuery.data, scheduledWoIds, unscheduledPOs, schedulesWithDetails, today]);
 
   // Group schedules by line for timeline rendering
   const schedulesByLine = useMemo(() => {
