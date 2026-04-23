@@ -103,7 +103,9 @@ export function DeadlineStrip({ deadlines, visibleRange, viewMode, dayWidth }: P
                   className={`absolute flex items-center justify-center cursor-default transition-all duration-100 rounded
                     ${card.isPast
                       ? "bg-red-500 text-white hover:bg-red-600"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      : card.isUrgent
+                        ? "bg-amber-500 text-white hover:bg-amber-600"
+                        : "bg-emerald-500 text-white hover:bg-emerald-600"
                     }
                     hover:z-20
                   `}
