@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Bell, Check, AlertTriangle, Info, CheckCircle2, Clock, Trash2, Settings, Scissors, FileText, Target, Truck } from "lucide-react";
+import { Bell, Check, AlertTriangle, Info, CheckCircle2, Clock, Trash2, Settings, Scissors, FileText, Target, Truck, CalendarCheck } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 
@@ -242,6 +242,8 @@ export function NotificationBell() {
         return <Truck className="h-4 w-4 text-emerald-500" />;
       case "dispatch_rejected":
         return <Truck className="h-4 w-4 text-destructive" />;
+      case "schedule_start":
+        return <CalendarCheck className="h-4 w-4 text-blue-500" />;
       default:
         return <Info className="h-4 w-4 text-muted-foreground" />;
     }
