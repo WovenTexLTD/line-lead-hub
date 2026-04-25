@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { CalendarRange } from "lucide-react";
 import { Loader2 } from "lucide-react";
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, type DragStartEvent, type DragEndEvent } from "@dnd-kit/core";
@@ -12,10 +12,17 @@ import { UnscheduledSidebar } from "@/components/schedule/UnscheduledSidebar";
 import { ScheduleModal } from "@/components/schedule/ScheduleModal";
 import { ScheduleDetailDrawer } from "@/components/schedule/ScheduleDetailDrawer";
 import { MiniCalendar } from "@/components/schedule/MiniCalendar";
+import { useSidebar } from "@/components/ui/sidebar";
 
 export type RowSize = "compact" | "default" | "expanded";
 
 export default function Schedule() {
+  // Collapse the app sidebar on mount, restore on unmount
+  const { setOpen } = useSidebar();
+  useEffect(() => {
+    setOpen(false);
+    return () => setOpen(true);
+  }, [setOpen]);
   const timeline = useTimelineState();
 
   const [selectedLine, setSelectedLine] = useState("all");
