@@ -41,7 +41,7 @@ export function ScheduleControls({
 }: Props) {
   const rangeLabel = viewMode === "week"
     ? `${format(visibleRange.start, "d MMM")} – ${format(visibleRange.end, "d MMM yyyy")}`
-    : format(visibleRange.start, "MMMM yyyy");
+    : `${format(visibleRange.start, "d MMM")} – ${format(visibleRange.end, "d MMM yyyy")}`;
 
   // Cycle through row sizes
   const cycleRowSize = () => {

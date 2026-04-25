@@ -16,7 +16,7 @@ interface Props {
 }
 
 export function TimelinePlanner({ lines, schedulesByLine, deadlines, visibleRange, viewMode, rowSize, onBarClick }: Props) {
-  const dayWidth = viewMode === "week" ? 120 : 40;
+  const dayWidth = viewMode === "week" ? 120 : 52;
 
   return (
     <div className="rounded-xl bg-white border border-slate-200/80 shadow-sm overflow-hidden">

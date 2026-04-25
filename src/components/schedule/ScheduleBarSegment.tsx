@@ -14,7 +14,7 @@ interface Props {
 
 function getBarStyle(schedule: ScheduleWithDetails): { bg: string; text: string } {
   if (schedule.status === "completed") {
-    return { bg: "bg-slate-200/70", text: "text-slate-500" };
+    return { bg: "bg-slate-300", text: "text-slate-600" };
   }
   if (schedule.colour) {
     return { bg: "", text: "text-white" };
@@ -60,7 +60,7 @@ export function ScheduleBarSegment({ bar, dayWidth, rowPadding, laneHeight, lane
         <button
           className={`absolute cursor-pointer overflow-hidden
             ${style.bg} ${style.text} ${rLeft} ${rRight}
-            ${isCompleted ? "opacity-40" : "shadow-sm hover:shadow-md"}
+            ${isCompleted ? "opacity-50 bg-[repeating-linear-gradient(135deg,transparent,transparent_4px,rgba(255,255,255,0.3)_4px,rgba(255,255,255,0.3)_8px)]" : "shadow-sm hover:shadow-md"}
             ${isDelayed ? "ring-1 ring-red-400/40 ring-offset-1" : ""}
             transition-all duration-150 hover:z-20 hover:brightness-105
           `}

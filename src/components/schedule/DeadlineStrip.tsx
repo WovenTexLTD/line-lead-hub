@@ -61,7 +61,7 @@ export function DeadlineStrip({ deadlines, visibleRange, viewMode, dayWidth }: P
 
   if (cards.length === 0) return null;
 
-  const tagH = isMonth ? 14 : 18;
+  const tagH = isMonth ? 16 : 18;
   const gap = 2;
   const pad = 4;
   const stripH = pad * 2 + maxStack * tagH + Math.max(0, maxStack - 1) * gap;
@@ -69,7 +69,7 @@ export function DeadlineStrip({ deadlines, visibleRange, viewMode, dayWidth }: P
   return (
     <div className="flex border-b border-slate-100">
       {/* Label — matches line row treatment */}
-      <div className="w-[168px] shrink-0 border-r border-slate-200 border-l-[3px] border-l-red-400/60 px-4 flex items-center bg-slate-50/40">
+      <div className="w-[168px] shrink-0 border-r border-slate-200 border-l-[3px] border-l-red-400/60 px-4 flex items-center bg-slate-50 sticky left-0 z-20">
         <span className="text-[12px] font-semibold text-slate-700 tracking-tight">Ex-Factory</span>
       </div>
 
@@ -111,7 +111,7 @@ export function DeadlineStrip({ deadlines, visibleRange, viewMode, dayWidth }: P
                   `}
                   style={{ top, left: card.dayOffset * dayWidth + 3, width: tagWidth, height: tagH }}
                 >
-                  <span className={`${isMonth ? "text-[6px]" : "text-[9px]"} font-semibold leading-none`}>
+                  <span className={`${isMonth ? "text-[8px]" : "text-[9px]"} font-semibold leading-none`}>
                     {card.po_number}
                   </span>
                 </div>
