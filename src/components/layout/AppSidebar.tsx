@@ -37,6 +37,7 @@ import {
   Truck,
   CheckSquare,
   Archive,
+  CalendarRange,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -101,6 +102,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Truck,
   CheckSquare,
   Archive,
+  CalendarRange,
 };
 
 const navLabelKeys: Record<string, string> = {
