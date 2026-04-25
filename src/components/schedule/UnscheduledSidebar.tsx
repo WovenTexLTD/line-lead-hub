@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, AlertTriangle, Clock, CalendarDays, ChevronDown, ChevronUp, Package } from "lucide-react";
-import { UnscheduledPOCard } from "./UnscheduledPOCard";
+import { DraggableUnscheduledCard } from "./DraggableUnscheduledCard";
 import type { UnscheduledPO, UrgencyGroup } from "@/hooks/useProductionSchedule";
 
 interface Props {
@@ -94,7 +94,7 @@ export function UnscheduledSidebar({ unscheduledPOs, onSchedule }: Props) {
                       {/* Cards */}
                       <div className="space-y-1">
                         {group.items.map((po) => (
-                          <UnscheduledPOCard key={po.id} po={po} onSchedule={onSchedule} />
+                          <DraggableUnscheduledCard key={po.id} po={po} onSchedule={onSchedule} />
                         ))}
                       </div>
                     </div>

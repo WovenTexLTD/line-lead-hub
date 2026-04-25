@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { eachDayOfInterval, isToday, isWeekend, differenceInDays, parseISO } from "date-fns";
-import { ScheduleBarSegment } from "./ScheduleBarSegment";
+import { useDroppable } from "@dnd-kit/core";
+import { DraggableBar } from "./DraggableBar";
 import { computeLayout } from "./lane-layout";
 import type { ViewMode } from "@/hooks/useTimelineState";
 import type { FactoryLine, ScheduleWithDetails } from "@/hooks/useProductionSchedule";
@@ -49,17 +50,31 @@ export function TimelineRow({ line, schedules, visibleRange, viewMode, dayWidth,
     return o >= 0 && o < days.length ? o : -1;
   }, [visibleRange.start, days.length]);
 
+  // Droppable — the grid area is a drop target
+  const { setNodeRef, isOver } = useDroppable({
+    id: `line-${line.id}`,
+    data: {
+      type: "line-row",
+      lineId: line.id,
+      line,
+      dayWidth,
+      visibleStart: visibleRange.start,
+    },
+  });
+
   return (
     <div
       className={`flex group/row transition-colors duration-75
         ${isEven ? "bg-white" : "bg-slate-50/20"}
         ${!isEmpty ? "hover:bg-blue-50/[0.04]" : ""}
+        ${isOver ? "bg-blue-50/20" : ""}
       `}
       style={{ height: rowH }}
     >
       {/* Line label */}
       <div className={`w-[168px] shrink-0 border-r border-slate-200 px-4 flex items-center gap-2 bg-slate-50 sticky left-0 z-20
         ${!isEmpty ? "border-l-[3px] border-l-blue-500/50" : "border-l-[3px] border-l-transparent"}
+        ${isOver ? "border-l-blue-500 bg-blue-50/40" : ""}
       `}>
         <div className="flex flex-col min-w-0 flex-1">
           <span className={`text-[12px] font-semibold tracking-tight ${isEmpty ? "text-slate-300" : "text-slate-700"}`}>
@@ -73,7 +88,7 @@ export function TimelineRow({ line, schedules, visibleRange, viewMode, dayWidth,
       </div>
 
       {/* Grid + bars */}
-      <div className="relative flex-1 border-b border-slate-100">
+      <div ref={setNodeRef} className={`relative flex-1 border-b border-slate-100 ${isOver ? "ring-1 ring-inset ring-blue-400/30" : ""}`}>
         <div className="flex h-full">
           {days.map((day, i) => (
             <div
@@ -88,9 +103,15 @@ export function TimelineRow({ line, schedules, visibleRange, viewMode, dayWidth,
           ))}
         </div>
 
-        {isEmpty && (
+        {isEmpty && !isOver && (
           <div className="absolute inset-0 flex items-center pointer-events-none px-6">
             <div className="w-full border-t border-dashed border-slate-100" />
+          </div>
+        )}
+
+        {isOver && isEmpty && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <span className="text-[11px] font-medium text-blue-400">Drop here to schedule</span>
           </div>
         )}
 
@@ -102,7 +123,7 @@ export function TimelineRow({ line, schedules, visibleRange, viewMode, dayWidth,
         )}
 
         {bars.map(bar => (
-          <ScheduleBarSegment
+          <DraggableBar
             key={bar.schedule.id}
             bar={bar}
             dayWidth={dayWidth}
