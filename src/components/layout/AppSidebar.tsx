@@ -37,6 +37,7 @@ import {
   Truck,
   CheckSquare,
   Archive,
+  CalendarRange,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -101,6 +102,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Truck,
   CheckSquare,
   Archive,
+  CalendarRange,
 };
 
 const navLabelKeys: Record<string, string> = {
@@ -403,13 +405,13 @@ export function AppSidebar() {
       } as React.CSSProperties}
       collapsible="icon"
     >
-      <SidebarHeader className="border-b border-white/[0.08] p-4">
+      <SidebarHeader className={cn("border-b border-white/[0.08]", collapsed ? "p-2.5 flex justify-center" : "p-4")}>
         <div className="flex items-center gap-3">
           <div className="relative shrink-0">
             <img
               src={logoSvg}
               alt="ProductionPortal"
-              className="h-10 w-10 rounded-xl shadow-lg shadow-sidebar-primary/20"
+              className={cn("rounded-xl shadow-lg shadow-sidebar-primary/20", collapsed ? "h-8 w-8" : "h-10 w-10")}
             />
             <div className="absolute inset-0 rounded-xl ring-1 ring-white/10" />
           </div>
@@ -759,21 +761,23 @@ export function AppSidebar() {
             </>
           )}
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={toggleSidebar}
-          className="mt-2 w-full justify-center text-sidebar-foreground/40 hover:text-sidebar-foreground hover:bg-sidebar-accent/30 text-xs"
-        >
-          {collapsed ? (
-            <ChevronRight className="h-4 w-4" />
-          ) : (
-            <>
-              <ChevronLeft className="h-4 w-4 mr-2" />
-              {t('common.collapse')}
-            </>
-          )}
-        </Button>
+        {location.pathname !== "/schedule" && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleSidebar}
+            className="mt-2 w-full justify-center text-sidebar-foreground/40 hover:text-sidebar-foreground hover:bg-sidebar-accent/30 text-xs"
+          >
+            {collapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <>
+                <ChevronLeft className="h-4 w-4 mr-2" />
+                {t('common.collapse')}
+              </>
+            )}
+          </Button>
+        )}
       </SidebarFooter>
       </Sidebar>
     </>

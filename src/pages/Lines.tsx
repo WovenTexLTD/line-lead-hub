@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
-import { Rows3 } from "lucide-react";
+import { Rows3, CalendarRange } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { SewingMachine } from "@/components/icons/SewingMachine";
 import { useLinePerformance } from "@/components/lines/useLinePerformance";
 import { LinePerformanceControls } from "@/components/lines/LinePerformanceControls";
@@ -10,6 +12,7 @@ import { LineDrilldownDrawer } from "@/components/lines/LineDrilldownDrawer";
 import { LineExportButton } from "@/components/lines/LineExportButton";
 
 export default function Lines() {
+  const navigate = useNavigate();
   const {
     loading,
     selectedDate,
@@ -76,7 +79,7 @@ export default function Lines() {
         onFiltersChange={setFilters}
         units={units}
         floors={floors}
-
+        onScheduleClick={() => navigate("/schedule")}
       />
 
       {/* Summary KPIs */}
