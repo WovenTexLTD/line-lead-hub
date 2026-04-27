@@ -40,6 +40,7 @@ const factorySchema = z.object({
   payment_failed_at: z.string().nullable().optional(),
   headcount_cost_value: z.number().nullable().optional(),
   headcount_cost_currency: z.string().nullable().optional().transform(v => v ?? 'BDT'),
+  payment_provider: z.string().nullable().optional().transform(v => v ?? 'worldpay'),
 });
 
 type Profile = z.infer<typeof profileSchema>;

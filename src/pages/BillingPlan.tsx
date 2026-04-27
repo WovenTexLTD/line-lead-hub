@@ -48,6 +48,7 @@ import {
 } from "@/lib/plan-tiers";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { WorldpayCheckout } from "@/components/WorldpayCheckout";
 
 export default function BillingPlan() {
   const { user, factory, isAdminOrHigher, signOut } = useAuth();
@@ -62,6 +63,10 @@ export default function BillingPlan() {
   const [billingInterval, setBillingInterval] = useState<BillingInterval>('month');
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
+  const [worldpayCheckoutOpen, setWorldpayCheckoutOpen] = useState(false);
+  const [worldpayCheckoutTier, setWorldpayCheckoutTier] = useState<PlanTier>('starter');
+
+  const isWorldpay = factory?.payment_provider === 'worldpay';
 
   const { isTrial, status: subStatus } = useSubscription();
 
@@ -97,6 +102,13 @@ export default function BillingPlan() {
       return;
     }
 
+    if (isWorldpay) {
+      setWorldpayCheckoutTier(tier);
+      setWorldpayCheckoutOpen(true);
+      return;
+    }
+
+    // Stripe path (for existing Stripe factories like Murad Apparels)
     setCheckoutLoading(tier);
     try {
       const { data, error } = await invokeEdgeFn('create-checkout', { tier, interval: billingInterval });
@@ -127,7 +139,8 @@ export default function BillingPlan() {
 
     setCheckoutLoading(tier);
     try {
-      const { data, error } = await invokeEdgeFn('change-subscription', { newTier: tier, billingInterval });
+      const fnName = isWorldpay ? 'worldpay-change-subscription' : 'change-subscription';
+      const { data, error } = await invokeEdgeFn(fnName, { newTier: tier, billingInterval, newInterval: billingInterval });
 
       if (error) throw error;
 
@@ -167,7 +180,8 @@ export default function BillingPlan() {
   const handleStartTrial = async (tier: PlanTier = 'starter') => {
     setCheckoutLoading(tier);
     try {
-      const { data, error } = await invokeEdgeFn('create-checkout', { tier, startTrial: true, interval: billingInterval });
+      const fnName = isWorldpay ? 'worldpay-checkout' : 'create-checkout';
+      const { data, error } = await invokeEdgeFn(fnName, { tier, startTrial: true, interval: billingInterval });
 
       if (error) throw error;
       
@@ -190,9 +204,13 @@ export default function BillingPlan() {
     }
   };
 
-  // Opens Stripe Customer Portal for managing payment methods, viewing invoices, etc.
-  // If no billing account exists, redirects user to subscription page
   const handleManageBilling = async () => {
+    if (isWorldpay) {
+      navigate('/payment-method');
+      return;
+    }
+
+    // Stripe: open Customer Portal
     setPortalLoading(true);
     try {
       const { data, error } = await invokeEdgeFn('customer-portal');
@@ -202,7 +220,6 @@ export default function BillingPlan() {
       if (data.url) {
         await openExternalUrl(data.url);
       } else if (data.redirectTo) {
-        // No billing account - redirect to subscription page
         toast.success("No Billing Account", { description: data.message || "Please subscribe to a plan first." });
         navigate(data.redirectTo);
       } else if (data.error) {
@@ -223,7 +240,8 @@ export default function BillingPlan() {
   const handleCancelSubscription = async () => {
     setCancelLoading(true);
     try {
-      const { data, error } = await invokeEdgeFn('cancel-subscription');
+      const fnName = isWorldpay ? 'worldpay-cancel-subscription' : 'cancel-subscription';
+      const { data, error } = await invokeEdgeFn(fnName);
 
       if (error) throw error;
       
@@ -780,6 +798,18 @@ export default function BillingPlan() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Worldpay Checkout Dialog */}
+      <WorldpayCheckout
+        tier={worldpayCheckoutTier}
+        interval={billingInterval}
+        open={worldpayCheckoutOpen}
+        onOpenChange={setWorldpayCheckoutOpen}
+        onSuccess={() => {
+          refetchLines();
+          navigate('/billing-plan?payment=success', { replace: true });
+        }}
+      />
     </div>
   );
 }

@@ -52,6 +52,7 @@ const Preferences = lazy(() => import("./pages/Preferences"));
 const Subscription = lazy(() => import("./pages/Subscription"));
 const Billing = lazy(() => import("./pages/Billing"));
 const BillingPlan = lazy(() => import("./pages/BillingPlan"));
+const PaymentMethod = lazy(() => import("./pages/PaymentMethod"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const ReportBlocker = lazy(() => import("./pages/ReportBlocker"));
 const KnowledgeBase = lazy(() => import("./pages/KnowledgeBase"));
@@ -200,6 +201,7 @@ function AppRoutes() {
         <Route path="/preferences" element={<SubscriptionGate><Preferences /></SubscriptionGate>} />
         <Route path="/billing" element={isNative ? <Navigate to="/dashboard" replace /> : <ProtectedRoute adminOnly><Billing /></ProtectedRoute>} />
         <Route path="/billing-plan" element={isNative ? <Navigate to="/dashboard" replace /> : <ProtectedRoute adminOnly><BillingPlan /></ProtectedRoute>} />
+        <Route path="/payment-method" element={isNative ? <Navigate to="/dashboard" replace /> : <ProtectedRoute adminOnly><PaymentMethod /></ProtectedRoute>} />
         {/* Storage module routes */}
         <Route path="/storage" element={<SubscriptionGate><ProtectedRoute allowedRoles={['storage']}><StorageBinCard /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/storage/history" element={<SubscriptionGate><ProtectedRoute allowedRoles={['storage']}><StorageHistory /></ProtectedRoute></SubscriptionGate>} />

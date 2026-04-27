@@ -10,28 +10,29 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { 
-  Loader2, 
-  CreditCard, 
-  Clock, 
-  CheckCircle2, 
-  AlertCircle, 
-  Sparkles, 
-  ArrowRight, 
-  Crown, 
-  LogOut, 
+import {
+  Loader2,
+  CreditCard,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  Sparkles,
+  ArrowRight,
+  Crown,
+  LogOut,
   Mail,
   Percent
 } from "lucide-react";
-import { 
-  PLAN_TIERS, 
-  formatPlanPrice, 
-  type PlanTierConfig, 
+import {
+  PLAN_TIERS,
+  formatPlanPrice,
+  type PlanTierConfig,
   type PlanTier,
   type BillingInterval,
   getDisplayPrice,
   getMonthlyEquivalent
 } from "@/lib/plan-tiers";
+import { WorldpayCheckout } from "@/components/WorldpayCheckout";
 
 interface SubscriptionStatus {
   subscribed: boolean;
@@ -46,7 +47,7 @@ interface SubscriptionStatus {
 }
 
 export default function Subscription() {
-  const { user, profile, isAdminOrHigher, signOut } = useAuth();
+  const { user, profile, factory, isAdminOrHigher, signOut } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -57,6 +58,8 @@ export default function Subscription() {
   const [portalLoading, setPortalLoading] = useState(false);
   const [status, setStatus] = useState<SubscriptionStatus | null>(null);
   const [billingInterval, setBillingInterval] = useState<BillingInterval>('month');
+  const [worldpayCheckoutOpen, setWorldpayCheckoutOpen] = useState(false);
+  const [worldpayCheckoutTier, setWorldpayCheckoutTier] = useState<PlanTier>('starter');
 
   useEffect(() => {
     const payment = searchParams.get('payment');
@@ -114,15 +117,17 @@ export default function Subscription() {
         throw new Error('Session expired. Please sign in again.');
       }
 
-      const { data, error } = await invokeEdgeFn('create-checkout',
+      const { data, error } = await invokeEdgeFn('worldpay-checkout',
         { tier: 'starter', startTrial: true, interval: billingInterval },
         { headers: { Authorization: `Bearer ${accessToken}` } },
       );
 
       if (error) throw error;
 
-      if (data.url) {
-        await openExternalUrl(data.url);
+      if (data?.trial) {
+        toast.success("Trial started!", { description: "You have 14 days of free access." });
+        const redirectUrl = data.redirectUrl || '/setup/factory';
+        navigate(redirectUrl, { replace: true });
       }
     } catch (err) {
       console.error('Error starting trial:', err);
@@ -137,35 +142,20 @@ export default function Subscription() {
       await openExternalUrl('https://www.woventex.co');
       return;
     }
-    
-    setCheckoutLoading(tier.id);
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData.session?.access_token;
-      if (!accessToken) {
-        navigate('/auth', { replace: true });
-        throw new Error('Session expired. Please sign in again.');
-      }
 
-      const { data, error } = await invokeEdgeFn('create-checkout',
-        { tier: tier.id, interval: billingInterval },
-        { headers: { Authorization: `Bearer ${accessToken}` } },
-      );
-
-      if (error) throw error;
-
-      if (data.url) {
-        await openExternalUrl(data.url);
-      }
-    } catch (err) {
-      console.error('Error creating checkout:', err);
-      toast.error("Error", { description: networkErrorMessage(err) });
-    } finally {
-      setCheckoutLoading(null);
-    }
+    // Open Worldpay checkout dialog
+    setWorldpayCheckoutTier(tier.id);
+    setWorldpayCheckoutOpen(true);
   };
 
   const handleManageSubscription = async () => {
+    // Worldpay users go to in-app payment management
+    if (factory?.payment_provider === 'worldpay') {
+      navigate('/payment-method');
+      return;
+    }
+
+    // Stripe users go to Stripe Customer Portal
     setPortalLoading(true);
     try {
       const { data, error } = await invokeEdgeFn('customer-portal');
@@ -563,33 +553,45 @@ export default function Subscription() {
           <div>
             <h4 className="font-medium mb-1">How does the free trial work?</h4>
             <p className="text-sm text-muted-foreground">
-              Start with a 14-day free trial of the Starter plan. No credit card required. 
+              Start with a 14-day free trial of the Starter plan. No credit card required.
               You'll have full access to all features during the trial (up to 30 active lines).
             </p>
           </div>
           <div>
             <h4 className="font-medium mb-1">Can I upgrade or downgrade my plan?</h4>
             <p className="text-sm text-muted-foreground">
-              Yes! You can change your plan anytime. Upgrades take effect immediately with prorated billing. 
+              Yes! You can change your plan anytime. Upgrades take effect immediately with prorated billing.
               Downgrades take effect at the end of your current billing period.
             </p>
           </div>
           <div>
             <h4 className="font-medium mb-1">How does yearly billing work?</h4>
             <p className="text-sm text-muted-foreground">
-              Choose yearly billing to save 15% compared to monthly payments. 
+              Choose yearly billing to save 15% compared to monthly payments.
               You'll be billed once per year at the discounted rate.
             </p>
           </div>
           <div>
             <h4 className="font-medium mb-1">What happens if I cancel?</h4>
             <p className="text-sm text-muted-foreground">
-              You'll continue to have access until the end of your billing period. 
+              You'll continue to have access until the end of your billing period.
               Your data is retained for 30 days after cancellation.
             </p>
           </div>
         </CardContent>
       </Card>
+
+      {/* Worldpay Checkout Dialog */}
+      <WorldpayCheckout
+        tier={worldpayCheckoutTier}
+        interval={billingInterval}
+        open={worldpayCheckoutOpen}
+        onOpenChange={setWorldpayCheckoutOpen}
+        onSuccess={() => {
+          checkSubscription();
+          navigate('/billing-plan?payment=success');
+        }}
+      />
     </div>
   );
 }

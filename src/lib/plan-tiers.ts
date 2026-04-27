@@ -198,3 +198,9 @@ export const getDisplayPrice = (plan: PlanTierConfig, interval: BillingInterval)
 export const getMonthlyEquivalent = (yearlyPrice: number): number => {
   return Math.round(yearlyPrice / 12);
 };
+
+// Get price in cents for a tier + interval (provider-agnostic)
+export const getPriceForTier = (tier: PlanTier, interval: BillingInterval): number => {
+  const plan = PLAN_TIERS[tier];
+  return interval === 'year' ? plan.priceYearly : plan.priceMonthly;
+};

@@ -226,7 +226,7 @@ serve(async (req) => {
     // Get factory subscription status
     const { data: factory } = await supabaseClient
       .from('factory_accounts')
-      .select('subscription_status, trial_end_date, stripe_customer_id, stripe_subscription_id, subscription_tier, max_lines, name, payment_failed_at')
+      .select('subscription_status, trial_end_date, stripe_customer_id, stripe_subscription_id, subscription_tier, max_lines, name, payment_failed_at, payment_provider')
       .eq('id', profile.factory_id)
       .single();
 
@@ -242,12 +242,61 @@ serve(async (req) => {
       });
     }
 
-    logStep("Factory found", { 
-      factoryId: profile.factory_id, 
+    logStep("Factory found", {
+      factoryId: profile.factory_id,
       status: factory.subscription_status,
       tier: factory.subscription_tier,
-      trialEnd: factory.trial_end_date 
+      trialEnd: factory.trial_end_date
     });
+
+    // Worldpay factories: DB is the source of truth (updated by worldpay-recurring and worldpay-webhook)
+    // Skip Stripe API verification entirely for these factories
+    if (factory.payment_provider === 'worldpay') {
+      logStep("Worldpay factory — using DB as source of truth");
+      const status = factory.subscription_status;
+      const isActive = status === 'active';
+      const isTrialing = status === 'trialing';
+      const isTrial = status === 'trial'
+        && factory.trial_end_date
+        && new Date(factory.trial_end_date) > new Date();
+      const isPastDue = status === 'past_due';
+
+      // Grace period: 7 days after payment failure
+      let withinGracePeriod = false;
+      if (isPastDue && factory.payment_failed_at) {
+        const failedAt = new Date(factory.payment_failed_at);
+        const gracePeriodMs = 7 * 24 * 60 * 60 * 1000;
+        withinGracePeriod = (Date.now() - failedAt.getTime()) < gracePeriodMs;
+      }
+
+      const hasAccess = isActive || isTrial || isTrialing || (isPastDue && withinGracePeriod);
+      const needsPayment = isPastDue && !withinGracePeriod;
+
+      let daysRemaining: number | undefined;
+      if (isTrial && factory.trial_end_date) {
+        daysRemaining = Math.max(0, Math.ceil(
+          (new Date(factory.trial_end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+        ));
+      }
+
+      return new Response(JSON.stringify({
+        subscribed: isActive,
+        hasAccess,
+        isTrial: isTrial || isTrialing,
+        trialEndDate: factory.trial_end_date,
+        daysRemaining,
+        isPastDue,
+        needsPayment,
+        paymentFailedAt: factory.payment_failed_at,
+        currentTier: factory.subscription_tier || 'starter',
+        maxLines: factory.max_lines || 30,
+        factoryName: factory.name,
+        gracePeriodDays: 7,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
 
     const deriveTierAndMaxLines = (subscription: Stripe.Subscription) => {
       let tier = factory.subscription_tier || 'starter';

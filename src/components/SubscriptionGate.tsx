@@ -14,7 +14,7 @@ interface SubscriptionGateProps {
 }
 
 export function SubscriptionGate({ children }: SubscriptionGateProps) {
-  const { user, profile, loading: authLoading, roles, hasRole, signOut } = useAuth();
+  const { user, profile, factory, loading: authLoading, roles, hasRole, signOut } = useAuth();
   const { hasAccess, needsFactory, needsPayment, loading: subLoading, isTrial, isPastDue, status } = useSubscription();
   const navigate = useNavigate();
   const location = useLocation();
@@ -26,6 +26,13 @@ export function SubscriptionGate({ children }: SubscriptionGateProps) {
   };
 
   const handleUpdatePaymentMethod = async () => {
+    // Worldpay users go to in-app payment management
+    if (factory?.payment_provider === 'worldpay') {
+      navigate('/payment-method');
+      return;
+    }
+
+    // Stripe users go to Stripe Customer Portal
     setPortalLoading(true);
     try {
       const { data, error } = await invokeEdgeFn('customer-portal');
@@ -37,7 +44,6 @@ export function SubscriptionGate({ children }: SubscriptionGateProps) {
       }
     } catch (err) {
       console.error('Error opening billing portal:', err);
-      // Fallback to billing page
       navigate('/billing-plan');
     } finally {
       setPortalLoading(false);

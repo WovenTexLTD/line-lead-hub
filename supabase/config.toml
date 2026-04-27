@@ -56,3 +56,21 @@ verify_jwt = false
 
 [functions.chat-feedback]
 verify_jwt = false
+
+[functions.worldpay-checkout]
+verify_jwt = false
+
+[functions.worldpay-process-payment]
+verify_jwt = false
+
+[functions.worldpay-webhook]
+verify_jwt = false
+
+[functions.worldpay-recurring]
+verify_jwt = false
+
+[functions.worldpay-cancel-subscription]
+verify_jwt = false
+
+[functions.worldpay-change-subscription]
+verify_jwt = false
