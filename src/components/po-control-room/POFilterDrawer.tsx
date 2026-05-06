@@ -35,6 +35,7 @@ export function POFilterDrawer({ open, onOpenChange, filters, onChange, options 
       buyers: [],
       poNumbers: [],
       styles: [],
+      styleOrders: [],
       lines: [],
       units: [],
       floors: [],
@@ -76,6 +77,23 @@ export function POFilterDrawer({ open, onOpenChange, filters, onChange, options 
                   selected={filters.buyers}
                   onToggle={(v) =>
                     onChange({ ...filters, buyers: toggleArrayItem(filters.buyers, v) })
+                  }
+                />
+              </FilterSection>
+            )}
+
+            {/* Order */}
+            {options.styleOrders.length > 0 && (
+              <FilterSection
+                label="Order"
+                count={filters.styleOrders.length}
+                searchable
+              >
+                <CheckboxList
+                  options={options.styleOrders.map((s) => ({ value: s.id, label: s.label }))}
+                  selected={filters.styleOrders}
+                  onToggle={(v) =>
+                    onChange({ ...filters, styleOrders: toggleArrayItem(filters.styleOrders, v) })
                   }
                 />
               </FilterSection>

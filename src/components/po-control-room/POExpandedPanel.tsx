@@ -13,15 +13,15 @@ interface Props {
 }
 
 const TABS = [
-  { id: "submissions", label: "Submissions" },
   { id: "pipeline", label: "Pipeline" },
+  { id: "submissions", label: "Submissions" },
   { id: "quality", label: "Quality" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
 
 export function POExpandedPanel({ po, detailData, loading }: Props) {
-  const [activeTab, setActiveTab] = useState<TabId>("submissions");
+  const [activeTab, setActiveTab] = useState<TabId>("pipeline");
 
   if (loading || !detailData) {
     return (

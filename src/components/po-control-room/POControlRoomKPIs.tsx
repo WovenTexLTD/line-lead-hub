@@ -1,11 +1,29 @@
-import { Receipt, Hash, Package, TrendingUp, Archive } from "lucide-react";
+import { Receipt, Hash, Package, TrendingUp, Archive, Layers } from "lucide-react";
 import { SewingMachine } from "@/components/icons/SewingMachine";
 import type { POKPIs } from "./types";
+
+type ViewMode = "style" | "po";
 
 interface Props {
   kpis: POKPIs;
   onViewLeftovers?: () => void;
+  view?: ViewMode;
 }
+
+// Identical styling to the original "Active Orders" card — just a different
+// key, label, and icon. Used in place of "Active Orders" when view === "style".
+const cardActiveStyleOrders = {
+  key: "activeStyleOrders",
+  label: "Active Orders",
+  icon: Layers,
+  gradient: "from-indigo-500 to-blue-600",
+  shadow: "shadow-indigo-500/20",
+  bg: "from-indigo-50 via-white to-blue-50/50 dark:from-indigo-950/40 dark:via-card dark:to-blue-950/20",
+  border: "border-indigo-200/60 dark:border-indigo-800/40",
+  text: "text-indigo-900 dark:text-indigo-100",
+  label_text: "text-indigo-600/70 dark:text-indigo-400/70",
+  format: (v: number) => v.toString(),
+} as const;
 
 const cards = [
   {
@@ -70,12 +88,19 @@ const cards = [
   },
 ] as const;
 
-export function POControlRoomKPIs({ kpis, onViewLeftovers }: Props) {
+export function POControlRoomKPIs({ kpis, onViewLeftovers, view = "po" }: Props) {
+  // Same 5-card layout in both views; in Style Orders view, swap the first
+  // card (Active Orders) for Active Style Orders. Everything else is identical.
+  const cardsToRender =
+    view === "style"
+      ? [cardActiveStyleOrders, cards[1], cards[2], cards[3], cards[4]]
+      : cards;
+
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
-      {cards.map((card) => {
+      {cardsToRender.map((card) => {
         const Icon = card.icon;
-        const value = kpis[card.key as keyof POKPIs] as number;
+        const value = (kpis[card.key as keyof POKPIs] as number | undefined) ?? 0;
         return (
           <div
             key={card.key}

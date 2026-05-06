@@ -198,6 +198,7 @@ export function POSubmissionsTab({ submissions }: Props) {
       planned_stage_progress: r.planned_stage_progress ?? null,
       next_milestone: r.next_milestone ?? null,
       estimated_ex_factory: r.estimated_ex_factory ?? null,
+      planned_ex_factory: r.planned_ex_factory ?? null,
       remarks: r.remarks ?? null,
     };
   }
@@ -223,6 +224,7 @@ export function POSubmissionsTab({ submissions }: Props) {
       blocker_owner: r.blocker_owner ?? null, blocker_status: null,
       estimated_cost_value: r.estimated_cost_value ?? null,
       estimated_cost_currency: r.estimated_cost_currency ?? null,
+      planned_ex_factory: r.planned_ex_factory ?? null,
     };
   }
 
@@ -237,6 +239,7 @@ export function POSubmissionsTab({ submissions }: Props) {
       iron: r.iron ?? 0, get_up: r.get_up ?? 0, poly: r.poly ?? 0, carton: r.carton ?? 0,
       m_power_planned: r.m_power_planned ?? null, planned_hours: r.planned_hours ?? null,
       ot_hours_planned: r.ot_hours_planned ?? null, ot_manpower_planned: r.ot_manpower_planned ?? null,
+      planned_ex_factory: r.planned_ex_factory ?? null,
       remarks: r.remarks ?? null,
     };
   }
@@ -252,6 +255,7 @@ export function POSubmissionsTab({ submissions }: Props) {
       iron: r.iron ?? 0, get_up: r.get_up ?? 0, poly: r.poly ?? 0, carton: r.carton ?? 0,
       m_power_actual: r.m_power_actual ?? null, actual_hours: r.actual_hours ?? null,
       ot_hours_actual: r.ot_hours_actual ?? null, ot_manpower_actual: r.ot_manpower_actual ?? null,
+      planned_ex_factory: r.planned_ex_factory ?? null,
       remarks: r.remarks ?? null,
     };
   }
@@ -272,6 +276,7 @@ export function POSubmissionsTab({ submissions }: Props) {
       day_cutting: r.day_cutting ?? null, day_input: r.day_input ?? null,
       hours_planned: r.hours_planned ?? null, target_per_hour: r.target_per_hour ?? null,
       ot_hours_planned: r.ot_hours_planned ?? null, ot_manpower_planned: r.ot_manpower_planned ?? null,
+      planned_ex_factory: r.planned_ex_factory ?? null,
     };
   }
 
@@ -297,6 +302,7 @@ export function POSubmissionsTab({ submissions }: Props) {
       leftover_unit: r.leftover_unit ?? null, leftover_quantity: r.leftover_quantity ?? null,
       leftover_notes: r.leftover_notes ?? null, leftover_location: r.leftover_location ?? null,
       leftover_photo_urls: r.leftover_photo_urls ?? null,
+      planned_ex_factory: r.planned_ex_factory ?? null,
     };
   }
 
@@ -329,53 +335,52 @@ export function POSubmissionsTab({ submissions }: Props) {
               key={merged.key}
               onClick={() => handleClick(merged)}
               className={cn(
-                "flex items-center gap-4 py-3 cursor-pointer transition-colors hover:bg-muted/30 rounded-md px-1",
+                "flex items-start gap-4 py-3 cursor-pointer transition-colors hover:bg-muted/30 rounded-md px-1",
                 i < mergedRows.length - 1 && "border-b border-border/40"
               )}
             >
               {/* Date */}
-              <div className="shrink-0 w-[68px]">
+              <div className="shrink-0 w-[68px] pt-0.5">
                 <p className="text-sm font-medium tabular-nums">{formatShortDate(merged.date)}</p>
                 <p className="text-[11px] text-muted-foreground tabular-nums">
                   {merged.submittedAt ? formatTime(merged.submittedAt) : ""}
                 </p>
               </div>
 
-              {/* Stage + Line */}
+              {/* Stage + Line + Metrics + Status (stacked) */}
               <div className={cn("border-l-2 pl-3 min-w-0 flex-1", STAGE_ACCENT[merged.stage])}>
                 <p className={cn("text-[11px] font-semibold uppercase tracking-wide leading-none mb-0.5", STAGE_TEXT[merged.stage])}>
                   {merged.label}
                 </p>
                 <p className="text-sm text-muted-foreground truncate">{merged.lineName}</p>
-              </div>
 
-              {/* Key metric */}
-              <div className="shrink-0 text-right">
-                {hasTarget && hasActual ? (
-                  <div className="flex items-baseline gap-2.5 justify-end">
-                    <div>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide leading-none mb-0.5">Target</p>
-                      <p className="text-sm font-semibold font-mono tabular-nums text-muted-foreground">{singleMetric(merged.targetRow!)}</p>
+                {/* Metrics + Status row */}
+                <div className="flex items-center gap-4 mt-1.5 flex-wrap">
+                  {hasTarget && hasActual ? (
+                    <div className="flex items-baseline gap-2.5">
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide leading-none mb-0.5">Target</p>
+                        <p className="text-sm font-semibold font-mono tabular-nums text-muted-foreground">{singleMetric(merged.targetRow!)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide leading-none mb-0.5">Output</p>
+                        <p className="text-sm font-bold font-mono tabular-nums">{singleMetric(merged.actualRow!)}</p>
+                      </div>
                     </div>
+                  ) : (
                     <div>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide leading-none mb-0.5">Output</p>
-                      <p className="text-sm font-bold font-mono tabular-nums">{singleMetric(merged.actualRow!)}</p>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide leading-none mb-0.5">
+                        {hasTarget ? "Target" : merged.stage === "cutting" ? "Total Cut" : "Output"}
+                      </p>
+                      <p className="text-sm font-bold font-mono tabular-nums">{singleMetric((merged.actualRow || merged.targetRow)!)}</p>
                     </div>
-                  </div>
-                ) : (
-                  <div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide leading-none mb-0.5">
-                      {hasTarget ? "Target" : merged.stage === "cutting" ? "Total Cut" : "Output"}
-                    </p>
-                    <p className="text-sm font-bold font-mono tabular-nums">{singleMetric((merged.actualRow || merged.targetRow)!)}</p>
-                  </div>
-                )}
-              </div>
+                  )}
 
-              {/* Status dot + text */}
-              <div className="hidden sm:flex items-center gap-1.5 shrink-0 justify-end">
-                <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", status.color.replace("text-", "bg-"))} />
-                <span className={cn("text-xs whitespace-nowrap", status.color)}>{status.label}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", status.color.replace("text-", "bg-"))} />
+                    <span className={cn("text-xs whitespace-nowrap", status.color)}>{status.label}</span>
+                  </div>
+                </div>
               </div>
             </div>
           );

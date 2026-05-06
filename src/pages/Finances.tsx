@@ -254,14 +254,17 @@ export default function Finances() {
     let totalOutput = 0;
 
     sewingData.forEach((s: any) => {
+      const cmDz = s.work_orders?.cm_per_dozen || 0;
+      // Missing-CM rule: skip rows whose PO has no CM. Counting their cost
+      // without value would paint a false negative-margin narrative.
+      if (cmDz <= 0) return;
       const lineId = s.lines?.line_id || s.lines?.name || "__u";
       const lineName = s.lines?.name || "Unassigned";
       const po = s.work_orders?.po_number || null;
       const buyer = s.work_orders?.buyer || "";
-      const cmDz = s.work_orders?.cm_per_dozen || 0;
       const output = s.good_today || 0;
       const rawCost = rate > 0 ? rate * ((s.manpower_actual || 0) * (s.hours_actual || 0) + (s.ot_manpower_actual || 0) * (s.ot_hours_actual || 0)) : 0;
-      const val = cmDz > 0 && output > 0 ? (cmDz * PRODUCTION_CM_SHARE / 12) * output : 0;
+      const val = output > 0 ? (cmDz * PRODUCTION_CM_SHARE / 12) * output : 0;
       totalOutput += output;
 
       if (!lineMap.has(lineId)) lineMap.set(lineId, { id: lineId, name: lineName, output: 0, value: 0, rawCost: 0, posMap: new Map() });
@@ -512,13 +515,16 @@ export default function Finances() {
       // Build map: date → lineId → { name, output, value, rawCost }
       const dayMap = new Map<string, Map<string, { name: string; output: number; value: number; rawCost: number }>>();
       (sewingData as any[]).forEach(s => {
+        const cmDz: number = s.work_orders?.cm_per_dozen || 0;
+        // Missing-CM rule: skip rows whose PO has no CM. Counting their cost
+        // without value would paint a false negative-margin narrative.
+        if (cmDz <= 0) return;
         const date: string = s.production_date;
         const lineId: string = s.lines?.line_id || s.lines?.name || "__u";
         const lineName: string = s.lines?.name || "Unassigned";
-        const cmDz: number = s.work_orders?.cm_per_dozen || 0;
         const output: number = s.good_today || 0;
         const rawCost: number = rate > 0 ? rate * ((s.manpower_actual || 0) * (s.hours_actual || 0) + (s.ot_manpower_actual || 0) * (s.ot_hours_actual || 0)) : 0;
-        const val: number = cmDz > 0 && output > 0 ? (cmDz * PRODUCTION_CM_SHARE / 12) * output : 0;
+        const val: number = output > 0 ? (cmDz * PRODUCTION_CM_SHARE / 12) * output : 0;
         if (!dayMap.has(date)) dayMap.set(date, new Map());
         const lm = dayMap.get(date)!;
         if (!lm.has(lineId)) lm.set(lineId, { name: lineName, output: 0, value: 0, rawCost: 0 });
@@ -709,13 +715,16 @@ export default function Finances() {
 
       const dayMap = new Map<string, Map<string, { name: string; output: number; value: number; rawCost: number }>>();
       (sewingData as any[]).forEach(s => {
+        const cmDz: number = s.work_orders?.cm_per_dozen || 0;
+        // Missing-CM rule: skip rows whose PO has no CM. Counting their cost
+        // without value would paint a false negative-margin narrative.
+        if (cmDz <= 0) return;
         const date: string = s.production_date;
         const lineId: string = s.lines?.line_id || s.lines?.name || "__u";
         const lineName: string = s.lines?.name || "Unassigned";
-        const cmDz: number = s.work_orders?.cm_per_dozen || 0;
         const output: number = s.good_today || 0;
         const rawCost: number = rate > 0 ? rate * ((s.manpower_actual || 0) * (s.hours_actual || 0) + (s.ot_manpower_actual || 0) * (s.ot_hours_actual || 0)) : 0;
-        const val: number = cmDz > 0 && output > 0 ? (cmDz * PRODUCTION_CM_SHARE / 12) * output : 0;
+        const val: number = output > 0 ? (cmDz * PRODUCTION_CM_SHARE / 12) * output : 0;
         if (!dayMap.has(date)) dayMap.set(date, new Map());
         const lm = dayMap.get(date)!;
         if (!lm.has(lineId)) lm.set(lineId, { name: lineName, output: 0, value: 0, rawCost: 0 });

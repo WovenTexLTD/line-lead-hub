@@ -10,7 +10,14 @@ import {
 } from "@/components/ui/table";
 import { POTableRow } from "./POTableRow";
 import { POExpandedPanel } from "./POExpandedPanel";
+import { cn } from "@/lib/utils";
 import type { POControlRoomData, PODetailData } from "./types";
+
+export interface POTableHeader {
+  label: string;
+  description: string;
+  colorClass: string; // e.g. "bg-amber-500 text-white border-amber-600"
+}
 
 interface Props {
   orders: POControlRoomData[];
@@ -21,6 +28,12 @@ interface Props {
   onToggleExpand: (id: string) => void;
   onViewExtras?: (po: POControlRoomData) => void;
   showVelocity?: boolean;
+  /**
+   * Optional colored band above the table — same vocabulary as POClusterSection
+   * in the Running tab. Used on Not Started / At Risk / Completed tabs to
+   * visually theme the page.
+   */
+  header?: POTableHeader;
 }
 
 export function POTable({
@@ -32,6 +45,7 @@ export function POTable({
   onToggleExpand,
   onViewExtras,
   showVelocity,
+  header,
 }: Props) {
   if (loading) {
     return (
@@ -42,14 +56,24 @@ export function POTable({
   }
 
   return (
-    <Card>
+    <Card className={cn("overflow-hidden", header && "border-0 shadow-sm")}>
       <CardContent className="p-0">
+        {header && (
+          <div className={cn("px-4 py-2.5 border-b flex items-center gap-3", header.colorClass)}>
+            <span className="font-semibold text-sm">{header.label}</span>
+            <span className="text-xs opacity-80">{header.description}</span>
+            <span className="ml-auto text-xs font-medium opacity-90">
+              {orders.length} PO{orders.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+        )}
         <div>
           <Table className="w-full">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-7" />
                 <TableHead className="whitespace-nowrap">PO Number</TableHead>
+                <TableHead className="whitespace-nowrap">Order</TableHead>
                 <TableHead className="whitespace-nowrap">Buyer / Style</TableHead>
                 <TableHead className="whitespace-nowrap">Line</TableHead>
                 <TableHead className="text-right whitespace-nowrap">PO Qty</TableHead>
@@ -79,7 +103,7 @@ export function POTable({
                   />
                   {expandedId === po.id && (
                     <TableRow key={`${po.id}-detail`}>
-                      <TableCell colSpan={showVelocity ? 12 : 10} className="p-0 border-b border-border/60 bg-card">
+                      <TableCell colSpan={showVelocity ? 13 : 11} className="p-0 border-b border-border/60 bg-card">
                         <POExpandedPanel
                           po={po}
                           detailData={detailData}
@@ -93,7 +117,7 @@ export function POTable({
               {orders.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={showVelocity ? 12 : 10}
+                    colSpan={showVelocity ? 13 : 11}
                     className="text-center py-8 text-muted-foreground"
                   >
                     No work orders found

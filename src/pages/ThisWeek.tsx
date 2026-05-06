@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { getTodayInTimezone } from "@/lib/date-utils";
 import { supabase } from "@/integrations/supabase/client";
+import { calcSewingFinancials } from "@/lib/sewing-financials";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -213,37 +214,19 @@ export default function ThisWeek() {
         const daySewingTarget = pairedSewingTargets.reduce((sum: number, t: any) => sum + ((t.per_hour_target || 0) * 8), 0);
 
         // ── Financial calculations for this day ──
+        // ONLY SEWING applies to finances. Both Output Value and Operating
+        // Cost are derived from sewing actuals via the canonical helper in
+        // src/lib/sewing-financials.ts (the same one used by the Finances
+        // page), so numbers reconcile across the app.
         const rate = costConfigured && headcountCost.value ? headcountCost.value : 0;
-
-        // Revenue: finishing output × (cm_per_dozen / 12) — only POs with CM
-        let dayRevenue = 0;
-        finishingOutputLogs.forEach((f: any) => {
-          const cm = f.work_orders?.cm_per_dozen;
-          const output = f.poly || 0;
-          if (cm && output) dayRevenue += (cm / 12) * output;
-        });
-
-        // Cost by department — only POs with CM
-        let daySewingCost = 0;
-        let dayCuttingCost = 0;
-        let dayFinishingCost = 0;
-        if (rate > 0) {
-          sewingData.forEach((s: any) => {
-            if (!s.work_orders?.cm_per_dozen) return;
-            if (s.manpower_actual && s.hours_actual) daySewingCost += rate * s.manpower_actual * s.hours_actual;
-            if (s.ot_manpower_actual && s.ot_hours_actual) daySewingCost += rate * s.ot_manpower_actual * s.ot_hours_actual;
-          });
-          cuttingActualsData.forEach((c: any) => {
-            if (!c.work_orders?.cm_per_dozen) return;
-            if (c.man_power && c.hours_actual) dayCuttingCost += rate * c.man_power * c.hours_actual;
-            if (c.ot_manpower_actual && c.ot_hours_actual) dayCuttingCost += rate * c.ot_manpower_actual * c.ot_hours_actual;
-          });
-          finishingOutputLogs.forEach((f: any) => {
-            if (!f.work_orders?.cm_per_dozen) return;
-            if (f.m_power_actual && f.actual_hours) dayFinishingCost += rate * f.m_power_actual * f.actual_hours;
-            if (f.ot_manpower_actual && f.ot_hours_actual) dayFinishingCost += rate * f.ot_manpower_actual * f.ot_hours_actual;
-          });
-        }
+        const dayFin = calcSewingFinancials(
+          sewingData,
+          rate,
+          headcountCost.currency,
+          bdtToUsd ?? null,
+        );
+        const dayRevenue = dayFin.totalValue;
+        const daySewingCost = dayFin.totalCostNative;
 
         totalSewing += daySewingOutput;
         totalFinishingTarget += dayFinishingTarget;
@@ -270,8 +253,11 @@ export default function ThisWeek() {
           blockers: dayBlockers,
           revenue: Math.round(dayRevenue * 100) / 100,
           sewingCostNative: Math.round(daySewingCost * 100) / 100,
-          cuttingCostNative: Math.round(dayCuttingCost * 100) / 100,
-          finishingCostNative: Math.round(dayFinishingCost * 100) / 100,
+          // Cutting / finishing costs are intentionally not used in the
+          // financials view (only sewing applies). Kept on the type as 0
+          // for backward compat with any other consumer of weekStats.
+          cuttingCostNative: 0,
+          finishingCostNative: 0,
           rawSewing: sewingData,
           rawCutting: cuttingActualsData,
           rawFinishing: finishingOutputLogs,
@@ -309,8 +295,9 @@ export default function ThisWeek() {
 
     const dailyFinancials = weekStats.map(day => {
       totalRevenue += day.revenue;
-      totalSewingCost += day.sewingCostNative;
+      // Sewing-only finances (canonical per src/lib/sewing-financials.ts).
       const dayCostNative = day.sewingCostNative;
+      totalSewingCost += dayCostNative;
       const dayCostUsd = isBDT && bdtToUsd ? dayCostNative * bdtToUsd : dayCostNative;
       return {
         ...day,

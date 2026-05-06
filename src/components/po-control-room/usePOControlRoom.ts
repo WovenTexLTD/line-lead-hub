@@ -29,13 +29,32 @@ import type {
   POQualityData,
   POWorkflowTab,
   POCluster,
+  StyleOrderParent,
+  StyleOrderRollup,
 } from "./types";
+import { buildStyleOrderRollups } from "./style-order-rollup";
 import {
   ClipboardX,
   CalendarClock,
   Unlink,
   AlertTriangle,
 } from "lucide-react";
+
+// ─────────────────────────────────────────────────────────────────
+// Orders view grouping rules (replaces the old auto buyer/style grouping
+// from Phase 1 + the temp buyer-only test flag):
+//
+//   1. POs that share a non-blank `order_number` (case-insensitive, trimmed)
+//      are grouped into one Order. The Order's title is the order_number.
+//   2. POs without an order_number stand alone — each is its own Order
+//      titled by buyer + style.
+//
+// The DB-level style_orders table stays in place but is no longer the
+// source of truth for the Orders view; the user-entered order_number is.
+// ─────────────────────────────────────────────────────────────────
+
+const normalizeKey = (s: string) =>
+  (s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
 
 // ── Health computation ────────────────────────────────
 function computeHealth(
@@ -162,6 +181,7 @@ export function usePOControlRoom(filters: POFilters = EMPTY_FILTERS) {
 
   const [loading, setLoading] = useState(true);
   const [workOrders, setWorkOrders] = useState<POControlRoomData[]>([]);
+  const [styleOrderParents, setStyleOrderParents] = useState<StyleOrderParent[]>([]);
   const [activeTab, setActiveTab] = useState<POWorkflowTab>("running");
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -193,7 +213,7 @@ export function usePOControlRoom(filters: POFilters = EMPTY_FILTERS) {
         return;
       }
 
-      const [sewingRes, finishingRes, ledgerRes, eodTodayRes, assignRes, targetsRes] =
+      const [sewingRes, finishingRes, ledgerRes, eodTodayRes, assignRes, targetsRes, styleOrdersRes] =
         await Promise.all([
           // Sewing output + quality (now includes production_date for velocity)
           supabase
@@ -233,6 +253,11 @@ export function usePOControlRoom(filters: POFilters = EMPTY_FILTERS) {
             .select("work_order_id")
             .eq("factory_id", factoryId)
             .in("work_order_id", ids),
+          // Parent Style Orders (Phase 2 — parent layer over POs)
+          supabase
+            .from("style_orders")
+            .select("id, factory_id, buyer, style_name, style_number, needs_review")
+            .eq("factory_id", factoryId),
         ]);
 
       // Aggregate sewing: totals + per-PO actuals array for velocity
@@ -310,6 +335,50 @@ export function usePOControlRoom(filters: POFilters = EMPTY_FILTERS) {
         if (r.work_order_id) hasTargetSet.add(r.work_order_id);
       });
 
+      // Map of parent style_orders for quick PO row enrichment
+      const styleOrderById = new Map<string, StyleOrderParent>();
+      (styleOrdersRes.data ?? []).forEach((so: StyleOrderParent) => styleOrderById.set(so.id, so));
+
+      // ── Orders synth parents — keyed by order_number, with per-PO solo
+      // fallback when no order_number is set. The Orders view groups POs by
+      // these synth parents; the underlying style_orders table is unused for
+      // display.
+      const orderSynthByKey = new Map<string, StyleOrderParent>();
+
+      const effectiveOrderNumber = (wo: any): string | null =>
+        wo.order_number && wo.order_number.trim() ? wo.order_number : null;
+
+      const synthKeyFor = (wo: any): string => {
+        const ord = effectiveOrderNumber(wo);
+        const norm = normalizeKey(ord ?? "");
+        return norm ? `order:${norm}` : `solo:${wo.id}`;
+      };
+
+      for (const wo of woData ?? []) {
+        const key = synthKeyFor(wo);
+        if (orderSynthByKey.has(key)) continue;
+        if (key.startsWith("order:")) {
+          orderSynthByKey.set(key, {
+            id: key,
+            factory_id: factoryId,
+            buyer: wo.buyer,                                   // first occurrence's buyer
+            style_name: effectiveOrderNumber(wo) ?? wo.style,  // Order Number is the title
+            style_number: null,
+            needs_review: false,
+          });
+        } else {
+          // Solo PO — its own card. Buyer + style as identity.
+          orderSynthByKey.set(key, {
+            id: key,
+            factory_id: factoryId,
+            buyer: wo.buyer,
+            style_name: wo.style,
+            style_number: null,
+            needs_review: false,
+          });
+        }
+      }
+
       const result: POControlRoomData[] = (woData || []).map((wo) => {
         const sewing = sewingMap.get(wo.id) || { good: 0, reject: 0, rework: 0, count: 0 };
         const finishedOutput = finMap.get(wo.id) || 0;
@@ -372,6 +441,18 @@ export function usePOControlRoom(filters: POFilters = EMPTY_FILTERS) {
           unit_names: unitMap.get(wo.id) || (wo.lines?.units?.name ? [wo.lines.units.name] : []),
           floor_names: floorMap.get(wo.id) || (wo.lines?.floors?.name ? [wo.lines.floors.name] : []),
           line_id: wo.line_id ?? null,
+          ...(() => {
+            const key = synthKeyFor(wo);
+            const parent = orderSynthByKey.get(key);
+            return {
+              style_order_id: key,
+              style_order_buyer: parent?.buyer ?? wo.buyer,
+              style_order_style_name: parent?.style_name ?? wo.style,
+              style_order_style_number: parent?.style_number ?? null,
+              style_order_needs_review: parent?.needs_review ?? false,
+            };
+          })(),
+          order_number: effectiveOrderNumber(wo),
           sewingOutput: sewing.good,
           finishedOutput,
           extrasConsumed: ledgerMap.get(wo.id) || 0,
@@ -394,6 +475,9 @@ export function usePOControlRoom(filters: POFilters = EMPTY_FILTERS) {
       });
 
       setWorkOrders(result);
+      // Orders view uses the synth parents (one per order_number, plus solos);
+      // the underlying style_orders table is no longer the rollup source.
+      setStyleOrderParents(Array.from(orderSynthByKey.values()));
 
       // ── Auto-sync work_orders.status with computed workflow state ──
       // When finishing output meets/exceeds order_qty the Control Room
@@ -484,7 +568,7 @@ export function usePOControlRoom(filters: POFilters = EMPTY_FILTERS) {
     return list;
   }, [baseOrders, activeTab, searchTerm]);
 
-  // ── Tab counts ──────────────────────────────────────
+  // ── Tab counts (PO-level) ───────────────────────────
   const tabCounts = useMemo((): Record<POWorkflowTab, number> => {
     const counts: Record<POWorkflowTab, number> = {
       running: 0,
@@ -507,6 +591,78 @@ export function usePOControlRoom(filters: POFilters = EMPTY_FILTERS) {
     });
     return counts;
   }, [baseOrders]);
+
+  // ── Style Order rollups (Phase 2) ────────────────────
+  // Built from baseOrders (filters applied) so the same checkbox filters
+  // shape both views. Search/tab filtering is applied below at the rollup level.
+  const baseStyleOrders = useMemo<StyleOrderRollup[]>(
+    () => buildStyleOrderRollups(baseOrders, styleOrderParents),
+    [baseOrders, styleOrderParents]
+  );
+
+  const styleOrderTabCounts = useMemo((): Record<POWorkflowTab, number> => {
+    const counts: Record<POWorkflowTab, number> = {
+      running: 0,
+      not_started: 0,
+      at_risk: 0,
+      completed: 0,
+    };
+    baseStyleOrders.forEach((so) => {
+      if (so.workflowState === "planned" || so.workflowState === "not_started") {
+        counts.not_started++;
+      } else if (so.workflowState === "running" || so.workflowState === "completed") {
+        counts[so.workflowState]++;
+      }
+      if (
+        so.health.status === "at_risk" ||
+        so.health.status === "deadline_passed"
+      ) {
+        counts.at_risk++;
+      }
+    });
+    return counts;
+  }, [baseStyleOrders]);
+
+  const filteredStyleOrders = useMemo<StyleOrderRollup[]>(() => {
+    let list = baseStyleOrders;
+
+    switch (activeTab) {
+      case "running":
+        list = list.filter((so) => so.workflowState === "running");
+        break;
+      case "not_started":
+        list = list.filter((so) => so.workflowState === "not_started" || so.workflowState === "planned");
+        break;
+      case "at_risk":
+        list = list.filter(
+          (so) =>
+            so.health.status === "at_risk" ||
+            so.health.status === "deadline_passed"
+        );
+        break;
+      case "completed":
+        list = list.filter((so) => so.workflowState === "completed");
+        break;
+    }
+
+    if (searchTerm) {
+      const q = searchTerm.toLowerCase();
+      list = list.filter((so) => {
+        if (so.buyer.toLowerCase().includes(q)) return true;
+        if (so.style_name.toLowerCase().includes(q)) return true;
+        if (so.style_number?.toLowerCase().includes(q)) return true;
+        // Match if any child PO matches
+        return so.pos.some(
+          (po) =>
+            po.po_number.toLowerCase().includes(q) ||
+            po.buyer.toLowerCase().includes(q) ||
+            po.style.toLowerCase().includes(q)
+        );
+      });
+    }
+
+    return list;
+  }, [baseStyleOrders, activeTab, searchTerm]);
 
   // ── Clustered running POs ───────────────────────────
   const clusteredRunning = useMemo((): Map<POCluster, POControlRoomData[]> => {
@@ -538,6 +694,8 @@ export function usePOControlRoom(filters: POFilters = EMPTY_FILTERS) {
       sewingOutput: 0,
       finishedOutput: 0,
       totalExtras: 0,
+      activeStyleOrders: 0,
+      atRiskStyleOrders: 0,
     };
     workOrders.forEach((po) => {
       k.totalQty += po.order_qty;
@@ -545,8 +703,15 @@ export function usePOControlRoom(filters: POFilters = EMPTY_FILTERS) {
       k.finishedOutput += po.finishedOutput;
       k.totalExtras += Math.max(po.finishedOutput - po.order_qty, 0);
     });
+    // Build style-order-level counts from raw work_orders + parents (no filter applied
+    // — these are global counts for the factory)
+    const allRollups = buildStyleOrderRollups(workOrders, styleOrderParents);
+    k.activeStyleOrders = allRollups.length;
+    k.atRiskStyleOrders = allRollups.filter(
+      (so) => so.health.status === "at_risk" || so.health.status === "deadline_passed"
+    ).length;
     return k;
-  }, [workOrders]);
+  }, [workOrders, styleOrderParents]);
 
   // ── Needs action cards ──────────────────────────────
   const needsActionCards = useMemo<NeedsActionCard[]>(() => {
@@ -866,6 +1031,7 @@ export function usePOControlRoom(filters: POFilters = EMPTY_FILTERS) {
 
   return {
     loading,
+    today,
     workOrders,
     filteredOrders,
     kpis,
@@ -882,5 +1048,9 @@ export function usePOControlRoom(filters: POFilters = EMPTY_FILTERS) {
     clusteredRunning,
     filterOptions,
     refetch: fetchWorkOrders,
+    // Phase 2 — Style Orders view
+    styleOrderParents,
+    filteredStyleOrders,
+    styleOrderTabCounts,
   };
 }
