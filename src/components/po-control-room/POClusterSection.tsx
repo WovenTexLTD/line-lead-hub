@@ -64,8 +64,8 @@ export function POClusterSection({
   onViewExtras,
 }: Props) {
   const meta = CLUSTER_META[cluster];
-  // velocity columns + existing = 13 total
-  const colSpan = 12;
+  // chevron + PO# + Order + Buyer/Style + Line + Qty + Sewing + Finishing + Remaining + Ex-Factory + Avg/day + Need/day + Actions = 13
+  const colSpan = 13;
 
   return (
     <div className="rounded-lg border overflow-hidden">
@@ -85,6 +85,7 @@ export function POClusterSection({
             <TableRow>
               <TableHead className="w-7" />
               <TableHead className="whitespace-nowrap">PO Number</TableHead>
+              <TableHead className="whitespace-nowrap">Order</TableHead>
               <TableHead className="whitespace-nowrap">Buyer / Style</TableHead>
               <TableHead className="whitespace-nowrap">Line</TableHead>
               <TableHead className="text-right whitespace-nowrap">PO Qty</TableHead>
