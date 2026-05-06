@@ -8,6 +8,12 @@
  *  - sewing_value = sewing_output × production_cm_per_piece
  *  - sewing_cost  = rate × Σ(manpower × hours + ot_manpower × ot_hours)  [sewing only]
  *  - sewing_profit = sewing_value − sewing_cost_usd
+ *
+ *  - **Missing-CM rule**: if a PO has no `cm_per_dozen` set, its sewing
+ *    actuals contribute NOTHING to the financial totals — neither output
+ *    value nor operating cost. Reason: a row with cost but no value would
+ *    paint a false negative-margin narrative. The PO must have CM
+ *    configured to be counted.
  */
 
 /** The share of CM allocated to production (100%). */
@@ -111,18 +117,23 @@ export function calcSewingFinancials(
     const buyer: string = s.work_orders?.buyer ?? s.buyer ?? '';
     const style: string = s.work_orders?.style ?? s.style ?? '';
 
+    // Missing-CM rule: skip the row entirely. A PO without cm_per_dozen
+    // cannot produce a meaningful value, and counting only its cost would
+    // create a false negative-margin narrative.
+    if (!cmDz || cmDz <= 0) continue;
+
     // Manpower field names differ across contexts
     const manpower = s.manpower_actual ?? s.manpower ?? null;
     const hours = s.hours_actual ?? null;
     const otManpower = s.ot_manpower_actual ?? s.ot_manpower ?? null;
     const otHours = s.ot_hours_actual ?? s.ot_hours ?? null;
 
-    // Accumulate cost
+    // Accumulate cost (only for CM-billable rows, per missing-CM rule above)
     const lineCostNative = calcSewingLineCost(manpower, hours, otManpower, otHours, rate);
     totalCostNative += lineCostNative;
 
-    // Accumulate value (only if CM is set)
-    if (cmDz && output) {
+    // Accumulate value
+    if (output) {
       const productionCmDz = cmDz * PRODUCTION_CM_SHARE;
       const productionCmPc = productionCmDz / 12;
       const value = output * productionCmPc;

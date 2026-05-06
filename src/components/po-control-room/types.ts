@@ -36,6 +36,12 @@ export interface POControlRoomData {
   unit_names: string[]; // units of assigned lines
   floor_names: string[]; // floors of assigned lines
   line_id: string | null; // direct FK on work_orders (legacy)
+  style_order_id: string; // synthesized grouping key in the Orders view ("order:..." or "solo:...")
+  style_order_buyer: string;       // denormalized from style_orders.buyer for display
+  style_order_style_name: string;  // denormalized from style_orders.style_name for display
+  style_order_style_number: string | null;
+  style_order_needs_review: boolean;
+  order_number: string | null;     // user-entered order grouping (multiple POs can share)
 
   // Aggregated production
   sewingOutput: number;
@@ -68,6 +74,47 @@ export interface POKPIs {
   sewingOutput: number;
   finishedOutput: number;
   totalExtras: number;
+  // Phase 2 additions — populated when Style Orders view is active
+  activeStyleOrders?: number;
+  atRiskStyleOrders?: number;
+}
+
+// ── Parent Style Order row (raw DB shape we care about) ─
+export interface StyleOrderParent {
+  id: string;
+  factory_id: string;
+  buyer: string;
+  style_name: string;
+  style_number: string | null;
+  needs_review: boolean;
+}
+
+// ── Aggregated Style Order with child POs (Phase 2) ────
+export interface StyleOrderRollup {
+  // Parent identity
+  id: string;
+  factory_id: string;
+  buyer: string;
+  style_name: string;
+  style_number: string | null;
+  needs_review: boolean;
+
+  // Aggregates
+  poCount: number;
+  totalQty: number;
+  sewingOutput: number;
+  finishedOutput: number;
+  remaining: number;
+  progressPct: number;
+  earliestExFactory: string | null;
+  lineNames: string[]; // unique union across child POs
+
+  // Worst-case rollups
+  workflowState: POWorkflowState;
+  health: HealthReason;
+
+  // Children (already computed POControlRoomData)
+  pos: POControlRoomData[];
 }
 
 // ── Needs-action card ─────────────────────────────────

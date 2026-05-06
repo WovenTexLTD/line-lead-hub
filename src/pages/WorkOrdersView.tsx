@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
-import { Receipt, Search, Loader2, SlidersHorizontal } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Receipt, Search, Loader2, SlidersHorizontal, Plus } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +10,8 @@ import { POControlRoomKPIs } from "@/components/po-control-room/POControlRoomKPI
 import { POWorkflowTabs } from "@/components/po-control-room/POWorkflowTabs";
 import { POClusterSection } from "@/components/po-control-room/POClusterSection";
 import { POTable } from "@/components/po-control-room/POTable";
+import { StyleOrderTable } from "@/components/po-control-room/StyleOrderTable";
+import { POViewSwitcher, type POViewMode } from "@/components/po-control-room/POViewSwitcher";
 import { POFilterDrawer } from "@/components/po-control-room/POFilterDrawer";
 import { POFilterChips } from "@/components/po-control-room/POFilterChips";
 import { ExtrasLedgerModal } from "@/components/ExtrasLedgerModal";
@@ -24,6 +27,8 @@ import type { POControlRoomData } from "@/components/po-control-room/types";
 
 export default function WorkOrdersView() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { isAdminOrHigher } = useAuth();
 
   // ── Filter state (URL-persisted) ──────────────────────────────────────────
   const [filters, setFilters] = useState<POFilters>(() =>
@@ -39,7 +44,7 @@ export default function WorkOrdersView() {
           // Preserve non-filter params (e.g., tab)
           const merged = new URLSearchParams(prev);
           // Clear existing filter keys
-          ["buyer", "po", "style", "line", "unit", "floor", "health", "ex", "updated"].forEach(
+          ["buyer", "po", "style", "so", "line", "unit", "floor", "health", "ex", "updated"].forEach(
             (k) => merged.delete(k)
           );
           // Set new filter params
@@ -56,9 +61,25 @@ export default function WorkOrdersView() {
 
   const activeFilterCount = countActiveFilters(filters);
 
+  // ── View mode (Style Orders | PO Details) — URL-persisted ───────────────
+  const view: POViewMode = (searchParams.get("view") === "po" ? "po" : "style");
+  const setView = useCallback((next: POViewMode) => {
+    setSearchParams(
+      (prev) => {
+        const merged = new URLSearchParams(prev);
+        if (next === "po") merged.set("view", "po");
+        else merged.delete("view");
+        return merged;
+      },
+      { replace: true }
+    );
+  }, [setSearchParams]);
+
   // ── Hook ─────────────────────────────────────────────────────────────────
   const {
     loading,
+    today,
+    workOrders,
     filteredOrders,
     kpis,
     tabCounts,
@@ -73,7 +94,43 @@ export default function WorkOrdersView() {
     clusteredRunning,
     filterOptions,
     refetch,
+    filteredStyleOrders,
+    styleOrderTabCounts,
   } = usePOControlRoom(filters);
+
+  // Navigate from a PO inside the Style Orders dialog to that PO's row
+  // in the PO Details view: switch view, set right tab, expand row, scroll.
+  const handleViewPO = useCallback(
+    (poId: string) => {
+      const po = workOrders.find((w) => w.id === poId);
+      if (!po) return;
+
+      // Pick the most informative tab so the PO is visible
+      let nextTab: typeof activeTab = "running";
+      if (po.health.status === "at_risk" || po.health.status === "deadline_passed") {
+        nextTab = "at_risk";
+      } else if (po.workflowState === "completed") {
+        nextTab = "completed";
+      } else if (po.workflowState === "running") {
+        nextTab = "running";
+      } else {
+        nextTab = "not_started";
+      }
+      setActiveTab(nextTab);
+      setView("po");
+
+      // Defer expand + scroll until after the view + tab switch render
+      requestAnimationFrame(() => {
+        if (expandedId !== poId) toggleExpand(poId);
+        setTimeout(() => {
+          document
+            .getElementById(`po-row-${poId}`)
+            ?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 80);
+      });
+    },
+    [workOrders, setActiveTab, setView, toggleExpand, expandedId]
+  );
 
   // Extras ledger modal state
   const [ledgerPO, setLedgerPO] = useState<POControlRoomData | null>(null);
@@ -111,17 +168,38 @@ export default function WorkOrdersView() {
             <p className="text-sm text-muted-foreground">Track health, pipeline, and production progress</p>
           </div>
         </div>
+
+        {isAdminOrHigher && (
+          <Button
+            size="sm"
+            className="gap-2 shrink-0"
+            onClick={() => navigate("/setup/work-orders?create=1")}
+          >
+            <Plus className="h-4 w-4" />
+            Add Work Order
+          </Button>
+        )}
       </div>
 
       {/* KPI Cards */}
-      <POControlRoomKPIs kpis={kpis} onViewLeftovers={() => setShowExtrasOverview(true)} />
+      <POControlRoomKPIs kpis={kpis} onViewLeftovers={() => setShowExtrasOverview(true)} view={view} />
+
+      {/* View switcher (Style Orders | PO Details) */}
+      <div className="flex items-center justify-between gap-3">
+        <POViewSwitcher
+          value={view}
+          onChange={setView}
+          styleOrdersCount={kpis.activeStyleOrders}
+          poCount={kpis.activeOrders}
+        />
+      </div>
 
       {/* Search + Filters */}
       <div className="flex gap-2 items-center">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by PO, buyer, or style..."
+            placeholder={view === "style" ? "Search by buyer, style, or PO..." : "Search by PO, buyer, or style..."}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-9"
@@ -150,18 +228,26 @@ export default function WorkOrdersView() {
 
       {/* Active filter chips */}
       {activeFilterCount > 0 && (
-        <POFilterChips filters={filters} onChange={handleFiltersChange} />
+        <POFilterChips filters={filters} onChange={handleFiltersChange} options={filterOptions} />
       )}
 
-      {/* Workflow Tabs */}
+      {/* Workflow Tabs — counts switch with view */}
       <POWorkflowTabs
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        counts={tabCounts}
+        counts={view === "style" ? styleOrderTabCounts : tabCounts}
       />
 
-      {/* Running tab: cluster sections */}
-      {activeTab === "running" ? (
+      {view === "style" ? (
+        /* Style Orders view: parent rows, expandable to child POs */
+        <StyleOrderTable
+          styleOrders={filteredStyleOrders}
+          loading={false}
+          today={today}
+          onViewPO={handleViewPO}
+        />
+      ) : activeTab === "running" ? (
+        /* PO Details view, running tab: cluster sections */
         <div className="space-y-4">
           {clusteredRunning.size === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
@@ -183,7 +269,9 @@ export default function WorkOrdersView() {
           )}
         </div>
       ) : (
-        /* All other tabs: flat table */
+        /* PO Details view, other tabs: flat table with a colored band that
+           matches the active tab's status — mirrors the Running tab's
+           cluster-section vocabulary so the page never feels bland. */
         <POTable
           orders={filteredOrders}
           loading={false}
@@ -192,6 +280,27 @@ export default function WorkOrdersView() {
           detailLoading={detailLoading}
           onToggleExpand={toggleExpand}
           onViewExtras={handleViewLedger}
+          header={
+            activeTab === "not_started"
+              ? {
+                  label: "Not Started",
+                  description: "Awaiting first day of production",
+                  colorClass: "bg-slate-500 text-white border-slate-600",
+                }
+              : activeTab === "at_risk"
+                ? {
+                    label: "At Risk",
+                    description: "Behind schedule, blocked, or past deadline",
+                    colorClass: "bg-amber-500 text-white border-amber-600",
+                  }
+                : activeTab === "completed"
+                  ? {
+                      label: "Completed",
+                      description: "Order fulfilled",
+                      colorClass: "bg-green-600 text-white border-green-700",
+                    }
+                  : undefined
+          }
         />
       )}
 

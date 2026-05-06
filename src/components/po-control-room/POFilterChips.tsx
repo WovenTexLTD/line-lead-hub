@@ -1,5 +1,5 @@
 import { X } from "lucide-react";
-import type { POFilters } from "./po-filters";
+import type { POFilters, POFilterOptions } from "./po-filters";
 import {
   HEALTH_LABELS,
   EX_FACTORY_OPTIONS,
@@ -9,6 +9,7 @@ import {
 interface Props {
   filters: POFilters;
   onChange: (filters: POFilters) => void;
+  options?: POFilterOptions;
 }
 
 interface Chip {
@@ -17,7 +18,7 @@ interface Chip {
   onRemove: () => void;
 }
 
-export function POFilterChips({ filters, onChange }: Props) {
+export function POFilterChips({ filters, onChange, options }: Props) {
   const chips: Chip[] = [];
 
   filters.buyers.forEach((v) =>
@@ -28,6 +29,16 @@ export function POFilterChips({ filters, onChange }: Props) {
         onChange({ ...filters, buyers: filters.buyers.filter((x) => x !== v) }),
     })
   );
+
+  filters.styleOrders.forEach((id) => {
+    const label = options?.styleOrders.find((s) => s.id === id)?.label ?? id;
+    chips.push({
+      id: `so-${id}`,
+      label: `Style Order: ${label}`,
+      onRemove: () =>
+        onChange({ ...filters, styleOrders: filters.styleOrders.filter((x) => x !== id) }),
+    });
+  });
 
   filters.lines.forEach((v) =>
     chips.push({

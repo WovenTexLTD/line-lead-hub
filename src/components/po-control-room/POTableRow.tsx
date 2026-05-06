@@ -20,7 +20,8 @@ export function POTableRow({ po, isExpanded, onToggle, onViewExtras, showVelocit
 
   return (
     <TableRow
-      className="cursor-pointer hover:bg-muted/50"
+      id={`po-row-${po.id}`}
+      className="cursor-pointer hover:bg-muted/50 scroll-mt-24"
       onClick={onToggle}
     >
       {/* Expand chevron */}
@@ -35,7 +36,18 @@ export function POTableRow({ po, isExpanded, onToggle, onViewExtras, showVelocit
       {/* PO Number */}
       <TableCell className="font-mono font-medium">{po.po_number}</TableCell>
 
-      {/* Buyer / Style */}
+      {/* Order — user-entered order_number when set, otherwise dash */}
+      <TableCell className="text-sm">
+        {po.order_number ? (
+          <p className="font-medium truncate max-w-[160px]" title={po.order_number}>
+            {po.order_number}
+          </p>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        )}
+      </TableCell>
+
+      {/* Buyer / Style (PO-level, may differ from parent if buyer changed/edited) */}
       <TableCell>
         <p className="font-medium text-sm">{po.buyer}</p>
         <p className="text-xs text-muted-foreground">{po.style}</p>

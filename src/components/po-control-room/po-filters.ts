@@ -7,6 +7,7 @@ export interface POFilters {
   buyers: string[];
   poNumbers: string[];
   styles: string[];
+  styleOrders: string[]; // style_order_id values
   lines: string[];
   units: string[];
   floors: string[];
@@ -19,6 +20,7 @@ export const EMPTY_FILTERS: POFilters = {
   buyers: [],
   poNumbers: [],
   styles: [],
+  styleOrders: [],
   lines: [],
   units: [],
   floors: [],
@@ -34,6 +36,7 @@ export function countActiveFilters(filters: POFilters): number {
     filters.buyers.length +
     filters.poNumbers.length +
     filters.styles.length +
+    filters.styleOrders.length +
     filters.lines.length +
     filters.units.length +
     filters.floors.length +
@@ -49,6 +52,7 @@ export interface POFilterOptions {
   buyers: string[];
   poNumbers: string[];
   styles: string[];
+  styleOrders: { id: string; label: string }[]; // for filter UI
   lines: string[];
   units: string[];
   floors: string[];
@@ -59,6 +63,7 @@ export function deriveFilterOptions(orders: POControlRoomData[]): POFilterOption
   const buyers = new Set<string>();
   const poNumbers = new Set<string>();
   const styles = new Set<string>();
+  const styleOrderMap = new Map<string, string>(); // id -> label
   const lines = new Set<string>();
   const units = new Set<string>();
   const floors = new Set<string>();
@@ -68,16 +73,28 @@ export function deriveFilterOptions(orders: POControlRoomData[]): POFilterOption
     if (po.buyer) buyers.add(po.buyer);
     if (po.po_number) poNumbers.add(po.po_number);
     if (po.style) styles.add(po.style);
+    if (po.style_order_id && !styleOrderMap.has(po.style_order_id)) {
+      // Order grouping: title-by-order_number when present, else PO label
+      const label = po.order_number
+        ? po.order_number
+        : `${po.buyer} · ${po.style}`;
+      styleOrderMap.set(po.style_order_id, label);
+    }
     for (const l of po.line_names) lines.add(l);
     for (const u of po.unit_names ?? []) units.add(u);
     for (const f of po.floor_names ?? []) floors.add(f);
     if (po.health?.status) health.add(po.health.status);
   }
 
+  const styleOrders = Array.from(styleOrderMap.entries())
+    .map(([id, label]) => ({ id, label }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+
   return {
     buyers: [...buyers].sort(),
     poNumbers: [...poNumbers].sort(),
     styles: [...styles].sort(),
+    styleOrders,
     lines: [...lines].sort(),
     units: [...units].sort(),
     floors: [...floors].sort(),
@@ -98,6 +115,7 @@ export function applyFilters(
     filters.buyers.length > 0 ||
     filters.poNumbers.length > 0 ||
     filters.styles.length > 0 ||
+    filters.styleOrders.length > 0 ||
     filters.lines.length > 0 ||
     filters.units.length > 0 ||
     filters.floors.length > 0 ||
@@ -120,6 +138,11 @@ export function applyFilters(
 
     // Style: OR within selected styles
     if (filters.styles.length > 0 && !filters.styles.includes(po.style ?? "")) {
+      return false;
+    }
+
+    // Style Order: OR within selected style_order_ids
+    if (filters.styleOrders.length > 0 && !filters.styleOrders.includes(po.style_order_id)) {
       return false;
     }
 
@@ -209,6 +232,7 @@ export function filtersToParams(filters: POFilters): Record<string, string> {
   if (filters.buyers.length) params.buyer = filters.buyers.join(",");
   if (filters.poNumbers.length) params.po = filters.poNumbers.join(",");
   if (filters.styles.length) params.style = filters.styles.join(",");
+  if (filters.styleOrders.length) params.so = filters.styleOrders.join(",");
   if (filters.lines.length) params.line = filters.lines.join(",");
   if (filters.units.length) params.unit = filters.units.join(",");
   if (filters.floors.length) params.floor = filters.floors.join(",");
@@ -229,6 +253,7 @@ export function filtersFromParams(params: URLSearchParams): POFilters {
     buyers: split("buyer"),
     poNumbers: split("po"),
     styles: split("style"),
+    styleOrders: split("so"),
     lines: split("line"),
     units: split("unit"),
     floors: split("floor"),

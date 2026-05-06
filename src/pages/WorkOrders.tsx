@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,6 +33,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { EmptyState } from "@/components/EmptyState";
+import { AutocompleteCombobox } from "@/components/ui/autocomplete-combobox";
+import { normalizeName, cleanDisplayName } from "@/lib/normalize-name";
 
 interface WorkOrder {
   id: string;
@@ -50,6 +52,7 @@ interface WorkOrder {
   status: string | null;
   is_active: boolean | null;
   line_id: string | null;
+  order_number: string | null;
 }
 
 interface Line {
@@ -69,6 +72,7 @@ const WORK_ORDER_STATUSES = [
 const workOrderSchema = z.object({
   po_number: z.string().min(1, "PO Number is required").max(100, "PO Number too long"),
   buyer: z.string().min(1, "Buyer is required").max(200, "Buyer name too long"),
+  order_number: z.string().max(200, "Order number too long").optional().nullable(),
   style: z.string().min(1, "Style is required").max(200, "Style too long"),
   item: z.string().max(200, "Item too long").optional().nullable(),
   color: z.string().max(100, "Color too long").optional().nullable(),
@@ -95,6 +99,7 @@ const getStatusColor = (status: string) => {
 export default function WorkOrders() {
   const { profile, isAdminOrHigher } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -123,6 +128,7 @@ export default function WorkOrders() {
   const [formData, setFormData] = useState({
     po_number: '',
     buyer: '',
+    order_number: '',
     style: '',
     item: '',
     color: '',
@@ -141,6 +147,55 @@ export default function WorkOrders() {
   // Delete confirmation state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+
+  // ── Autocomplete option lists derived from existing work_orders ──
+  // Distinct buyers, dedup'd by normalized form, displayed with first-seen casing.
+  const buyerOptions = useMemo<string[]>(() => {
+    const seen = new Map<string, string>();
+    for (const wo of workOrders) {
+      const norm = normalizeName(wo.buyer);
+      if (!norm) continue;
+      if (!seen.has(norm)) seen.set(norm, cleanDisplayName(wo.buyer));
+    }
+    return Array.from(seen.values()).sort((a, b) => a.localeCompare(b));
+  }, [workOrders]);
+
+  // Distinct order numbers, dedup'd by normalized form. POs sharing an
+  // order_number get grouped as a single Order in the Orders view.
+  const orderNumberOptions = useMemo<string[]>(() => {
+    const seen = new Map<string, string>();
+    for (const wo of workOrders) {
+      const norm = normalizeName(wo.order_number ?? '');
+      if (!norm) continue;
+      if (!seen.has(norm)) seen.set(norm, cleanDisplayName(wo.order_number ?? ''));
+    }
+    return Array.from(seen.values()).sort((a, b) => a.localeCompare(b));
+  }, [workOrders]);
+
+  // Distinct styles, dedup'd by normalized form. Buyer-aware: when a buyer is
+  // selected in the form, the styles previously used with that buyer get
+  // priority placement at the top of the list.
+  const styleOptions = useMemo<string[]>(() => {
+    const seen = new Map<string, string>();
+    for (const wo of workOrders) {
+      const norm = normalizeName(wo.style);
+      if (!norm) continue;
+      if (!seen.has(norm)) seen.set(norm, cleanDisplayName(wo.style));
+    }
+    return Array.from(seen.values()).sort((a, b) => a.localeCompare(b));
+  }, [workOrders]);
+
+  const styleNormalizedForCurrentBuyer = useMemo<Set<string>>(() => {
+    const buyerNorm = normalizeName(formData.buyer);
+    if (!buyerNorm) return new Set();
+    const set = new Set<string>();
+    for (const wo of workOrders) {
+      if (normalizeName(wo.buyer) !== buyerNorm) continue;
+      const norm = normalizeName(wo.style);
+      if (norm) set.add(norm);
+    }
+    return set;
+  }, [workOrders, formData.buyer]);
 
   useEffect(() => {
     if (profile?.factory_id) {
@@ -228,6 +283,7 @@ export default function WorkOrders() {
     setFormData({
       po_number: '',
       buyer: '',
+      order_number: '',
       style: '',
       item: '',
       color: '',
@@ -244,12 +300,30 @@ export default function WorkOrders() {
     setIsDialogOpen(true);
   }
 
+  // Auto-open the create dialog when arriving with ?create=1 (from the
+  // "Add Work Order" button on /work-orders). Strip the param after opening.
+  useEffect(() => {
+    if (loading) return;
+    if (!isAdminOrHigher) return;
+    if (searchParams.get("create") !== "1") return;
+    openCreateDialog();
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("create");
+        return next;
+      },
+      { replace: true }
+    );
+  }, [loading, isAdminOrHigher, searchParams, setSearchParams]);
+
   function openEditDialog(wo: WorkOrder) {
     setDialogMode('edit');
     setEditingItem(wo);
     setFormData({
       po_number: wo.po_number,
       buyer: wo.buyer,
+      order_number: wo.order_number || '',
       style: wo.style,
       item: wo.item || '',
       color: wo.color || '',
@@ -271,8 +345,25 @@ export default function WorkOrders() {
 
     const dataToValidate = {
       po_number: formData.po_number.trim(),
-      buyer: formData.buyer.trim(),
-      style: formData.style.trim(),
+      // Normalize buyer/style: trim + collapse multi-spaces. If the typed value
+      // matches an existing buyer/style case-insensitively, snap to the
+      // canonical existing display casing so duplicates don't accumulate.
+      buyer: (() => {
+        const cleaned = cleanDisplayName(formData.buyer);
+        const norm = normalizeName(cleaned);
+        return buyerOptions.find((o) => normalizeName(o) === norm) ?? cleaned;
+      })(),
+      order_number: (() => {
+        const cleaned = cleanDisplayName(formData.order_number);
+        if (!cleaned) return null;
+        const norm = normalizeName(cleaned);
+        return orderNumberOptions.find((o) => normalizeName(o) === norm) ?? cleaned;
+      })(),
+      style: (() => {
+        const cleaned = cleanDisplayName(formData.style);
+        const norm = normalizeName(cleaned);
+        return styleOptions.find((o) => normalizeName(o) === norm) ?? cleaned;
+      })(),
       item: formData.item.trim() || null,
       color: formData.color.trim() || null,
       order_qty: parseInt(formData.order_qty) || 0,
@@ -304,6 +395,7 @@ export default function WorkOrders() {
         factory_id: profile.factory_id,
         po_number: result.data.po_number,
         buyer: result.data.buyer,
+        order_number: result.data.order_number ?? null,
         style: result.data.style,
         item: result.data.item ?? null,
         color: result.data.color ?? null,
@@ -808,22 +900,52 @@ export default function WorkOrders() {
               </div>
               <div className="space-y-2">
                 <Label>Buyer *</Label>
-                <Input
+                <AutocompleteCombobox
                   value={formData.buyer}
-                  onChange={(e) => setFormData({ ...formData, buyer: e.target.value })}
+                  onChange={(next) => setFormData({ ...formData, buyer: next })}
+                  options={buyerOptions}
                   placeholder="ABC Fashions"
+                  entityLabel="buyer"
+                  hasError={!!formErrors.buyer}
                 />
                 {formErrors.buyer && <p className="text-sm text-destructive">{formErrors.buyer}</p>}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              <div className="space-y-2">
+                <Label>Order Number</Label>
+                <AutocompleteCombobox
+                  value={formData.order_number}
+                  onChange={(next) => setFormData({ ...formData, order_number: next })}
+                  options={orderNumberOptions}
+                  placeholder="ORD-2026-001"
+                  entityLabel="order"
+                  hasError={!!formErrors.order_number}
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Optional — POs sharing an order number are grouped together in the Orders view.
+                </p>
+                {formErrors.order_number && <p className="text-sm text-destructive">{formErrors.order_number}</p>}
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Style *</Label>
-                <Input
+                <AutocompleteCombobox
                   value={formData.style}
-                  onChange={(e) => setFormData({ ...formData, style: e.target.value })}
+                  onChange={(next) => setFormData({ ...formData, style: next })}
+                  options={styleOptions}
                   placeholder="STYLE-001"
+                  entityLabel="style"
+                  prioritizedNormalized={styleNormalizedForCurrentBuyer}
+                  prioritizedHeader={
+                    formData.buyer.trim().length > 0
+                      ? `For ${cleanDisplayName(formData.buyer)}`
+                      : undefined
+                  }
+                  hasError={!!formErrors.style}
                 />
                 {formErrors.style && <p className="text-sm text-destructive">{formErrors.style}</p>}
               </div>

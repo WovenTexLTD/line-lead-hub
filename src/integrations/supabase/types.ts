@@ -16,13 +16,13 @@ export type Database = {
     Tables: {
       app_error_logs: {
         Row: {
-          acknowledged: boolean
-          created_at: string
+          acknowledged: boolean | null
+          created_at: string | null
           factory_id: string | null
           id: string
           message: string
           metadata: Json | null
-          severity: string
+          severity: string | null
           source: string | null
           stack: string | null
           url: string | null
@@ -30,13 +30,13 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
-          acknowledged?: boolean
-          created_at?: string
+          acknowledged?: boolean | null
+          created_at?: string | null
           factory_id?: string | null
           id?: string
           message: string
           metadata?: Json | null
-          severity?: string
+          severity?: string | null
           source?: string | null
           stack?: string | null
           url?: string | null
@@ -44,13 +44,13 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
-          acknowledged?: boolean
-          created_at?: string
+          acknowledged?: boolean | null
+          created_at?: string | null
           factory_id?: string | null
           id?: string
           message?: string
           metadata?: Json | null
-          severity?: string
+          severity?: string | null
           source?: string | null
           stack?: string | null
           url?: string | null
@@ -107,6 +107,161 @@ export type Database = {
             columns: ["factory_id"]
             isOneToOne: false
             referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bank_relationships: {
+        Row: {
+          account_number: string | null
+          bank_address: string | null
+          bank_name: string
+          branch_name: string | null
+          btb_lc_limit: number | null
+          created_at: string | null
+          currency: string | null
+          current_btb_utilized: number | null
+          current_lc_utilized: number | null
+          factory_id: string
+          id: string
+          is_active: boolean | null
+          is_primary: boolean | null
+          lc_limit: number | null
+          loan_facilities: string | null
+          notes: string | null
+          overdraft_limit: number | null
+          relationship_manager: string | null
+          rm_email: string | null
+          rm_phone: string | null
+          swift_code: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          account_number?: string | null
+          bank_address?: string | null
+          bank_name: string
+          branch_name?: string | null
+          btb_lc_limit?: number | null
+          created_at?: string | null
+          currency?: string | null
+          current_btb_utilized?: number | null
+          current_lc_utilized?: number | null
+          factory_id: string
+          id?: string
+          is_active?: boolean | null
+          is_primary?: boolean | null
+          lc_limit?: number | null
+          loan_facilities?: string | null
+          notes?: string | null
+          overdraft_limit?: number | null
+          relationship_manager?: string | null
+          rm_email?: string | null
+          rm_phone?: string | null
+          swift_code?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          account_number?: string | null
+          bank_address?: string | null
+          bank_name?: string
+          branch_name?: string | null
+          btb_lc_limit?: number | null
+          created_at?: string | null
+          currency?: string | null
+          current_btb_utilized?: number | null
+          current_lc_utilized?: number | null
+          factory_id?: string
+          id?: string
+          is_active?: boolean | null
+          is_primary?: boolean | null
+          lc_limit?: number | null
+          loan_facilities?: string | null
+          notes?: string | null
+          overdraft_limit?: number | null
+          relationship_manager?: string | null
+          rm_email?: string | null
+          rm_phone?: string | null
+          swift_code?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_relationships_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bank_transactions: {
+        Row: {
+          balance: number | null
+          bank_account_id: string | null
+          credit: number | null
+          debit: number | null
+          description: string | null
+          factory_id: string
+          id: string
+          imported_at: string | null
+          imported_by: string | null
+          imported_from: string | null
+          match_confidence: string | null
+          matched_payment_id: string | null
+          reconciliation_period_id: string | null
+          reconciliation_status: string | null
+          reference: string | null
+          transaction_date: string
+        }
+        Insert: {
+          balance?: number | null
+          bank_account_id?: string | null
+          credit?: number | null
+          debit?: number | null
+          description?: string | null
+          factory_id: string
+          id?: string
+          imported_at?: string | null
+          imported_by?: string | null
+          imported_from?: string | null
+          match_confidence?: string | null
+          matched_payment_id?: string | null
+          reconciliation_period_id?: string | null
+          reconciliation_status?: string | null
+          reference?: string | null
+          transaction_date: string
+        }
+        Update: {
+          balance?: number | null
+          bank_account_id?: string | null
+          credit?: number | null
+          debit?: number | null
+          description?: string | null
+          factory_id?: string
+          id?: string
+          imported_at?: string | null
+          imported_by?: string | null
+          imported_from?: string | null
+          match_confidence?: string | null
+          matched_payment_id?: string | null
+          reconciliation_period_id?: string | null
+          reconciliation_status?: string | null
+          reference?: string | null
+          transaction_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_transactions_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_transactions_matched_payment_id_fkey"
+            columns: ["matched_payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
             referencedColumns: ["id"]
           },
         ]
@@ -209,33 +364,212 @@ export type Database = {
           },
         ]
       }
+      btb_lcs: {
+        Row: {
+          acceptance_date: string | null
+          bank_relationship_id: string | null
+          created_at: string | null
+          created_by: string | null
+          currency: string | null
+          expiry_date: string
+          factory_id: string
+          id: string
+          issue_date: string
+          lc_number: string
+          lc_value: number
+          margin_amount: number | null
+          margin_pct: number | null
+          master_lc_id: string | null
+          maturity_date: string | null
+          notes: string | null
+          payment_date: string | null
+          port_of_discharge: string | null
+          port_of_loading: string | null
+          purpose: string | null
+          status: string | null
+          supplier_bank_name: string | null
+          supplier_bank_swift: string | null
+          supplier_name: string
+          tenor_days: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          acceptance_date?: string | null
+          bank_relationship_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          expiry_date: string
+          factory_id: string
+          id?: string
+          issue_date: string
+          lc_number: string
+          lc_value: number
+          margin_amount?: number | null
+          margin_pct?: number | null
+          master_lc_id?: string | null
+          maturity_date?: string | null
+          notes?: string | null
+          payment_date?: string | null
+          port_of_discharge?: string | null
+          port_of_loading?: string | null
+          purpose?: string | null
+          status?: string | null
+          supplier_bank_name?: string | null
+          supplier_bank_swift?: string | null
+          supplier_name: string
+          tenor_days?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          acceptance_date?: string | null
+          bank_relationship_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          expiry_date?: string
+          factory_id?: string
+          id?: string
+          issue_date?: string
+          lc_number?: string
+          lc_value?: number
+          margin_amount?: number | null
+          margin_pct?: number | null
+          master_lc_id?: string | null
+          maturity_date?: string | null
+          notes?: string | null
+          payment_date?: string | null
+          port_of_discharge?: string | null
+          port_of_loading?: string | null
+          purpose?: string | null
+          status?: string | null
+          supplier_bank_name?: string | null
+          supplier_bank_swift?: string | null
+          supplier_name?: string
+          tenor_days?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "btb_lcs_bank_relationship_id_fkey"
+            columns: ["bank_relationship_id"]
+            isOneToOne: false
+            referencedRelation: "bank_relationships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "btb_lcs_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "btb_lcs_master_lc_id_fkey"
+            columns: ["master_lc_id"]
+            isOneToOne: false
+            referencedRelation: "master_lcs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      buyer_credits: {
+        Row: {
+          buyer_name: string
+          buyer_profile_id: string | null
+          created_at: string | null
+          currency: string | null
+          factory_id: string
+          id: string
+          original_amount: number
+          remaining_amount: number
+          source_payment_id: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          buyer_name: string
+          buyer_profile_id?: string | null
+          created_at?: string | null
+          currency?: string | null
+          factory_id: string
+          id?: string
+          original_amount: number
+          remaining_amount: number
+          source_payment_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          buyer_name?: string
+          buyer_profile_id?: string | null
+          created_at?: string | null
+          currency?: string | null
+          factory_id?: string
+          id?: string
+          original_amount?: number
+          remaining_amount?: number
+          source_payment_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "buyer_credits_buyer_profile_id_fkey"
+            columns: ["buyer_profile_id"]
+            isOneToOne: false
+            referencedRelation: "buyer_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "buyer_credits_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "buyer_credits_source_payment_id_fkey"
+            columns: ["source_payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       buyer_factory_memberships: {
         Row: {
+          buyer_id: string | null
           company_name: string | null
           created_at: string | null
           factory_id: string
           id: string
           invited_by: string | null
-          is_active: boolean
-          user_id: string
+          is_active: boolean | null
+          role: string | null
+          user_id: string | null
         }
         Insert: {
+          buyer_id?: string | null
           company_name?: string | null
           created_at?: string | null
           factory_id: string
           id?: string
           invited_by?: string | null
-          is_active?: boolean
-          user_id: string
+          is_active?: boolean | null
+          role?: string | null
+          user_id?: string | null
         }
         Update: {
+          buyer_id?: string | null
           company_name?: string | null
           created_at?: string | null
           factory_id?: string
           id?: string
           invited_by?: string | null
-          is_active?: boolean
-          user_id?: string
+          is_active?: boolean | null
+          role?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -249,27 +583,30 @@ export type Database = {
       }
       buyer_po_access: {
         Row: {
-          factory_id: string
+          buyer_id: string | null
+          factory_id: string | null
           granted_at: string | null
           granted_by: string | null
           id: string
-          user_id: string
+          user_id: string | null
           work_order_id: string
         }
         Insert: {
-          factory_id: string
+          buyer_id?: string | null
+          factory_id?: string | null
           granted_at?: string | null
           granted_by?: string | null
           id?: string
-          user_id: string
+          user_id?: string | null
           work_order_id: string
         }
         Update: {
-          factory_id?: string
+          buyer_id?: string | null
+          factory_id?: string | null
           granted_at?: string | null
           granted_by?: string | null
           id?: string
-          user_id?: string
+          user_id?: string | null
           work_order_id?: string
         }
         Relationships: [
@@ -289,45 +626,118 @@ export type Database = {
           },
         ]
       }
-      buyer_workspace_prefs: {
+      buyer_profiles: {
         Row: {
-          alert_thresholds: Json | null
+          address: string | null
+          agent_contact: string | null
+          agent_name: string | null
+          city: string | null
+          company_name: string
+          contact_person: string | null
+          country: string | null
           created_at: string | null
-          daily_digest_enabled: boolean | null
-          default_po_id: string | null
+          created_by: string | null
+          default_currency: string | null
+          default_incoterms: string | null
+          default_payment_terms: string | null
+          display_name: string | null
+          email: string | null
           factory_id: string
           id: string
+          is_active: boolean | null
+          notes: string | null
+          phone: string | null
+          tags: string[] | null
+          tax_id: string | null
           updated_at: string | null
-          user_id: string
+          website: string | null
         }
         Insert: {
-          alert_thresholds?: Json | null
+          address?: string | null
+          agent_contact?: string | null
+          agent_name?: string | null
+          city?: string | null
+          company_name: string
+          contact_person?: string | null
+          country?: string | null
           created_at?: string | null
-          daily_digest_enabled?: boolean | null
-          default_po_id?: string | null
+          created_by?: string | null
+          default_currency?: string | null
+          default_incoterms?: string | null
+          default_payment_terms?: string | null
+          display_name?: string | null
+          email?: string | null
           factory_id: string
           id?: string
+          is_active?: boolean | null
+          notes?: string | null
+          phone?: string | null
+          tags?: string[] | null
+          tax_id?: string | null
           updated_at?: string | null
-          user_id: string
+          website?: string | null
         }
         Update: {
-          alert_thresholds?: Json | null
+          address?: string | null
+          agent_contact?: string | null
+          agent_name?: string | null
+          city?: string | null
+          company_name?: string
+          contact_person?: string | null
+          country?: string | null
           created_at?: string | null
-          daily_digest_enabled?: boolean | null
-          default_po_id?: string | null
+          created_by?: string | null
+          default_currency?: string | null
+          default_incoterms?: string | null
+          default_payment_terms?: string | null
+          display_name?: string | null
+          email?: string | null
           factory_id?: string
           id?: string
+          is_active?: boolean | null
+          notes?: string | null
+          phone?: string | null
+          tags?: string[] | null
+          tax_id?: string | null
           updated_at?: string | null
-          user_id?: string
+          website?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "buyer_workspace_prefs_default_po_id_fkey"
-            columns: ["default_po_id"]
+            foreignKeyName: "buyer_profiles_factory_id_fkey"
+            columns: ["factory_id"]
             isOneToOne: false
-            referencedRelation: "work_orders"
+            referencedRelation: "factory_accounts"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      buyer_workspace_prefs: {
+        Row: {
+          created_at: string
+          factory_id: string
+          id: string
+          is_default: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          factory_id: string
+          id?: string
+          is_default?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          factory_id?: string
+          id?: string
+          is_default?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
           {
             foreignKeyName: "buyer_workspace_prefs_factory_id_fkey"
             columns: ["factory_id"]
@@ -488,6 +898,406 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "chat_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cost_sheet_cm: {
+        Row: {
+          cm_per_dozen: number | null
+          cost_sheet_id: string
+          created_at: string | null
+          efficiency_pct: number | null
+          id: string
+          labour_cost_per_minute: number | null
+          overhead_type: string | null
+          overhead_value: number | null
+          sam: number | null
+        }
+        Insert: {
+          cm_per_dozen?: number | null
+          cost_sheet_id: string
+          created_at?: string | null
+          efficiency_pct?: number | null
+          id?: string
+          labour_cost_per_minute?: number | null
+          overhead_type?: string | null
+          overhead_value?: number | null
+          sam?: number | null
+        }
+        Update: {
+          cm_per_dozen?: number | null
+          cost_sheet_id?: string
+          created_at?: string | null
+          efficiency_pct?: number | null
+          id?: string
+          labour_cost_per_minute?: number | null
+          overhead_type?: string | null
+          overhead_value?: number | null
+          sam?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_sheet_cm_cost_sheet_id_fkey"
+            columns: ["cost_sheet_id"]
+            isOneToOne: false
+            referencedRelation: "cost_sheets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cost_sheet_commercial: {
+        Row: {
+          amount: number
+          category: string
+          cost_sheet_id: string
+          cost_type: string | null
+          created_at: string | null
+          currency: string | null
+          description: string | null
+          exchange_rate: number | null
+          id: string
+          item_name: string
+          sort_order: number | null
+        }
+        Insert: {
+          amount: number
+          category: string
+          cost_sheet_id: string
+          cost_type?: string | null
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          exchange_rate?: number | null
+          id?: string
+          item_name: string
+          sort_order?: number | null
+        }
+        Update: {
+          amount?: number
+          category?: string
+          cost_sheet_id?: string
+          cost_type?: string | null
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          exchange_rate?: number | null
+          id?: string
+          item_name?: string
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_sheet_commercial_cost_sheet_id_fkey"
+            columns: ["cost_sheet_id"]
+            isOneToOne: false
+            referencedRelation: "cost_sheets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cost_sheet_fabrics: {
+        Row: {
+          composition: string | null
+          construction: string | null
+          consumption_per_dozen: number | null
+          consumption_unit: string | null
+          cost_sheet_id: string
+          created_at: string | null
+          currency: string | null
+          description: string | null
+          dyeing_finishing_cost: number | null
+          exchange_rate: number | null
+          fabric_type: string
+          greige_cost: number | null
+          gsm: number | null
+          id: string
+          marker_efficiency: number | null
+          price_per_unit: number
+          price_unit: string | null
+          sort_order: number | null
+          source: string | null
+          supplier_name: string | null
+          wastage_pct: number | null
+          width: number | null
+        }
+        Insert: {
+          composition?: string | null
+          construction?: string | null
+          consumption_per_dozen?: number | null
+          consumption_unit?: string | null
+          cost_sheet_id: string
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          dyeing_finishing_cost?: number | null
+          exchange_rate?: number | null
+          fabric_type: string
+          greige_cost?: number | null
+          gsm?: number | null
+          id?: string
+          marker_efficiency?: number | null
+          price_per_unit: number
+          price_unit?: string | null
+          sort_order?: number | null
+          source?: string | null
+          supplier_name?: string | null
+          wastage_pct?: number | null
+          width?: number | null
+        }
+        Update: {
+          composition?: string | null
+          construction?: string | null
+          consumption_per_dozen?: number | null
+          consumption_unit?: string | null
+          cost_sheet_id?: string
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          dyeing_finishing_cost?: number | null
+          exchange_rate?: number | null
+          fabric_type?: string
+          greige_cost?: number | null
+          gsm?: number | null
+          id?: string
+          marker_efficiency?: number | null
+          price_per_unit?: number
+          price_unit?: string | null
+          sort_order?: number | null
+          source?: string | null
+          supplier_name?: string | null
+          wastage_pct?: number | null
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_sheet_fabrics_cost_sheet_id_fkey"
+            columns: ["cost_sheet_id"]
+            isOneToOne: false
+            referencedRelation: "cost_sheets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cost_sheet_processes: {
+        Row: {
+          category: string
+          cost_per_piece: number
+          cost_sheet_id: string
+          created_at: string | null
+          currency: string | null
+          description: string | null
+          exchange_rate: number | null
+          id: string
+          is_outsourced: boolean | null
+          placement: string | null
+          process_name: string
+          sort_order: number | null
+          supplier_name: string | null
+        }
+        Insert: {
+          category: string
+          cost_per_piece: number
+          cost_sheet_id: string
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          exchange_rate?: number | null
+          id?: string
+          is_outsourced?: boolean | null
+          placement?: string | null
+          process_name: string
+          sort_order?: number | null
+          supplier_name?: string | null
+        }
+        Update: {
+          category?: string
+          cost_per_piece?: number
+          cost_sheet_id?: string
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          exchange_rate?: number | null
+          id?: string
+          is_outsourced?: boolean | null
+          placement?: string | null
+          process_name?: string
+          sort_order?: number | null
+          supplier_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_sheet_processes_cost_sheet_id_fkey"
+            columns: ["cost_sheet_id"]
+            isOneToOne: false
+            referencedRelation: "cost_sheets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cost_sheet_trims: {
+        Row: {
+          category: string
+          cost_sheet_id: string
+          created_at: string | null
+          currency: string | null
+          description: string | null
+          exchange_rate: number | null
+          id: string
+          is_buyer_supplied: boolean | null
+          item_name: string
+          qty_per_garment: number | null
+          sort_order: number | null
+          specifications: string | null
+          supplier_name: string | null
+          unit_of_measure: string | null
+          unit_price: number
+        }
+        Insert: {
+          category: string
+          cost_sheet_id: string
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          exchange_rate?: number | null
+          id?: string
+          is_buyer_supplied?: boolean | null
+          item_name: string
+          qty_per_garment?: number | null
+          sort_order?: number | null
+          specifications?: string | null
+          supplier_name?: string | null
+          unit_of_measure?: string | null
+          unit_price: number
+        }
+        Update: {
+          category?: string
+          cost_sheet_id?: string
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          exchange_rate?: number | null
+          id?: string
+          is_buyer_supplied?: boolean | null
+          item_name?: string
+          qty_per_garment?: number | null
+          sort_order?: number | null
+          specifications?: string | null
+          supplier_name?: string | null
+          unit_of_measure?: string | null
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_sheet_trims_cost_sheet_id_fkey"
+            columns: ["cost_sheet_id"]
+            isOneToOne: false
+            referencedRelation: "cost_sheets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cost_sheets: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          buyer_name: string
+          buyer_target_price: number | null
+          created_at: string | null
+          created_by: string | null
+          currency: string | null
+          desired_margin_pct: number | null
+          exchange_rate: number | null
+          fabric_composition: string | null
+          factory_id: string
+          garment_type: string | null
+          gsm: number | null
+          id: string
+          is_template: boolean | null
+          notes: string | null
+          program_name: string | null
+          quoted_price: number | null
+          season: string | null
+          status: string | null
+          style_description: string | null
+          style_ref: string
+          target_price_type: string | null
+          target_quantity: number | null
+          template_name: string | null
+          updated_at: string | null
+          work_order_id: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          buyer_name: string
+          buyer_target_price?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          desired_margin_pct?: number | null
+          exchange_rate?: number | null
+          fabric_composition?: string | null
+          factory_id: string
+          garment_type?: string | null
+          gsm?: number | null
+          id?: string
+          is_template?: boolean | null
+          notes?: string | null
+          program_name?: string | null
+          quoted_price?: number | null
+          season?: string | null
+          status?: string | null
+          style_description?: string | null
+          style_ref: string
+          target_price_type?: string | null
+          target_quantity?: number | null
+          template_name?: string | null
+          updated_at?: string | null
+          work_order_id?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          buyer_name?: string
+          buyer_target_price?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          desired_margin_pct?: number | null
+          exchange_rate?: number | null
+          fabric_composition?: string | null
+          factory_id?: string
+          garment_type?: string | null
+          gsm?: number | null
+          id?: string
+          is_template?: boolean | null
+          notes?: string | null
+          program_name?: string | null
+          quoted_price?: number | null
+          season?: string | null
+          status?: string | null
+          style_description?: string | null
+          style_ref?: string
+          target_price_type?: string | null
+          target_quantity?: number | null
+          template_name?: string | null
+          updated_at?: string | null
+          work_order_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_sheets_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cost_sheets_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
             referencedColumns: ["id"]
           },
         ]
@@ -1128,6 +1938,7 @@ export type Database = {
       email_schedules: {
         Row: {
           created_at: string | null
+          day_of_month: number | null
           day_of_week: number | null
           email: string
           factory_id: string
@@ -1141,6 +1952,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          day_of_month?: number | null
           day_of_week?: number | null
           email: string
           factory_id: string
@@ -1154,6 +1966,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          day_of_month?: number | null
           day_of_week?: number | null
           email?: string
           factory_id?: string
@@ -1171,6 +1984,110 @@ export type Database = {
             columns: ["factory_id"]
             isOneToOne: false
             referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      export_costs: {
+        Row: {
+          amount: number
+          bl_number: string | null
+          category: string
+          contract_id: string | null
+          created_at: string | null
+          created_by: string | null
+          currency: string | null
+          date_incurred: string
+          description: string
+          exchange_rate: number | null
+          factory_id: string
+          id: string
+          invoice_ref: string | null
+          lc_id: string | null
+          payment_date: string | null
+          payment_reference: string | null
+          payment_status: string | null
+          remarks: string | null
+          shipment_ref: string | null
+          updated_at: string | null
+          vendor_name: string | null
+          work_order_id: string | null
+        }
+        Insert: {
+          amount: number
+          bl_number?: string | null
+          category: string
+          contract_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          date_incurred?: string
+          description: string
+          exchange_rate?: number | null
+          factory_id: string
+          id?: string
+          invoice_ref?: string | null
+          lc_id?: string | null
+          payment_date?: string | null
+          payment_reference?: string | null
+          payment_status?: string | null
+          remarks?: string | null
+          shipment_ref?: string | null
+          updated_at?: string | null
+          vendor_name?: string | null
+          work_order_id?: string | null
+        }
+        Update: {
+          amount?: number
+          bl_number?: string | null
+          category?: string
+          contract_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          date_incurred?: string
+          description?: string
+          exchange_rate?: number | null
+          factory_id?: string
+          id?: string
+          invoice_ref?: string | null
+          lc_id?: string | null
+          payment_date?: string | null
+          payment_reference?: string | null
+          payment_status?: string | null
+          remarks?: string | null
+          shipment_ref?: string | null
+          updated_at?: string | null
+          vendor_name?: string | null
+          work_order_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "export_costs_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "sales_contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "export_costs_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "export_costs_lc_id_fkey"
+            columns: ["lc_id"]
+            isOneToOne: false
+            referencedRelation: "master_lcs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "export_costs_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
             referencedColumns: ["id"]
           },
         ]
@@ -1237,9 +2154,8 @@ export type Database = {
           bdt_to_usd_rate: number | null
           created_at: string | null
           cutoff_time: string | null
-          enabled_modules: string[] | null
+          enabled_modules: Json | null
           evening_actual_cutoff: string | null
-          finance_enabled: boolean | null
           headcount_cost_currency: string | null
           headcount_cost_value: number | null
           id: string
@@ -1250,6 +2166,7 @@ export type Database = {
           max_lines: number | null
           morning_target_cutoff: string | null
           name: string
+          non_working_days: number[] | null
           payment_failed_at: string | null
           reactivation_cooldown_days: number | null
           slug: string
@@ -1269,9 +2186,8 @@ export type Database = {
           bdt_to_usd_rate?: number | null
           created_at?: string | null
           cutoff_time?: string | null
-          enabled_modules?: string[] | null
+          enabled_modules?: Json | null
           evening_actual_cutoff?: string | null
-          finance_enabled?: boolean | null
           headcount_cost_currency?: string | null
           headcount_cost_value?: number | null
           id?: string
@@ -1282,6 +2198,7 @@ export type Database = {
           max_lines?: number | null
           morning_target_cutoff?: string | null
           name: string
+          non_working_days?: number[] | null
           payment_failed_at?: string | null
           reactivation_cooldown_days?: number | null
           slug: string
@@ -1301,9 +2218,8 @@ export type Database = {
           bdt_to_usd_rate?: number | null
           created_at?: string | null
           cutoff_time?: string | null
-          enabled_modules?: string[] | null
+          enabled_modules?: Json | null
           evening_actual_cutoff?: string | null
-          finance_enabled?: boolean | null
           headcount_cost_currency?: string | null
           headcount_cost_value?: number | null
           id?: string
@@ -1314,6 +2230,7 @@ export type Database = {
           max_lines?: number | null
           morning_target_cutoff?: string | null
           name?: string
+          non_working_days?: number[] | null
           payment_failed_at?: string | null
           reactivation_cooldown_days?: number | null
           slug?: string
@@ -1395,12 +2312,15 @@ export type Database = {
       }
       factory_finance_settings: {
         Row: {
+          bank_account: string | null
           bank_account_name: string | null
           bank_account_no: string | null
           bank_branch: string | null
           bank_name: string | null
+          bank_routing: string | null
           bank_routing_no: string | null
           bank_swift: string | null
+          bin: string | null
           bin_number: string | null
           created_at: string
           factory_id: string
@@ -1408,22 +2328,28 @@ export type Database = {
           invoice_prefix: string
           seller_address: string | null
           seller_city: string | null
+          seller_contact: string | null
           seller_country: string | null
           seller_email: string | null
           seller_name: string | null
           seller_phone: string | null
           signature_url: string | null
           stamp_url: string | null
+          tin: string | null
           tin_number: string | null
+          trade_licence: string | null
           updated_at: string
         }
         Insert: {
+          bank_account?: string | null
           bank_account_name?: string | null
           bank_account_no?: string | null
           bank_branch?: string | null
           bank_name?: string | null
+          bank_routing?: string | null
           bank_routing_no?: string | null
           bank_swift?: string | null
+          bin?: string | null
           bin_number?: string | null
           created_at?: string
           factory_id: string
@@ -1431,22 +2357,28 @@ export type Database = {
           invoice_prefix?: string
           seller_address?: string | null
           seller_city?: string | null
+          seller_contact?: string | null
           seller_country?: string | null
           seller_email?: string | null
           seller_name?: string | null
           seller_phone?: string | null
           signature_url?: string | null
           stamp_url?: string | null
+          tin?: string | null
           tin_number?: string | null
+          trade_licence?: string | null
           updated_at?: string
         }
         Update: {
+          bank_account?: string | null
           bank_account_name?: string | null
           bank_account_no?: string | null
           bank_branch?: string | null
           bank_name?: string | null
+          bank_routing?: string | null
           bank_routing_no?: string | null
           bank_swift?: string | null
+          bin?: string | null
           bin_number?: string | null
           created_at?: string
           factory_id?: string
@@ -1454,13 +2386,16 @@ export type Database = {
           invoice_prefix?: string
           seller_address?: string | null
           seller_city?: string | null
+          seller_contact?: string | null
           seller_country?: string | null
           seller_email?: string | null
           seller_name?: string | null
           seller_phone?: string | null
           signature_url?: string | null
           stamp_url?: string | null
+          tin?: string | null
           tin_number?: string | null
+          trade_licence?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -2304,26 +3239,35 @@ export type Database = {
       invoice_charges: {
         Row: {
           amount: number
+          charge_type: string
+          created_at: string
+          description: string
           id: string
           invoice_id: string
-          is_deduct: boolean
-          label: string
+          is_deduct: boolean | null
+          label: string | null
           sort_order: number
         }
         Insert: {
           amount?: number
+          charge_type?: string
+          created_at?: string
+          description: string
           id?: string
           invoice_id: string
-          is_deduct?: boolean
-          label: string
+          is_deduct?: boolean | null
+          label?: string | null
           sort_order?: number
         }
         Update: {
           amount?: number
+          charge_type?: string
+          created_at?: string
+          description?: string
           id?: string
           invoice_id?: string
-          is_deduct?: boolean
-          label?: string
+          is_deduct?: boolean | null
+          label?: string | null
           sort_order?: number
         }
         Relationships: [
@@ -2352,7 +3296,7 @@ export type Database = {
           sort_order: number
           style_name: string | null
           style_number: string | null
-          unit: string | null
+          unit: string
           unit_price: number
         }
         Insert: {
@@ -2370,7 +3314,7 @@ export type Database = {
           sort_order?: number
           style_name?: string | null
           style_number?: string | null
-          unit?: string | null
+          unit?: string
           unit_price?: number
         }
         Update: {
@@ -2388,7 +3332,7 @@ export type Database = {
           sort_order?: number
           style_name?: string | null
           style_number?: string | null
-          unit?: string | null
+          unit?: string
           unit_price?: number
         }
         Relationships: [
@@ -2404,26 +3348,35 @@ export type Database = {
       invoice_tax_lines: {
         Row: {
           amount: number
+          created_at: string
+          description: string
           id: string
           invoice_id: string
-          label: string
-          rate_pct: number
+          label: string | null
+          rate: number | null
+          rate_pct: number | null
           sort_order: number
         }
         Insert: {
           amount?: number
+          created_at?: string
+          description?: string
           id?: string
           invoice_id: string
-          label: string
-          rate_pct?: number
+          label?: string | null
+          rate?: number | null
+          rate_pct?: number | null
           sort_order?: number
         }
         Update: {
           amount?: number
+          created_at?: string
+          description?: string
           id?: string
           invoice_id?: string
-          label?: string
-          rate_pct?: number
+          label?: string | null
+          rate?: number | null
+          rate_pct?: number | null
           sort_order?: number
         }
         Relationships: [
@@ -2445,6 +3398,7 @@ export type Database = {
           buyer_address: string | null
           buyer_contact: string | null
           buyer_name: string
+          cbm: number | null
           container_number: string | null
           contract_number: string | null
           contract_ref: string | null
@@ -2461,6 +3415,7 @@ export type Database = {
           due_date: string | null
           exchange_rate: number
           factory_id: string
+          gross_weight: number | null
           id: string
           incoterms: string | null
           internal_memo: string | null
@@ -2470,6 +3425,7 @@ export type Database = {
           issue_date: string
           lc_date: string | null
           lc_number: string | null
+          net_weight: number | null
           notes: string | null
           packing_type: string | null
           paper_size: string
@@ -2481,7 +3437,7 @@ export type Database = {
           remarks: string | null
           selected_bank_account_id: string | null
           ship_to_address: string | null
-          show_bank_details: boolean
+          show_bank_details: boolean | null
           status: string
           total_cartons: number | null
           total_cbm: number | null
@@ -2499,6 +3455,7 @@ export type Database = {
           buyer_address?: string | null
           buyer_contact?: string | null
           buyer_name: string
+          cbm?: number | null
           container_number?: string | null
           contract_number?: string | null
           contract_ref?: string | null
@@ -2515,6 +3472,7 @@ export type Database = {
           due_date?: string | null
           exchange_rate?: number
           factory_id: string
+          gross_weight?: number | null
           id?: string
           incoterms?: string | null
           internal_memo?: string | null
@@ -2524,6 +3482,7 @@ export type Database = {
           issue_date?: string
           lc_date?: string | null
           lc_number?: string | null
+          net_weight?: number | null
           notes?: string | null
           packing_type?: string | null
           paper_size?: string
@@ -2535,7 +3494,7 @@ export type Database = {
           remarks?: string | null
           selected_bank_account_id?: string | null
           ship_to_address?: string | null
-          show_bank_details?: boolean
+          show_bank_details?: boolean | null
           status?: string
           total_cartons?: number | null
           total_cbm?: number | null
@@ -2553,6 +3512,7 @@ export type Database = {
           buyer_address?: string | null
           buyer_contact?: string | null
           buyer_name?: string
+          cbm?: number | null
           container_number?: string | null
           contract_number?: string | null
           contract_ref?: string | null
@@ -2569,6 +3529,7 @@ export type Database = {
           due_date?: string | null
           exchange_rate?: number
           factory_id?: string
+          gross_weight?: number | null
           id?: string
           incoterms?: string | null
           internal_memo?: string | null
@@ -2578,6 +3539,7 @@ export type Database = {
           issue_date?: string
           lc_date?: string | null
           lc_number?: string | null
+          net_weight?: number | null
           notes?: string | null
           packing_type?: string | null
           paper_size?: string
@@ -2589,7 +3551,7 @@ export type Database = {
           remarks?: string | null
           selected_bank_account_id?: string | null
           ship_to_address?: string | null
-          show_bank_details?: boolean
+          show_bank_details?: boolean | null
           status?: string
           total_cartons?: number | null
           total_cbm?: number | null
@@ -2730,6 +3692,427 @@ export type Database = {
           },
         ]
       }
+      lc_amendments: {
+        Row: {
+          amendment_date: string
+          amendment_number: number
+          changes: Json | null
+          created_at: string | null
+          created_by: string | null
+          description: string
+          id: string
+          lc_id: string
+          new_expiry_date: string | null
+          new_shipment_date: string | null
+          value_change: number | null
+        }
+        Insert: {
+          amendment_date?: string
+          amendment_number: number
+          changes?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          description: string
+          id?: string
+          lc_id: string
+          new_expiry_date?: string | null
+          new_shipment_date?: string | null
+          value_change?: number | null
+        }
+        Update: {
+          amendment_date?: string
+          amendment_number?: number
+          changes?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string
+          id?: string
+          lc_id?: string
+          new_expiry_date?: string | null
+          new_shipment_date?: string | null
+          value_change?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lc_amendments_lc_id_fkey"
+            columns: ["lc_id"]
+            isOneToOne: false
+            referencedRelation: "master_lcs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lc_banking_costs: {
+        Row: {
+          amount: number
+          btb_lc_id: string | null
+          cost_type: string
+          created_at: string | null
+          currency: string | null
+          date_incurred: string
+          description: string | null
+          factory_id: string
+          id: string
+          lc_id: string | null
+          reference: string | null
+        }
+        Insert: {
+          amount: number
+          btb_lc_id?: string | null
+          cost_type: string
+          created_at?: string | null
+          currency?: string | null
+          date_incurred?: string
+          description?: string | null
+          factory_id: string
+          id?: string
+          lc_id?: string | null
+          reference?: string | null
+        }
+        Update: {
+          amount?: number
+          btb_lc_id?: string | null
+          cost_type?: string
+          created_at?: string | null
+          currency?: string | null
+          date_incurred?: string
+          description?: string | null
+          factory_id?: string
+          id?: string
+          lc_id?: string | null
+          reference?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lc_banking_costs_btb_lc_id_fkey"
+            columns: ["btb_lc_id"]
+            isOneToOne: false
+            referencedRelation: "btb_lcs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lc_banking_costs_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lc_banking_costs_lc_id_fkey"
+            columns: ["lc_id"]
+            isOneToOne: false
+            referencedRelation: "master_lcs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lc_discrepancies: {
+        Row: {
+          bank_charges: number | null
+          created_at: string | null
+          discrepancy_items: Json
+          discrepancy_type: string | null
+          id: string
+          lc_id: string
+          notice_date: string
+          resolution: string | null
+          resolution_date: string | null
+          resolution_notes: string | null
+          root_cause: string | null
+          shipment_id: string | null
+          status: string | null
+        }
+        Insert: {
+          bank_charges?: number | null
+          created_at?: string | null
+          discrepancy_items?: Json
+          discrepancy_type?: string | null
+          id?: string
+          lc_id: string
+          notice_date?: string
+          resolution?: string | null
+          resolution_date?: string | null
+          resolution_notes?: string | null
+          root_cause?: string | null
+          shipment_id?: string | null
+          status?: string | null
+        }
+        Update: {
+          bank_charges?: number | null
+          created_at?: string | null
+          discrepancy_items?: Json
+          discrepancy_type?: string | null
+          id?: string
+          lc_id?: string
+          notice_date?: string
+          resolution?: string | null
+          resolution_date?: string | null
+          resolution_notes?: string | null
+          root_cause?: string | null
+          shipment_id?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lc_discrepancies_lc_id_fkey"
+            columns: ["lc_id"]
+            isOneToOne: false
+            referencedRelation: "master_lcs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lc_discrepancies_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "lc_shipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lc_doc_checklist: {
+        Row: {
+          completed_at: string | null
+          copies_required: number | null
+          created_at: string | null
+          description: string | null
+          document_name: string
+          id: string
+          lc_id: string
+          originals_required: number | null
+          sort_order: number | null
+          special_instructions: string | null
+          status: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          copies_required?: number | null
+          created_at?: string | null
+          description?: string | null
+          document_name: string
+          id?: string
+          lc_id: string
+          originals_required?: number | null
+          sort_order?: number | null
+          special_instructions?: string | null
+          status?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          copies_required?: number | null
+          created_at?: string | null
+          description?: string | null
+          document_name?: string
+          id?: string
+          lc_id?: string
+          originals_required?: number | null
+          sort_order?: number | null
+          special_instructions?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lc_doc_checklist_lc_id_fkey"
+            columns: ["lc_id"]
+            isOneToOne: false
+            referencedRelation: "master_lcs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lc_documents: {
+        Row: {
+          btb_lc_id: string | null
+          created_at: string | null
+          document_type: string
+          factory_id: string
+          file_name: string
+          file_url: string
+          id: string
+          lc_id: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          btb_lc_id?: string | null
+          created_at?: string | null
+          document_type: string
+          factory_id: string
+          file_name: string
+          file_url: string
+          id?: string
+          lc_id?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          btb_lc_id?: string | null
+          created_at?: string | null
+          document_type?: string
+          factory_id?: string
+          file_name?: string
+          file_url?: string
+          id?: string
+          lc_id?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lc_documents_btb_lc_id_fkey"
+            columns: ["btb_lc_id"]
+            isOneToOne: false
+            referencedRelation: "btb_lcs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lc_documents_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lc_documents_lc_id_fkey"
+            columns: ["lc_id"]
+            isOneToOne: false
+            referencedRelation: "master_lcs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lc_notification_settings: {
+        Row: {
+          btb_maturity_warning_days: number | null
+          created_at: string | null
+          factory_id: string
+          id: string
+          lc_expiry_warning_days: number | null
+          notify_on_amendment: boolean | null
+          notify_on_discrepancy: boolean | null
+          notify_on_payment: boolean | null
+          presentation_deadline_warning_days: number | null
+          shipment_date_warning_days: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          btb_maturity_warning_days?: number | null
+          created_at?: string | null
+          factory_id: string
+          id?: string
+          lc_expiry_warning_days?: number | null
+          notify_on_amendment?: boolean | null
+          notify_on_discrepancy?: boolean | null
+          notify_on_payment?: boolean | null
+          presentation_deadline_warning_days?: number | null
+          shipment_date_warning_days?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          btb_maturity_warning_days?: number | null
+          created_at?: string | null
+          factory_id?: string
+          id?: string
+          lc_expiry_warning_days?: number | null
+          notify_on_amendment?: boolean | null
+          notify_on_discrepancy?: boolean | null
+          notify_on_payment?: boolean | null
+          presentation_deadline_warning_days?: number | null
+          shipment_date_warning_days?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lc_notification_settings_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: true
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lc_shipments: {
+        Row: {
+          bl_date: string | null
+          bl_number: string | null
+          container_number: string | null
+          created_at: string | null
+          currency: string | null
+          discrepancies: string | null
+          docs_accepted_date: string | null
+          docs_submitted_date: string | null
+          expected_payment_date: string | null
+          id: string
+          invoice_number: string | null
+          invoice_value: number
+          lc_id: string
+          maturity_date: string | null
+          notes: string | null
+          payment_amount: number | null
+          payment_received_date: string | null
+          presentation_date: string | null
+          quantity: number | null
+          shipment_date: string
+          shipment_number: number
+          status: string | null
+          vessel_name: string | null
+        }
+        Insert: {
+          bl_date?: string | null
+          bl_number?: string | null
+          container_number?: string | null
+          created_at?: string | null
+          currency?: string | null
+          discrepancies?: string | null
+          docs_accepted_date?: string | null
+          docs_submitted_date?: string | null
+          expected_payment_date?: string | null
+          id?: string
+          invoice_number?: string | null
+          invoice_value: number
+          lc_id: string
+          maturity_date?: string | null
+          notes?: string | null
+          payment_amount?: number | null
+          payment_received_date?: string | null
+          presentation_date?: string | null
+          quantity?: number | null
+          shipment_date: string
+          shipment_number: number
+          status?: string | null
+          vessel_name?: string | null
+        }
+        Update: {
+          bl_date?: string | null
+          bl_number?: string | null
+          container_number?: string | null
+          created_at?: string | null
+          currency?: string | null
+          discrepancies?: string | null
+          docs_accepted_date?: string | null
+          docs_submitted_date?: string | null
+          expected_payment_date?: string | null
+          id?: string
+          invoice_number?: string | null
+          invoice_value?: number
+          lc_id?: string
+          maturity_date?: string | null
+          notes?: string | null
+          payment_amount?: number | null
+          payment_received_date?: string | null
+          presentation_date?: string | null
+          quantity?: number | null
+          shipment_date?: string
+          shipment_number?: number
+          status?: string | null
+          vessel_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lc_shipments_lc_id_fkey"
+            columns: ["lc_id"]
+            isOneToOne: false
+            referencedRelation: "master_lcs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lines: {
         Row: {
           created_at: string | null
@@ -2796,6 +4179,187 @@ export type Database = {
             columns: ["unit_id"]
             isOneToOne: false
             referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      master_lcs: {
+        Row: {
+          advising_bank_name: string | null
+          advising_bank_swift: string | null
+          amendment_count: number | null
+          applicant_bank_name: string | null
+          applicant_bank_swift: string | null
+          applicant_name: string | null
+          bank_relationship_id: string | null
+          beneficiary_bank_account: string | null
+          beneficiary_bank_branch: string | null
+          beneficiary_bank_name: string | null
+          beneficiary_bank_swift: string | null
+          buyer_name: string
+          confirming_bank_name: string | null
+          confirming_bank_swift: string | null
+          contract_id: string | null
+          created_at: string | null
+          created_by: string | null
+          currency: string | null
+          docs_submitted_date: string | null
+          documents_required: string | null
+          expected_payment_date: string | null
+          expiry_date: string
+          factory_id: string
+          goods_description: string | null
+          hs_code: string | null
+          id: string
+          incoterms: string | null
+          insurance_details: string | null
+          insurance_required: boolean | null
+          issue_date: string
+          latest_shipment_date: string | null
+          lc_number: string
+          lc_type: string | null
+          lc_value: number
+          notes: string | null
+          partial_shipment_allowed: boolean | null
+          payment_terms: string | null
+          payment_type: string | null
+          port_of_discharge: string | null
+          port_of_loading: string | null
+          presentation_period: number | null
+          special_conditions: string | null
+          status: string | null
+          tenor_days: number | null
+          tolerance_pct: number | null
+          total_banking_costs: number | null
+          total_shipped: number | null
+          total_utilized: number | null
+          transhipment_allowed: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          advising_bank_name?: string | null
+          advising_bank_swift?: string | null
+          amendment_count?: number | null
+          applicant_bank_name?: string | null
+          applicant_bank_swift?: string | null
+          applicant_name?: string | null
+          bank_relationship_id?: string | null
+          beneficiary_bank_account?: string | null
+          beneficiary_bank_branch?: string | null
+          beneficiary_bank_name?: string | null
+          beneficiary_bank_swift?: string | null
+          buyer_name: string
+          confirming_bank_name?: string | null
+          confirming_bank_swift?: string | null
+          contract_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          docs_submitted_date?: string | null
+          documents_required?: string | null
+          expected_payment_date?: string | null
+          expiry_date: string
+          factory_id: string
+          goods_description?: string | null
+          hs_code?: string | null
+          id?: string
+          incoterms?: string | null
+          insurance_details?: string | null
+          insurance_required?: boolean | null
+          issue_date: string
+          latest_shipment_date?: string | null
+          lc_number: string
+          lc_type?: string | null
+          lc_value: number
+          notes?: string | null
+          partial_shipment_allowed?: boolean | null
+          payment_terms?: string | null
+          payment_type?: string | null
+          port_of_discharge?: string | null
+          port_of_loading?: string | null
+          presentation_period?: number | null
+          special_conditions?: string | null
+          status?: string | null
+          tenor_days?: number | null
+          tolerance_pct?: number | null
+          total_banking_costs?: number | null
+          total_shipped?: number | null
+          total_utilized?: number | null
+          transhipment_allowed?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          advising_bank_name?: string | null
+          advising_bank_swift?: string | null
+          amendment_count?: number | null
+          applicant_bank_name?: string | null
+          applicant_bank_swift?: string | null
+          applicant_name?: string | null
+          bank_relationship_id?: string | null
+          beneficiary_bank_account?: string | null
+          beneficiary_bank_branch?: string | null
+          beneficiary_bank_name?: string | null
+          beneficiary_bank_swift?: string | null
+          buyer_name?: string
+          confirming_bank_name?: string | null
+          confirming_bank_swift?: string | null
+          contract_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          docs_submitted_date?: string | null
+          documents_required?: string | null
+          expected_payment_date?: string | null
+          expiry_date?: string
+          factory_id?: string
+          goods_description?: string | null
+          hs_code?: string | null
+          id?: string
+          incoterms?: string | null
+          insurance_details?: string | null
+          insurance_required?: boolean | null
+          issue_date?: string
+          latest_shipment_date?: string | null
+          lc_number?: string
+          lc_type?: string | null
+          lc_value?: number
+          notes?: string | null
+          partial_shipment_allowed?: boolean | null
+          payment_terms?: string | null
+          payment_type?: string | null
+          port_of_discharge?: string | null
+          port_of_loading?: string | null
+          presentation_period?: number | null
+          special_conditions?: string | null
+          status?: string | null
+          tenor_days?: number | null
+          tolerance_pct?: number | null
+          total_banking_costs?: number | null
+          total_shipped?: number | null
+          total_utilized?: number | null
+          transhipment_allowed?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "master_lcs_bank_relationship_id_fkey"
+            columns: ["bank_relationship_id"]
+            isOneToOne: false
+            referencedRelation: "bank_relationships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "master_lcs_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "sales_contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "master_lcs_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
             referencedColumns: ["id"]
           },
         ]
@@ -2912,6 +4476,255 @@ export type Database = {
           },
         ]
       }
+      payment_allocations: {
+        Row: {
+          allocated_amount: number
+          allocated_currency: string | null
+          created_at: string | null
+          created_by: string | null
+          forex_gain_loss: number | null
+          id: string
+          invoice_id: string
+          payment_id: string
+          short_payment_note: string | null
+          short_payment_reason: string | null
+        }
+        Insert: {
+          allocated_amount: number
+          allocated_currency?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          forex_gain_loss?: number | null
+          id?: string
+          invoice_id: string
+          payment_id: string
+          short_payment_note?: string | null
+          short_payment_reason?: string | null
+        }
+        Update: {
+          allocated_amount?: number
+          allocated_currency?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          forex_gain_loss?: number | null
+          id?: string
+          invoice_id?: string
+          payment_id?: string
+          short_payment_note?: string | null
+          short_payment_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_allocations_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_allocations_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_audit_log: {
+        Row: {
+          action: string
+          entity_id: string
+          entity_type: string
+          field_changed: string | null
+          id: string
+          new_value: string | null
+          notes: string | null
+          old_value: string | null
+          performed_at: string | null
+          performed_by: string | null
+        }
+        Insert: {
+          action: string
+          entity_id: string
+          entity_type: string
+          field_changed?: string | null
+          id?: string
+          new_value?: string | null
+          notes?: string | null
+          old_value?: string | null
+          performed_at?: string | null
+          performed_by?: string | null
+        }
+        Update: {
+          action?: string
+          entity_id?: string
+          entity_type?: string
+          field_changed?: string | null
+          id?: string
+          new_value?: string | null
+          notes?: string | null
+          old_value?: string | null
+          performed_at?: string | null
+          performed_by?: string | null
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          bank_account_id: string | null
+          bank_deductions: number | null
+          bank_reference: string | null
+          bdt_equivalent: number | null
+          buyer_name: string | null
+          buyer_profile_id: string | null
+          category: string
+          created_at: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          deletion_reason: string | null
+          description: string | null
+          direction: string
+          due_date: string | null
+          exchange_rate: number | null
+          factory_id: string
+          id: string
+          linked_btb_lc_id: string | null
+          linked_lc_id: string | null
+          linked_po_id: string | null
+          linked_shipment_id: string | null
+          net_amount_credited: number | null
+          notes: string | null
+          original_amount: number
+          original_currency: string | null
+          payee_name: string | null
+          payment_date: string
+          payment_method: string | null
+          recorded_by: string | null
+          rejection_reason: string | null
+          status: string | null
+          sub_category: string | null
+          sub_category_reference: string | null
+          updated_at: string | null
+          usd_equivalent: number | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          bank_account_id?: string | null
+          bank_deductions?: number | null
+          bank_reference?: string | null
+          bdt_equivalent?: number | null
+          buyer_name?: string | null
+          buyer_profile_id?: string | null
+          category: string
+          created_at?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_reason?: string | null
+          description?: string | null
+          direction: string
+          due_date?: string | null
+          exchange_rate?: number | null
+          factory_id: string
+          id?: string
+          linked_btb_lc_id?: string | null
+          linked_lc_id?: string | null
+          linked_po_id?: string | null
+          linked_shipment_id?: string | null
+          net_amount_credited?: number | null
+          notes?: string | null
+          original_amount: number
+          original_currency?: string | null
+          payee_name?: string | null
+          payment_date?: string
+          payment_method?: string | null
+          recorded_by?: string | null
+          rejection_reason?: string | null
+          status?: string | null
+          sub_category?: string | null
+          sub_category_reference?: string | null
+          updated_at?: string | null
+          usd_equivalent?: number | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          bank_account_id?: string | null
+          bank_deductions?: number | null
+          bank_reference?: string | null
+          bdt_equivalent?: number | null
+          buyer_name?: string | null
+          buyer_profile_id?: string | null
+          category?: string
+          created_at?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_reason?: string | null
+          description?: string | null
+          direction?: string
+          due_date?: string | null
+          exchange_rate?: number | null
+          factory_id?: string
+          id?: string
+          linked_btb_lc_id?: string | null
+          linked_lc_id?: string | null
+          linked_po_id?: string | null
+          linked_shipment_id?: string | null
+          net_amount_credited?: number | null
+          notes?: string | null
+          original_amount?: number
+          original_currency?: string | null
+          payee_name?: string | null
+          payment_date?: string
+          payment_method?: string | null
+          recorded_by?: string | null
+          rejection_reason?: string | null
+          status?: string | null
+          sub_category?: string | null
+          sub_category_reference?: string | null
+          updated_at?: string | null
+          usd_equivalent?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_buyer_profile_id_fkey"
+            columns: ["buyer_profile_id"]
+            isOneToOne: false
+            referencedRelation: "buyer_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_linked_btb_lc_id_fkey"
+            columns: ["linked_btb_lc_id"]
+            isOneToOne: false
+            referencedRelation: "btb_lcs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_linked_lc_id_fkey"
+            columns: ["linked_lc_id"]
+            isOneToOne: false
+            referencedRelation: "master_lcs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_linked_po_id_fkey"
+            columns: ["linked_po_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       production_note_comments: {
         Row: {
           body: string
@@ -3016,6 +4829,82 @@ export type Database = {
           },
           {
             foreignKeyName: "production_notes_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_schedule: {
+        Row: {
+          colour: string | null
+          created_at: string
+          created_by: string | null
+          daily_target: number | null
+          end_date: string
+          factory_id: string
+          id: string
+          line_id: string
+          notes: string | null
+          priority: number | null
+          start_date: string
+          status: string
+          target_qty: number | null
+          updated_at: string
+          work_order_id: string
+        }
+        Insert: {
+          colour?: string | null
+          created_at?: string
+          created_by?: string | null
+          daily_target?: number | null
+          end_date: string
+          factory_id: string
+          id?: string
+          line_id: string
+          notes?: string | null
+          priority?: number | null
+          start_date: string
+          status?: string
+          target_qty?: number | null
+          updated_at?: string
+          work_order_id: string
+        }
+        Update: {
+          colour?: string | null
+          created_at?: string
+          created_by?: string | null
+          daily_target?: number | null
+          end_date?: string
+          factory_id?: string
+          id?: string
+          line_id?: string
+          notes?: string | null
+          priority?: number | null
+          start_date?: string
+          status?: string
+          target_qty?: number | null
+          updated_at?: string
+          work_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_schedule_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_schedule_line_id_fkey"
+            columns: ["line_id"]
+            isOneToOne: false
+            referencedRelation: "lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_schedule_work_order_id_fkey"
             columns: ["work_order_id"]
             isOneToOne: false
             referencedRelation: "work_orders"
@@ -3454,6 +5343,44 @@ export type Database = {
           },
         ]
       }
+      push_tokens: {
+        Row: {
+          created_at: string
+          factory_id: string | null
+          id: string
+          platform: string
+          token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          factory_id?: string | null
+          id?: string
+          platform: string
+          token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          factory_id?: string | null
+          id?: string
+          platform?: string
+          token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_tokens_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rate_limits: {
         Row: {
           action_type: string
@@ -3504,6 +5431,391 @@ export type Database = {
           role?: string
         }
         Relationships: []
+      }
+      sales_contract_amendments: {
+        Row: {
+          amendment_date: string
+          amendment_number: number
+          changed_by: string | null
+          changes: Json | null
+          contract_id: string
+          created_at: string | null
+          description: string
+          id: string
+        }
+        Insert: {
+          amendment_date?: string
+          amendment_number: number
+          changed_by?: string | null
+          changes?: Json | null
+          contract_id: string
+          created_at?: string | null
+          description: string
+          id?: string
+        }
+        Update: {
+          amendment_date?: string
+          amendment_number?: number
+          changed_by?: string | null
+          changes?: Json | null
+          contract_id?: string
+          created_at?: string | null
+          description?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_contract_amendments_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "sales_contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_contract_documents: {
+        Row: {
+          contract_id: string | null
+          created_at: string | null
+          extracted_data: Json | null
+          extraction_status: string | null
+          factory_id: string
+          file_name: string
+          file_type: string | null
+          file_url: string
+          id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          contract_id?: string | null
+          created_at?: string | null
+          extracted_data?: Json | null
+          extraction_status?: string | null
+          factory_id: string
+          file_name: string
+          file_type?: string | null
+          file_url: string
+          id?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          contract_id?: string | null
+          created_at?: string | null
+          extracted_data?: Json | null
+          extraction_status?: string | null
+          factory_id?: string
+          file_name?: string
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_contract_documents_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "sales_contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_contract_documents_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_contract_items: {
+        Row: {
+          color: string | null
+          contract_id: string
+          created_at: string | null
+          delivery_date: string | null
+          end_customer: string | null
+          ex_factory_date: string | null
+          fabric_composition: string | null
+          garment_type: string | null
+          hs_code: string | null
+          id: string
+          po_number: string | null
+          price_type: string | null
+          quantity: number
+          remarks: string | null
+          ship_date: string | null
+          size_range: string | null
+          sort_order: number | null
+          style_description: string | null
+          style_ref: string
+          subtotal_value: number | null
+          unit_price: number
+          work_order_id: string | null
+        }
+        Insert: {
+          color?: string | null
+          contract_id: string
+          created_at?: string | null
+          delivery_date?: string | null
+          end_customer?: string | null
+          ex_factory_date?: string | null
+          fabric_composition?: string | null
+          garment_type?: string | null
+          hs_code?: string | null
+          id?: string
+          po_number?: string | null
+          price_type?: string | null
+          quantity: number
+          remarks?: string | null
+          ship_date?: string | null
+          size_range?: string | null
+          sort_order?: number | null
+          style_description?: string | null
+          style_ref: string
+          subtotal_value?: number | null
+          unit_price: number
+          work_order_id?: string | null
+        }
+        Update: {
+          color?: string | null
+          contract_id?: string
+          created_at?: string | null
+          delivery_date?: string | null
+          end_customer?: string | null
+          ex_factory_date?: string | null
+          fabric_composition?: string | null
+          garment_type?: string | null
+          hs_code?: string | null
+          id?: string
+          po_number?: string | null
+          price_type?: string | null
+          quantity?: number
+          remarks?: string | null
+          ship_date?: string | null
+          size_range?: string | null
+          sort_order?: number | null
+          style_description?: string | null
+          style_ref?: string
+          subtotal_value?: number | null
+          unit_price?: number
+          work_order_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_contract_items_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "sales_contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_contract_items_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_contracts: {
+        Row: {
+          additional_clauses: string | null
+          agent_bank_account: string | null
+          agent_bank_address: string | null
+          agent_bank_iban: string | null
+          agent_bank_name: string | null
+          agent_bank_swift: string | null
+          agent_name: string | null
+          applicant_address: string | null
+          applicant_bank_account: string | null
+          applicant_bank_address: string | null
+          applicant_bank_iban: string | null
+          applicant_bank_name: string | null
+          applicant_bank_swift: string | null
+          applicant_name: string | null
+          beneficiary_bank_account: string | null
+          beneficiary_bank_address: string | null
+          beneficiary_bank_branch: string | null
+          beneficiary_bank_name: string | null
+          beneficiary_bank_swift: string | null
+          buyer_address: string | null
+          buyer_contact: string | null
+          buyer_name: string
+          commission_pct: number | null
+          commission_per_piece: number | null
+          contract_date: string
+          contract_number: string
+          contract_title: string | null
+          country_of_origin: string | null
+          created_at: string | null
+          created_by: string | null
+          currency: string | null
+          delivery_terms: string | null
+          documents_required: string | null
+          end_customer: string | null
+          exchange_rate: number | null
+          expiry_date: string | null
+          factory_id: string
+          id: string
+          incoterms: string | null
+          internal_notes: string | null
+          lc_date: string | null
+          lc_expiry_date: string | null
+          lc_number: string | null
+          lc_required: boolean | null
+          notes: string | null
+          notify_party_address: string | null
+          notify_party_contact: string | null
+          notify_party_name: string | null
+          notify_party_note: string | null
+          payment_terms: string | null
+          place_of_delivery: string | null
+          port_of_discharge: string | null
+          port_of_loading: string | null
+          season: string | null
+          shipment_mode: string | null
+          status: string | null
+          tolerance_pct: number | null
+          total_quantity: number | null
+          total_value: number | null
+          total_value_text: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          additional_clauses?: string | null
+          agent_bank_account?: string | null
+          agent_bank_address?: string | null
+          agent_bank_iban?: string | null
+          agent_bank_name?: string | null
+          agent_bank_swift?: string | null
+          agent_name?: string | null
+          applicant_address?: string | null
+          applicant_bank_account?: string | null
+          applicant_bank_address?: string | null
+          applicant_bank_iban?: string | null
+          applicant_bank_name?: string | null
+          applicant_bank_swift?: string | null
+          applicant_name?: string | null
+          beneficiary_bank_account?: string | null
+          beneficiary_bank_address?: string | null
+          beneficiary_bank_branch?: string | null
+          beneficiary_bank_name?: string | null
+          beneficiary_bank_swift?: string | null
+          buyer_address?: string | null
+          buyer_contact?: string | null
+          buyer_name: string
+          commission_pct?: number | null
+          commission_per_piece?: number | null
+          contract_date?: string
+          contract_number: string
+          contract_title?: string | null
+          country_of_origin?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          delivery_terms?: string | null
+          documents_required?: string | null
+          end_customer?: string | null
+          exchange_rate?: number | null
+          expiry_date?: string | null
+          factory_id: string
+          id?: string
+          incoterms?: string | null
+          internal_notes?: string | null
+          lc_date?: string | null
+          lc_expiry_date?: string | null
+          lc_number?: string | null
+          lc_required?: boolean | null
+          notes?: string | null
+          notify_party_address?: string | null
+          notify_party_contact?: string | null
+          notify_party_name?: string | null
+          notify_party_note?: string | null
+          payment_terms?: string | null
+          place_of_delivery?: string | null
+          port_of_discharge?: string | null
+          port_of_loading?: string | null
+          season?: string | null
+          shipment_mode?: string | null
+          status?: string | null
+          tolerance_pct?: number | null
+          total_quantity?: number | null
+          total_value?: number | null
+          total_value_text?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          additional_clauses?: string | null
+          agent_bank_account?: string | null
+          agent_bank_address?: string | null
+          agent_bank_iban?: string | null
+          agent_bank_name?: string | null
+          agent_bank_swift?: string | null
+          agent_name?: string | null
+          applicant_address?: string | null
+          applicant_bank_account?: string | null
+          applicant_bank_address?: string | null
+          applicant_bank_iban?: string | null
+          applicant_bank_name?: string | null
+          applicant_bank_swift?: string | null
+          applicant_name?: string | null
+          beneficiary_bank_account?: string | null
+          beneficiary_bank_address?: string | null
+          beneficiary_bank_branch?: string | null
+          beneficiary_bank_name?: string | null
+          beneficiary_bank_swift?: string | null
+          buyer_address?: string | null
+          buyer_contact?: string | null
+          buyer_name?: string
+          commission_pct?: number | null
+          commission_per_piece?: number | null
+          contract_date?: string
+          contract_number?: string
+          contract_title?: string | null
+          country_of_origin?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          delivery_terms?: string | null
+          documents_required?: string | null
+          end_customer?: string | null
+          exchange_rate?: number | null
+          expiry_date?: string | null
+          factory_id?: string
+          id?: string
+          incoterms?: string | null
+          internal_notes?: string | null
+          lc_date?: string | null
+          lc_expiry_date?: string | null
+          lc_number?: string | null
+          lc_required?: boolean | null
+          notes?: string | null
+          notify_party_address?: string | null
+          notify_party_contact?: string | null
+          notify_party_name?: string | null
+          notify_party_note?: string | null
+          payment_terms?: string | null
+          place_of_delivery?: string | null
+          port_of_discharge?: string | null
+          port_of_loading?: string | null
+          season?: string | null
+          shipment_mode?: string | null
+          status?: string | null
+          tolerance_pct?: number | null
+          total_quantity?: number | null
+          total_value?: number | null
+          total_value_text?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_contracts_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       security_events: {
         Row: {
@@ -4016,6 +6328,56 @@ export type Database = {
           },
         ]
       }
+      style_orders: {
+        Row: {
+          buyer: string
+          created_at: string
+          factory_id: string
+          id: string
+          needs_review: boolean
+          product_type: string | null
+          season: string | null
+          status: string | null
+          style_name: string
+          style_number: string | null
+          updated_at: string
+        }
+        Insert: {
+          buyer: string
+          created_at?: string
+          factory_id: string
+          id?: string
+          needs_review?: boolean
+          product_type?: string | null
+          season?: string | null
+          status?: string | null
+          style_name: string
+          style_number?: string | null
+          updated_at?: string
+        }
+        Update: {
+          buyer?: string
+          created_at?: string
+          factory_id?: string
+          id?: string
+          needs_review?: boolean
+          product_type?: string | null
+          season?: string | null
+          status?: string | null
+          style_name?: string
+          style_number?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "style_orders_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       units: {
         Row: {
           code: string
@@ -4212,6 +6574,7 @@ export type Database = {
           buyer: string
           cm_per_dozen: number | null
           color: string | null
+          commercial_price: number | null
           construction: string | null
           created_at: string | null
           description: string | null
@@ -4221,6 +6584,7 @@ export type Database = {
           is_active: boolean | null
           item: string | null
           line_id: string | null
+          order_number: string | null
           order_qty: number
           package_qty: number | null
           planned_ex_factory: string | null
@@ -4230,6 +6594,7 @@ export type Database = {
           status: string | null
           style: string
           style_number: string | null
+          style_order_id: string | null
           supplier_name: string | null
           target_per_day: number | null
           target_per_hour: number | null
@@ -4241,6 +6606,7 @@ export type Database = {
           buyer: string
           cm_per_dozen?: number | null
           color?: string | null
+          commercial_price?: number | null
           construction?: string | null
           created_at?: string | null
           description?: string | null
@@ -4250,6 +6616,7 @@ export type Database = {
           is_active?: boolean | null
           item?: string | null
           line_id?: string | null
+          order_number?: string | null
           order_qty?: number
           package_qty?: number | null
           planned_ex_factory?: string | null
@@ -4259,6 +6626,7 @@ export type Database = {
           status?: string | null
           style: string
           style_number?: string | null
+          style_order_id?: string | null
           supplier_name?: string | null
           target_per_day?: number | null
           target_per_hour?: number | null
@@ -4270,6 +6638,7 @@ export type Database = {
           buyer?: string
           cm_per_dozen?: number | null
           color?: string | null
+          commercial_price?: number | null
           construction?: string | null
           created_at?: string | null
           description?: string | null
@@ -4279,6 +6648,7 @@ export type Database = {
           is_active?: boolean | null
           item?: string | null
           line_id?: string | null
+          order_number?: string | null
           order_qty?: number
           package_qty?: number | null
           planned_ex_factory?: string | null
@@ -4288,6 +6658,7 @@ export type Database = {
           status?: string | null
           style?: string
           style_number?: string | null
+          style_order_id?: string | null
           supplier_name?: string | null
           target_per_day?: number | null
           target_per_hour?: number | null
@@ -4309,6 +6680,13 @@ export type Database = {
             referencedRelation: "lines"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "work_orders_style_order_id_fkey"
+            columns: ["style_order_id"]
+            isOneToOne: false
+            referencedRelation: "style_orders"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
@@ -4316,6 +6694,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      broadcast_notification: {
+        Args: { p_data?: Json; p_message: string; p_title: string }
+        Returns: number
+      }
       can_activate_line: { Args: { _factory_id: string }; Returns: boolean }
       check_rate_limit: {
         Args: {
@@ -4369,6 +6751,25 @@ export type Database = {
           p_ip_address?: string
           p_user_agent?: string
           p_user_id?: string
+        }
+        Returns: undefined
+      }
+      notify_schedule_start: { Args: never; Returns: undefined }
+      process_daily_summary: {
+        Args: { p_factory_id: string; p_factory_name: string; p_today: string }
+        Returns: undefined
+      }
+      process_late_submissions: {
+        Args: { p_factory_id: string; p_factory_name: string; p_today: string }
+        Returns: undefined
+      }
+      process_scheduled_notifications: { Args: never; Returns: Json }
+      process_shift_reminders: {
+        Args: {
+          p_factory_id: string
+          p_factory_name: string
+          p_morning_cutoff: string
+          p_today: string
         }
         Returns: undefined
       }
