@@ -222,9 +222,9 @@ export const NAV_ITEMS = {
   admin: [
     { path: '/dashboard', label: 'Dashboard', icon: 'LayoutDashboard', group: 'Production' },
     { path: '/today', label: 'Today Updates', icon: 'CalendarDays', group: 'Production' },
+    { path: '/week', label: 'This Week', icon: 'Calendar', group: 'Production' },
     { path: '/lines', label: 'Lines', icon: 'Rows3', group: 'Production' },
     { path: '/schedule', label: 'Schedule', icon: 'CalendarRange', group: 'Production' },
-    { path: '/week', label: 'This Week', icon: 'Calendar', group: 'Production' },
     { path: '/submissions', label: 'All Submissions', icon: 'FileText', group: 'Records' },
     { path: '/work-orders', label: 'Work Orders', icon: 'Receipt', group: 'Records' },
     { path: '/blockers', label: 'Blockers', icon: 'AlertTriangle', group: 'Records' },
@@ -243,9 +243,9 @@ export const NAV_ITEMS = {
   owner: [
     { path: '/dashboard', label: 'Dashboard', icon: 'LayoutDashboard', group: 'Production' },
     { path: '/today', label: 'Today Updates', icon: 'CalendarDays', group: 'Production' },
+    { path: '/week', label: 'This Week', icon: 'Calendar', group: 'Production' },
     { path: '/lines', label: 'Lines', icon: 'Rows3', group: 'Production' },
     { path: '/schedule', label: 'Schedule', icon: 'CalendarRange', group: 'Production' },
-    { path: '/week', label: 'This Week', icon: 'Calendar', group: 'Production' },
     { path: '/submissions', label: 'All Submissions', icon: 'FileText', group: 'Records' },
     { path: '/work-orders', label: 'Work Orders', icon: 'Receipt', group: 'Records' },
     { path: '/blockers', label: 'Blockers', icon: 'AlertTriangle', group: 'Records' },

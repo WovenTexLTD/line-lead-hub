@@ -72,7 +72,7 @@ const WORK_ORDER_STATUSES = [
 const workOrderSchema = z.object({
   po_number: z.string().min(1, "PO Number is required").max(100, "PO Number too long"),
   buyer: z.string().min(1, "Buyer is required").max(200, "Buyer name too long"),
-  order_number: z.string().max(200, "Order number too long").optional().nullable(),
+  order_number: z.string().min(1, "Order number is required").max(200, "Order number too long"),
   style: z.string().min(1, "Style is required").max(200, "Style too long"),
   item: z.string().max(200, "Item too long").optional().nullable(),
   color: z.string().max(100, "Color too long").optional().nullable(),
@@ -914,7 +914,7 @@ export default function WorkOrders() {
 
             <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2">
-                <Label>Order Number</Label>
+                <Label>Order Number *</Label>
                 <AutocompleteCombobox
                   value={formData.order_number}
                   onChange={(next) => setFormData({ ...formData, order_number: next })}
@@ -924,7 +924,7 @@ export default function WorkOrders() {
                   hasError={!!formErrors.order_number}
                 />
                 <p className="text-[11px] text-muted-foreground">
-                  Optional — POs sharing an order number are grouped together in the Orders view.
+                  Used to organize multiple POs into one order. POs sharing the same order number are grouped together in the Orders view.
                 </p>
                 {formErrors.order_number && <p className="text-sm text-destructive">{formErrors.order_number}</p>}
               </div>

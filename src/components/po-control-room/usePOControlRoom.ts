@@ -339,10 +339,12 @@ export function usePOControlRoom(filters: POFilters = EMPTY_FILTERS) {
       const styleOrderById = new Map<string, StyleOrderParent>();
       (styleOrdersRes.data ?? []).forEach((so: StyleOrderParent) => styleOrderById.set(so.id, so));
 
-      // ── Orders synth parents — keyed by order_number, with per-PO solo
-      // fallback when no order_number is set. The Orders view groups POs by
-      // these synth parents; the underlying style_orders table is unused for
-      // display.
+      // ── Orders synth parents — keyed by order_number.
+      // POs without an order_number get a solo:<id> key but NO synth parent
+      // is created for them, which causes them to be excluded from the Orders
+      // rollup (the view should only show real, user-defined Orders). They
+      // still appear in the PO Details view, and trigger the empty-state
+      // helper message in the Orders view when no Order exists yet.
       const orderSynthByKey = new Map<string, StyleOrderParent>();
 
       const effectiveOrderNumber = (wo: any): string | null =>
@@ -356,27 +358,16 @@ export function usePOControlRoom(filters: POFilters = EMPTY_FILTERS) {
 
       for (const wo of woData ?? []) {
         const key = synthKeyFor(wo);
+        if (!key.startsWith("order:")) continue; // solo POs are excluded from the Orders rollup
         if (orderSynthByKey.has(key)) continue;
-        if (key.startsWith("order:")) {
-          orderSynthByKey.set(key, {
-            id: key,
-            factory_id: factoryId,
-            buyer: wo.buyer,                                   // first occurrence's buyer
-            style_name: effectiveOrderNumber(wo) ?? wo.style,  // Order Number is the title
-            style_number: null,
-            needs_review: false,
-          });
-        } else {
-          // Solo PO — its own card. Buyer + style as identity.
-          orderSynthByKey.set(key, {
-            id: key,
-            factory_id: factoryId,
-            buyer: wo.buyer,
-            style_name: wo.style,
-            style_number: null,
-            needs_review: false,
-          });
-        }
+        orderSynthByKey.set(key, {
+          id: key,
+          factory_id: factoryId,
+          buyer: wo.buyer,                                   // first occurrence's buyer
+          style_name: effectiveOrderNumber(wo) ?? wo.style,  // Order Number is the title
+          style_number: null,
+          needs_review: false,
+        });
       }
 
       const result: POControlRoomData[] = (woData || []).map((wo) => {

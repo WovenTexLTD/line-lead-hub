@@ -245,6 +245,10 @@ export default function WorkOrdersView() {
           loading={false}
           today={today}
           onViewPO={handleViewPO}
+          unassignedPoCount={workOrders.filter(
+            (po) => !po.order_number || !po.order_number.trim()
+          ).length}
+          canManageWorkOrders={isAdminOrHigher}
         />
       ) : activeTab === "running" ? (
         /* PO Details view, running tab: cluster sections */
