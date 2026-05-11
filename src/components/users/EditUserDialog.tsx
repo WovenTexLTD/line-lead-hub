@@ -221,6 +221,7 @@ export function EditUserDialog({ open, onOpenChange, user, onSuccess }: EditUser
         supabase.from('user_roles').insert([{
           user_id: user.id,
           role: formData.role as any,
+          factory_id: profile.factory_id!,
         }])
       );
 
