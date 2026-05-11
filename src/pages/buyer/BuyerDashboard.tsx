@@ -70,9 +70,14 @@ export default function BuyerDashboard() {
           .from("sewing_actuals")
           .select("work_order_id, good_today, reject_today, rework_today, cumulative_good_total, production_date, submitted_at")
           .in("work_order_id", workOrderIds),
+        // finishing_actuals is deprecated/empty in production — actual data lives
+        // in finishing_daily_logs (filtered by log_type='OUTPUT'). Columns
+        // renamed: day_carton→carton, day_poly→poly. day_qc_pass and total_*
+        // rolling totals are not available in finishing_daily_logs.
         supabase
-          .from("finishing_actuals")
-          .select("work_order_id, day_carton, day_poly, day_qc_pass, total_carton, total_poly, total_qc_pass, production_date, submitted_at")
+          .from("finishing_daily_logs")
+          .select("work_order_id, carton, poly, production_date, submitted_at")
+          .eq("log_type", "OUTPUT")
           .in("work_order_id", workOrderIds),
         supabase
           .from("cutting_actuals")
@@ -133,20 +138,20 @@ export default function BuyerDashboard() {
         );
       }
 
-      // Aggregate finishing
+      // Aggregate finishing (from finishing_daily_logs OUTPUT rows)
       for (const row of finishingRes.data || []) {
         const agg = aggMap.get(row.work_order_id);
         if (!agg) continue;
-        agg.finishingCarton += row.day_carton || 0;
-        agg.finishingPoly += row.day_poly || 0;
-        agg.finishingQcPass += row.day_qc_pass || 0;
+        agg.finishingCarton += row.carton || 0;
+        agg.finishingPoly += row.poly || 0;
+        // finishingQcPass: not tracked on finishing_daily_logs; leave at 0
         if (row.production_date === today) {
           const t = todayAgg.get(row.work_order_id);
-          if (t) t.finishing += row.day_poly || 0;
+          if (t) t.finishing += row.poly || 0;
         }
         if (row.production_date === yesterday) {
           const y = yesterdayAgg.get(row.work_order_id);
-          if (y) y.finishing += row.day_poly || 0;
+          if (y) y.finishing += row.poly || 0;
         }
         if (row.submitted_at) {
           const prev = submitMap.get(row.work_order_id);
@@ -160,7 +165,7 @@ export default function BuyerDashboard() {
         const dayMap = finDailyRaw.get(row.work_order_id)!;
         dayMap.set(
           row.production_date,
-          (dayMap.get(row.production_date) || 0) + (row.day_poly || 0)
+          (dayMap.get(row.production_date) || 0) + (row.poly || 0)
         );
       }
 

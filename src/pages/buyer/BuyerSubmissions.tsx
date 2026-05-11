@@ -86,8 +86,9 @@ export default function BuyerSubmissions() {
         : Promise.resolve({ data: null }),
       shouldFetch("finishing")
         ? supabase
-            .from("finishing_actuals")
-            .select("id, production_date, day_carton, day_poly, day_qc_pass, total_carton, submitted_at, work_orders(po_number, style)")
+            .from("finishing_daily_logs")
+            .select("id, production_date, carton, poly, submitted_at, work_orders(po_number, style)")
+            .eq("log_type", "OUTPUT")
             .in("work_order_id", filterIds)
             .gte("production_date", dateFromStr)
             .lte("production_date", dateToStr)
@@ -125,7 +126,7 @@ export default function BuyerSubmissions() {
       });
     }
 
-    // Map finishing
+    // Map finishing (columns from finishing_daily_logs: carton, poly)
     for (const r of (finishingRes.data as any[]) || []) {
       allRows.push({
         id: r.id,
@@ -133,9 +134,9 @@ export default function BuyerSubmissions() {
         po_number: r.work_orders?.po_number || "—",
         style: r.work_orders?.style || "—",
         production_date: r.production_date,
-        output: (r.day_carton || 0) + (r.day_poly || 0),
+        output: (r.carton || 0) + (r.poly || 0),
         reject: 0,
-        cumulative: r.total_carton || 0,
+        cumulative: 0, // rolling total not stored on finishing_daily_logs
         submitted_at: r.submitted_at,
       });
     }
