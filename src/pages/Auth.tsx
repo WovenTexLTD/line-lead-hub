@@ -101,6 +101,19 @@ export default function Auth() {
     };
   }, []);
 
+  // Tint the iOS Safari URL bar to match the auth gradient
+  useEffect(() => {
+    const meta = document.querySelector<HTMLMetaElement>(
+      'meta[name="theme-color"]'
+    );
+    if (!meta) return;
+    const original = meta.content;
+    meta.content = "#1d4ed8";
+    return () => {
+      meta.content = original;
+    };
+  }, []);
+
   const isForcedPasswordReset =
     typeof window !== "undefined" &&
     sessionStorage.getItem("pp_force_password_reset") === "1";
@@ -368,33 +381,53 @@ export default function Auth() {
 
   return (
     <div
-      className="min-h-dvh flex bg-background"
+      className="min-h-dvh relative isolate bg-background"
       style={{
         fontFamily:
           "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif",
       }}
     >
-      {/* Left brand panel (hidden below lg) */}
-      <BrandPanel />
+      {/* Mobile-only fixed gradient that fills behind iOS toolbars at any scroll */}
+      <div
+        aria-hidden
+        className="lg:hidden fixed inset-0 -z-10 bg-gradient-to-b from-blue-700 via-blue-800 to-slate-900 pointer-events-none"
+      />
+      {/* Mobile-only dot grid covering the entire viewport */}
+      <div
+        aria-hidden
+        className="lg:hidden fixed inset-0 -z-10 opacity-[0.07] pointer-events-none"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 1px 1px, white 1px, transparent 0)",
+          backgroundSize: "20px 20px",
+        }}
+      />
+      {/* Mobile-only decorative blurs spread across the viewport */}
+      <div
+        aria-hidden
+        className="lg:hidden fixed -top-20 -right-24 -z-10 w-72 h-72 rounded-full bg-amber-400/15 blur-3xl pointer-events-none"
+      />
+      <div
+        aria-hidden
+        className="lg:hidden fixed top-1/3 -left-24 -z-10 w-72 h-72 rounded-full bg-sky-400/25 blur-3xl pointer-events-none"
+      />
+      <div
+        aria-hidden
+        className="lg:hidden fixed bottom-0 -right-20 -z-10 w-72 h-72 rounded-full bg-blue-500/20 blur-3xl pointer-events-none"
+      />
 
-      {/* Right side: mobile hero + form */}
-      <div className="flex-1 flex flex-col bg-gradient-to-b from-blue-700 via-blue-800 to-slate-900 lg:bg-none lg:bg-background min-w-0 relative">
-        {/* Mobile-only decorative blurs that bleed past the hero into the form area */}
-        <div
-          aria-hidden
-          className="lg:hidden absolute top-1/3 -right-20 w-72 h-72 rounded-full bg-sky-400/20 blur-3xl pointer-events-none"
-        />
-        <div
-          aria-hidden
-          className="lg:hidden absolute top-1/2 -left-20 w-72 h-72 rounded-full bg-blue-500/15 blur-3xl pointer-events-none"
-        />
+      <div className="min-h-dvh flex">
+        {/* Left brand panel (hidden below lg) */}
+        <BrandPanel />
 
-        {/* Mobile hero (hidden on lg) */}
-        <MobileHero />
+        {/* Right side: mobile hero + form */}
+        <div className="flex-1 flex flex-col min-w-0 relative">
+          {/* Mobile hero (hidden on lg) */}
+          <MobileHero />
 
-        {/* Form panel — sits directly on the gradient on mobile, plain on desktop */}
-        <div className="flex-1 flex items-start lg:items-center justify-center px-5 sm:px-6 lg:p-12 pt-2 pb-10 lg:pt-12 lg:pb-12 relative text-white lg:text-foreground">
-          <div className="relative w-full max-w-md space-y-6">
+          {/* Form panel — white card on the gradient on mobile, plain on desktop */}
+          <div className="flex-1 flex items-start lg:items-center justify-center px-5 sm:px-6 lg:p-12 pt-2 pb-10 lg:pt-12 lg:pb-12 relative">
+            <div className="relative w-full max-w-md rounded-2xl bg-card lg:bg-transparent ring-1 ring-black/5 lg:ring-0 shadow-2xl shadow-black/30 lg:shadow-none p-5 sm:p-6 lg:p-0 space-y-6">
 
           {isPasswordResetMode ? (
             // Reset mode
@@ -479,7 +512,7 @@ export default function Auth() {
                 <h1 className="text-3xl font-bold tracking-tight">
                   {activeTab === "login" ? "Welcome back." : "Create your account."}
                 </h1>
-                <p className="text-sm text-white/75 lg:text-muted-foreground mt-1.5">
+                <p className="text-sm text-muted-foreground mt-1.5">
                   {activeTab === "login"
                     ? "Sign in to continue managing your production floor."
                     : "Start tracking output, QC, and dispatches in minutes."}
@@ -487,15 +520,15 @@ export default function Auth() {
               </div>
 
               {/* Segmented control */}
-              <div className="grid grid-cols-2 p-1 rounded-lg bg-white/10 lg:bg-muted/60 ring-1 ring-white/15 lg:ring-0 border-0 lg:border lg:border-border/50 gap-1">
+              <div className="grid grid-cols-2 p-1 rounded-lg bg-muted/60 border border-border/50 gap-1">
                 <button
                   type="button"
                   onClick={() => setActiveTab("login")}
                   className={cn(
                     "py-2 text-sm font-semibold rounded-md transition-all",
                     activeTab === "login"
-                      ? "bg-white text-slate-900 shadow-sm lg:bg-card lg:text-foreground"
-                      : "text-white/70 hover:text-white lg:text-muted-foreground lg:hover:text-foreground"
+                      ? "bg-card shadow-sm text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
                   )}
                 >
                   Login
@@ -506,8 +539,8 @@ export default function Auth() {
                   className={cn(
                     "py-2 text-sm font-semibold rounded-md transition-all",
                     activeTab === "signup"
-                      ? "bg-white text-slate-900 shadow-sm lg:bg-card lg:text-foreground"
-                      : "text-white/70 hover:text-white lg:text-muted-foreground lg:hover:text-foreground"
+                      ? "bg-card shadow-sm text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
                   )}
                 >
                   Sign Up
@@ -550,14 +583,13 @@ export default function Auth() {
                   <div className="flex items-center justify-between">
                     <label
                       htmlFor="remember-me"
-                      className="flex items-center gap-2 text-sm text-white/80 lg:text-muted-foreground cursor-pointer select-none"
+                      className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none"
                     >
                       <Checkbox
                         id="remember-me"
                         checked={rememberMe}
                         onCheckedChange={(c) => setRememberMe(c === true)}
                         disabled={isLoading}
-                        className="border-white/40 lg:border-input data-[state=checked]:bg-white data-[state=checked]:text-slate-900 lg:data-[state=checked]:bg-primary lg:data-[state=checked]:text-primary-foreground"
                       />
                       Remember me
                     </label>
@@ -567,7 +599,7 @@ export default function Auth() {
                         <Button
                           variant="link"
                           type="button"
-                          className="px-0 h-auto text-sm text-sky-300 hover:text-sky-200 lg:text-blue-600 lg:hover:text-blue-700 lg:dark:text-blue-400"
+                          className="px-0 h-auto text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700"
                         >
                           Forgot password?
                         </Button>
@@ -706,7 +738,7 @@ export default function Auth() {
                 </form>
               )}
 
-              <p className="text-center text-[11px] text-white/65 lg:text-muted-foreground pt-2">
+              <p className="text-center text-[11px] text-muted-foreground pt-2">
                 By continuing, you agree to our{" "}
                 <span className="underline-offset-2 hover:underline cursor-pointer">
                   Terms of Service
@@ -719,6 +751,7 @@ export default function Auth() {
               </p>
             </div>
           )}
+            </div>
           </div>
         </div>
       </div>
@@ -731,27 +764,7 @@ export default function Auth() {
 function MobileHero() {
   const bars = [42, 58, 51, 70, 64, 82, 76, 95];
   return (
-    <div className="lg:hidden relative overflow-hidden text-white px-5 sm:px-8 pt-7 pb-8">
-      {/* Decorative blurs */}
-      <div
-        aria-hidden
-        className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-amber-400/15 blur-3xl pointer-events-none"
-      />
-      <div
-        aria-hidden
-        className="absolute -bottom-12 -left-12 w-48 h-48 rounded-full bg-sky-400/25 blur-3xl pointer-events-none"
-      />
-      {/* Dot grid */}
-      <div
-        aria-hidden
-        className="absolute inset-0 opacity-[0.06] pointer-events-none"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)",
-          backgroundSize: "18px 18px",
-        }}
-      />
-
+    <div className="lg:hidden relative text-white px-5 sm:px-8 pt-7 pb-8">
       {/* Logo */}
       <div className="relative flex items-center gap-3">
         <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-blue-600 to-sky-500 flex items-center justify-center shadow-lg shadow-blue-500/30">
