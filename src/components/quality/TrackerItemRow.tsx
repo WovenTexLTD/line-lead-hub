@@ -132,13 +132,13 @@ export function TrackerItemRow({ item, updatedBy, disabled, onLocalUpdate }: Pro
         </div>
 
         {/* Target date — with calendar icon prefix so it reads as a date field on mobile */}
-        <div className="md:col-span-3 space-y-1">
+        <div className="md:col-span-3 space-y-1 min-w-0">
           <label className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground flex items-center gap-1">
             <Calendar className="h-3 w-3" />
             Target date
           </label>
-          <div className="relative">
-            <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+          <div className="relative w-full min-w-0">
+            <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none z-10" />
             <Input
               type="date"
               value={targetDate}
@@ -149,7 +149,14 @@ export function TrackerItemRow({ item, updatedBy, disabled, onLocalUpdate }: Pro
                 }
               }}
               aria-label="Target date"
-              className="h-9 text-xs pl-8 tabular-nums"
+              // w-full min-w-0 + appearance:none cancels iOS Safari's intrinsic
+              // minimum width on type=date so the input fits its parent on phones.
+              className="h-9 text-xs pl-8 pr-2 tabular-nums w-full min-w-0 block"
+              style={{
+                WebkitAppearance: "none",
+                MozAppearance: "textfield",
+                appearance: "none" as React.CSSProperties["appearance"],
+              }}
               disabled={disabled || busy}
             />
           </div>
