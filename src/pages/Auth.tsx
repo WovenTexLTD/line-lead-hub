@@ -392,9 +392,9 @@ export default function Auth() {
         {/* Mobile hero (hidden on lg) */}
         <MobileHero />
 
-        {/* Form panel — frosted card on mobile, plain on desktop */}
-        <div className="flex-1 flex items-start lg:items-center justify-center px-4 sm:px-6 lg:p-12 pt-4 pb-8 lg:pt-12 lg:pb-12 relative">
-          <div className="relative w-full max-w-md rounded-2xl bg-card/95 lg:bg-transparent backdrop-blur-xl lg:backdrop-blur-none ring-1 ring-white/10 lg:ring-0 shadow-2xl shadow-black/30 lg:shadow-none p-5 sm:p-6 lg:p-0 space-y-6">
+        {/* Form panel — sits directly on the gradient on mobile, plain on desktop */}
+        <div className="flex-1 flex items-start lg:items-center justify-center px-5 sm:px-6 lg:p-12 pt-2 pb-10 lg:pt-12 lg:pb-12 relative text-white lg:text-foreground">
+          <div className="relative w-full max-w-md space-y-6">
 
           {isPasswordResetMode ? (
             // Reset mode
@@ -479,7 +479,7 @@ export default function Auth() {
                 <h1 className="text-3xl font-bold tracking-tight">
                   {activeTab === "login" ? "Welcome back." : "Create your account."}
                 </h1>
-                <p className="text-sm text-muted-foreground mt-1.5">
+                <p className="text-sm text-white/75 lg:text-muted-foreground mt-1.5">
                   {activeTab === "login"
                     ? "Sign in to continue managing your production floor."
                     : "Start tracking output, QC, and dispatches in minutes."}
@@ -487,15 +487,15 @@ export default function Auth() {
               </div>
 
               {/* Segmented control */}
-              <div className="grid grid-cols-2 p-1 rounded-lg bg-muted/60 border border-border/50 gap-1">
+              <div className="grid grid-cols-2 p-1 rounded-lg bg-white/10 lg:bg-muted/60 ring-1 ring-white/15 lg:ring-0 border-0 lg:border lg:border-border/50 gap-1">
                 <button
                   type="button"
                   onClick={() => setActiveTab("login")}
                   className={cn(
                     "py-2 text-sm font-semibold rounded-md transition-all",
                     activeTab === "login"
-                      ? "bg-card shadow-sm text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "bg-white text-slate-900 shadow-sm lg:bg-card lg:text-foreground"
+                      : "text-white/70 hover:text-white lg:text-muted-foreground lg:hover:text-foreground"
                   )}
                 >
                   Login
@@ -506,8 +506,8 @@ export default function Auth() {
                   className={cn(
                     "py-2 text-sm font-semibold rounded-md transition-all",
                     activeTab === "signup"
-                      ? "bg-card shadow-sm text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "bg-white text-slate-900 shadow-sm lg:bg-card lg:text-foreground"
+                      : "text-white/70 hover:text-white lg:text-muted-foreground lg:hover:text-foreground"
                   )}
                 >
                   Sign Up
@@ -550,13 +550,14 @@ export default function Auth() {
                   <div className="flex items-center justify-between">
                     <label
                       htmlFor="remember-me"
-                      className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none"
+                      className="flex items-center gap-2 text-sm text-white/80 lg:text-muted-foreground cursor-pointer select-none"
                     >
                       <Checkbox
                         id="remember-me"
                         checked={rememberMe}
                         onCheckedChange={(c) => setRememberMe(c === true)}
                         disabled={isLoading}
+                        className="border-white/40 lg:border-input data-[state=checked]:bg-white data-[state=checked]:text-slate-900 lg:data-[state=checked]:bg-primary lg:data-[state=checked]:text-primary-foreground"
                       />
                       Remember me
                     </label>
@@ -566,7 +567,7 @@ export default function Auth() {
                         <Button
                           variant="link"
                           type="button"
-                          className="px-0 h-auto text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700"
+                          className="px-0 h-auto text-sm text-sky-300 hover:text-sky-200 lg:text-blue-600 lg:hover:text-blue-700 lg:dark:text-blue-400"
                         >
                           Forgot password?
                         </Button>
@@ -705,7 +706,7 @@ export default function Auth() {
                 </form>
               )}
 
-              <p className="text-center text-[11px] text-muted-foreground pt-2">
+              <p className="text-center text-[11px] text-white/65 lg:text-muted-foreground pt-2">
                 By continuing, you agree to our{" "}
                 <span className="underline-offset-2 hover:underline cursor-pointer">
                   Terms of Service
