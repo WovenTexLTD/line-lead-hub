@@ -28,6 +28,8 @@ import {
   TrendingUp,
   Truck,
   Sparkles,
+  Clock,
+  Boxes,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
@@ -777,29 +779,50 @@ function BrandPanel() {
             </p>
           </div>
 
-          <div className="space-y-3 max-w-sm">
-            <FloatingStat
+          <div className="relative h-[280px] xl:h-[320px] max-w-xl">
+            <MiniStat
               icon={TrendingUp}
-              label="Today's sewing output"
-              value="12,450 pcs"
-              sub="+8.2% vs yesterday"
+              label="Output today"
+              value="12,450"
+              unit="pcs"
               tone="emerald"
+              className="top-0 left-0"
+              rotate="-2deg"
             />
-            <FloatingStat
+            <MiniStat
               icon={ShieldCheck}
               label="QC pass rate"
-              value="97.2%"
-              sub="3-day clean streak"
-              tone="blue"
-              offset="2.5rem"
+              value="97.2"
+              unit="%"
+              tone="sky"
+              className="top-[8%] right-[2%]"
+              rotate="2.5deg"
             />
-            <FloatingStat
+            <MiniStat
               icon={Truck}
               label="Ready to ship"
-              value="3,800 pcs"
-              sub="Across 4 active POs"
+              value="3,800"
+              unit="pcs"
               tone="amber"
-              offset="1.25rem"
+              className="top-[42%] left-[14%]"
+              rotate="-1.5deg"
+            />
+            <MiniStat
+              icon={Clock}
+              label="On-time delivery"
+              value="94"
+              unit="%"
+              tone="teal"
+              className="top-[55%] right-[10%]"
+              rotate="1.5deg"
+            />
+            <MiniStat
+              icon={Boxes}
+              label="Active orders"
+              value="14"
+              tone="rose"
+              className="bottom-0 left-[4%]"
+              rotate="-3deg"
             />
           </div>
         </div>
@@ -828,48 +851,55 @@ function BrandPanel() {
   );
 }
 
-function FloatingStat({
+function MiniStat({
   icon: Icon,
   label,
   value,
-  sub,
+  unit,
   tone,
-  offset,
+  className,
+  rotate,
 }: {
   icon: typeof TrendingUp;
   label: string;
   value: string;
-  sub: string;
-  tone: "emerald" | "blue" | "amber";
-  offset?: string;
+  unit?: string;
+  tone: "emerald" | "sky" | "amber" | "teal" | "rose";
+  className?: string;
+  rotate?: string;
 }) {
   const palette = {
     emerald: "from-emerald-500 to-teal-600 shadow-emerald-500/40",
-    blue: "from-sky-500 to-blue-600 shadow-sky-500/40",
+    sky: "from-sky-500 to-blue-600 shadow-sky-500/40",
     amber: "from-amber-500 to-orange-500 shadow-amber-500/40",
+    teal: "from-teal-500 to-cyan-600 shadow-teal-500/40",
+    rose: "from-rose-500 to-pink-600 shadow-rose-500/40",
   }[tone];
 
   return (
     <div
-      style={offset ? { marginLeft: offset } : undefined}
-      className="rounded-xl bg-white/10 backdrop-blur-md ring-1 ring-white/20 p-3.5 flex items-center gap-3 hover:bg-white/15 transition-colors"
+      style={rotate ? { transform: `rotate(${rotate})` } : undefined}
+      className={cn(
+        "absolute rounded-xl bg-white/10 backdrop-blur-md ring-1 ring-white/15 px-3 py-2.5 flex items-center gap-2.5 shadow-xl shadow-black/20 hover:bg-white/15 hover:ring-white/25 transition-all whitespace-nowrap",
+        className
+      )}
     >
       <div
         className={cn(
-          "h-10 w-10 rounded-lg flex items-center justify-center shadow-lg shrink-0 bg-gradient-to-br",
+          "h-8 w-8 rounded-md flex items-center justify-center shadow-md shrink-0 bg-gradient-to-br",
           palette
         )}
       >
-        <Icon className="h-5 w-5 text-white" />
+        <Icon className="h-4 w-4 text-white" />
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-[10px] uppercase tracking-[0.12em] font-semibold text-white/60">
+      <div className="min-w-0">
+        <p className="text-[9px] uppercase tracking-[0.12em] font-semibold text-white/60 leading-tight">
           {label}
         </p>
-        <p className="font-mono text-lg font-bold tabular-nums leading-none mt-0.5">
+        <p className="font-mono text-sm font-bold tabular-nums leading-tight mt-0.5">
           {value}
+          {unit && <span className="text-white/70 font-medium ml-1">{unit}</span>}
         </p>
-        <p className="text-[11px] text-white/70 mt-1">{sub}</p>
       </div>
     </div>
   );
