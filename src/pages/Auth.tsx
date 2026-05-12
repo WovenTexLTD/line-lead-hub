@@ -36,6 +36,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getRememberMe } from "@/lib/auth-storage";
 import { getPasswordResetRedirectUrl } from "@/lib/capacitor";
 import logoSvg from "@/assets/logo.svg";
+import logoWhiteSvg from "@/assets/logo-white.svg";
 import i18n from "@/i18n/config";
 
 const strongPassword = z
@@ -102,7 +103,7 @@ export default function Auth() {
     typeof window !== "undefined" &&
     sessionStorage.getItem("pp_force_password_reset") === "1";
 
-  // Password-reset mode — detect from URL on mount
+  // Password-reset mode: detect from URL on mount
   const getIsRecoveryMode = () => {
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const accessToken = hashParams.get("access_token");
@@ -371,23 +372,25 @@ export default function Auth() {
           "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif",
       }}
     >
-      {/* ── Left brand panel — hidden below lg ───────────────────────── */}
+      {/* Left brand panel (hidden below lg) */}
       <BrandPanel />
 
-      {/* ── Right form panel ──────────────────────────────────────────── */}
+      {/* Right form panel */}
       <div className="flex-1 flex items-center justify-center p-5 sm:p-8 lg:p-12 bg-background relative overflow-hidden">
         {/* Subtle mobile-only ambient gradient */}
         <div
           aria-hidden
-          className="lg:hidden absolute top-0 inset-x-0 h-64 bg-gradient-to-b from-indigo-50/60 via-violet-50/30 to-transparent dark:from-indigo-950/40 dark:via-violet-950/20 pointer-events-none"
+          className="lg:hidden absolute top-0 inset-x-0 h-64 bg-gradient-to-b from-blue-50/70 via-sky-50/30 to-transparent dark:from-blue-950/40 dark:via-sky-950/20 pointer-events-none"
         />
 
         <div className="relative w-full max-w-md space-y-6">
           {/* Mobile logo (hidden on lg, the brand panel handles it there) */}
           <div className="lg:hidden flex items-center gap-3">
-            <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
-              <img src={logoSvg} alt="" className="h-7 w-7 brightness-0 invert" />
-            </div>
+            <img
+              src={logoSvg}
+              alt="ProductionPortal"
+              className="h-11 w-11 rounded-xl shadow-lg shadow-blue-500/25"
+            />
             <div>
               <p className="text-base font-bold leading-tight">ProductionPortal</p>
               <p className="text-[11px] text-muted-foreground leading-tight">
@@ -397,7 +400,7 @@ export default function Auth() {
           </div>
 
           {isPasswordResetMode ? (
-            // ── Reset mode ──────────────────────────────────────────
+            // Reset mode
             <div className="space-y-6 animate-fade-in">
               <div className="flex items-start gap-3">
                 <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/25 shrink-0">
@@ -473,7 +476,7 @@ export default function Auth() {
               </form>
             </div>
           ) : (
-            // ── Login + Signup ───────────────────────────────────────
+            // Login + Signup
             <div className="space-y-6 animate-fade-in">
               <div>
                 <h1 className="text-3xl font-bold tracking-tight">
@@ -566,7 +569,7 @@ export default function Auth() {
                         <Button
                           variant="link"
                           type="button"
-                          className="px-0 h-auto text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700"
+                          className="px-0 h-auto text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700"
                         >
                           Forgot password?
                         </Button>
@@ -574,7 +577,7 @@ export default function Auth() {
                       <DialogContent className="sm:max-w-md">
                         <DialogHeader>
                           <div className="flex items-start gap-3 mb-2">
-                            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/25 shrink-0">
+                            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-600 to-sky-500 flex items-center justify-center shadow-lg shadow-blue-500/25 shrink-0">
                               <KeyRound className="h-5 w-5 text-white" />
                             </div>
                             <div>
@@ -599,7 +602,7 @@ export default function Auth() {
                           />
                           <Button
                             type="submit"
-                            className="w-full h-11 gap-2 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-500/25 text-white"
+                            className="w-full h-11 gap-2 bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-700 hover:to-sky-600 shadow-md shadow-blue-500/25 text-white"
                             disabled={forgotPasswordLoading}
                           >
                             {forgotPasswordLoading ? (
@@ -618,7 +621,7 @@ export default function Auth() {
 
                   <Button
                     type="submit"
-                    className="w-full h-11 gap-2 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 shadow-lg shadow-indigo-500/30 text-white"
+                    className="w-full h-11 gap-2 bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-700 hover:to-sky-600 shadow-lg shadow-blue-500/30 text-white"
                     disabled={isLoading}
                   >
                     {isLoading ? (
@@ -690,7 +693,7 @@ export default function Auth() {
                   />
                   <Button
                     type="submit"
-                    className="w-full h-11 gap-2 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 shadow-lg shadow-indigo-500/30 text-white"
+                    className="w-full h-11 gap-2 bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-700 hover:to-sky-600 shadow-lg shadow-blue-500/30 text-white"
                     disabled={isLoading}
                   >
                     {isLoading ? (
@@ -724,11 +727,11 @@ export default function Auth() {
   );
 }
 
-// ── Brand panel (desktop only) ───────────────────────────────────────
+// Brand panel (desktop only)
 
 function BrandPanel() {
   return (
-    <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-indigo-600 via-violet-700 to-purple-900 text-white">
+    <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-blue-700 via-blue-800 to-slate-900 text-white">
       {/* Decorative blurs */}
       <div
         aria-hidden
@@ -753,7 +756,7 @@ function BrandPanel() {
         {/* Logo */}
         <div className="flex items-center gap-3">
           <div className="h-12 w-12 rounded-xl bg-white/10 backdrop-blur-sm ring-1 ring-white/20 flex items-center justify-center">
-            <img src={logoSvg} alt="" className="h-7 w-7 brightness-0 invert" />
+            <img src={logoWhiteSvg} alt="" className="h-8 w-8" />
           </div>
           <div>
             <p className="text-base font-bold tracking-tight leading-tight">
@@ -772,8 +775,8 @@ function BrandPanel() {
               Run your factory floor in real time.
             </h2>
             <p className="text-base text-white/70 mt-4 max-w-md leading-relaxed">
-              Daily output, QC sign-offs, dispatches and team workflows — one
-              source of truth from the first stitch to the loading bay.
+              Daily output, QC sign-offs, dispatches, and team workflows in one
+              place. A single source of truth from the first stitch to the loading bay.
             </p>
           </div>
 
@@ -845,7 +848,7 @@ function FloatingStat({
 }) {
   const palette = {
     emerald: "from-emerald-500 to-teal-600 shadow-emerald-500/40",
-    blue: "from-blue-500 to-indigo-600 shadow-blue-500/40",
+    blue: "from-sky-500 to-blue-600 shadow-sky-500/40",
     amber: "from-amber-500 to-orange-500 shadow-amber-500/40",
   }[tone];
 
@@ -875,7 +878,7 @@ function FloatingStat({
   );
 }
 
-// ── Form helpers ─────────────────────────────────────────────────────
+// Form helpers
 
 function FieldWithIcon({
   id,
@@ -967,7 +970,7 @@ function PasswordChecklist({
   checks: { length: boolean; lower: boolean; upper: boolean; digit: boolean };
   value: string;
 }) {
-  // Only render once the user has started typing — keeps the form clean.
+  // Only render once the user has started typing, keeps the form clean.
   if (!value) return null;
   const items: Array<[boolean, string]> = [
     [checks.length, "8+ characters"],
