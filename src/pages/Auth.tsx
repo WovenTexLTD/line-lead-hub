@@ -101,16 +101,30 @@ export default function Auth() {
     };
   }, []);
 
-  // Tint the iOS Safari URL bar to match the auth gradient
+  // Tint iOS Safari chrome + paint <html>/<body> with the gradient on mobile,
+  // so the color extends behind the URL bar and bottom toolbar at any scroll.
   useEffect(() => {
     const meta = document.querySelector<HTMLMetaElement>(
       'meta[name="theme-color"]'
     );
-    if (!meta) return;
-    const original = meta.content;
-    meta.content = "#1d4ed8";
+    const originalThemeColor = meta?.content ?? "";
+    if (meta) meta.content = "#1d4ed8";
+
+    const styleTag = document.createElement("style");
+    styleTag.setAttribute("data-auth-bg", "true");
+    styleTag.textContent = `
+      @media (max-width: 1023px) {
+        html, body {
+          background: linear-gradient(to bottom, rgb(29, 78, 216) 0%, rgb(30, 58, 138) 50%, rgb(15, 23, 42) 100%) !important;
+          background-attachment: fixed !important;
+        }
+      }
+    `;
+    document.head.appendChild(styleTag);
+
     return () => {
-      meta.content = original;
+      if (meta) meta.content = originalThemeColor;
+      styleTag.remove();
     };
   }, []);
 
@@ -421,7 +435,7 @@ export default function Auth() {
         <BrandPanel />
 
         {/* Right side: mobile hero + form */}
-        <div className="flex-1 flex flex-col min-w-0 relative">
+        <div className="flex-1 flex flex-col min-w-0 relative lg:bg-background">
           {/* Mobile hero (hidden on lg) */}
           <MobileHero />
 
@@ -762,15 +776,14 @@ export default function Auth() {
 // Mobile hero (mobile only)
 
 function MobileHero() {
-  const bars = [42, 58, 51, 70, 64, 82, 76, 95];
   return (
-    <div className="lg:hidden relative text-white px-5 sm:px-8 pt-7 pb-8">
+    <div className="lg:hidden relative text-white px-5 sm:px-8 pt-8 pb-6 flex flex-col items-center text-center">
       {/* Logo */}
-      <div className="relative flex items-center gap-3">
-        <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-blue-600 to-sky-500 flex items-center justify-center shadow-lg shadow-blue-500/30">
-          <img src={logoWhiteSvg} alt="" className="h-7 w-7" />
+      <div className="flex items-center gap-3">
+        <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-600 to-sky-500 flex items-center justify-center shadow-lg shadow-blue-500/30">
+          <img src={logoWhiteSvg} alt="" className="h-8 w-8" />
         </div>
-        <div>
+        <div className="text-left">
           <p className="text-base font-bold leading-tight">ProductionPortal</p>
           <p className="text-[10px] text-white/60 leading-tight uppercase tracking-[0.14em]">
             by WovenTex
@@ -778,81 +791,16 @@ function MobileHero() {
         </div>
       </div>
 
-      {/* Compact headline */}
-      <h2 className="relative mt-5 text-[22px] font-bold tracking-tight leading-[1.15] text-balance">
+      {/* Headline */}
+      <h2 className="mt-6 text-[26px] font-bold tracking-tight leading-[1.1] text-balance max-w-sm">
         Run your factory floor in real time.
       </h2>
 
-      {/* Compact dashboard preview */}
-      <div className="relative mt-5 rounded-xl bg-white/[0.08] backdrop-blur-md ring-1 ring-white/15 shadow-xl shadow-black/30 p-3.5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400/70 opacity-75 animate-ping" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            </span>
-            <span className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/80">
-              Production today
-            </span>
-          </div>
-          <span className="text-[9px] text-white/40">Live</span>
-        </div>
-
-        <div className="mt-2 flex items-baseline gap-2">
-          <p className="font-mono text-2xl font-bold tabular-nums tracking-tight">
-            12,450
-          </p>
-          <span className="text-xs text-white/60 font-medium">pcs</span>
-          <span className="ml-auto inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-300 bg-emerald-500/15 ring-1 ring-emerald-400/30 rounded-md px-1.5 py-0.5">
-            <TrendingUp className="h-2.5 w-2.5" />
-            +8.2%
-          </span>
-        </div>
-
-        {/* Mini bars */}
-        <div className="mt-3 flex items-end gap-1 h-9">
-          {bars.map((h, i) => (
-            <div
-              key={i}
-              style={{ height: `${h}%` }}
-              className={cn(
-                "flex-1 rounded-sm",
-                i === bars.length - 1
-                  ? "bg-gradient-to-t from-emerald-500 to-emerald-300 shadow-md shadow-emerald-500/40"
-                  : "bg-white/15"
-              )}
-            />
-          ))}
-        </div>
-
-        {/* Inline stats */}
-        <div className="mt-3 pt-3 border-t border-white/10 grid grid-cols-3 gap-1">
-          <div className="text-center">
-            <p className="text-[8px] uppercase text-white/50 font-semibold tracking-[0.14em]">
-              QC pass
-            </p>
-            <p className="font-mono text-xs font-bold tabular-nums mt-0.5">
-              97.2%
-            </p>
-          </div>
-          <div className="text-center border-l border-r border-white/10">
-            <p className="text-[8px] uppercase text-white/50 font-semibold tracking-[0.14em]">
-              On-time
-            </p>
-            <p className="font-mono text-xs font-bold tabular-nums mt-0.5">
-              94%
-            </p>
-          </div>
-          <div className="text-center">
-            <p className="text-[8px] uppercase text-white/50 font-semibold tracking-[0.14em]">
-              Lines
-            </p>
-            <p className="font-mono text-xs font-bold tabular-nums mt-0.5">
-              6 / 8
-            </p>
-          </div>
-        </div>
-      </div>
+      {/* Description (mirrors desktop brand panel copy) */}
+      <p className="mt-3 text-sm text-white/75 leading-relaxed max-w-sm text-pretty">
+        Daily output, QC sign-offs, dispatches, and team workflows in one place.
+        A single source of truth from the first stitch to the loading bay.
+      </p>
     </div>
   );
 }
