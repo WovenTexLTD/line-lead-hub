@@ -272,7 +272,10 @@ function drawSectionHeader(
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
-  doc.text(`PHASE ${phaseNum}  —  ${label.toUpperCase()}`, margin + 3, ctx.y + 6);
+  // Strip "PHASE N —" / "SECTION N —" prefix the template label may already
+  // include — otherwise the phase number renders twice in the banner.
+  const cleanLabel = label.replace(/^(PHASE|SECTION)\s+\d+\s*[—\-:]\s*/i, "");
+  doc.text(`PHASE ${phaseNum}  —  ${cleanLabel.toUpperCase()}`, margin + 3, ctx.y + 6);
 
   // Right-side summary — ASCII only; jsPDF's default Helvetica is Latin-1
   // and renders unicode glyphs (checks, alerts, hourglasses) as garbage.

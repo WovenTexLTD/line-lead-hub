@@ -464,11 +464,13 @@ export default function QCDailySheetDetail() {
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="text-[10px] font-mono font-bold text-white/70 tabular-nums shrink-0">
-                    PHASE {g.order}
+                    SECTION {g.order}
                   </span>
                   <span className="text-white/40 shrink-0">—</span>
                   <h2 className="text-sm md:text-base font-bold text-white uppercase tracking-wide truncate">
-                    {g.label}
+                    {/* Strip any leading "SECTION N —" / "PHASE N —" the template label
+                        already carries, otherwise we render the number twice. */}
+                    {g.label.replace(/^(PHASE|SECTION)\s+\d+\s*[—\-:]\s*/i, "")}
                   </h2>
                 </div>
                 <div className="flex items-center gap-2 sm:gap-2.5 text-[11px] shrink-0 font-mono tabular-nums flex-wrap">

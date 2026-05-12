@@ -455,7 +455,9 @@ export default function QCOrderManagerDetail() {
                   </span>
                   <span className="text-white/40 shrink-0">—</span>
                   <h2 className="text-sm md:text-base font-bold text-white uppercase tracking-wide truncate">
-                    {g.label}
+                    {/* Strip any leading "PHASE N —" / "SECTION N —" the template label
+                        already carries, otherwise we render the phase number twice. */}
+                    {g.label.replace(/^(PHASE|SECTION)\s+\d+\s*[—\-:]\s*/i, "")}
                   </h2>
                 </div>
                 <div className="flex items-center gap-2 sm:gap-2.5 text-[11px] shrink-0 font-mono tabular-nums flex-wrap">
