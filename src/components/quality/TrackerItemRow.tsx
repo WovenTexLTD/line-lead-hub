@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle2, MinusCircle, Clock } from "lucide-react";
+import { AlertTriangle, CheckCircle2, MinusCircle, Clock, Calendar, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -91,9 +91,13 @@ export function TrackerItemRow({ item, updatedBy, disabled, onLocalUpdate }: Pro
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-2 mt-3 md:ml-[60px]">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 mt-3 md:ml-[60px]">
         {/* Status */}
-        <div className="md:col-span-3">
+        <div className="md:col-span-3 space-y-1">
+          <label className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground flex items-center gap-1">
+            <CheckCircle2 className="h-3 w-3" />
+            Status
+          </label>
           <Select
             value={item.status}
             onValueChange={(v) => commit({ status: v as OrderTrackerItem["status"] })}
@@ -127,25 +131,36 @@ export function TrackerItemRow({ item, updatedBy, disabled, onLocalUpdate }: Pro
           </Select>
         </div>
 
-        {/* Target date */}
-        <div className="md:col-span-3">
-          <Input
-            type="date"
-            value={targetDate}
-            onChange={(e) => setTargetDate(e.target.value)}
-            onBlur={() => {
-              if ((targetDate || null) !== (item.target_date || null)) {
-                commit({ target_date: targetDate || null });
-              }
-            }}
-            placeholder="Target date"
-            className="h-9 text-xs"
-            disabled={disabled || busy}
-          />
+        {/* Target date — with calendar icon prefix so it reads as a date field on mobile */}
+        <div className="md:col-span-3 space-y-1">
+          <label className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground flex items-center gap-1">
+            <Calendar className="h-3 w-3" />
+            Target date
+          </label>
+          <div className="relative">
+            <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+            <Input
+              type="date"
+              value={targetDate}
+              onChange={(e) => setTargetDate(e.target.value)}
+              onBlur={() => {
+                if ((targetDate || null) !== (item.target_date || null)) {
+                  commit({ target_date: targetDate || null });
+                }
+              }}
+              aria-label="Target date"
+              className="h-9 text-xs pl-8 tabular-nums"
+              disabled={disabled || busy}
+            />
+          </div>
         </div>
 
         {/* Notes */}
-        <div className="md:col-span-6">
+        <div className="md:col-span-6 space-y-1">
+          <label className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground flex items-center gap-1">
+            <MessageSquare className="h-3 w-3" />
+            Notes / actions
+          </label>
           <Textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}

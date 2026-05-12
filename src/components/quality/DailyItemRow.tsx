@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle2, MinusCircle, Clock } from "lucide-react";
+import { AlertTriangle, CheckCircle2, MinusCircle, Clock, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
@@ -82,8 +82,12 @@ export function DailyItemRow({ item, updatedBy, disabled, onLocalUpdate }: Props
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-2 mt-3 md:ml-[60px]">
-        <div className="md:col-span-3">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 mt-3 md:ml-[60px]">
+        <div className="md:col-span-3 space-y-1">
+          <label className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground flex items-center gap-1">
+            <CheckCircle2 className="h-3 w-3" />
+            Status
+          </label>
           <Select
             value={item.status}
             onValueChange={(v) => commit({ status: v as DailyItemStatus })}
@@ -117,7 +121,11 @@ export function DailyItemRow({ item, updatedBy, disabled, onLocalUpdate }: Props
           </Select>
         </div>
 
-        <div className="md:col-span-9">
+        <div className="md:col-span-9 space-y-1">
+          <label className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground flex items-center gap-1">
+            <MessageSquare className="h-3 w-3" />
+            {item.status === "fail" ? "Defect description" : "Notes"}
+          </label>
           <Textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
