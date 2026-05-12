@@ -732,7 +732,17 @@ function NewSheetDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden max-h-[90vh] flex flex-col">
+      <DialogContent
+        className={cn(
+          "sm:max-w-lg p-0 gap-0 overflow-hidden flex flex-col",
+          // Mobile: anchor near the top so the footer can't fall below the
+          // browser chrome. iOS Safari's `100vh` includes hidden chrome and
+          // overflows the visible viewport — `dvh` accounts for it.
+          "top-4 translate-y-0 max-h-[calc(100dvh-2rem)]",
+          // Desktop: standard center positioning + 90vh cap
+          "sm:top-[50%] sm:-translate-y-[50%] sm:max-h-[90vh]"
+        )}
+      >
         {/* Blue accent strip — matches the daily sheet brand color */}
         <div className="h-[3px] bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-600 shrink-0" />
 
@@ -883,8 +893,11 @@ function NewSheetDialog({
           )}
         </div>
 
-        {/* Pinned footer */}
-        <DialogFooter className="px-6 py-4 border-t border-border/60 bg-muted/30 shrink-0 sm:justify-end gap-2">
+        {/* Pinned footer — extra bottom padding for iOS home-indicator safe area */}
+        <DialogFooter
+          className="px-6 py-4 border-t border-border/60 bg-muted/30 shrink-0 sm:justify-end gap-2"
+          style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+        >
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
