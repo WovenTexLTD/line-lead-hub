@@ -101,32 +101,8 @@ export default function Auth() {
     };
   }, []);
 
-  // Tint iOS Safari chrome + paint <html>/<body> with the gradient on mobile,
-  // so the color extends behind the URL bar and bottom toolbar at any scroll.
-  useEffect(() => {
-    const meta = document.querySelector<HTMLMetaElement>(
-      'meta[name="theme-color"]'
-    );
-    const originalThemeColor = meta?.content ?? "";
-    if (meta) meta.content = "#1d4ed8";
-
-    const styleTag = document.createElement("style");
-    styleTag.setAttribute("data-auth-bg", "true");
-    styleTag.textContent = `
-      @media (max-width: 1023px) {
-        html, body {
-          background: linear-gradient(to bottom, rgb(29, 78, 216) 0%, rgb(30, 58, 138) 50%, rgb(15, 23, 42) 100%) !important;
-          background-attachment: fixed !important;
-        }
-      }
-    `;
-    document.head.appendChild(styleTag);
-
-    return () => {
-      if (meta) meta.content = originalThemeColor;
-      styleTag.remove();
-    };
-  }, []);
+  // Leave the global theme-color alone so the iOS URL bar matches the page
+  // background (white on mobile). The dark hero stops at the form card.
 
   const isForcedPasswordReset =
     typeof window !== "undefined" &&
@@ -401,47 +377,18 @@ export default function Auth() {
           "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif",
       }}
     >
-      {/* Mobile-only fixed gradient that fills behind iOS toolbars at any scroll */}
-      <div
-        aria-hidden
-        className="lg:hidden fixed inset-0 -z-10 bg-gradient-to-b from-blue-700 via-blue-800 to-slate-900 pointer-events-none"
-      />
-      {/* Mobile-only dot grid covering the entire viewport */}
-      <div
-        aria-hidden
-        className="lg:hidden fixed inset-0 -z-10 opacity-[0.07] pointer-events-none"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle at 1px 1px, white 1px, transparent 0)",
-          backgroundSize: "20px 20px",
-        }}
-      />
-      {/* Mobile-only decorative blurs spread across the viewport */}
-      <div
-        aria-hidden
-        className="lg:hidden fixed -top-20 -right-24 -z-10 w-72 h-72 rounded-full bg-amber-400/15 blur-3xl pointer-events-none"
-      />
-      <div
-        aria-hidden
-        className="lg:hidden fixed top-1/3 -left-24 -z-10 w-72 h-72 rounded-full bg-sky-400/25 blur-3xl pointer-events-none"
-      />
-      <div
-        aria-hidden
-        className="lg:hidden fixed bottom-0 -right-20 -z-10 w-72 h-72 rounded-full bg-blue-500/20 blur-3xl pointer-events-none"
-      />
-
       <div className="min-h-dvh flex">
         {/* Left brand panel (hidden below lg) */}
         <BrandPanel />
 
         {/* Right side: mobile hero + form */}
-        <div className="flex-1 flex flex-col min-w-0 relative lg:bg-background">
+        <div className="flex-1 flex flex-col min-w-0 relative bg-background">
           {/* Mobile hero (hidden on lg) */}
           <MobileHero />
 
-          {/* Form panel — white card on the gradient on mobile, plain on desktop */}
-          <div className="flex-1 flex items-start lg:items-center justify-center px-5 sm:px-6 lg:p-12 pt-2 pb-10 lg:pt-12 lg:pb-12 relative">
-            <div className="relative w-full max-w-md rounded-2xl bg-card lg:bg-transparent ring-1 ring-black/5 lg:ring-0 shadow-2xl shadow-black/30 lg:shadow-none p-5 sm:p-6 lg:p-0 space-y-6">
+          {/* Form panel — card overlaps hero on mobile, plain on desktop */}
+          <div className="flex-1 flex items-start lg:items-center justify-center px-5 sm:px-6 lg:p-12 pb-10 lg:pt-12 lg:pb-12 relative">
+            <div className="relative w-full max-w-md -mt-16 lg:mt-0 rounded-2xl bg-card lg:bg-transparent ring-1 ring-black/5 lg:ring-0 shadow-2xl shadow-black/30 lg:shadow-none p-5 sm:p-6 lg:p-0 space-y-6">
 
           {isPasswordResetMode ? (
             // Reset mode
@@ -777,9 +724,29 @@ export default function Auth() {
 
 function MobileHero() {
   return (
-    <div className="lg:hidden relative text-white px-5 sm:px-8 pt-8 pb-6 flex flex-col items-center text-center">
+    <div className="lg:hidden relative bg-gradient-to-br from-blue-900 via-slate-900 to-slate-900 text-white px-5 sm:px-8 pt-9 pb-24 flex flex-col items-center text-center overflow-hidden">
+      {/* Decorative dot grid */}
+      <div
+        aria-hidden
+        className="absolute inset-0 opacity-[0.06] pointer-events-none"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 1px 1px, white 1px, transparent 0)",
+          backgroundSize: "20px 20px",
+        }}
+      />
+      {/* Subtle accent blurs */}
+      <div
+        aria-hidden
+        className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-blue-500/20 blur-3xl pointer-events-none"
+      />
+      <div
+        aria-hidden
+        className="absolute -bottom-20 -left-16 w-56 h-56 rounded-full bg-sky-500/15 blur-3xl pointer-events-none"
+      />
+
       {/* Logo */}
-      <div className="flex items-center gap-3">
+      <div className="relative flex items-center gap-3">
         <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-600 to-sky-500 flex items-center justify-center shadow-lg shadow-blue-500/30">
           <img src={logoWhiteSvg} alt="" className="h-8 w-8" />
         </div>
@@ -792,12 +759,12 @@ function MobileHero() {
       </div>
 
       {/* Headline */}
-      <h2 className="mt-6 text-[26px] font-bold tracking-tight leading-[1.1] text-balance max-w-sm">
+      <h2 className="relative mt-6 text-[26px] font-bold tracking-tight leading-[1.1] text-balance max-w-sm">
         Run your factory floor in real time.
       </h2>
 
       {/* Description (mirrors desktop brand panel copy) */}
-      <p className="mt-3 text-sm text-white/75 leading-relaxed max-w-sm text-pretty">
+      <p className="relative mt-3 text-sm text-white/75 leading-relaxed max-w-sm text-pretty">
         Daily output, QC sign-offs, dispatches, and team workflows in one place.
         A single source of truth from the first stitch to the loading bay.
       </p>
