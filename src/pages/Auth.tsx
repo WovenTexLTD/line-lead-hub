@@ -378,13 +378,23 @@ export default function Auth() {
       <BrandPanel />
 
       {/* Right side: mobile hero + form */}
-      <div className="flex-1 flex flex-col bg-background min-w-0">
+      <div className="flex-1 flex flex-col bg-gradient-to-b from-blue-700 via-blue-800 to-slate-900 lg:bg-none lg:bg-background min-w-0 relative">
+        {/* Mobile-only decorative blurs that bleed past the hero into the form area */}
+        <div
+          aria-hidden
+          className="lg:hidden absolute top-1/3 -right-20 w-72 h-72 rounded-full bg-sky-400/20 blur-3xl pointer-events-none"
+        />
+        <div
+          aria-hidden
+          className="lg:hidden absolute top-1/2 -left-20 w-72 h-72 rounded-full bg-blue-500/15 blur-3xl pointer-events-none"
+        />
+
         {/* Mobile hero (hidden on lg) */}
         <MobileHero />
 
-        {/* Form panel */}
-        <div className="flex-1 flex items-start lg:items-center justify-center px-5 sm:px-8 lg:p-12 pt-6 pb-10">
-          <div className="relative w-full max-w-md space-y-6">
+        {/* Form panel — frosted card on mobile, plain on desktop */}
+        <div className="flex-1 flex items-start lg:items-center justify-center px-4 sm:px-6 lg:p-12 pt-4 pb-8 lg:pt-12 lg:pb-12 relative">
+          <div className="relative w-full max-w-md rounded-2xl bg-card/95 lg:bg-transparent backdrop-blur-xl lg:backdrop-blur-none ring-1 ring-white/10 lg:ring-0 shadow-2xl shadow-black/30 lg:shadow-none p-5 sm:p-6 lg:p-0 space-y-6">
 
           {isPasswordResetMode ? (
             // Reset mode
@@ -720,7 +730,7 @@ export default function Auth() {
 function MobileHero() {
   const bars = [42, 58, 51, 70, 64, 82, 76, 95];
   return (
-    <div className="lg:hidden relative overflow-hidden bg-gradient-to-br from-blue-700 via-blue-800 to-slate-900 text-white px-5 sm:px-8 pt-7 pb-9 rounded-b-3xl shadow-xl shadow-blue-950/30">
+    <div className="lg:hidden relative overflow-hidden text-white px-5 sm:px-8 pt-7 pb-8">
       {/* Decorative blurs */}
       <div
         aria-hidden
