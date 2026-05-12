@@ -113,6 +113,12 @@
     "owner": "业主",
     "storage": "仓储",
     "cutting": "裁剪",
+    "sewing": "缝纫",
+    "finishing": "整理",
+    "buyer": "买家 / 客户",
+    "superadmin": "超级管理员",
+    "gate_officer": "门卫",
+    "qc": "质量控制",
     "sewing_manager": "主管",
     "finishing_manager": "主管"
   },

@@ -38,6 +38,9 @@ import {
   CheckSquare,
   Archive,
   CalendarRange,
+  ShieldCheck,
+  ListChecks,
+  FolderOpen,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -103,6 +106,9 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   CheckSquare,
   Archive,
   CalendarRange,
+  ShieldCheck,
+  ListChecks,
+  FolderOpen,
 };
 
 const navLabelKeys: Record<string, string> = {
@@ -295,10 +301,11 @@ export function AppSidebar() {
   const isFinishingRole = roles.some(ur => ur.role === 'finishing');
   const isBuyerRole = roles.some(ur => ur.role === 'buyer');
   const isGateOfficerRole = roles.some(ur => ur.role === 'gate_officer');
+  const isQCRole = roles.some(ur => ur.role === 'qc');
   const roleHierarchy = ['owner', 'admin', 'worker'];
   const highestRole = roleHierarchy.find(r =>
     roles.some(ur => ur.role === r)
-  ) || (isStorageRole ? 'storage' : isCuttingRole ? 'cutting' : isSewingRole ? 'sewing' : isFinishingRole ? 'finishing' : isBuyerRole ? 'buyer' : isGateOfficerRole ? 'gate_officer' : 'worker');
+  ) || (isStorageRole ? 'storage' : isCuttingRole ? 'cutting' : isSewingRole ? 'sewing' : isFinishingRole ? 'finishing' : isBuyerRole ? 'buyer' : isGateOfficerRole ? 'gate_officer' : isQCRole ? 'qc' : 'worker');
 
   // Get nav items based on role and department
   let navItems = NAV_ITEMS[highestRole as keyof typeof NAV_ITEMS] || NAV_ITEMS.worker;
@@ -331,6 +338,11 @@ export function AppSidebar() {
   // For gate officer role
   if (isGateOfficerRole && highestRole === 'gate_officer') {
     navItems = NAV_ITEMS.gate_officer;
+  }
+
+  // For QC role (Quality Control)
+  if (isQCRole && highestRole === 'qc') {
+    navItems = (NAV_ITEMS as any).qc;
   }
 
   // Legacy: for workers, filter navigation based on department (only when in a factory)

@@ -79,6 +79,14 @@ const BuyerTodayUpdates = lazy(() => import("./pages/buyer/BuyerTodayUpdates"));
 const BuyerSubmissions = lazy(() => import("./pages/buyer/BuyerSubmissions"));
 const BuyerPODetails = lazy(() => import("./pages/buyer/BuyerPODetails"));
 const BuyerWorkspaceSelector = lazy(() => import("./pages/buyer/BuyerWorkspaceSelector"));
+const QCDashboard = lazy(() => import("./pages/quality/QCDashboard"));
+const QCOrderManagerList = lazy(() => import("./pages/quality/QCOrderManagerList"));
+const QCOrderManagerDetail = lazy(() => import("./pages/quality/QCOrderManagerDetail"));
+const QCDailySheetList = lazy(() => import("./pages/quality/QCDailySheetList"));
+const QCDailySheetDetail = lazy(() => import("./pages/quality/QCDailySheetDetail"));
+const QCMyRecords = lazy(() => import("./pages/quality/QCMyRecords"));
+const QCAdminTrackers = lazy(() => import("./pages/quality/QCAdminTrackers"));
+const QCAdminSheets = lazy(() => import("./pages/quality/QCAdminSheets"));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -223,6 +231,19 @@ function AppRoutes() {
         <Route path="/dispatch/review/:id" element={<SubscriptionGate><ProtectedRoute adminOnly><DispatchReview /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/dispatch/all" element={<SubscriptionGate><ProtectedRoute adminOnly><AllDispatches /></ProtectedRoute></SubscriptionGate>} />
         <Route path="/dispatch/pass/:id" element={<SubscriptionGate><ProtectedRoute allowedRoles={['gate_officer', 'admin', 'owner']}><GatePassView /></ProtectedRoute></SubscriptionGate>} />
+
+        {/* Quality Control. Dashboard is admin-only (oversight). Lists + detail
+            pages are shared (admin reviews, QC inspects); create-CTAs are
+            QC-only and gated inside each page. My Records is QC-only. */}
+        <Route path="/quality" element={<SubscriptionGate><ProtectedRoute adminOnly><QCDashboard /></ProtectedRoute></SubscriptionGate>} />
+        <Route path="/quality/order-manager" element={<SubscriptionGate><ProtectedRoute allowedRoles={['qc']}><QCOrderManagerList /></ProtectedRoute></SubscriptionGate>} />
+        <Route path="/quality/order-manager/:trackerId" element={<SubscriptionGate><ProtectedRoute allowedRoles={['qc']}><QCOrderManagerDetail /></ProtectedRoute></SubscriptionGate>} />
+        <Route path="/quality/daily-sheet" element={<SubscriptionGate><ProtectedRoute allowedRoles={['qc']}><QCDailySheetList /></ProtectedRoute></SubscriptionGate>} />
+        <Route path="/quality/daily-sheet/:sheetId" element={<SubscriptionGate><ProtectedRoute allowedRoles={['qc']}><QCDailySheetDetail /></ProtectedRoute></SubscriptionGate>} />
+        <Route path="/quality/records" element={<SubscriptionGate><ProtectedRoute allowedRoles={['qc']}><QCMyRecords /></ProtectedRoute></SubscriptionGate>} />
+        {/* Admin review pages — admin-only, distinct from the QC inspector list pages. */}
+        <Route path="/quality/admin/trackers" element={<SubscriptionGate><ProtectedRoute adminOnly><QCAdminTrackers /></ProtectedRoute></SubscriptionGate>} />
+        <Route path="/quality/admin/sheets" element={<SubscriptionGate><ProtectedRoute adminOnly><QCAdminSheets /></ProtectedRoute></SubscriptionGate>} />
       </Route>
 
       {/* Buyer portal routes */}

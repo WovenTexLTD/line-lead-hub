@@ -5381,6 +5381,489 @@ export type Database = {
           },
         ]
       }
+      qc_checklist_template_items: {
+        Row: {
+          created_at: string
+          id: string
+          item_code: string
+          item_guidance: string | null
+          item_label: string
+          item_order: number
+          section_label: string
+          section_order: number
+          template_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_code: string
+          item_guidance?: string | null
+          item_label: string
+          item_order: number
+          section_label: string
+          section_order: number
+          template_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_code?: string
+          item_guidance?: string | null
+          item_label?: string
+          item_order?: number
+          section_label?: string
+          section_order?: number
+          template_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qc_checklist_template_items_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "qc_checklist_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qc_checklist_templates: {
+        Row: {
+          created_at: string
+          factory_id: string | null
+          id: string
+          is_active: boolean
+          kind: string
+          name: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          factory_id?: string | null
+          id?: string
+          is_active?: boolean
+          kind: string
+          name: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          factory_id?: string | null
+          id?: string
+          is_active?: boolean
+          kind?: string
+          name?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qc_checklist_templates_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qc_daily_sheet_items: {
+        Row: {
+          created_at: string
+          id: string
+          item_code: string
+          item_guidance: string | null
+          item_label: string
+          item_order: number
+          notes: string | null
+          section_label: string
+          section_order: number
+          sheet_id: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_code: string
+          item_guidance?: string | null
+          item_label: string
+          item_order: number
+          notes?: string | null
+          section_label: string
+          section_order: number
+          sheet_id: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_code?: string
+          item_guidance?: string | null
+          item_label?: string
+          item_order?: number
+          notes?: string | null
+          section_label?: string
+          section_order?: number
+          sheet_id?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qc_daily_sheet_items_sheet_id_fkey"
+            columns: ["sheet_id"]
+            isOneToOne: false
+            referencedRelation: "qc_daily_sheets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qc_daily_sheets: {
+        Row: {
+          admin_review_status: string
+          created_at: string
+          created_by: string
+          fabric: string | null
+          factory_id: string
+          id: string
+          inspection_date: string
+          inspector_id: string
+          inspector_signoff_at: string | null
+          last_activity_at: string
+          line_id: string
+          manager_signoff_at: string | null
+          manager_signoff_by: string | null
+          product_type: string | null
+          shift: string
+          status: string
+          target_qty: number | null
+          template_id: string
+          template_version: number
+          updated_at: string
+          updated_by: string | null
+          work_order_id: string
+        }
+        Insert: {
+          admin_review_status?: string
+          created_at?: string
+          created_by: string
+          fabric?: string | null
+          factory_id: string
+          id?: string
+          inspection_date: string
+          inspector_id: string
+          inspector_signoff_at?: string | null
+          last_activity_at?: string
+          line_id: string
+          manager_signoff_at?: string | null
+          manager_signoff_by?: string | null
+          product_type?: string | null
+          shift?: string
+          status?: string
+          target_qty?: number | null
+          template_id: string
+          template_version: number
+          updated_at?: string
+          updated_by?: string | null
+          work_order_id: string
+        }
+        Update: {
+          admin_review_status?: string
+          created_at?: string
+          created_by?: string
+          fabric?: string | null
+          factory_id?: string
+          id?: string
+          inspection_date?: string
+          inspector_id?: string
+          inspector_signoff_at?: string | null
+          last_activity_at?: string
+          line_id?: string
+          manager_signoff_at?: string | null
+          manager_signoff_by?: string | null
+          product_type?: string | null
+          shift?: string
+          status?: string
+          target_qty?: number | null
+          template_id?: string
+          template_version?: number
+          updated_at?: string
+          updated_by?: string | null
+          work_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qc_daily_sheets_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qc_daily_sheets_line_id_fkey"
+            columns: ["line_id"]
+            isOneToOne: false
+            referencedRelation: "lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qc_daily_sheets_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "qc_checklist_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qc_daily_sheets_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qc_issues: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          description: string | null
+          factory_id: string
+          id: string
+          line_id: string | null
+          raised_by: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          severity: string
+          source_item_id: string | null
+          source_record_id: string
+          source_type: string
+          status: string
+          title: string
+          updated_at: string
+          work_order_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          description?: string | null
+          factory_id: string
+          id?: string
+          line_id?: string | null
+          raised_by?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          severity?: string
+          source_item_id?: string | null
+          source_record_id: string
+          source_type: string
+          status?: string
+          title: string
+          updated_at?: string
+          work_order_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          description?: string | null
+          factory_id?: string
+          id?: string
+          line_id?: string | null
+          raised_by?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          severity?: string
+          source_item_id?: string | null
+          source_record_id?: string
+          source_type?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          work_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qc_issues_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qc_issues_line_id_fkey"
+            columns: ["line_id"]
+            isOneToOne: false
+            referencedRelation: "lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qc_issues_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qc_order_tracker_items: {
+        Row: {
+          created_at: string
+          id: string
+          item_code: string
+          item_guidance: string | null
+          item_label: string
+          item_order: number
+          notes: string | null
+          section_label: string
+          section_order: number
+          status: string
+          target_date: string | null
+          tracker_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_code: string
+          item_guidance?: string | null
+          item_label: string
+          item_order: number
+          notes?: string | null
+          section_label: string
+          section_order: number
+          status?: string
+          target_date?: string | null
+          tracker_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_code?: string
+          item_guidance?: string | null
+          item_label?: string
+          item_order?: number
+          notes?: string | null
+          section_label?: string
+          section_order?: number
+          status?: string
+          target_date?: string | null
+          tracker_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qc_order_tracker_items_tracker_id_fkey"
+            columns: ["tracker_id"]
+            isOneToOne: false
+            referencedRelation: "qc_order_trackers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qc_order_trackers: {
+        Row: {
+          admin_review_status: string
+          created_at: string
+          created_by: string
+          fabric: string | null
+          factory_id: string
+          id: string
+          inspector_signoff_at: string | null
+          inspector_signoff_by: string | null
+          last_activity_at: string
+          manager_signoff_at: string | null
+          manager_signoff_by: string | null
+          season: string | null
+          ship_date: string | null
+          status: string
+          template_id: string
+          template_version: number
+          updated_at: string
+          updated_by: string | null
+          work_order_id: string
+        }
+        Insert: {
+          admin_review_status?: string
+          created_at?: string
+          created_by: string
+          fabric?: string | null
+          factory_id: string
+          id?: string
+          inspector_signoff_at?: string | null
+          inspector_signoff_by?: string | null
+          last_activity_at?: string
+          manager_signoff_at?: string | null
+          manager_signoff_by?: string | null
+          season?: string | null
+          ship_date?: string | null
+          status?: string
+          template_id: string
+          template_version: number
+          updated_at?: string
+          updated_by?: string | null
+          work_order_id: string
+        }
+        Update: {
+          admin_review_status?: string
+          created_at?: string
+          created_by?: string
+          fabric?: string | null
+          factory_id?: string
+          id?: string
+          inspector_signoff_at?: string | null
+          inspector_signoff_by?: string | null
+          last_activity_at?: string
+          manager_signoff_at?: string | null
+          manager_signoff_by?: string | null
+          season?: string | null
+          ship_date?: string | null
+          status?: string
+          template_id?: string
+          template_version?: number
+          updated_at?: string
+          updated_by?: string | null
+          work_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qc_order_trackers_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factory_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qc_order_trackers_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "qc_checklist_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qc_order_trackers_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: true
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rate_limits: {
         Row: {
           action_type: string
@@ -6741,6 +7224,7 @@ export type Database = {
       }
       is_admin_or_higher: { Args: { _user_id: string }; Returns: boolean }
       is_buyer_role: { Args: { _user_id: string }; Returns: boolean }
+      is_qc_role: { Args: { _user_id: string }; Returns: boolean }
       is_superadmin: { Args: { _user_id: string }; Returns: boolean }
       is_supervisor_or_higher: { Args: { _user_id: string }; Returns: boolean }
       log_security_event: {
@@ -6772,6 +7256,28 @@ export type Database = {
           p_today: string
         }
         Returns: undefined
+      }
+      qc_start_daily_sheet: {
+        Args: {
+          p_fabric?: string
+          p_factory_id: string
+          p_inspection_date: string
+          p_inspector_id: string
+          p_line_id: string
+          p_product_type?: string
+          p_shift: string
+          p_target_qty?: number
+          p_work_order_id: string
+        }
+        Returns: string
+      }
+      qc_start_order_tracker: {
+        Args: {
+          p_created_by: string
+          p_factory_id: string
+          p_work_order_id: string
+        }
+        Returns: string
       }
       search_knowledge: {
         Args: {
@@ -6811,6 +7317,7 @@ export type Database = {
         | "finishing"
         | "buyer"
         | "gate_officer"
+        | "qc"
       blocker_impact: "low" | "medium" | "high" | "critical"
       blocker_status: "open" | "in_progress" | "resolved"
       extras_transaction_type:
@@ -6985,6 +7492,7 @@ export const Constants = {
         "finishing",
         "buyer",
         "gate_officer",
+        "qc",
       ],
       blocker_impact: ["low", "medium", "high", "critical"],
       blocker_status: ["open", "in_progress", "resolved"],
