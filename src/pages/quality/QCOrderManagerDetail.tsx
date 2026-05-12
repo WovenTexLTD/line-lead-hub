@@ -442,23 +442,23 @@ export default function QCOrderManagerDetail() {
               key={g.label}
               className="rounded-xl border border-border/60 overflow-hidden bg-card shadow-sm"
             >
-              {/* Colored banner */}
+              {/* Colored banner — stacks title above counts on mobile */}
               <div
                 className={cn(
-                  "px-4 md:px-5 py-2.5 flex items-center justify-between gap-3",
+                  "px-4 md:px-5 py-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-3",
                   palette.banner
                 )}
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span className="text-[10px] font-mono font-bold text-white/70 tabular-nums">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-[10px] font-mono font-bold text-white/70 tabular-nums shrink-0">
                     PHASE {g.order}
                   </span>
-                  <span className="text-white/40">—</span>
+                  <span className="text-white/40 shrink-0">—</span>
                   <h2 className="text-sm md:text-base font-bold text-white uppercase tracking-wide truncate">
                     {g.label}
                   </h2>
                 </div>
-                <div className="flex items-center gap-2.5 text-[11px] shrink-0 font-mono tabular-nums">
+                <div className="flex items-center gap-2 sm:gap-2.5 text-[11px] shrink-0 font-mono tabular-nums flex-wrap">
                   {sec.done > 0 && (
                     <span className="inline-flex items-center gap-1 text-white/95">
                       <CheckCircle2 className="h-3 w-3" />

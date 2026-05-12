@@ -21,10 +21,19 @@ export function DetailCell({
   capitalize?: boolean;
 }) {
   return (
-    <div className="px-4 py-3 first:border-l-0 [&:nth-child(4n+1)]:border-l-0 [&:nth-child(-n+4)]:border-t-0">
+    <div
+      className={cn(
+        "px-4 py-3 first:border-l-0",
+        // Mobile (2-col): clear left border on every odd cell, top border on first row (cells 1-2)
+        "[&:nth-child(2n+1)]:border-l-0 [&:nth-child(-n+2)]:border-t-0",
+        // Desktop (4-col): restore left/top, then clear at the right cells for 4-col grid
+        "md:[&:nth-child(2n+1)]:border-l md:[&:nth-child(4n+1)]:border-l-0",
+        "md:[&:nth-child(-n+2)]:border-t md:[&:nth-child(-n+4)]:border-t-0"
+      )}
+    >
       <div className="flex items-center gap-1.5 mb-1.5">
-        <Icon className="h-3 w-3 text-muted-foreground/70" />
-        <p className="text-[10px] uppercase tracking-[0.1em] font-semibold text-muted-foreground">
+        <Icon className="h-3 w-3 text-muted-foreground/70 shrink-0" />
+        <p className="text-[10px] uppercase tracking-[0.1em] font-semibold text-muted-foreground truncate">
           {label}
         </p>
       </div>

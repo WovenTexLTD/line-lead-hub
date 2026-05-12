@@ -200,7 +200,7 @@ export default function QCDailySheetList() {
           {canStart && (
             <Button
               onClick={() => setNewOpen(true)}
-              className="gap-1.5 shrink-0 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-md shadow-blue-500/25 text-white"
+              className="gap-1.5 shrink-0 w-full sm:w-auto bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-md shadow-blue-500/25 text-white"
             >
               <Plus className="h-4 w-4" />
               New sheet

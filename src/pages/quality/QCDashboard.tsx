@@ -1611,9 +1611,10 @@ function DailySheetsTable({ sheets, loading }: { sheets: DailySheetRow[]; loadin
     return <EmptyHint icon={ListChecks} text="No daily sheets in the last 7 days." />;
   }
   return (
-    <div className="relative rounded-xl border border-border/60 bg-card overflow-hidden shadow-sm">
-      <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-blue-500 to-indigo-600" />
-      <table className="w-full text-sm">
+    <div className="relative rounded-xl border border-border/60 bg-card shadow-sm overflow-hidden">
+      <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-blue-500 to-indigo-600 z-10" />
+      <div className="overflow-x-auto">
+      <table className="w-full text-sm min-w-[760px]">
         <thead className="bg-gradient-to-b from-blue-50/60 via-muted/30 to-muted/20 dark:from-blue-950/20 dark:via-muted/30 dark:to-muted/20 border-b border-border/60">
           <tr className="text-left text-[10px] uppercase tracking-[0.12em] text-muted-foreground/90 font-bold">
             <th className="px-4 py-3">Date</th>
@@ -1691,6 +1692,7 @@ function DailySheetsTable({ sheets, loading }: { sheets: DailySheetRow[]; loadin
           })}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
@@ -1715,9 +1717,10 @@ function OrderTrackersTable({
     return <EmptyHint icon={ClipboardList} text="No order trackers started yet." />;
   }
   return (
-    <div className="relative rounded-xl border border-border/60 bg-card overflow-hidden shadow-sm">
-      <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-violet-500 to-purple-600" />
-      <table className="w-full text-sm">
+    <div className="relative rounded-xl border border-border/60 bg-card shadow-sm overflow-hidden">
+      <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-violet-500 to-purple-600 z-10" />
+      <div className="overflow-x-auto">
+      <table className="w-full text-sm min-w-[820px]">
         <thead className="bg-gradient-to-b from-violet-50/60 via-muted/30 to-muted/20 dark:from-violet-950/20 dark:via-muted/30 dark:to-muted/20 border-b border-border/60">
           <tr className="text-left text-[10px] uppercase tracking-[0.12em] text-muted-foreground/90 font-bold">
             <th className="px-4 py-3">PO / Buyer</th>
@@ -1821,6 +1824,7 @@ function OrderTrackersTable({
           })}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

@@ -228,12 +228,12 @@ export default function QCAdminSheets() {
               </p>
             </div>
           </div>
-          <div className="shrink-0 flex flex-col items-end gap-2">
+          <div className="shrink-0 flex flex-col items-stretch sm:items-end gap-2 w-full sm:w-auto">
             <Button
               size="sm"
               variant={selectMode ? "default" : "outline"}
               className={cn(
-                "gap-1.5",
+                "gap-1.5 w-full sm:w-auto",
                 selectMode && "bg-blue-600 hover:bg-blue-700 text-white"
               )}
               onClick={() => {
@@ -245,7 +245,7 @@ export default function QCAdminSheets() {
               {selectMode ? "Cancel export" : "Export PDFs"}
             </Button>
             {selectMode && (
-              <p className="text-[11px] text-muted-foreground text-right max-w-[200px]">
+              <p className="text-[11px] text-muted-foreground sm:text-right sm:max-w-[200px]">
                 Tick any signed-off rows. Only signed-off sheets can be exported.
               </p>
             )}
@@ -375,9 +375,10 @@ export default function QCAdminSheets() {
       ) : filtered.length === 0 ? (
         <EmptyState count={rows.length} />
       ) : (
-        <div className="relative rounded-xl border border-border/60 bg-card overflow-hidden shadow-sm">
-          <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-blue-500 to-indigo-600" />
-          <table className="w-full text-sm">
+        <div className="relative rounded-xl border border-border/60 bg-card shadow-sm overflow-hidden">
+          <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-blue-500 to-indigo-600 z-10" />
+          <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[880px]">
             <thead className="bg-gradient-to-b from-blue-50/60 via-muted/30 to-muted/20 dark:from-blue-950/20 dark:via-muted/30 dark:to-muted/20 border-b border-border/60">
               <tr className="text-left text-[10px] uppercase tracking-[0.12em] text-muted-foreground/90 font-bold">
                 {selectMode && <th className="pl-4 pr-1 py-3 w-8" />}
@@ -411,44 +412,48 @@ export default function QCAdminSheets() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
-      {/* Floating bulk-export action bar */}
+      {/* Floating bulk-export action bar — wraps gracefully on narrow screens */}
       {selectMode && selectedIds.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-          <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-blue-200/70 dark:border-blue-700/40 bg-card shadow-xl shadow-blue-500/10">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md shadow-blue-500/30">
+        <div className="fixed bottom-4 left-3 right-3 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-auto z-50">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl border border-blue-200/70 dark:border-blue-700/40 bg-card shadow-xl shadow-blue-500/10">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md shadow-blue-500/30 shrink-0">
               <CheckSquare className="h-4 w-4 text-white" />
             </div>
-            <p className="text-xs">
+            <p className="text-xs flex-1 min-w-[120px]">
               <span className="font-bold tabular-nums">{selectedIds.size}</span>{" "}
               signed-off sheet{selectedIds.size === 1 ? "" : "s"} selected
               <span className="text-muted-foreground"> · of {signedOffInView} visible</span>
             </p>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={clearSelection}
-              disabled={exporting}
-              className="gap-1.5"
-            >
-              <X className="h-3.5 w-3.5" />
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleBulkExport}
-              disabled={exporting}
-              className="gap-1.5 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-md shadow-blue-500/25"
-            >
-              {exporting ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Download className="h-3.5 w-3.5" />
-              )}
-              Export combined PDF
-            </Button>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={clearSelection}
+                disabled={exporting}
+                className="gap-1.5 flex-1 sm:flex-initial"
+              >
+                <X className="h-3.5 w-3.5" />
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleBulkExport}
+                disabled={exporting}
+                className="gap-1.5 flex-1 sm:flex-initial bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-md shadow-blue-500/25"
+              >
+                {exporting ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Download className="h-3.5 w-3.5" />
+                )}
+                <span className="hidden xs:inline">Export combined PDF</span>
+                <span className="xs:hidden">Export PDF</span>
+              </Button>
+            </div>
           </div>
         </div>
       )}
