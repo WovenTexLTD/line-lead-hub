@@ -30,6 +30,8 @@ import {
   Sparkles,
   Clock,
   Boxes,
+  Activity,
+  Users,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
@@ -799,12 +801,21 @@ function BrandPanel() {
               rotate="2.5deg"
             />
             <MiniStat
+              icon={Activity}
+              label="Lines running"
+              value="6"
+              unit="/ 8"
+              tone="cyan"
+              className="top-[26%] left-[38%]"
+              rotate="1deg"
+            />
+            <MiniStat
               icon={Truck}
               label="Ready to ship"
               value="3,800"
               unit="pcs"
               tone="amber"
-              className="top-[42%] left-[14%]"
+              className="top-[46%] left-[10%]"
               rotate="-1.5deg"
             />
             <MiniStat
@@ -813,7 +824,7 @@ function BrandPanel() {
               value="94"
               unit="%"
               tone="teal"
-              className="top-[55%] right-[10%]"
+              className="top-[55%] right-[6%]"
               rotate="1.5deg"
             />
             <MiniStat
@@ -823,6 +834,14 @@ function BrandPanel() {
               tone="rose"
               className="bottom-0 left-[4%]"
               rotate="-3deg"
+            />
+            <MiniStat
+              icon={Users}
+              label="On shift"
+              value="142"
+              tone="emerald"
+              className="bottom-[6%] right-[14%]"
+              rotate="2deg"
             />
           </div>
         </div>
@@ -864,7 +883,7 @@ function MiniStat({
   label: string;
   value: string;
   unit?: string;
-  tone: "emerald" | "sky" | "amber" | "teal" | "rose";
+  tone: "emerald" | "sky" | "amber" | "teal" | "rose" | "cyan";
   className?: string;
   rotate?: string;
 }) {
@@ -874,6 +893,7 @@ function MiniStat({
     amber: "from-amber-500 to-orange-500 shadow-amber-500/40",
     teal: "from-teal-500 to-cyan-600 shadow-teal-500/40",
     rose: "from-rose-500 to-pink-600 shadow-rose-500/40",
+    cyan: "from-cyan-400 to-sky-600 shadow-cyan-400/40",
   }[tone];
 
   return (
