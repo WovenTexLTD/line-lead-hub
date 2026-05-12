@@ -31,7 +31,6 @@ import {
   Clock,
   Boxes,
   Activity,
-  Users,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
@@ -781,69 +780,7 @@ function BrandPanel() {
             </p>
           </div>
 
-          <div className="relative h-[280px] xl:h-[320px] max-w-xl">
-            <MiniStat
-              icon={TrendingUp}
-              label="Output today"
-              value="12,450"
-              unit="pcs"
-              tone="emerald"
-              className="top-0 left-0"
-              rotate="-2deg"
-            />
-            <MiniStat
-              icon={ShieldCheck}
-              label="QC pass rate"
-              value="97.2"
-              unit="%"
-              tone="sky"
-              className="top-[8%] right-[2%]"
-              rotate="2.5deg"
-            />
-            <MiniStat
-              icon={Activity}
-              label="Lines running"
-              value="6"
-              unit="/ 8"
-              tone="cyan"
-              className="top-[26%] left-[38%]"
-              rotate="1deg"
-            />
-            <MiniStat
-              icon={Truck}
-              label="Ready to ship"
-              value="3,800"
-              unit="pcs"
-              tone="amber"
-              className="top-[46%] left-[10%]"
-              rotate="-1.5deg"
-            />
-            <MiniStat
-              icon={Clock}
-              label="On-time delivery"
-              value="94"
-              unit="%"
-              tone="teal"
-              className="top-[55%] right-[6%]"
-              rotate="1.5deg"
-            />
-            <MiniStat
-              icon={Boxes}
-              label="Active orders"
-              value="14"
-              tone="rose"
-              className="bottom-0 left-[4%]"
-              rotate="-3deg"
-            />
-            <MiniStat
-              icon={Users}
-              label="On shift"
-              value="142"
-              tone="emerald"
-              className="bottom-[6%] right-[14%]"
-              rotate="2deg"
-            />
-          </div>
+          <DashboardPreview />
         </div>
 
         {/* Bottom value props */}
@@ -870,57 +807,133 @@ function BrandPanel() {
   );
 }
 
-function MiniStat({
+function DashboardPreview() {
+  const bars = [42, 58, 51, 70, 64, 82, 76, 95];
+  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun", "Now"];
+
+  return (
+    <div className="relative max-w-md">
+      {/* Decorative layered card behind */}
+      <div
+        aria-hidden
+        className="absolute -inset-0.5 translate-x-3 translate-y-3 rounded-2xl bg-white/[0.04] ring-1 ring-white/10 pointer-events-none"
+      />
+
+      {/* Main panel */}
+      <div className="relative rounded-2xl bg-white/[0.07] backdrop-blur-xl ring-1 ring-white/15 shadow-2xl shadow-black/40 p-5">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400/70 opacity-75 animate-ping" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+            </span>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/80">
+              Production today
+            </span>
+          </div>
+          <span className="text-[10px] text-white/40">Updated 12s ago</span>
+        </div>
+
+        {/* Hero number */}
+        <div className="mt-4">
+          <p className="text-[10px] uppercase tracking-[0.14em] text-white/50">
+            Output
+          </p>
+          <div className="flex items-baseline gap-2 mt-1">
+            <p className="font-mono text-4xl xl:text-5xl font-bold tabular-nums tracking-tight">
+              12,450
+            </p>
+            <span className="text-base text-white/60 font-medium">pcs</span>
+            <span className="ml-1 inline-flex items-center gap-1 text-xs font-semibold text-emerald-300 bg-emerald-500/15 ring-1 ring-emerald-400/30 rounded-md px-1.5 py-0.5">
+              <TrendingUp className="h-3 w-3" />
+              +8.2%
+            </span>
+          </div>
+        </div>
+
+        {/* Bars */}
+        <div className="mt-5">
+          <div className="flex items-end gap-1.5 h-16">
+            {bars.map((h, i) => (
+              <div
+                key={i}
+                style={{ height: `${h}%` }}
+                className={cn(
+                  "flex-1 rounded-sm transition-all",
+                  i === bars.length - 1
+                    ? "bg-gradient-to-t from-emerald-500 to-emerald-300 shadow-md shadow-emerald-500/40"
+                    : "bg-white/15"
+                )}
+              />
+            ))}
+          </div>
+          <div className="mt-2 flex justify-between text-[9px] font-medium text-white/40 tabular-nums">
+            {days.map((d) => (
+              <span key={d}>{d}</span>
+            ))}
+          </div>
+        </div>
+
+        {/* Mini stat grid */}
+        <div className="mt-5 grid grid-cols-3 gap-2">
+          <PreviewStat icon={ShieldCheck} label="QC pass" value="97.2%" />
+          <PreviewStat icon={Clock} label="On-time" value="94%" />
+          <PreviewStat icon={Activity} label="Lines" value="6 / 8" />
+        </div>
+      </div>
+
+      {/* Auxiliary floating card (lower-right) */}
+      <div className="absolute -bottom-6 -right-4 xl:-right-8 w-56 rounded-xl bg-white/10 backdrop-blur-xl ring-1 ring-white/20 shadow-xl shadow-black/30 p-3 flex items-center gap-3">
+        <div className="h-9 w-9 rounded-lg flex items-center justify-center shadow-md shrink-0 bg-gradient-to-br from-amber-500 to-orange-500 shadow-amber-500/40">
+          <Truck className="h-4 w-4 text-white" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-[9px] uppercase tracking-[0.12em] font-semibold text-white/60 leading-tight">
+            Ready to ship
+          </p>
+          <p className="font-mono text-sm font-bold tabular-nums leading-tight mt-0.5">
+            3,800 <span className="text-white/70 font-medium">pcs</span>
+          </p>
+        </div>
+      </div>
+
+      {/* Auxiliary floating card (upper-right, hangs off the edge) */}
+      <div className="hidden xl:flex absolute -top-4 -right-6 w-48 rounded-xl bg-white/10 backdrop-blur-xl ring-1 ring-white/20 shadow-xl shadow-black/30 p-2.5 items-center gap-2.5">
+        <div className="h-8 w-8 rounded-md flex items-center justify-center shadow-md shrink-0 bg-gradient-to-br from-rose-500 to-pink-600 shadow-rose-500/40">
+          <Boxes className="h-4 w-4 text-white" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-[9px] uppercase tracking-[0.12em] font-semibold text-white/60 leading-tight">
+            Active orders
+          </p>
+          <p className="font-mono text-sm font-bold tabular-nums leading-tight mt-0.5">
+            14
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PreviewStat({
   icon: Icon,
   label,
   value,
-  unit,
-  tone,
-  className,
-  rotate,
 }: {
   icon: typeof TrendingUp;
   label: string;
   value: string;
-  unit?: string;
-  tone: "emerald" | "sky" | "amber" | "teal" | "rose" | "cyan";
-  className?: string;
-  rotate?: string;
 }) {
-  const palette = {
-    emerald: "from-emerald-500 to-teal-600 shadow-emerald-500/40",
-    sky: "from-sky-500 to-blue-600 shadow-sky-500/40",
-    amber: "from-amber-500 to-orange-500 shadow-amber-500/40",
-    teal: "from-teal-500 to-cyan-600 shadow-teal-500/40",
-    rose: "from-rose-500 to-pink-600 shadow-rose-500/40",
-    cyan: "from-cyan-400 to-sky-600 shadow-cyan-400/40",
-  }[tone];
-
   return (
-    <div
-      style={rotate ? { transform: `rotate(${rotate})` } : undefined}
-      className={cn(
-        "absolute rounded-xl bg-white/10 backdrop-blur-md ring-1 ring-white/15 px-3 py-2.5 flex items-center gap-2.5 shadow-xl shadow-black/20 hover:bg-white/15 hover:ring-white/25 transition-all whitespace-nowrap",
-        className
-      )}
-    >
-      <div
-        className={cn(
-          "h-8 w-8 rounded-md flex items-center justify-center shadow-md shrink-0 bg-gradient-to-br",
-          palette
-        )}
-      >
-        <Icon className="h-4 w-4 text-white" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-[9px] uppercase tracking-[0.12em] font-semibold text-white/60 leading-tight">
+    <div className="rounded-lg bg-white/[0.04] ring-1 ring-white/10 px-2.5 py-2">
+      <div className="flex items-center gap-1.5 text-white/50">
+        <Icon className="h-3 w-3" />
+        <p className="text-[9px] uppercase tracking-[0.12em] font-semibold">
           {label}
         </p>
-        <p className="font-mono text-sm font-bold tabular-nums leading-tight mt-0.5">
-          {value}
-          {unit && <span className="text-white/70 font-medium ml-1">{unit}</span>}
-        </p>
       </div>
+      <p className="font-mono text-base font-bold tabular-nums mt-1">{value}</p>
     </div>
   );
 }
