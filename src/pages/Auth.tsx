@@ -35,7 +35,6 @@ import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { getRememberMe } from "@/lib/auth-storage";
 import { getPasswordResetRedirectUrl } from "@/lib/capacitor";
-import logoSvg from "@/assets/logo.svg";
 import logoWhiteSvg from "@/assets/logo-white.svg";
 import i18n from "@/i18n/config";
 
@@ -386,11 +385,9 @@ export default function Auth() {
         <div className="relative w-full max-w-md space-y-6">
           {/* Mobile logo (hidden on lg, the brand panel handles it there) */}
           <div className="lg:hidden flex items-center gap-3">
-            <img
-              src={logoSvg}
-              alt="ProductionPortal"
-              className="h-11 w-11 rounded-xl shadow-lg shadow-blue-500/25"
-            />
+            <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-blue-600 to-sky-500 flex items-center justify-center shadow-lg shadow-blue-500/25">
+              <img src={logoWhiteSvg} alt="" className="h-7 w-7" />
+            </div>
             <div>
               <p className="text-base font-bold leading-tight">ProductionPortal</p>
               <p className="text-[11px] text-muted-foreground leading-tight">
