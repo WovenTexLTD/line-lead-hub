@@ -23,6 +23,20 @@ const userRoleSchema = z.object({
   factory_id: z.string().nullable(),
 });
 
+// Postgres `numeric` columns arrive as strings via PostgREST. Coerce them so
+// the schema parse does not silently fail (which would leave `factory` null in
+// state and trip SubscriptionGate into an "Account Suspended" loop).
+const numericFromDb = z
+  .union([z.number(), z.string()])
+  .nullable()
+  .optional()
+  .transform((v) => {
+    if (v === null || v === undefined) return null;
+    if (typeof v === "number") return v;
+    const parsed = Number(v);
+    return Number.isFinite(parsed) ? parsed : null;
+  });
+
 const factorySchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -38,7 +52,7 @@ const factorySchema = z.object({
   max_lines: z.number().nullable(),
   low_stock_threshold: z.number(),
   payment_failed_at: z.string().nullable().optional(),
-  headcount_cost_value: z.number().nullable().optional(),
+  headcount_cost_value: numericFromDb,
   headcount_cost_currency: z.string().nullable().optional().transform(v => v ?? 'BDT'),
 });
 
