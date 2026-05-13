@@ -79,7 +79,6 @@ export default function QCAdminSheets() {
   // Default to Today — admins land on the most relevant slice.
   const [tab, setTab] = useState<FilterTab>("today");
   const [dateFilter, setDateFilter] = useState<string>("");
-  const [groupBy, setGroupBy] = useState<"none" | "line">("none");
   // Bulk export selection state
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -132,7 +131,6 @@ export default function QCAdminSheets() {
   }, [rows, tab, today, search, dateFilter]);
 
   const lineGroups = useMemo(() => {
-    if (groupBy !== "line") return null;
     const map = new Map<string, { lineName: string; rows: DailySheetRow[] }>();
     for (const r of filtered) {
       const key = r.line_id || r.line_name || "__unassigned__";
@@ -143,7 +141,7 @@ export default function QCAdminSheets() {
     return Array.from(map.values()).sort((a, b) =>
       a.lineName.localeCompare(b.lineName, undefined, { numeric: true })
     );
-  }, [filtered, groupBy]);
+  }, [filtered]);
 
   const todayLong = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -332,35 +330,7 @@ export default function QCAdminSheets() {
             today={today}
             label="Inspection date"
           />
-          <div className="flex items-center gap-1 rounded-lg bg-muted/60 p-0.5 border border-border/50 lg:ml-auto">
-            <button
-              type="button"
-              onClick={() => setGroupBy("none")}
-              className={cn(
-                "text-xs px-3 py-1.5 rounded-md font-semibold transition-colors",
-                groupBy === "none"
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-              aria-pressed={groupBy === "none"}
-            >
-              List
-            </button>
-            <button
-              type="button"
-              onClick={() => setGroupBy("line")}
-              className={cn(
-                "text-xs px-3 py-1.5 rounded-md font-semibold transition-colors",
-                groupBy === "line"
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-              aria-pressed={groupBy === "line"}
-            >
-              By line
-            </button>
-          </div>
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1 lg:ml-auto">
             {TAB_ORDER.map((key) => {
               const meta = TAB_META[key];
               const count =
@@ -417,7 +387,7 @@ export default function QCAdminSheets() {
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState count={rows.length} />
-      ) : lineGroups ? (
+      ) : (
         <div className="space-y-5">
           {lineGroups.map((group) => {
             const groupPass = group.rows.reduce((a, r) => a + r.items_pass, 0);
@@ -460,17 +430,6 @@ export default function QCAdminSheets() {
             );
           })}
         </div>
-      ) : (
-        <SheetsTable
-          rows={filtered}
-          selectMode={selectMode}
-          selectedIds={selectedIds}
-          onToggleSelect={toggleSelect}
-          onOpen={(s) => {
-            if (selectMode) toggleSelect(s.id, s.status === "signed_off");
-            else navigate(`/quality/daily-sheet/${s.id}`);
-          }}
-        />
       )}
 
       {/* Floating bulk-export action bar — wraps gracefully on narrow screens */}
