@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ListChecks,
   ArrowLeft,
@@ -73,11 +73,14 @@ const TAB_META: Record<FilterTab, { label: string; activeCls: string }> = {
 
 export default function QCAdminSheets() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { factory } = useAuth();
   const { rows, loading } = useQCDailySheets({ sinceDays: 30 });
-  const [search, setSearch] = useState("");
-  // Default to Today — admins land on the most relevant slice.
-  const [tab, setTab] = useState<FilterTab>("today");
+  const initialSearch = searchParams.get("search") ?? "";
+  const [search, setSearch] = useState(initialSearch);
+  // When deep-linked with a search term (e.g. from /lines), default to All so
+  // matches don't get filtered out by the Today tab.
+  const [tab, setTab] = useState<FilterTab>(initialSearch ? "all" : "today");
   const [dateFilter, setDateFilter] = useState<string>("");
   // Bulk export selection state
   const [selectMode, setSelectMode] = useState(false);

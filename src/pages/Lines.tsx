@@ -10,6 +10,7 @@ import { LinePerformanceSummary } from "@/components/lines/LinePerformanceSummar
 import { LinePerformanceCards } from "@/components/lines/LinePerformanceCards";
 import { LineDrilldownDrawer } from "@/components/lines/LineDrilldownDrawer";
 import { LineExportButton } from "@/components/lines/LineExportButton";
+import { useQCLineSheets } from "@/components/lines/useQCLineSheets";
 
 export default function Lines() {
   const navigate = useNavigate();
@@ -28,6 +29,11 @@ export default function Lines() {
     factorySummary,
     dateRange,
   } = useLinePerformance();
+
+  const { byLineId: qcSheetsByLineId } = useQCLineSheets({
+    startDate: dateRange.start,
+    endDate: dateRange.end,
+  });
 
   const [drawerLineId, setDrawerLineId] = useState<string | null>(null);
 
@@ -93,6 +99,7 @@ export default function Lines() {
         lines={filteredLines}
         loading={loading}
         timeRange={timeRange}
+        qcSheetsByLineId={qcSheetsByLineId}
         onLineClick={(id) => setDrawerLineId(id)}
       />
 

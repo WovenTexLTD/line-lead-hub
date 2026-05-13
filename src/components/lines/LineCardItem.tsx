@@ -1,15 +1,61 @@
+import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, ChevronRight, TrendingDown, TrendingUp } from "lucide-react";
+import { AlertTriangle, ChevronRight, ShieldCheck, TrendingDown, TrendingUp } from "lucide-react";
 import type { LinePerformanceData, DataState } from "./types";
+import type { LineQCSheetSummary } from "./useQCLineSheets";
 
 import type { TimeRange } from "./types";
 
 interface LineCardItemProps {
   line: LinePerformanceData;
   timeRange: TimeRange;
+  qcSummary?: LineQCSheetSummary | null;
   onClick: () => void;
+}
+
+function QualityBadge({
+  summary,
+  lineName,
+  onNavigate,
+}: {
+  summary: LineQCSheetSummary | null | undefined;
+  lineName: string;
+  onNavigate: () => void;
+}) {
+  const hasSheet = !!summary && summary.count > 0;
+  const tooltip = hasSheet
+    ? `${summary!.count} QC sheet${summary!.count === 1 ? "" : "s"}` +
+      (summary!.signedOff > 0 ? ` · ${summary!.signedOff} signed off` : "") +
+      (summary!.awaitingSignoff > 0 ? ` · ${summary!.awaitingSignoff} awaiting sign-off` : "") +
+      (summary!.inProgress > 0 ? ` · ${summary!.inProgress} in progress` : "")
+    : `No QC daily sheet submitted for ${lineName}`;
+
+  return (
+    <button
+      type="button"
+      title={tooltip}
+      aria-label={tooltip}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (hasSheet) onNavigate();
+      }}
+      className={cn(
+        "inline-flex items-center gap-1 h-6 px-1.5 rounded-md ring-1 transition-colors shrink-0",
+        hasSheet
+          ? "bg-emerald-100 text-emerald-700 ring-emerald-200 hover:bg-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300 dark:ring-emerald-700/40 cursor-pointer"
+          : "bg-muted text-muted-foreground ring-border/50 cursor-default"
+      )}
+    >
+      <ShieldCheck className="h-3.5 w-3.5" />
+      {hasSheet && (
+        <span className="text-[10px] font-bold tabular-nums leading-none">
+          {summary!.count}
+        </span>
+      )}
+    </button>
+  );
 }
 
 function getAchievementColor(pct: number) {
@@ -44,8 +90,12 @@ function getStateBadge(dataState: DataState, achievementPct: number): { label: s
   }
 }
 
-export function LineCardItem({ line, timeRange, onClick }: LineCardItemProps) {
+export function LineCardItem({ line, timeRange, qcSummary, onClick }: LineCardItemProps) {
   const { dataState } = line;
+  const navigate = useNavigate();
+  const lineLabel = line.name || line.lineId;
+  const goToQCSheets = () =>
+    navigate(`/quality/admin/sheets?search=${encodeURIComponent(lineLabel)}`);
 
   // No target and no output — minimal card
   if (dataState === "no-target") {
@@ -55,16 +105,23 @@ export function LineCardItem({ line, timeRange, onClick }: LineCardItemProps) {
         onClick={onClick}
       >
         <CardContent className="py-4 px-5">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-3 min-w-0">
-              <span className="text-base font-semibold truncate">{line.name || line.lineId}</span>
+              <span className="text-base font-semibold truncate">{lineLabel}</span>
               <span className="text-sm text-muted-foreground truncate hidden sm:inline">
                 {[line.unitName, line.floorName].filter(Boolean).join(" · ")}
               </span>
             </div>
-            <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-500/20 dark:text-gray-400 border-0 shrink-0">
-              No target set
-            </Badge>
+            <div className="flex items-center gap-2 shrink-0">
+              <QualityBadge
+                summary={qcSummary}
+                lineName={lineLabel}
+                onNavigate={goToQCSheets}
+              />
+              <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-500/20 dark:text-gray-400 border-0">
+                No target set
+              </Badge>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -110,6 +167,11 @@ export function LineCardItem({ line, timeRange, onClick }: LineCardItemProps) {
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            <QualityBadge
+              summary={qcSummary}
+              lineName={lineLabel}
+              onNavigate={goToQCSheets}
+            />
             <Badge className={badge.className}>{badge.label}</Badge>
             <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
