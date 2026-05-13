@@ -79,6 +79,7 @@ export default function QCAdminSheets() {
   // Default to Today — admins land on the most relevant slice.
   const [tab, setTab] = useState<FilterTab>("today");
   const [dateFilter, setDateFilter] = useState<string>("");
+  const [groupBy, setGroupBy] = useState<"none" | "line">("none");
   // Bulk export selection state
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -129,6 +130,20 @@ export default function QCAdminSheets() {
     }
     return list;
   }, [rows, tab, today, search, dateFilter]);
+
+  const lineGroups = useMemo(() => {
+    if (groupBy !== "line") return null;
+    const map = new Map<string, { lineName: string; rows: DailySheetRow[] }>();
+    for (const r of filtered) {
+      const key = r.line_id || r.line_name || "__unassigned__";
+      const existing = map.get(key);
+      if (existing) existing.rows.push(r);
+      else map.set(key, { lineName: r.line_name || "Unassigned line", rows: [r] });
+    }
+    return Array.from(map.values()).sort((a, b) =>
+      a.lineName.localeCompare(b.lineName, undefined, { numeric: true })
+    );
+  }, [filtered, groupBy]);
 
   const todayLong = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -317,7 +332,35 @@ export default function QCAdminSheets() {
             today={today}
             label="Inspection date"
           />
-          <div className="flex flex-wrap gap-1 lg:ml-auto">
+          <div className="flex items-center gap-1 rounded-lg bg-muted/60 p-0.5 border border-border/50 lg:ml-auto">
+            <button
+              type="button"
+              onClick={() => setGroupBy("none")}
+              className={cn(
+                "text-xs px-3 py-1.5 rounded-md font-semibold transition-colors",
+                groupBy === "none"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              aria-pressed={groupBy === "none"}
+            >
+              List
+            </button>
+            <button
+              type="button"
+              onClick={() => setGroupBy("line")}
+              className={cn(
+                "text-xs px-3 py-1.5 rounded-md font-semibold transition-colors",
+                groupBy === "line"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              aria-pressed={groupBy === "line"}
+            >
+              By line
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-1">
             {TAB_ORDER.map((key) => {
               const meta = TAB_META[key];
               const count =
@@ -374,46 +417,60 @@ export default function QCAdminSheets() {
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState count={rows.length} />
-      ) : (
-        <div className="relative rounded-xl border border-border/60 bg-card shadow-sm overflow-hidden">
-          <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-blue-500 to-indigo-600 z-10" />
-          <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[880px]">
-            <thead className="bg-gradient-to-b from-blue-50/60 via-muted/30 to-muted/20 dark:from-blue-950/20 dark:via-muted/30 dark:to-muted/20 border-b border-border/60">
-              <tr className="text-left text-[10px] uppercase tracking-[0.12em] text-muted-foreground/90 font-bold">
-                {selectMode && <th className="pl-4 pr-1 py-3 w-8" />}
-                <th className="px-4 py-3">Date</th>
-                <th className="px-3 py-3">PO / Line</th>
-                <th className="px-3 py-3">Buyer / Style</th>
-                <th className="px-3 py-3">Inspector</th>
-                <th className="px-3 py-3 text-center">Pass</th>
-                <th className="px-3 py-3 text-center">Fail</th>
-                <th className="px-3 py-3 text-center">Pending</th>
-                <th className="px-3 py-3">Status</th>
-                <th className="px-3 py-3 w-10" />
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((s) => (
-                <SheetRow
-                  key={s.id}
-                  row={s}
+      ) : lineGroups ? (
+        <div className="space-y-5">
+          {lineGroups.map((group) => {
+            const groupPass = group.rows.reduce((a, r) => a + r.items_pass, 0);
+            const groupFail = group.rows.reduce((a, r) => a + r.items_fail, 0);
+            return (
+              <div key={group.lineName}>
+                <div className="flex items-baseline justify-between px-1 mb-2">
+                  <h3 className="text-sm font-semibold flex items-baseline gap-2">
+                    <span>{group.lineName}</span>
+                    <span className="text-[11px] tabular-nums font-mono font-medium text-muted-foreground">
+                      {group.rows.length} sheet{group.rows.length === 1 ? "" : "s"}
+                    </span>
+                  </h3>
+                  <div className="text-[11px] tabular-nums text-muted-foreground">
+                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{groupPass}</span> pass ·{" "}
+                    <span
+                      className={cn(
+                        "font-semibold",
+                        groupFail > 0
+                          ? "text-amber-600 dark:text-amber-400"
+                          : "text-muted-foreground"
+                      )}
+                    >
+                      {groupFail}
+                    </span>{" "}
+                    fail
+                  </div>
+                </div>
+                <SheetsTable
+                  rows={group.rows}
                   selectMode={selectMode}
-                  selected={selectedIds.has(s.id)}
-                  onToggleSelect={() => toggleSelect(s.id, s.status === "signed_off")}
-                  onOpen={() => {
-                    if (selectMode) {
-                      toggleSelect(s.id, s.status === "signed_off");
-                    } else {
-                      navigate(`/quality/daily-sheet/${s.id}`);
-                    }
+                  selectedIds={selectedIds}
+                  onToggleSelect={toggleSelect}
+                  onOpen={(s) => {
+                    if (selectMode) toggleSelect(s.id, s.status === "signed_off");
+                    else navigate(`/quality/daily-sheet/${s.id}`);
                   }}
                 />
-              ))}
-            </tbody>
-          </table>
-          </div>
+              </div>
+            );
+          })}
         </div>
+      ) : (
+        <SheetsTable
+          rows={filtered}
+          selectMode={selectMode}
+          selectedIds={selectedIds}
+          onToggleSelect={toggleSelect}
+          onOpen={(s) => {
+            if (selectMode) toggleSelect(s.id, s.status === "signed_off");
+            else navigate(`/quality/daily-sheet/${s.id}`);
+          }}
+        />
       )}
 
       {/* Floating bulk-export action bar — wraps gracefully on narrow screens */}
@@ -580,6 +637,56 @@ function MiniKpi({
         </div>
       </div>
     </button>
+  );
+}
+
+function SheetsTable({
+  rows,
+  selectMode,
+  selectedIds,
+  onToggleSelect,
+  onOpen,
+}: {
+  rows: DailySheetRow[];
+  selectMode: boolean;
+  selectedIds: Set<string>;
+  onToggleSelect: (id: string, isSignedOff: boolean) => void;
+  onOpen: (row: DailySheetRow) => void;
+}) {
+  return (
+    <div className="relative rounded-xl border border-border/60 bg-card shadow-sm overflow-hidden">
+      <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-blue-500 to-indigo-600 z-10" />
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[880px]">
+          <thead className="bg-gradient-to-b from-blue-50/60 via-muted/30 to-muted/20 dark:from-blue-950/20 dark:via-muted/30 dark:to-muted/20 border-b border-border/60">
+            <tr className="text-left text-[10px] uppercase tracking-[0.12em] text-muted-foreground/90 font-bold">
+              {selectMode && <th className="pl-4 pr-1 py-3 w-8" />}
+              <th className="px-4 py-3">Date</th>
+              <th className="px-3 py-3">PO / Line</th>
+              <th className="px-3 py-3">Buyer / Style</th>
+              <th className="px-3 py-3">Inspector</th>
+              <th className="px-3 py-3 text-center">Pass</th>
+              <th className="px-3 py-3 text-center">Fail</th>
+              <th className="px-3 py-3 text-center">Pending</th>
+              <th className="px-3 py-3">Status</th>
+              <th className="px-3 py-3 w-10" />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((s) => (
+              <SheetRow
+                key={s.id}
+                row={s}
+                selectMode={selectMode}
+                selected={selectedIds.has(s.id)}
+                onToggleSelect={() => onToggleSelect(s.id, s.status === "signed_off")}
+                onOpen={() => onOpen(s)}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 
