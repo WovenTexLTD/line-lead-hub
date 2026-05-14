@@ -17,6 +17,7 @@ import {
   TrendingUp,
   Sparkles,
   Flame,
+  Rows3,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -53,6 +54,7 @@ export default function QCDashboard() {
   // Users can pick another date via the DateFilter to drill into the past.
   const [sheetDateFilter, setSheetDateFilter] = useState(today);
   const [trackerDateFilter, setTrackerDateFilter] = useState(today);
+  const [linesDateFilter, setLinesDateFilter] = useState(today);
 
   const filteredSheets = useMemo(
     () =>
@@ -75,6 +77,27 @@ export default function QCDashboard() {
     () => trackerRows.filter((r) => r.tracker_id !== null),
     [trackerRows]
   );
+
+  const sheetsForLinesTab = useMemo(
+    () =>
+      linesDateFilter
+        ? dailySheets.filter((s) => s.inspection_date === linesDateFilter)
+        : dailySheets,
+    [dailySheets, linesDateFilter]
+  );
+
+  const linesGroups = useMemo(() => {
+    const map = new Map<string, { lineName: string; rows: DailySheetRow[] }>();
+    for (const r of sheetsForLinesTab) {
+      const key = r.line_id || r.line_name || "__unassigned__";
+      const existing = map.get(key);
+      if (existing) existing.rows.push(r);
+      else map.set(key, { lineName: r.line_name || "Unassigned line", rows: [r] });
+    }
+    return Array.from(map.values()).sort((a, b) =>
+      a.lineName.localeCompare(b.lineName, undefined, { numeric: true })
+    );
+  }, [sheetsForLinesTab]);
 
   // Aggregate today's quality pulse + the 30-day rolling pass rate
   const pulse = useMemo(() => {
@@ -209,7 +232,7 @@ export default function QCDashboard() {
 
       {/* ── Tabs ─────────────────────────────────────────────────────── */}
       <Tabs value={tab} onValueChange={setTab} className="w-full">
-        <TabsList className="w-full grid grid-cols-2 sm:grid-cols-5 h-auto p-1 rounded-xl bg-muted/60 border border-border/50">
+        <TabsList className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 h-auto p-1 rounded-xl bg-muted/60 border border-border/50">
           <TabsTrigger
             value="overview"
             className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-2 py-2.5 rounded-lg data-[state=active]:shadow-sm data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 dark:data-[state=active]:bg-indigo-950/40 dark:data-[state=active]:text-indigo-300"
@@ -224,6 +247,14 @@ export default function QCDashboard() {
             <ListChecks className="h-3.5 w-3.5" />
             Daily Sheets
             <CountBadge n={dailySheets.length} />
+          </TabsTrigger>
+          <TabsTrigger
+            value="lines"
+            className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-2 py-2.5 rounded-lg data-[state=active]:shadow-sm data-[state=active]:bg-cyan-50 data-[state=active]:text-cyan-700 dark:data-[state=active]:bg-cyan-950/40 dark:data-[state=active]:text-cyan-300"
+          >
+            <Rows3 className="h-3.5 w-3.5" />
+            Lines
+            <CountBadge n={linesGroups.length} />
           </TabsTrigger>
           <TabsTrigger
             value="trackers"
@@ -395,6 +426,102 @@ export default function QCDashboard() {
             )}
           </div>
           <DailySheetsTable sheets={filteredSheets} loading={loadingSheets} />
+        </TabsContent>
+
+        {/* SHEETS BY LINE */}
+        <TabsContent value="lines" className="mt-6 space-y-4">
+          <SectionHeader
+            description={
+              linesDateFilter === today
+                ? "Today's daily sheets grouped by line. Pick a different date to drill into the past."
+                : "Drilling into a past day, grouped by line."
+            }
+            ctaLabel="Open sheet review"
+            ctaTo="/quality/admin/sheets"
+          />
+          <div className="flex items-center gap-3 flex-wrap">
+            <DateFilter
+              value={linesDateFilter}
+              onChange={(v) => setLinesDateFilter(v || today)}
+              today={today}
+              label="Inspection date"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Showing{" "}
+              <span className="font-semibold text-foreground">{linesGroups.length}</span>{" "}
+              line{linesGroups.length === 1 ? "" : "s"} ·{" "}
+              <span className="font-semibold text-foreground">
+                {sheetsForLinesTab.length}
+              </span>{" "}
+              sheet{sheetsForLinesTab.length === 1 ? "" : "s"} on{" "}
+              <span className="font-mono font-semibold text-foreground tabular-nums">
+                {formatShortDate(linesDateFilter)}
+              </span>
+              {linesDateFilter === today && (
+                <span className="ml-1 text-muted-foreground/70">(today)</span>
+              )}
+            </p>
+            {linesDateFilter !== today && (
+              <button
+                type="button"
+                onClick={() => setLinesDateFilter(today)}
+                className="text-[11px] text-cyan-600 dark:text-cyan-400 hover:underline underline-offset-4 font-medium"
+              >
+                Back to today
+              </button>
+            )}
+          </div>
+          {loadingSheets ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-24 bg-muted/40 rounded-xl animate-pulse" />
+              ))}
+            </div>
+          ) : linesGroups.length === 0 ? (
+            <EmptyHint icon={Rows3} text="No daily sheets submitted on this date." />
+          ) : (
+            <div className="space-y-5">
+              {linesGroups.map((group) => {
+                const groupPass = group.rows.reduce((a, r) => a + r.items_pass, 0);
+                const groupFail = group.rows.reduce((a, r) => a + r.items_fail, 0);
+                const groupPending = group.rows.reduce((a, r) => a + r.items_pending, 0);
+                return (
+                  <div key={group.lineName}>
+                    <div className="flex items-baseline justify-between px-1 mb-2 flex-wrap gap-2">
+                      <h3 className="text-sm font-semibold flex items-baseline gap-2">
+                        <span>{group.lineName}</span>
+                        <span className="text-[11px] tabular-nums font-mono font-medium text-muted-foreground">
+                          {group.rows.length} sheet{group.rows.length === 1 ? "" : "s"}
+                        </span>
+                      </h3>
+                      <div className="text-[11px] tabular-nums text-muted-foreground">
+                        <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                          {groupPass}
+                        </span>{" "}
+                        pass ·{" "}
+                        <span
+                          className={cn(
+                            "font-semibold",
+                            groupFail > 0
+                              ? "text-amber-600 dark:text-amber-400"
+                              : "text-muted-foreground"
+                          )}
+                        >
+                          {groupFail}
+                        </span>{" "}
+                        fail ·{" "}
+                        <span className="text-muted-foreground font-semibold">
+                          {groupPending}
+                        </span>{" "}
+                        pending
+                      </div>
+                    </div>
+                    <DailySheetsTable sheets={group.rows} loading={false} />
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </TabsContent>
 
         {/* ORDER TRACKERS */}
