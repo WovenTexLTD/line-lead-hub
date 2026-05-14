@@ -42,15 +42,15 @@ function QualityBadge({
         if (hasSheet) onNavigate();
       }}
       className={cn(
-        "inline-flex items-center gap-1 h-6 px-1.5 rounded-md ring-1 transition-colors shrink-0",
+        "inline-flex items-center gap-1.5 h-9 px-2.5 rounded-lg ring-1 transition-colors shrink-0",
         hasSheet
           ? "bg-emerald-100 text-emerald-700 ring-emerald-200 hover:bg-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300 dark:ring-emerald-700/40 cursor-pointer"
           : "bg-muted text-muted-foreground ring-border/50 cursor-default"
       )}
     >
-      <BadgeCheck className="h-4 w-4" />
+      <BadgeCheck className="h-6 w-6" />
       {hasSheet && (
-        <span className="text-[10px] font-bold tabular-nums leading-none">
+        <span className="text-sm font-bold tabular-nums leading-none">
           {summary!.count}
         </span>
       )}
