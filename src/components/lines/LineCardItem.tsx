@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, ChevronRight, ShieldCheck, TrendingDown, TrendingUp } from "lucide-react";
+import { AlertTriangle, BadgeCheck, ChevronRight, TrendingDown, TrendingUp } from "lucide-react";
 import type { LinePerformanceData, DataState } from "./types";
 import type { LineQCSheetSummary } from "./useQCLineSheets";
 
@@ -48,7 +48,7 @@ function QualityBadge({
           : "bg-muted text-muted-foreground ring-border/50 cursor-default"
       )}
     >
-      <ShieldCheck className="h-3.5 w-3.5" />
+      <BadgeCheck className="h-4 w-4" />
       {hasSheet && (
         <span className="text-[10px] font-bold tabular-nums leading-none">
           {summary!.count}
