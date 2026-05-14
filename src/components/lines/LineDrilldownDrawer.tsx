@@ -11,6 +11,14 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   Target,
   TrendingUp,
   Users,
@@ -405,86 +413,126 @@ function QCDailySheetsList({
     );
   }
 
+  const totals = sheets.reduce(
+    (a, s) => ({
+      pass: a.pass + s.items_pass,
+      fail: a.fail + s.items_fail,
+      pending: a.pending + s.items_pending,
+    }),
+    { pass: 0, fail: 0, pending: 0 }
+  );
+
   return (
-    <ul className="divide-y divide-border/40">
-      {sheets.map((s) => {
-        const meta = QC_STATUS_META[s.status];
-        const Icon = meta.icon;
-        return (
-          <li key={s.id}>
-            <button
-              type="button"
-              onClick={() => onOpen(s.id)}
-              className={cn(
-                "w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-muted/40 transition-colors border-l-[3px]",
-                meta.rowAccent
-              )}
-            >
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-semibold tabular-nums">
-                    {formatShortDate(s.inspection_date)}
-                  </span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-foreground/[0.04] text-muted-foreground capitalize font-medium">
-                    {s.shift}
-                  </span>
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-muted/50">
+            <TableHead className="w-[120px]">Date / Shift</TableHead>
+            <TableHead className="hidden sm:table-cell">PO / Buyer · Style</TableHead>
+            <TableHead className="hidden md:table-cell">Inspector</TableHead>
+            <TableHead className="text-right">Pass</TableHead>
+            <TableHead className="text-right">Fail</TableHead>
+            <TableHead className="text-right hidden sm:table-cell">Pending</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="w-[32px]" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {sheets.map((s) => {
+            const meta = QC_STATUS_META[s.status];
+            const Icon = meta.icon;
+            return (
+              <TableRow
+                key={s.id}
+                onClick={() => onOpen(s.id)}
+                className={cn(
+                  "cursor-pointer hover:bg-muted/40 transition-colors border-l-[3px]",
+                  meta.rowAccent
+                )}
+              >
+                <TableCell className="align-middle">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-semibold tabular-nums whitespace-nowrap">
+                      {formatShortDate(s.inspection_date)}
+                    </span>
+                    <span className="inline-flex items-center mt-0.5 text-[10px] px-1.5 py-0.5 rounded-md bg-foreground/[0.04] text-muted-foreground capitalize font-medium w-fit">
+                      {s.shift}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell className="hidden sm:table-cell align-middle min-w-0 max-w-[260px]">
+                  <p className="text-xs font-mono font-semibold truncate">
+                    {s.po_number || "—"}
+                  </p>
+                  {(s.buyer || s.style) && (
+                    <p className="text-[11px] text-muted-foreground truncate">
+                      {[s.buyer, s.style].filter(Boolean).join(" · ")}
+                    </p>
+                  )}
+                </TableCell>
+                <TableCell className="hidden md:table-cell align-middle text-xs text-muted-foreground truncate max-w-[140px]">
+                  {s.inspector_name ?? "—"}
+                </TableCell>
+                <TableCell className="text-right font-mono font-semibold text-emerald-600 dark:text-emerald-400 align-middle">
+                  {s.items_pass}
+                </TableCell>
+                <TableCell
+                  className={cn(
+                    "text-right font-mono font-semibold align-middle",
+                    s.items_fail > 0
+                      ? "text-amber-600 dark:text-amber-400"
+                      : "text-muted-foreground"
+                  )}
+                >
+                  {s.items_fail}
+                </TableCell>
+                <TableCell className="text-right font-mono text-muted-foreground hidden sm:table-cell align-middle">
+                  {s.items_pending}
+                </TableCell>
+                <TableCell className="align-middle">
                   <span
                     className={cn(
-                      "inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-md",
+                      "inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md whitespace-nowrap",
                       meta.pillClass
                     )}
                   >
                     <Icon className="h-3 w-3" />
                     {meta.label}
                   </span>
-                </div>
-                <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
-                  <span className="font-mono font-medium text-foreground/80">
-                    {s.po_number || "—"}
-                  </span>
-                  {s.buyer && (
-                    <>
-                      <span className="text-muted-foreground/60"> · </span>
-                      {s.buyer}
-                    </>
-                  )}
-                  {s.style && (
-                    <>
-                      <span className="text-muted-foreground/60"> · </span>
-                      {s.style}
-                    </>
-                  )}
-                </p>
-                {s.inspector_name && (
-                  <p className="text-[11px] text-muted-foreground/80 mt-0.5">
-                    Inspector: <span className="text-foreground/80">{s.inspector_name}</span>
-                  </p>
-                )}
-              </div>
-              <div className="flex items-center gap-2 shrink-0 text-[11px] tabular-nums">
-                <span className="font-mono text-emerald-700 dark:text-emerald-400">
-                  {s.items_pass}
-                </span>
-                <span className="text-muted-foreground/50">/</span>
-                <span
-                  className={cn(
-                    "font-mono",
-                    s.items_fail > 0
-                      ? "text-amber-700 dark:text-amber-400 font-semibold"
-                      : "text-muted-foreground"
-                  )}
-                >
-                  {s.items_fail}
-                </span>
-                <span className="text-[9px] text-muted-foreground uppercase tracking-wider ml-1 mr-2">
-                  P/F
-                </span>
-                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
-              </div>
-            </button>
-          </li>
-        );
-      })}
-    </ul>
+                </TableCell>
+                <TableCell className="align-middle text-right pr-3">
+                  <ArrowRight className="h-3.5 w-3.5 text-muted-foreground inline" />
+                </TableCell>
+              </TableRow>
+            );
+          })}
+
+          {/* Totals row */}
+          <TableRow className="bg-muted/30 font-semibold">
+            <TableCell>Total</TableCell>
+            <TableCell className="hidden sm:table-cell" />
+            <TableCell className="hidden md:table-cell" />
+            <TableCell className="text-right font-mono text-emerald-600 dark:text-emerald-400">
+              {totals.pass}
+            </TableCell>
+            <TableCell
+              className={cn(
+                "text-right font-mono",
+                totals.fail > 0
+                  ? "text-amber-600 dark:text-amber-400"
+                  : "text-muted-foreground"
+              )}
+            >
+              {totals.fail}
+            </TableCell>
+            <TableCell className="text-right font-mono text-muted-foreground hidden sm:table-cell">
+              {totals.pending}
+            </TableCell>
+            <TableCell />
+            <TableCell />
+          </TableRow>
+        </TableBody>
+      </Table>
+    </div>
   );
 }
