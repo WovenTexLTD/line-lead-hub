@@ -297,13 +297,15 @@ export default function ReportBlocker() {
         submitted_by: user?.id,
         submitted_at: new Date().toISOString(),
 
-        // Blocker fields
+        // Blocker fields (both production_updates_sewing and _finishing have these)
         has_blocker: true,
         blocker_type_id: blockerType,
         blocker_owner: blockerOwnerLabel,
         blocker_impact: severityValue,
         blocker_description: blockerDescription,
         blocker_status: "open",
+        blocker_resolution_date: blockerResolution ? format(blockerResolution, "yyyy-MM-dd") : null,
+        action_taken_today: blockerDescription,
 
         // Auto-filled context
         unit_name: unitName,
@@ -316,13 +318,11 @@ export default function ReportBlocker() {
       const useFinishingTable = updateType === "finishing";
 
       if (!useFinishingTable) {
-        insertData.blocker_resolution_date = blockerResolution ? format(blockerResolution, "yyyy-MM-dd") : null;
         Object.assign(insertData, {
           buyer_name: workOrder?.buyer || "",
           po_number: workOrder?.po_number || "",
           style_code: workOrder?.style || "",
           output_qty: 0,
-          action_taken_today: blockerDescription,
         });
       } else {
         Object.assign(insertData, {

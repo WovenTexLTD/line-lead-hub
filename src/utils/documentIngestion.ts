@@ -36,16 +36,19 @@ export async function ingestDocument(
     throw new Error("No content to ingest");
   }
 
-  // Initialize queue status
-  await supabase.from("document_ingestion_queue").upsert({
-    document_id: documentId,
-    status: "processing",
-    started_at: new Date().toISOString(),
-    total_chunks: chunks.length,
-    chunks_processed: 0,
-    error_message: null,
-    completed_at: null,
-  });
+  // Initialize queue status (one row per document_id — unique constraint enforces it).
+  await supabase.from("document_ingestion_queue").upsert(
+    {
+      document_id: documentId,
+      status: "processing",
+      started_at: new Date().toISOString(),
+      total_chunks: chunks.length,
+      chunks_processed: 0,
+      error_message: null,
+      completed_at: null,
+    },
+    { onConflict: "document_id" }
+  );
 
   onProgress?.({
     total: chunks.length,

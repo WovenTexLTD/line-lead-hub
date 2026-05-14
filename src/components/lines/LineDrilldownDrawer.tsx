@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -9,12 +10,34 @@ import {
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Target, TrendingUp, Users, AlertTriangle, Clock } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Target,
+  TrendingUp,
+  Users,
+  AlertTriangle,
+  Clock,
+  BadgeCheck,
+  ArrowRight,
+  CheckCircle2,
+  Stamp,
+  Send,
+  Loader2,
+} from "lucide-react";
 import { SewingSubmissionView } from "@/components/SewingSubmissionView";
 import type { SewingTargetData, SewingActualData } from "@/components/SewingSubmissionView";
 import { LinePOTable } from "./LinePOTable";
 import { LineDrilldownTrend } from "./LineDrilldownTrend";
 import { useLineSubmissions } from "./useLineSubmissions";
+import { useLineQCDailySheets, type LineQCDailySheet, type LineQCSheetStatus } from "./useLineQCDailySheets";
+import { formatShortDate } from "@/lib/date-utils";
 import type { LinePerformanceData, LineTrendData, TimeRange } from "./types";
 
 interface LineDrilldownDrawerProps {
@@ -42,6 +65,7 @@ export function LineDrilldownDrawer({
   open,
   onClose,
 }: LineDrilldownDrawerProps) {
+  const navigate = useNavigate();
   // Submission data for clickable PO rows
   const {
     loading: submissionsLoading,
@@ -49,6 +73,13 @@ export function LineDrilldownDrawer({
     getSubmissionData,
     getDailySubmission,
   } = useLineSubmissions(open && line ? line.id : null, dateRange);
+
+  // QC daily sheets submitted for this line in the active date range
+  const { sheets: qcSheets, loading: qcLoading } = useLineQCDailySheets({
+    lineId: open && line ? line.id : null,
+    startDate: dateRange.start,
+    endDate: dateRange.end,
+  });
 
   // Submission view modal state
   const [submissionTarget, setSubmissionTarget] = useState<SewingTargetData | null>(null);
@@ -260,6 +291,36 @@ export function LineDrilldownDrawer({
             </CardContent>
           </Card>
 
+          {/* QC Daily Sheets — submissions for this line in range */}
+          <Card className="shadow-sm mt-1">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 shadow-sm shadow-emerald-500/20 flex items-center justify-center">
+                  <BadgeCheck className="h-3.5 w-3.5 text-white" />
+                </div>
+                QC Daily Sheets
+                <Badge variant="secondary" className="text-[10px]">
+                  {qcSheets.length}
+                </Badge>
+                {qcSheets.length > 0 && (
+                  <span className="text-[10px] font-normal text-muted-foreground ml-auto">
+                    Click a row to view the full sheet
+                  </span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <QCDailySheetsList
+                sheets={qcSheets}
+                loading={qcLoading}
+                onOpen={(id) => {
+                  onClose();
+                  navigate(`/quality/daily-sheet/${id}`);
+                }}
+              />
+            </CardContent>
+          </Card>
+
           {/* Trend (range mode only) */}
           {showTrend && (
             <Card className="shadow-sm mt-1">
@@ -290,5 +351,188 @@ export function LineDrilldownDrawer({
         onOpenChange={handleSubmissionClose}
       />
     </>
+  );
+}
+
+const QC_STATUS_META: Record<
+  LineQCSheetStatus,
+  { label: string; icon: typeof BadgeCheck; pillClass: string; rowAccent: string }
+> = {
+  signed_off: {
+    label: "Signed off",
+    icon: Stamp,
+    pillClass:
+      "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300 ring-1 ring-emerald-200/60 dark:ring-emerald-700/40",
+    rowAccent: "border-l-emerald-300/70 dark:border-l-emerald-700/40",
+  },
+  awaiting_signoff: {
+    label: "Awaiting sign-off",
+    icon: Send,
+    pillClass:
+      "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300 ring-1 ring-amber-200/60 dark:ring-amber-700/40",
+    rowAccent: "border-l-amber-300/70 dark:border-l-amber-700/40",
+  },
+  in_progress: {
+    label: "In progress",
+    icon: CheckCircle2,
+    pillClass:
+      "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300 ring-1 ring-blue-200/60 dark:ring-blue-700/40",
+    rowAccent: "border-l-blue-300/70 dark:border-l-blue-700/40",
+  },
+};
+
+function QCDailySheetsList({
+  sheets,
+  loading,
+  onOpen,
+}: {
+  sheets: LineQCDailySheet[];
+  loading: boolean;
+  onOpen: (sheetId: string) => void;
+}) {
+  if (loading) {
+    return (
+      <div className="px-5 py-6 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        Loading QC sheets…
+      </div>
+    );
+  }
+
+  if (sheets.length === 0) {
+    return (
+      <div className="px-5 py-8 text-center">
+        <div className="inline-flex h-10 w-10 rounded-xl items-center justify-center mx-auto mb-2 bg-muted ring-1 ring-border/60">
+          <BadgeCheck className="h-5 w-5 text-muted-foreground/70" />
+        </div>
+        <p className="text-sm font-medium">No QC daily sheets in this range.</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Sheets submitted by inspectors will appear here.
+        </p>
+      </div>
+    );
+  }
+
+  const totals = sheets.reduce(
+    (a, s) => ({
+      pass: a.pass + s.items_pass,
+      fail: a.fail + s.items_fail,
+      pending: a.pending + s.items_pending,
+    }),
+    { pass: 0, fail: 0, pending: 0 }
+  );
+
+  return (
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-muted/50">
+            <TableHead className="w-[120px]">Date / Shift</TableHead>
+            <TableHead className="hidden sm:table-cell">PO / Buyer · Style</TableHead>
+            <TableHead className="hidden md:table-cell">Inspector</TableHead>
+            <TableHead className="text-right">Pass</TableHead>
+            <TableHead className="text-right">Fail</TableHead>
+            <TableHead className="text-right hidden sm:table-cell">Pending</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="w-[32px]" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {sheets.map((s) => {
+            const meta = QC_STATUS_META[s.status];
+            const Icon = meta.icon;
+            return (
+              <TableRow
+                key={s.id}
+                onClick={() => onOpen(s.id)}
+                className={cn(
+                  "cursor-pointer hover:bg-muted/40 transition-colors border-l-[3px]",
+                  meta.rowAccent
+                )}
+              >
+                <TableCell className="align-middle">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-semibold tabular-nums whitespace-nowrap">
+                      {formatShortDate(s.inspection_date)}
+                    </span>
+                    <span className="inline-flex items-center mt-0.5 text-[10px] px-1.5 py-0.5 rounded-md bg-foreground/[0.04] text-muted-foreground capitalize font-medium w-fit">
+                      {s.shift}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell className="hidden sm:table-cell align-middle min-w-0 max-w-[260px]">
+                  <p className="text-xs font-mono font-semibold truncate">
+                    {s.po_number || "—"}
+                  </p>
+                  {(s.buyer || s.style) && (
+                    <p className="text-[11px] text-muted-foreground truncate">
+                      {[s.buyer, s.style].filter(Boolean).join(" · ")}
+                    </p>
+                  )}
+                </TableCell>
+                <TableCell className="hidden md:table-cell align-middle text-xs text-muted-foreground truncate max-w-[140px]">
+                  {s.inspector_name ?? "—"}
+                </TableCell>
+                <TableCell className="text-right font-mono font-semibold text-emerald-600 dark:text-emerald-400 align-middle">
+                  {s.items_pass}
+                </TableCell>
+                <TableCell
+                  className={cn(
+                    "text-right font-mono font-semibold align-middle",
+                    s.items_fail > 0
+                      ? "text-amber-600 dark:text-amber-400"
+                      : "text-muted-foreground"
+                  )}
+                >
+                  {s.items_fail}
+                </TableCell>
+                <TableCell className="text-right font-mono text-muted-foreground hidden sm:table-cell align-middle">
+                  {s.items_pending}
+                </TableCell>
+                <TableCell className="align-middle">
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md whitespace-nowrap",
+                      meta.pillClass
+                    )}
+                  >
+                    <Icon className="h-3 w-3" />
+                    {meta.label}
+                  </span>
+                </TableCell>
+                <TableCell className="align-middle text-right pr-3">
+                  <ArrowRight className="h-3.5 w-3.5 text-muted-foreground inline" />
+                </TableCell>
+              </TableRow>
+            );
+          })}
+
+          {/* Totals row */}
+          <TableRow className="bg-muted/30 font-semibold">
+            <TableCell>Total</TableCell>
+            <TableCell className="hidden sm:table-cell" />
+            <TableCell className="hidden md:table-cell" />
+            <TableCell className="text-right font-mono text-emerald-600 dark:text-emerald-400">
+              {totals.pass}
+            </TableCell>
+            <TableCell
+              className={cn(
+                "text-right font-mono",
+                totals.fail > 0
+                  ? "text-amber-600 dark:text-amber-400"
+                  : "text-muted-foreground"
+              )}
+            >
+              {totals.fail}
+            </TableCell>
+            <TableCell className="text-right font-mono text-muted-foreground hidden sm:table-cell">
+              {totals.pending}
+            </TableCell>
+            <TableCell />
+            <TableCell />
+          </TableRow>
+        </TableBody>
+      </Table>
+    </div>
   );
 }

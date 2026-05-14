@@ -135,9 +135,12 @@ export default function BuyerTodayUpdates() {
           .in("work_order_id", filterIds)
           .eq("production_date", dateStr)
           .order("submitted_at", { ascending: false }),
+        // finishing_actuals is deprecated/empty — use finishing_daily_logs OUTPUT
+        // and remap columns to keep the existing FinishingActual TS shape.
         supabase
-          .from("finishing_actuals")
-          .select("id, work_order_id, production_date, day_carton, day_poly, day_qc_pass, total_carton, total_poly, total_qc_pass, submitted_at, work_orders(po_number, style)")
+          .from("finishing_daily_logs")
+          .select("id, work_order_id, production_date, carton, poly, submitted_at, work_orders(po_number, style)")
+          .eq("log_type", "OUTPUT")
           .in("work_order_id", filterIds)
           .eq("production_date", dateStr)
           .order("submitted_at", { ascending: false }),
@@ -154,7 +157,21 @@ export default function BuyerTodayUpdates() {
       const DEMO_MODE = true;
       const realSewing = (sewingRes.data as unknown as SewingRow[]) || [];
       const realCutting = (cuttingRes.data as unknown as CuttingRow[]) || [];
-      const realFinishing = (finishingRes.data as unknown as FinishingRow[]) || [];
+      // Map finishing_daily_logs (carton/poly) into the legacy FinishingRow
+      // shape (day_carton/day_poly/...) so downstream code is unchanged.
+      const realFinishing = (((finishingRes.data as any[]) || []).map((r) => ({
+        id: r.id,
+        work_order_id: r.work_order_id,
+        production_date: r.production_date,
+        day_carton: r.carton ?? 0,
+        day_poly: r.poly ?? 0,
+        day_qc_pass: 0,
+        total_carton: 0,
+        total_poly: 0,
+        total_qc_pass: 0,
+        submitted_at: r.submitted_at ?? null,
+        work_orders: r.work_orders,
+      })) as unknown as FinishingRow[]);
       const allStorage = (storageRes.data as unknown as StorageTransaction[]) || [];
       const filterSet = new Set(filterIds);
       const realStorage = allStorage.filter(t => t.storage_bin_cards?.work_order_id && filterSet.has(t.storage_bin_cards.work_order_id));

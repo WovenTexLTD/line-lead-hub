@@ -44,6 +44,11 @@ export default function Index() {
       return <Navigate to="/storage" replace />;
     }
 
+    // QC role lands on Daily QC Sheet — top of their sidebar nav
+    if (hasRole('qc')) {
+      return <Navigate to="/quality/daily-sheet" replace />;
+    }
+
     // Admins and owners always go to dashboard
     if (isAdminOrHigher()) {
       return <Navigate to="/dashboard" replace />;

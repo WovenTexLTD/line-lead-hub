@@ -1,11 +1,13 @@
 import { Card } from "@/components/ui/card";
 import { LineCardItem } from "./LineCardItem";
 import type { LinePerformanceData, TimeRange } from "./types";
+import type { LineQCSheetMap } from "./useQCLineSheets";
 
 interface LinePerformanceCardsProps {
   lines: LinePerformanceData[];
   loading: boolean;
   timeRange: TimeRange;
+  qcSheetsByLineId?: LineQCSheetMap;
   onLineClick: (lineId: string) => void;
 }
 
@@ -41,7 +43,7 @@ function CardSkeleton() {
   );
 }
 
-export function LinePerformanceCards({ lines, loading, timeRange, onLineClick }: LinePerformanceCardsProps) {
+export function LinePerformanceCards({ lines, loading, timeRange, qcSheetsByLineId, onLineClick }: LinePerformanceCardsProps) {
   if (loading) {
     return (
       <div className="space-y-3">
@@ -69,6 +71,7 @@ export function LinePerformanceCards({ lines, loading, timeRange, onLineClick }:
           key={line.id}
           line={line}
           timeRange={timeRange}
+          qcSummary={qcSheetsByLineId?.get(line.id) ?? null}
           onClick={() => onLineClick(line.id)}
         />
       ))}

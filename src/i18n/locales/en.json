@@ -113,6 +113,12 @@
     "owner": "Owner",
     "storage": "Storage",
     "cutting": "Cutting",
+    "sewing": "Sewing",
+    "finishing": "Finishing",
+    "buyer": "Buyer / Client",
+    "superadmin": "Super Admin",
+    "gate_officer": "Gate Officer",
+    "qc": "Quality Control",
     "sewing_manager": "Manager",
     "finishing_manager": "Manager"
   },

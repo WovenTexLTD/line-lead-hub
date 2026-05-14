@@ -69,10 +69,10 @@ interface WorkOrder {
   buyer: string;
 }
 
-const ASSIGNABLE_ROLES: AppRole[] = ['sewing', 'finishing', 'admin', 'storage', 'cutting', 'buyer'];
+const ASSIGNABLE_ROLES: AppRole[] = ['sewing', 'finishing', 'admin', 'storage', 'cutting', 'buyer', 'qc'];
 
 const editUserSchema = z.object({
-  role: z.enum(["sewing", "finishing", "admin", "storage", "cutting", "owner", "worker", "buyer"]),
+  role: z.enum(["sewing", "finishing", "admin", "storage", "cutting", "owner", "worker", "buyer", "qc"]),
   isActive: z.boolean(),
 });
 

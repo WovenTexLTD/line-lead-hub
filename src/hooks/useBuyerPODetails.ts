@@ -110,9 +110,13 @@ export function useBuyerPODetails(poId: string | undefined) {
           .eq("work_order_id", safePoId)
           .gte("production_date", startDate)
           .order("production_date", { ascending: true }),
+        // finishing_actuals is deprecated/empty — read from finishing_daily_logs
+        // (log_type=OUTPUT). Map columns into FinishingHistoryRow shape after
+        // fetching so downstream consumers stay unchanged.
         supabase
-          .from("finishing_actuals")
-          .select("id, production_date, day_carton, day_poly, day_qc_pass, total_carton, total_poly, total_qc_pass, submitted_at, has_blocker")
+          .from("finishing_daily_logs")
+          .select("id, production_date, carton, poly, submitted_at")
+          .eq("log_type", "OUTPUT")
           .eq("work_order_id", safePoId)
           .gte("production_date", startDate)
           .order("production_date", { ascending: true }),
@@ -129,7 +133,22 @@ export function useBuyerPODetails(poId: string | undefined) {
       setSewingHistory((sewingRes.data as unknown as SewingHistoryRow[]) || []);
       setSewingTargets((sewingTargetRes.data as unknown as SewingTargetRow[]) || []);
       setCuttingHistory((cuttingRes.data as unknown as CuttingHistoryRow[]) || []);
-      setFinishingHistory((finishingRes.data as unknown as FinishingHistoryRow[]) || []);
+      // Map finishing_daily_logs rows into the legacy FinishingHistoryRow
+      // shape so downstream consumers (lines below) keep working.
+      setFinishingHistory(
+        ((finishingRes.data as any[]) || []).map((r) => ({
+          id: r.id,
+          production_date: r.production_date,
+          day_carton: r.carton ?? 0,
+          day_poly: r.poly ?? 0,
+          day_qc_pass: 0,            // not tracked on finishing_daily_logs
+          total_carton: null,        // rolling totals not stored
+          total_poly: null,
+          total_qc_pass: null,
+          submitted_at: r.submitted_at ?? null,
+          has_blocker: null,
+        }))
+      );
       setStorageHistory((storageRes.data as unknown as StorageHistoryRow[]) || []);
       setDataLoading(false);
     }

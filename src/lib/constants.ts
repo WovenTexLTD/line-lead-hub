@@ -19,6 +19,7 @@ export const ROLES = {
   BUYER: 'buyer',
   SUPERADMIN: 'superadmin',
   GATE_OFFICER: 'gate_officer',
+  QC: 'qc',
 } as const;
 
 export type AppRole = typeof ROLES[keyof typeof ROLES];
@@ -38,6 +39,7 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   buyer: 'Buyer / Client',
   superadmin: 'Super Admin',
   gate_officer: 'Gate Officer',
+  qc: 'Quality Control',
 };
 
 // Blocker impact levels
@@ -228,6 +230,9 @@ export const NAV_ITEMS = {
     { path: '/submissions', label: 'All Submissions', icon: 'FileText', group: 'Records' },
     { path: '/work-orders', label: 'Work Orders', icon: 'Receipt', group: 'Records' },
     { path: '/blockers', label: 'Blockers', icon: 'AlertTriangle', group: 'Records' },
+    { path: '/quality', label: 'QC Dashboard', icon: 'ShieldCheck', group: 'Quality' },
+    { path: '/quality/admin/sheets', label: 'Sheet Review', icon: 'ListChecks', group: 'Quality' },
+    { path: '/quality/admin/trackers', label: 'Tracker Review', icon: 'ClipboardList', group: 'Quality' },
     { path: '/insights', label: 'Insights', icon: 'TrendingUp', group: 'Analytics' },
     { path: '/finances', label: 'Finances', icon: 'DollarSign', group: 'Analytics' },
     { path: '/dispatch/approvals', label: 'Dispatch Approvals', icon: 'CheckSquare', group: 'Dispatch' },
@@ -249,6 +254,9 @@ export const NAV_ITEMS = {
     { path: '/submissions', label: 'All Submissions', icon: 'FileText', group: 'Records' },
     { path: '/work-orders', label: 'Work Orders', icon: 'Receipt', group: 'Records' },
     { path: '/blockers', label: 'Blockers', icon: 'AlertTriangle', group: 'Records' },
+    { path: '/quality', label: 'QC Dashboard', icon: 'ShieldCheck', group: 'Quality' },
+    { path: '/quality/admin/sheets', label: 'Sheet Review', icon: 'ListChecks', group: 'Quality' },
+    { path: '/quality/admin/trackers', label: 'Tracker Review', icon: 'ClipboardList', group: 'Quality' },
     { path: '/insights', label: 'Insights', icon: 'TrendingUp', group: 'Analytics' },
     { path: '/finances', label: 'Finances', icon: 'DollarSign', group: 'Analytics' },
     { path: '/dispatch/approvals', label: 'Dispatch Approvals', icon: 'CheckSquare', group: 'Dispatch' },
@@ -298,6 +306,12 @@ export const NAV_ITEMS = {
   gate_officer: [
     { path: '/dispatch/new', label: 'New Dispatch', icon: 'Truck' },
     { path: '/dispatch/history', label: 'My Dispatches', icon: 'ClipboardList' },
+    { path: '/preferences', label: 'My Preferences', icon: 'UserCog', bottom: true },
+  ],
+  qc: [
+    { path: '/quality/daily-sheet', label: 'Daily QC Sheet', icon: 'ListChecks', group: 'Quality' },
+    { path: '/quality/order-manager', label: 'Order Manager', icon: 'ClipboardList', group: 'Quality' },
+    { path: '/quality/records', label: 'My QC Records', icon: 'FolderOpen', group: 'Quality' },
     { path: '/preferences', label: 'My Preferences', icon: 'UserCog', bottom: true },
   ],
 };
