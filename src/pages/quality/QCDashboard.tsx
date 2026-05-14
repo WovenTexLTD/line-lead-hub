@@ -241,20 +241,20 @@ export default function QCDashboard() {
             Overview
           </TabsTrigger>
           <TabsTrigger
-            value="daily"
-            className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-2 py-2.5 rounded-lg data-[state=active]:shadow-sm data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 dark:data-[state=active]:bg-blue-950/40 dark:data-[state=active]:text-blue-300"
-          >
-            <ListChecks className="h-3.5 w-3.5" />
-            Daily Sheets
-            <CountBadge n={dailySheets.length} />
-          </TabsTrigger>
-          <TabsTrigger
             value="lines"
             className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-2 py-2.5 rounded-lg data-[state=active]:shadow-sm data-[state=active]:bg-cyan-50 data-[state=active]:text-cyan-700 dark:data-[state=active]:bg-cyan-950/40 dark:data-[state=active]:text-cyan-300"
           >
             <Rows3 className="h-3.5 w-3.5" />
             Lines
             <CountBadge n={linesGroups.length} />
+          </TabsTrigger>
+          <TabsTrigger
+            value="daily"
+            className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-2 py-2.5 rounded-lg data-[state=active]:shadow-sm data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 dark:data-[state=active]:bg-blue-950/40 dark:data-[state=active]:text-blue-300"
+          >
+            <ListChecks className="h-3.5 w-3.5" />
+            Daily Sheets
+            <CountBadge n={dailySheets.length} />
           </TabsTrigger>
           <TabsTrigger
             value="trackers"
